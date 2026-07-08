@@ -1,3 +1,17 @@
+const ADMIN_PASSWORD = "8190a";
+
+function adminLogin() {
+  const inputPassword = document.getElementById("adminPassword").value;
+
+  if (inputPassword === ADMIN_PASSWORD) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("adminContent").style.display = "block";
+    loadOrders();
+  } else {
+    alert("비밀번호가 틀렸습니다.");
+  }
+}
+
 const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
 const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
@@ -161,5 +175,3 @@ async function toggleOrderStatus(orderNumber, currentStatus) {
 
   loadOrders();
 }
-
-loadOrders();

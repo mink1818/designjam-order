@@ -14,6 +14,13 @@
 </header>
 
 <main class="container">
+  <div id="loginBox" class="product-card">
+  <h2>관리자 로그인</h2>
+  <input id="adminPassword" class="search" type="password" placeholder="관리자 비밀번호">
+  <button class="cart-btn" onclick="adminLogin()">로그인</button>
+</div>
+
+<div id="adminContent" style="display:none;">
   <div class="dashboard">
     <div><strong id="totalCount">0</strong><span>전체</span></div>
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
@@ -31,6 +38,7 @@
   <button class="cart-btn" onclick="loadOrders()">주문 새로고침</button>
 
   <section id="adminOrders"></section>
+  </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
