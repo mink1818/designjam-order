@@ -1,0 +1,167 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
+
+header {
+  background: #1b4b91;
+  color: white;
+  text-align: center;
+  padding: 22px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 20px auto;
+  padding: 0 12px;
+}
+
+.search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin: 12px 0;
+}
+
+.cart-btn {
+  width: 100%;
+  border: none;
+  background: #1b4b91;
+  color: white;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 8px 0;
+}
+
+.product-card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.dashboard div {
+  background: white;
+  border-radius: 14px;
+  padding: 16px 8px;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+.dashboard strong {
+  display: block;
+  font-size: 28px;
+  color: #1b4b91;
+}
+
+.admin-filter {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.admin-filter button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.order-card {
+  border-left: 8px solid #f0ad00;
+}
+
+.order-card.done {
+  border-left-color: #19a55a;
+  background: #f1fff6;
+}
+
+.order-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #9a6700;
+}
+
+.status-badge.done {
+  background: #d1f7df;
+  color: #137a3b;
+}
+
+.pick-list {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 10px;
+  margin-top: 12px;
+}
+
+.pick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 10px 4px;
+  border-bottom: 1px solid #eee;
+  font-size: 22px;
+}
+
+.pick-row span {
+  text-align: right;
+  font-weight: bold;
+  color: #1b4b91;
+}
+
+.total-qty {
+  font-size: 26px;
+}
+
+.undo-btn {
+  background: #888;
+}
+
+.check-row {
+  grid-template-columns: 36px 1fr 1fr;
+  align-items: center;
+  cursor: pointer;
+}
+
+.check-row input {
+  width: 24px;
+  height: 24px;
+}
+
+.check-row:has(input:checked) {
+  background: #e8f7ee;
+  border-radius: 8px;
+}
+
+.check-row:has(input:checked) strong,
+.check-row:has(input:checked) span {
+  text-decoration: line-through;
+  color: #19a55a;
+}

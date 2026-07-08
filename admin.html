@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>디자인 삭스 관리자</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<header>
+  <h1>🧦 디자인 삭스 관리자</h1>
+  <p>주문관리 페이지 (관리자)</p>
+</header>
+
+<main class="container">
+  <div class="dashboard">
+    <div><strong id="totalCount">0</strong><span>전체</span></div>
+    <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
+    <div><strong id="doneCount">0</strong><span>출고완료</span></div>
+  </div>
+
+  <input id="adminSearch" class="search" placeholder="거래처명 / 품번 / 주문번호 검색">
+
+  <div class="admin-filter">
+    <button onclick="setAdminFilter('전체')">전체</button>
+    <button onclick="setAdminFilter('주문접수')">주문접수</button>
+    <button onclick="setAdminFilter('출고완료')">출고완료</button>
+  </div>
+
+  <button class="cart-btn" onclick="loadOrders()">주문 새로고침</button>
+
+  <section id="adminOrders"></section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/admin.js"></script>
+
+</body>
+</html>
