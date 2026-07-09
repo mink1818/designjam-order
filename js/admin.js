@@ -119,7 +119,11 @@ function renderOrderCards(groups) {
 
       itemHtml += `
         <label class="pick-row stock-row">
-          <input type="checkbox" onchange="recalcOrderCard('order-${index}')">
+          <input 
+  type="checkbox" 
+  ${item.is_soldout ? "checked" : ""}
+  onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
+>
           <strong>${item.item_number}</strong>
           <span>× ${item.qty}</span>
           <em>${rowTotal.toLocaleString()}원</em>
@@ -247,4 +251,15 @@ async function saveShipping(orderNumber, fee){
     })
     .eq("order_number",orderNumber);
 
+}
+
+async function toggleSoldout(id, isChecked) {
+  const { error } = await supabaseClient
+    .from("orders")
+    .update({ is_soldout: isChecked })
+    .eq("id", id);
+
+  if (error) {
+    alert("품절 저장 실패: " + error.message);
+  }
 }
