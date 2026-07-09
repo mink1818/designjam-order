@@ -298,18 +298,11 @@ async function toggleSoldout(id, isChecked) {
   }
 }
 
-function toggleDetail(id){
+function toggleDetail(id) {
+  const box = document.getElementById(id);
+  if (!box) return;
 
-const box=document.getElementById(id);
+  const isHidden = window.getComputedStyle(box).display === "none";
 
-if(box.style.display==="none"){
-
-box.style.display="block";
-
-}else{
-
-box.style.display="none";
-
-}
-
+  box.style.display = isHidden ? "block" : "none";
 }
