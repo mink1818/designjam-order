@@ -146,13 +146,14 @@ function renderOrderCards(groups) {
         <hr>
 
         <label class="shipping-label">배송비</label>
-        <input
-class="shipping-input"
-type="number"
-value="${group.shipping_fee || 0}"
-min="0"
-oninput="saveShipping('${group.orderNumber}',this.value);
-recalcOrderCard('order-${index}')">
+<input
+  class="shipping-input"
+  type="number"
+  value="${group.shipping_fee || 0}"
+  min="0"
+  data-order="${group.orderNumber}"
+  oninput="recalcOrderCard('order-${index}')"
+>
 
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
@@ -178,9 +179,23 @@ recalcOrderCard('order-${index}')">
 async function toggleOrderStatus(orderNumber, currentStatus) {
   const nextStatus = currentStatus === "출고완료" ? "주문접수" : "출고완료";
 
+  const shippingInput = document.querySelector(
+    `.shipping-input[data-order="${orderNumber}"]`
+  );
+
+  const shippingFee = Number(shippingInput?.value) || 0;
+
+  const updateData = {
+    status: nextStatus
+  };
+
+  if (nextStatus === "출고완료") {
+    updateData.shipping_fee = shippingFee;
+  }
+
   const { error } = await supabaseClient
     .from("orders")
-    .update({ status: nextStatus })
+    .update(updateData)
     .eq("order_number", orderNumber);
 
   if (error) {
