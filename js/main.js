@@ -202,7 +202,7 @@ function addToCart(product) {
 
 function renderCart() {
   productList.innerHTML = "";
-item.qty * item.price * 10
+
   if (cart.length === 0) {
     productList.innerHTML = `
       <div class="product-card">
