@@ -187,3 +187,16 @@ header {
   color: #999;
   text-decoration: line-through;
 }
+
+/* 주문조회 카드 간격 */
+#orderResult .product-card{
+    margin-bottom:40px;
+    border:2px solid #e8e8e8;
+    border-radius:18px;
+    padding:28px;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+.order-divider{
+    height:30px;
+}

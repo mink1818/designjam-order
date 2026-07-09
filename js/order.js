@@ -103,6 +103,7 @@ function renderOrders(groups) {
             : `<p><strong>배송정보:</strong> 출고 전입니다</p>`
         }
       </div>
+      <div class="order-divider"></div>
     `;
   });
 
