@@ -177,7 +177,7 @@ class="order-detail">
 <select 
   class="courier-select" 
   data-order="${group.orderNumber}"
-  ${group.status === "출고완료" ? "disabled" : ""}
+  ${isDone ? "disabled" : ""}
 >
   <option value="로젠택배" ${group.courier==="로젠택배"?"selected":""}>로젠택배</option>
   <option value="CJ대한통운" ${group.courier==="CJ대한통운"?"selected":""}>CJ대한통운</option>
@@ -195,7 +195,7 @@ class="order-detail">
   type="text"
   value="${group.tracking_number || ""}"
   placeholder="송장번호 입력"
-  ${group.status === "출고완료" ? "disabled" : ""}
+  ${isDone ? "disabled" : ""}
 >
 
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
