@@ -1,5 +1,3 @@
-const ADMIN_PASSWORD = "8190a";
-
 function adminLogin() {
   const inputPassword = document.getElementById("adminPassword").value;
 
@@ -11,11 +9,6 @@ function adminLogin() {
     alert("비밀번호가 틀렸습니다.");
   }
 }
-
-const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
-const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
-
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 const adminOrders = document.getElementById("adminOrders");
 const adminSearch = document.getElementById("adminSearch");
