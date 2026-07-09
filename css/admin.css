@@ -239,3 +239,16 @@ margin-bottom:15px;
 display:none;
 
 }
+
+.order-summary-number {
+  margin: 6px 0 2px;
+  font-size: 14px;
+  color: #555;
+}
+
+.order-summary-money {
+  margin: 0;
+  font-size: 16px;
+  color: #1b4b91;
+  font-weight: bold;
+}

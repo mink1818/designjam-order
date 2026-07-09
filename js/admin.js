@@ -105,6 +105,17 @@ function renderOrderCards(groups) {
 
   groups.forEach((group, index) => {
     let itemHtml = "";
+    let summaryQty = 0;
+let summaryTotal = 0;
+
+group.items.forEach(item => {
+  if (!item.is_soldout) {
+    summaryQty += item.qty;
+    summaryTotal += item.price * item.qty * 10;
+  }
+});
+
+summaryTotal += Number(group.shipping_fee || 0);
 
     group.items.forEach(item => {
       const rowTotal = item.price * item.qty * 10;
@@ -125,16 +136,16 @@ function renderOrderCards(groups) {
 
     html += `
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
-                <div class="order-header"
-onclick="toggleDetail('detail-${index}')">
+                <div class="order-header" onclick="toggleDetail('detail-${index}')">
+  <div>
+    <h2>${group.customerName || "거래처 미입력"}</h2>
+    <p class="order-summary-number">${group.orderNumber}</p>
+    <p class="order-summary-money">출고수량 ${summaryQty}개 / ${summaryTotal.toLocaleString()}원</p>
+  </div>
 
-<h2>${group.customerName}</h2>
-
-<span>
-${group.status}
-▼
-</span>
-
+  <span>
+    ${group.status} ▼
+  </span>
 </div>
 
 <div
