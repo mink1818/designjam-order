@@ -202,7 +202,7 @@ function addToCart(product) {
 
 function renderCart() {
   productList.innerHTML = "";
-
+item.qty * item.price * 10
   if (cart.length === 0) {
     productList.innerHTML = `
       <div class="product-card">
@@ -279,7 +279,7 @@ async function submitOrder() {
     item_number: item.number,
     qty: item.qty,
     price: item.price,
-    total: item.qty * item.price,
+    total: item.qty * item.price * 10,
     status: "주문접수"
   }));
 
@@ -300,7 +300,7 @@ async function submitOrder() {
       <div class="cart-item">
         <strong>${item.number}</strong>
         <span>${item.qty}개</span>
-        <span>${(item.qty * item.price).toLocaleString()}원</span>
+        <span>${(item.qty * item.price * 10).toLocaleString()}원</span>
       </div>
     `;
   });
