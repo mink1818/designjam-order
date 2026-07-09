@@ -171,16 +171,20 @@ class="order-detail">
 
 <label class="shipping-label">택배사</label>
 
-<select class="courier-select">
+<select class="courier-select" data-order="${group.orderNumber}">
   <option value="로젠택배" ${group.courier==="로젠택배"?"selected":""}>로젠택배</option>
   <option value="CJ대한통운" ${group.courier==="CJ대한통운"?"selected":""}>CJ대한통운</option>
   <option value="한진택배" ${group.courier==="한진택배"?"selected":""}>한진택배</option>
+  <option value="우체국택배" ${group.courier==="우체국택배"?"selected":""}>우체국택배</option>
+  <option value="롯데택배" ${group.courier==="롯데택배"?"selected":""}>롯데택배</option>
+  <option value="경동택배" ${group.courier==="경동택배"?"selected":""}>경동택배</option>
 </select>
 
 <label class="shipping-label">송장번호</label>
 
 <input
 class="tracking-input"
+data-order="${group.orderNumber}"
 type="text"
 value="${group.tracking_number || ""}"
 placeholder="송장번호 입력">
@@ -213,10 +217,20 @@ async function toggleOrderStatus(orderNumber, currentStatus) {
     `.shipping-input[data-order="${orderNumber}"]`
   );
 
+  const courierSelect = document.querySelector(
+    `.courier-select[data-order="${orderNumber}"]`
+  );
+
+  const trackingInput = document.querySelector(
+    `.tracking-input[data-order="${orderNumber}"]`
+  );
+
   const shippingFee = Number(shippingInput?.value) || 0;
+  const courier = courierSelect?.value || "로젠택배";
+  const trackingNumber = trackingInput?.value || "";
 
   try {
-    await updateOrderStatus(orderNumber, currentStatus, shippingFee);
+    await updateOrderStatus(orderNumber, currentStatus, shippingFee, courier, trackingNumber);
     loadOrders();
   } catch (error) {
     alert("상태 변경 실패: " + error.message);
