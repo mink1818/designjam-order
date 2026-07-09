@@ -218,7 +218,7 @@ function renderCart() {
   let cartHtml = "";
 
   cart.forEach(item => {
-    const itemTotal = item.qty * item.price;
+    const itemTotal = item.qty * item.price * 10;
     totalQty += item.qty;
     totalPrice += itemTotal;
 

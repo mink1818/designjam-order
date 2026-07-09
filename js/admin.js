@@ -110,26 +110,24 @@ function renderOrderCards(groups) {
 
   let html = "";
 
-  groups.forEach(group => {
-    let totalQty = 0;
-    let totalPrice = 0;
+  groups.forEach((group, index) => {
     let itemHtml = "";
 
     group.items.forEach(item => {
-      totalQty += item.qty;
-      totalPrice += item.total;
+      const rowTotal = item.price * item.qty * 10;
 
       itemHtml += `
-  <label class="pick-row check-row">
-    <input type="checkbox">
-    <strong>${item.item_number}</strong>
-    <span>× ${item.qty}</span>
-  </label>
-`;
+        <label class="pick-row stock-row">
+          <input type="checkbox" onchange="recalcOrderCard('order-${index}')">
+          <strong>${item.item_number}</strong>
+          <span>× ${item.qty}</span>
+          <em>${rowTotal.toLocaleString()}원</em>
+        </label>
+      `;
     });
 
     html += `
-      <div class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
+      <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
         <div class="order-top">
           <h2>${group.customerName || "거래처 미입력"}</h2>
           <span class="status-badge ${group.status === "출고완료" ? "done" : "pending"}">
@@ -140,12 +138,24 @@ function renderOrderCards(groups) {
         <p><strong>주문번호:</strong> ${group.orderNumber}</p>
         <p><strong>메모:</strong> ${group.memo || ""}</p>
 
-        <div class="pick-list">${itemHtml}</div>
+        <div class="pick-list">
+          ${itemHtml}
+        </div>
 
         <hr>
 
-        <h2 class="total-qty">총 ${totalQty}개</h2>
-        <p><strong>총금액:</strong> ${totalPrice.toLocaleString()}원</p>
+        <label class="shipping-label">배송비</label>
+        <input 
+          class="shipping-input" 
+          type="number" 
+          value="0" 
+          min="0"
+          oninput="recalcOrderCard('order-${index}')"
+        >
+
+        <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
+        <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
+        <h2 class="final-total">최종금액: <span class="calc-final-total">0</span>원</h2>
 
         <button
           class="cart-btn ${group.status === "출고완료" ? "undo-btn" : ""}"
@@ -158,6 +168,10 @@ function renderOrderCards(groups) {
   });
 
   adminOrders.innerHTML = html;
+
+  groups.forEach((_, index) => {
+    recalcOrderCard(`order-${index}`);
+  });
 }
 
 async function toggleOrderStatus(orderNumber, currentStatus) {
@@ -174,4 +188,35 @@ async function toggleOrderStatus(orderNumber, currentStatus) {
   }
 
   loadOrders();
+}
+
+function recalcOrderCard(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  const rows = card.querySelectorAll(".stock-row");
+
+  let qtyTotal = 0;
+  let productTotal = 0;
+
+  rows.forEach(row => {
+    const checkbox = row.querySelector("input[type='checkbox']");
+    const qtyText = row.querySelector("span").textContent.replace("×", "").trim();
+    const priceText = row.querySelector("em").textContent.replace(/[^0-9]/g, "");
+
+    const qty = Number(qtyText);
+    const rowTotal = Number(priceText);
+
+    if (!checkbox.checked) {
+      qtyTotal += qty;
+      productTotal += rowTotal;
+    }
+  });
+
+  const shipping = Number(card.querySelector(".shipping-input").value) || 0;
+  const finalTotal = productTotal + shipping;
+
+  card.querySelector(".calc-qty").textContent = qtyTotal;
+  card.querySelector(".calc-product-total").textContent = productTotal.toLocaleString();
+  card.querySelector(".calc-final-total").textContent = finalTotal.toLocaleString();
 }

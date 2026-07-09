@@ -165,3 +165,53 @@ header {
   text-decoration: line-through;
   color: #19a55a;
 }
+
+.stock-row {
+  grid-template-columns: 36px 1fr 80px 120px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.stock-row input {
+  width: 24px;
+  height: 24px;
+}
+
+.stock-row em {
+  font-style: normal;
+  text-align: right;
+  font-weight: bold;
+  color: #1b4b91;
+}
+
+.stock-row:has(input:checked) {
+  background: #ffecec;
+  border-radius: 8px;
+}
+
+.stock-row:has(input:checked) strong,
+.stock-row:has(input:checked) span,
+.stock-row:has(input:checked) em {
+  color: #999;
+  text-decoration: line-through;
+}
+
+.shipping-label {
+  display: block;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+.shipping-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  font-size: 18px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin: 8px 0 14px;
+}
+
+.final-total {
+  color: #1b4b91;
+}
