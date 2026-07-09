@@ -57,6 +57,7 @@ async function loadOrders() {
         memo: order.memo,
         status: order.status,
         createdAt: order.created_at,
+        shipping_fee: order.shipping_fee || 0,
         items: []
       };
     }
@@ -145,13 +146,13 @@ function renderOrderCards(groups) {
         <hr>
 
         <label class="shipping-label">배송비</label>
-        <input 
-          class="shipping-input" 
-          type="number" 
-          value="0" 
-          min="0"
-          oninput="recalcOrderCard('order-${index}')"
-        >
+        <input
+class="shipping-input"
+type="number"
+value="${group.shipping_fee || 0}"
+min="0"
+oninput="saveShipping('${group.orderNumber}',this.value);
+recalcOrderCard('order-${index}')">
 
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
@@ -219,4 +220,14 @@ function recalcOrderCard(cardId) {
   card.querySelector(".calc-qty").textContent = qtyTotal;
   card.querySelector(".calc-product-total").textContent = productTotal.toLocaleString();
   card.querySelector(".calc-final-total").textContent = finalTotal.toLocaleString();
+}
+async function saveShipping(orderNumber, fee){
+
+    await supabaseClient
+    .from("orders")
+    .update({
+        shipping_fee:Number(fee)
+    })
+    .eq("order_number",orderNumber);
+
 }
