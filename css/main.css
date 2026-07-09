@@ -181,3 +181,9 @@ header {
     height: 150px;
   }
 }
+
+.soldout-item {
+  background: #ffecec;
+  color: #999;
+  text-decoration: line-through;
+}
