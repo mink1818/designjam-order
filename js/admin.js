@@ -104,6 +104,7 @@ function renderOrderCards(groups) {
   let html = "";
 
   groups.forEach((group, index) => {
+    const isDone = group.status === "출고완료";
     let itemHtml = "";
     let summaryQty = 0;
 let summaryTotal = 0;
@@ -125,6 +126,7 @@ summaryTotal += Number(group.shipping_fee || 0);
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
+  ${group.status === "출고완료" ? "disabled" : ""}
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
           <strong>${item.item_number}</strong>
@@ -167,11 +169,16 @@ class="order-detail">
   min="0"
   data-order="${group.orderNumber}"
   oninput="recalcOrderCard('order-${index}')"
+  ${group.status === "출고완료" ? "disabled" : ""}
 >
 
 <label class="shipping-label">택배사</label>
 
-<select class="courier-select" data-order="${group.orderNumber}">
+<select 
+  class="courier-select" 
+  data-order="${group.orderNumber}"
+  ${group.status === "출고완료" ? "disabled" : ""}
+>
   <option value="로젠택배" ${group.courier==="로젠택배"?"selected":""}>로젠택배</option>
   <option value="CJ대한통운" ${group.courier==="CJ대한통운"?"selected":""}>CJ대한통운</option>
   <option value="한진택배" ${group.courier==="한진택배"?"selected":""}>한진택배</option>
@@ -183,11 +190,13 @@ class="order-detail">
 <label class="shipping-label">송장번호</label>
 
 <input
-class="tracking-input"
-data-order="${group.orderNumber}"
-type="text"
-value="${group.tracking_number || ""}"
-placeholder="송장번호 입력">
+  class="tracking-input"
+  data-order="${group.orderNumber}"
+  type="text"
+  value="${group.tracking_number || ""}"
+  placeholder="송장번호 입력"
+  ${group.status === "출고완료" ? "disabled" : ""}
+>
 
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
