@@ -157,6 +157,7 @@ function renderOrderCards(groups) {
 
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
+        <p><strong>배송비:</strong> <span class="calc-shipping-fee">0</span>원</p>
         <h2 class="final-total">최종금액: <span class="calc-final-total">0</span>원</h2>
 
         <button
@@ -234,6 +235,7 @@ function recalcOrderCard(cardId) {
 
   card.querySelector(".calc-qty").textContent = qtyTotal;
   card.querySelector(".calc-product-total").textContent = productTotal.toLocaleString();
+  card.querySelector(".calc-shipping-fee").textContent = shipping.toLocaleString();
   card.querySelector(".calc-final-total").textContent = finalTotal.toLocaleString();
 }
 async function saveShipping(orderNumber, fee){
