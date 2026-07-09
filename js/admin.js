@@ -125,15 +125,21 @@ function renderOrderCards(groups) {
 
     html += `
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
-        <div class="order-top">
-          <h2>${group.customerName || "거래처 미입력"}</h2>
-          <span class="status-badge ${group.status === "출고완료" ? "done" : "pending"}">
-            ${group.status}
-          </span>
-        </div>
+                <div class="order-header"
+onclick="toggleDetail('detail-${index}')">
 
-        <p><strong>주문번호:</strong> ${group.orderNumber}</p>
-        <p><strong>메모:</strong> ${group.memo || ""}</p>
+<h2>${group.customerName}</h2>
+
+<span>
+${group.status}
+▼
+</span>
+
+</div>
+
+<div
+id="detail-${index}"
+class="order-detail">
 
         <div class="pick-list">
           ${itemHtml}
@@ -142,6 +148,7 @@ function renderOrderCards(groups) {
         <hr>
 
         <label class="shipping-label">배송비</label>
+        
 <input
   class="shipping-input"
   type="number"
@@ -150,6 +157,22 @@ function renderOrderCards(groups) {
   data-order="${group.orderNumber}"
   oninput="recalcOrderCard('order-${index}')"
 >
+
+<label class="shipping-label">택배사</label>
+
+<select class="courier-select">
+  <option value="로젠택배" ${group.courier==="로젠택배"?"selected":""}>로젠택배</option>
+  <option value="CJ대한통운" ${group.courier==="CJ대한통운"?"selected":""}>CJ대한통운</option>
+  <option value="한진택배" ${group.courier==="한진택배"?"selected":""}>한진택배</option>
+</select>
+
+<label class="shipping-label">송장번호</label>
+
+<input
+class="tracking-input"
+type="text"
+value="${group.tracking_number || ""}"
+placeholder="송장번호 입력">
 
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
@@ -162,6 +185,7 @@ function renderOrderCards(groups) {
         >
           ${group.status === "출고완료" ? "주문접수로 되돌리기" : "출고완료"}
         </button>
+      </div>
       </div>
     `;
   });
@@ -236,4 +260,20 @@ async function toggleSoldout(id, isChecked) {
   } catch (error) {
     alert("품절 저장 실패: " + error.message);
   }
+}
+
+function toggleDetail(id){
+
+const box=document.getElementById(id);
+
+if(box.style.display==="none"){
+
+box.style.display="block";
+
+}else{
+
+box.style.display="none";
+
+}
+
 }

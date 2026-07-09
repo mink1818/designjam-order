@@ -215,3 +215,27 @@ header {
 .final-total {
   color: #1b4b91;
 }
+
+.order-header{
+
+display:flex;
+
+justify-content:space-between;
+
+align-items:center;
+
+cursor:pointer;
+
+font-weight:bold;
+
+font-size:22px;
+
+margin-bottom:15px;
+
+}
+
+.order-detail{
+
+display:none;
+
+}
