@@ -25,15 +25,14 @@ function setAdminFilter(status) {
 async function loadOrders() {
   adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
 
-  const { data, error } = await supabaseClient
-    .from("orders")
-    .select("*")
-    .order("created_at", { ascending: false });
+  let data = [];
 
-  if (error) {
-    adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
-    return;
-  }
+try {
+  data = await fetchOrders();
+} catch (error) {
+  adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
+  return;
+}
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -175,33 +174,18 @@ function renderOrderCards(groups) {
 }
 
 async function toggleOrderStatus(orderNumber, currentStatus) {
-  const nextStatus = currentStatus === "출고완료" ? "주문접수" : "출고완료";
-
   const shippingInput = document.querySelector(
     `.shipping-input[data-order="${orderNumber}"]`
   );
 
   const shippingFee = Number(shippingInput?.value) || 0;
 
-  const updateData = {
-    status: nextStatus
-  };
-
-  if (nextStatus === "출고완료") {
-    updateData.shipping_fee = shippingFee;
-  }
-
-  const { error } = await supabaseClient
-    .from("orders")
-    .update(updateData)
-    .eq("order_number", orderNumber);
-
-  if (error) {
+  try {
+    await updateOrderStatus(orderNumber, currentStatus, shippingFee);
+    loadOrders();
+  } catch (error) {
     alert("상태 변경 실패: " + error.message);
-    return;
   }
-
-  loadOrders();
 }
 
 function recalcOrderCard(cardId) {
@@ -247,12 +231,9 @@ async function saveShipping(orderNumber, fee){
 }
 
 async function toggleSoldout(id, isChecked) {
-  const { error } = await supabaseClient
-    .from("orders")
-    .update({ is_soldout: isChecked })
-    .eq("id", id);
-
-  if (error) {
+  try {
+    await updateSoldout(id, isChecked);
+  } catch (error) {
     alert("품절 저장 실패: " + error.message);
   }
 }
