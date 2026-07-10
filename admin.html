@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>디자인 삭스 관리자</title>
+  <title>주문관리</title>
   <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
 
 <header>
-  <h1>🧦 디자인 삭스 관리자</h1>
+  <h1>🧦 주문관리</h1>
   <p>주문관리 페이지 (관리자)</p>
 </header>
 
@@ -41,6 +41,15 @@
 </div>
 
 <div id="adminContent" style="display:none;">
+  <div class="admin-menu">
+  <button class="cart-btn" onclick="showAdminSection('orders')">
+    주문관리
+  </button>
+
+  <button class="cart-btn gray-btn" onclick="showAdminSection('members')">
+    회원관리
+  </button>
+</div>
   <div class="dashboard">
     <div><strong id="totalCount">0</strong><span>전체</span></div>
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
