@@ -42,8 +42,55 @@ const filterTags = ["전체", "특가", "행사", "나이키", "아디다스", "
 let currentFilter = "전체";
 let cart = [];
 
+let currentUser = null;
+let currentCustomer = null;
+
 const productList = document.getElementById("productList");
 const searchInput = document.getElementById("searchInput");
+
+async function loadLoggedInCustomer() {
+  const {
+    data: { user },
+    error: userError
+  } = await supabaseClient.auth.getUser();
+
+  if (userError || !user) {
+    location.href = "login.html";
+    return false;
+  }
+
+  const { data: customer, error: customerError } = await supabaseClient
+    .from("customers")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (customerError || !customer) {
+    alert("거래처 정보를 불러오지 못했습니다.");
+    await supabaseClient.auth.signOut();
+    location.href = "login.html";
+    return false;
+  }
+
+  if (customer.blocked) {
+    alert("차단된 계정입니다. 관리자에게 문의해주세요.");
+    await supabaseClient.auth.signOut();
+    location.href = "login.html";
+    return false;
+  }
+
+  if (!customer.approved) {
+    alert("아직 관리자 승인 대기 중입니다.");
+    await supabaseClient.auth.signOut();
+    location.href = "login.html";
+    return false;
+  }
+
+  currentUser = user;
+  currentCustomer = customer;
+
+  return true;
+}
 
 function makeOrderNumber() {
   const now = new Date();
@@ -246,18 +293,35 @@ function renderCart() {
 }
 
 function showOrderForm() {
+  if (!currentCustomer) {
+    alert("로그인 정보를 확인할 수 없습니다. 다시 로그인해주세요.");
+    location.href = "login.html";
+    return;
+  }
+
   productList.innerHTML = `
     <div class="product-card">
       <h2>주문 정보 입력</h2>
 
-      <label>거래처명</label>
-      <input class="order-input" id="customerName" placeholder="예: 박다혜">
+      <p class="logged-customer">
+        <strong>거래처:</strong>
+        ${currentCustomer.business_name}
+      </p>
 
       <label>메모</label>
-      <input class="order-input" id="orderMemo" placeholder="예: 빠른출고">
+      <input
+        class="order-input"
+        id="orderMemo"
+        placeholder="예: 빠른출고"
+      >
 
-      <button class="cart-btn" onclick="submitOrder()">주문 접수하기</button>
-      <button class="cart-btn gray-btn" onclick="renderCart()">← 장바구니로 돌아가기</button>
+      <button class="cart-btn" onclick="submitOrder()">
+        주문 접수하기
+      </button>
+
+      <button class="cart-btn gray-btn" onclick="renderCart()">
+        ← 장바구니로 돌아가기
+      </button>
     </div>
   `;
 }
@@ -269,19 +333,27 @@ async function submitOrder() {
   }
 
   const orderNumber = makeOrderNumber();
-  const customerName = document.getElementById("customerName")?.value || "거래처 미입력";
+  if (!currentUser || !currentCustomer) {
+  alert("로그인이 필요합니다.");
+  location.href = "login.html";
+  return;
+}
+
+const customerName = currentCustomer.business_name;
+
   const orderMemo = document.getElementById("orderMemo")?.value || "";
 
   const orderRows = cart.map(item => ({
-    order_number: orderNumber,
-    customer_name: customerName,
-    memo: orderMemo,
-    item_number: item.number,
-    qty: item.qty,
-    price: item.price,
-    total: item.qty * item.price * 10,
-    status: "주문접수"
-  }));
+  order_number: orderNumber,
+  customer_id: currentUser.id,
+  customer_name: customerName,
+  memo: orderMemo,
+  item_number: item.number,
+  qty: item.qty,
+  price: item.price,
+  total: item.qty * item.price * 10,
+  status: "주문접수"
+}));
 
   const { error } = await supabaseClient
     .from("orders")
@@ -327,4 +399,12 @@ searchInput.addEventListener("input", () => {
   renderCategories(searchInput.value.trim());
 });
 
-renderCategories();
+async function startOrderPage() {
+  const loggedIn = await loadLoggedInCustomer();
+
+  if (!loggedIn) return;
+
+  renderCategories();
+}
+
+startOrderPage();

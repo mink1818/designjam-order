@@ -229,3 +229,12 @@ header {
   color: #b00020;
   font-weight: bold;
 }
+
+.logged-customer {
+  padding: 16px;
+  margin: 12px 0 20px;
+  border-radius: 10px;
+  background: #eef5ff;
+  color: #174a8b;
+  font-size: 18px;
+}
