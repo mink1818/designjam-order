@@ -200,3 +200,32 @@ header {
 .order-divider{
     height:30px;
 }
+
+.auth-card {
+  max-width: 620px;
+  margin: 0 auto;
+  cursor: default;
+}
+
+.auth-card label {
+  display: block;
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+.auth-success {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #e9fff1;
+  border: 1px solid #79d99b;
+}
+
+.auth-error {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #ffecec;
+  color: #b00020;
+  font-weight: bold;
+}

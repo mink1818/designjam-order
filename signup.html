@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>디자인 삭스 회원가입</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<header>
+  <h1>🧦 디자인 삭스</h1>
+  <p>거래처 회원가입</p>
+</header>
+
+<main class="container">
+  <div class="product-card auth-card">
+    <h2>회원가입</h2>
+
+    <label for="businessName">거래처명 *</label>
+    <input id="businessName" class="order-input" type="text" placeholder="예: 행복상회">
+
+    <label for="ownerName">대표자명</label>
+    <input id="ownerName" class="order-input" type="text" placeholder="예: 홍길동">
+
+    <label for="businessNumber">사업자번호</label>
+    <input id="businessNumber" class="order-input" type="text" placeholder="예: 123-45-67890">
+
+    <label for="phone">전화번호 *</label>
+    <input id="phone" class="order-input" type="tel" placeholder="예: 010-1234-5678">
+
+    <label for="address">주소</label>
+    <input id="address" class="order-input" type="text" placeholder="사업장 주소">
+
+    <label for="signupEmail">이메일 *</label>
+    <input id="signupEmail" class="order-input" type="email" placeholder="example@email.com">
+
+    <label for="signupPassword">비밀번호 *</label>
+    <input id="signupPassword" class="order-input" type="password" placeholder="6자리 이상">
+
+    <label for="passwordConfirm">비밀번호 확인 *</label>
+    <input id="passwordConfirm" class="order-input" type="password" placeholder="비밀번호 다시 입력">
+
+    <button id="signupButton" class="cart-btn" type="button">회원가입 신청</button>
+
+    <button class="cart-btn gray-btn" type="button" onclick="location.href='login.html'">
+      로그인으로 이동
+    </button>
+
+    <div id="signupMessage"></div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/signup.js"></script>
+
+</body>
+</html>
