@@ -1,5 +1,5 @@
 const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
-const supabaseKey = "기존 Publishable Key를 여기에 붙여넣기";
+const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
 const supabaseClient = window.supabase.createClient(
   supabaseUrl,
