@@ -1,13 +1,55 @@
-function adminLogin() {
-  const inputPassword = document.getElementById("adminPassword").value;
+async function adminLogin() {
+  const email = document.getElementById("adminEmail").value.trim();
+  const password = document.getElementById("adminPassword").value;
+  const messageBox = document.getElementById("adminLoginMessage");
 
-  if (inputPassword === ADMIN_PASSWORD) {
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("adminContent").style.display = "block";
-    loadOrders();
-  } else {
-    alert("비밀번호가 틀렸습니다.");
+  if (!email || !password) {
+    alert("관리자 이메일과 비밀번호를 입력해주세요.");
+    return;
   }
+
+  messageBox.innerHTML = "<p>로그인 확인 중...</p>";
+
+  const { data, error } =
+    await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if (error) {
+    messageBox.innerHTML = `
+      <p class="auth-error">로그인 실패: ${error.message}</p>
+    `;
+    return;
+  }
+
+  const { data: customer, error: customerError } =
+    await supabaseClient
+      .from("customers")
+      .select("is_admin, blocked")
+      .eq("id", data.user.id)
+      .single();
+
+  if (
+    customerError ||
+    !customer ||
+    !customer.is_admin ||
+    customer.blocked
+  ) {
+    await supabaseClient.auth.signOut();
+
+    messageBox.innerHTML = `
+      <p class="auth-error">
+        관리자 권한이 없는 계정입니다.
+      </p>
+    `;
+    return;
+  }
+
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("adminContent").style.display = "block";
+
+  loadOrders();
 }
 
 const adminOrders = document.getElementById("adminOrders");
