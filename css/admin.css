@@ -252,3 +252,16 @@ display:none;
   color: #1b4b91;
   font-weight: bold;
 }
+
+.member-card {
+  margin-top: 18px;
+}
+
+.status-badge.blocked {
+  background: #ffe0e0;
+  color: #b00020;
+}
+
+.member-card p {
+  margin: 8px 0;
+}
