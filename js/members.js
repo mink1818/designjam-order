@@ -1,5 +1,8 @@
-const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
-const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
+const supabaseUrl =
+  "https://dtjhuejmxrjkcxzvilgw.supabase.co";
+
+const supabaseKey =
+  "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
 const supabaseClient = window.supabase.createClient(
   supabaseUrl,
@@ -7,6 +10,12 @@ const supabaseClient = window.supabase.createClient(
 );
 
 const customerList = document.getElementById("customerList");
+const memberSearch = document.getElementById("memberSearch");
+
+let allCustomers = [];
+let memberFilter = "전체";
+
+memberSearch.addEventListener("input", renderFilteredCustomers);
 
 async function checkAdminAccess() {
   const {
@@ -19,11 +28,12 @@ async function checkAdminAccess() {
     return false;
   }
 
-  const { data: customer, error: customerError } = await supabaseClient
-    .from("customers")
-    .select("is_admin, blocked")
-    .eq("id", user.id)
-    .single();
+  const { data: customer, error: customerError } =
+    await supabaseClient
+      .from("customers")
+      .select("is_admin, blocked")
+      .eq("id", user.id)
+      .single();
 
   if (
     customerError ||
@@ -39,8 +49,14 @@ async function checkAdminAccess() {
   return true;
 }
 
+function setMemberFilter(filter) {
+  memberFilter = filter;
+  renderFilteredCustomers();
+}
+
 async function loadCustomers() {
-  customerList.innerHTML = "<p>회원목록을 불러오는 중...</p>";
+  customerList.innerHTML =
+    "<p>회원목록을 불러오는 중...</p>";
 
   const { data, error } = await supabaseClient
     .from("customers")
@@ -57,30 +73,73 @@ async function loadCustomers() {
     return;
   }
 
-  renderCustomers(data || []);
+  allCustomers = data || [];
+
+  updateMemberCounts();
+  renderFilteredCustomers();
+}
+
+function updateMemberCounts() {
+  document.getElementById("waitingCount").textContent =
+    allCustomers.filter(customer =>
+      !customer.approved && !customer.blocked
+    ).length;
+
+  document.getElementById("approvedCount").textContent =
+    allCustomers.filter(customer =>
+      customer.approved && !customer.blocked
+    ).length;
+
+  document.getElementById("blockedCount").textContent =
+    allCustomers.filter(customer =>
+      customer.blocked
+    ).length;
+}
+
+function renderFilteredCustomers() {
+  const keyword = memberSearch.value.trim().toLowerCase();
+
+  const filteredCustomers = allCustomers.filter(customer => {
+    const matchesFilter =
+      memberFilter === "전체" ||
+      (
+        memberFilter === "승인대기" &&
+        !customer.approved &&
+        !customer.blocked
+      ) ||
+      (
+        memberFilter === "승인완료" &&
+        customer.approved &&
+        !customer.blocked
+      ) ||
+      (
+        memberFilter === "차단" &&
+        customer.blocked
+      );
+
+    const searchableText = [
+      customer.business_name,
+      customer.owner_name,
+      customer.phone,
+      customer.email,
+      customer.business_number,
+      customer.address
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return matchesFilter && searchableText.includes(keyword);
+  });
+
+  renderCustomers(filteredCustomers);
 }
 
 function renderCustomers(customers) {
-  const waitingCount = customers.filter(
-    customer => !customer.approved && !customer.blocked
-  ).length;
-
-  const approvedCount = customers.filter(
-    customer => customer.approved && !customer.blocked
-  ).length;
-
-  const blockedCount = customers.filter(
-    customer => customer.blocked
-  ).length;
-
-  document.getElementById("waitingCount").textContent = waitingCount;
-  document.getElementById("approvedCount").textContent = approvedCount;
-  document.getElementById("blockedCount").textContent = blockedCount;
-
   if (customers.length === 0) {
     customerList.innerHTML = `
       <div class="product-card">
-        <h2>가입한 회원이 없습니다</h2>
+        <h2>검색 결과가 없습니다</h2>
       </div>
     `;
     return;
@@ -132,7 +191,9 @@ function renderCustomers(customers) {
     return `
       <div class="product-card member-card">
         <div class="order-top">
-          <h2>${customer.business_name || "거래처명 미입력"}</h2>
+          <h2>
+            ${customer.business_name || "거래처명 미입력"}
+          </h2>
 
           <span class="status-badge ${statusClass}">
             ${statusText}
@@ -144,6 +205,7 @@ function renderCustomers(customers) {
         <p><strong>이메일:</strong> ${customer.email || "-"}</p>
         <p><strong>사업자번호:</strong> ${customer.business_number || "-"}</p>
         <p><strong>주소:</strong> ${customer.address || "-"}</p>
+
         <p>
           <strong>가입일:</strong>
           ${new Date(customer.created_at).toLocaleString("ko-KR")}
@@ -157,8 +219,7 @@ function renderCustomers(customers) {
 }
 
 async function approveCustomer(customerId) {
-  const confirmed = confirm("이 회원을 승인할까요?");
-  if (!confirmed) return;
+  if (!confirm("이 회원을 승인할까요?")) return;
 
   const { error } = await supabaseClient
     .from("customers")
@@ -178,8 +239,7 @@ async function approveCustomer(customerId) {
 }
 
 async function blockCustomer(customerId) {
-  const confirmed = confirm("이 회원을 차단할까요?");
-  if (!confirmed) return;
+  if (!confirm("이 회원을 차단할까요?")) return;
 
   const { error } = await supabaseClient
     .from("customers")
@@ -197,8 +257,7 @@ async function blockCustomer(customerId) {
 }
 
 async function unblockCustomer(customerId) {
-  const confirmed = confirm("이 회원의 차단을 해제할까요?");
-  if (!confirmed) return;
+  if (!confirm("차단을 해제할까요?")) return;
 
   const { error } = await supabaseClient
     .from("customers")
