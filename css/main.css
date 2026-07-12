@@ -238,3 +238,149 @@ header {
   color: #174a8b;
   font-size: 18px;
 }
+
+/* ===== Supabase 상품목록 테스트 ===== */
+
+.catalog-category {
+  margin-bottom: 34px;
+  cursor: default;
+}
+
+.catalog-category-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.catalog-cover-image {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #f8f8f8;
+  margin: 14px 0;
+}
+
+.catalog-info-image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #f8f8f8;
+  margin: 14px 0 20px;
+}
+
+.catalog-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.catalog-group-card {
+  padding: 10px;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  background: white;
+}
+
+.catalog-group-image,
+.catalog-no-image {
+  width: 100%;
+  height: 145px;
+  border-radius: 10px;
+  background: #f6f6f6;
+}
+
+.catalog-group-image {
+  object-fit: contain;
+}
+
+.catalog-no-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #777;
+}
+
+.catalog-group-card h3 {
+  margin: 10px 0 5px;
+  font-size: 17px;
+}
+
+.catalog-item-numbers {
+  min-height: 42px;
+  margin: 4px 0;
+  color: #555;
+  line-height: 1.5;
+}
+
+.catalog-empty-group {
+  grid-column: 1 / -1;
+  padding: 22px;
+  border-radius: 12px;
+  background: #f6f6f6;
+  text-align: center;
+  color: #666;
+}
+
+@media (min-width: 900px) {
+  .catalog-group-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .catalog-group-image,
+  .catalog-no-image {
+    height: 180px;
+  }
+}
+
+.catalog-click-card {
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.catalog-click-card:active {
+  transform: scale(0.99);
+}
+
+.catalog-qty-input {
+  width: 130px;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 9px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.catalog-cart-button {
+  margin-bottom: 14px;
+}
+
+.cart-item small {
+  display: block;
+  margin-top: 4px;
+  color: #777;
+  font-size: 13px;
+}
+
+.cart-remove-button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: #e7e7e7;
+  cursor: pointer;
+}
+
+.logged-customer {
+  margin: 12px 0 20px;
+  padding: 16px;
+  border-radius: 10px;
+  background: #eef5ff;
+  color: #174a8b;
+  font-size: 18px;
+}

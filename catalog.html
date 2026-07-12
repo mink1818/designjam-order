@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>디자인 삭스 상품 테스트</title>
+
+  <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+
+<header>
+  <h1>🧦 디자인 삭스</h1>
+  <p>Supabase 상품목록 테스트</p>
+</header>
+
+<main class="container">
+
+  <button
+    class="cart-btn gray-btn"
+    type="button"
+    onclick="location.href='index.html'"
+  >
+    ← 기존 주문페이지로 돌아가기
+  </button>
+
+  <input
+    id="catalogSearch"
+    class="search"
+    type="text"
+    placeholder="카테고리명 / 품번 / 가격 검색"
+  >
+
+  <div id="catalogFilters" class="filter-buttons"></div>
+
+  <section id="catalogList">
+    <p>상품을 불러오는 중...</p>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/catalog.js"></script>
+
+</body>
+</html>

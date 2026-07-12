@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>디자인 삭스 상품관리</title>
+
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+
+<header>
+  <h1>🧦 상품관리</h1>
+  <p>카테고리 및 상품 사진 묶음 관리</p>
+</header>
+
+<main class="container">
+
+  <button
+    class="cart-btn gray-btn"
+    type="button"
+    onclick="location.href='admin-home.html'"
+  >
+    ← 관리자 메뉴로 돌아가기
+  </button>
+
+  <!-- 카테고리 등록·수정 영역 -->
+  <section class="product-card">
+    <h2>카테고리 등록·수정</h2>
+
+    <input id="categoryId" type="hidden">
+
+    <label for="categoryName">카테고리명 *</label>
+    <input
+      id="categoryName"
+      class="order-input"
+      type="text"
+      placeholder="예: 나이키 중목 단바닥"
+    >
+
+    <label for="categoryPrice">기본 단가 *</label>
+    <input
+      id="categoryPrice"
+      class="order-input"
+      type="number"
+      min="0"
+      placeholder="예: 1350"
+    >
+
+    <label for="categoryTags">검색 태그</label>
+    <input
+      id="categoryTags"
+      class="order-input"
+      type="text"
+      placeholder="예: 나이키, 중목, 단바닥, 1350원"
+    >
+
+    <label for="categoryCover">대표사진 경로</label>
+    <input
+      id="categoryCover"
+      class="order-input"
+      type="text"
+      placeholder="예: images/661~663.jpg"
+    >
+
+    <label for="categoryInfo">상세 설명사진 경로</label>
+    <input
+      id="categoryInfo"
+      class="order-input"
+      type="text"
+      placeholder="예: images/661~663.jpg"
+    >
+
+    <label for="categorySort">표시 순서</label>
+    <input
+      id="categorySort"
+      class="order-input"
+      type="number"
+      value="0"
+    >
+
+    <label class="checkbox-line">
+      <input
+        id="categoryActive"
+        type="checkbox"
+        checked
+      >
+      주문페이지에 표시
+    </label>
+
+    <button
+      id="saveCategoryButton"
+      class="cart-btn"
+      type="button"
+    >
+      카테고리 저장
+    </button>
+
+    <button
+      class="cart-btn gray-btn"
+      type="button"
+      onclick="resetCategoryForm()"
+    >
+      입력 초기화
+    </button>
+
+    <div id="categoryMessage"></div>
+  </section>
+
+  <!-- 카테고리 검색 및 목록 -->
+  <h2 class="admin-section-title">등록된 카테고리</h2>
+
+  <input
+    id="categorySearch"
+    class="search"
+    type="text"
+    placeholder="카테고리명 / 태그 / 가격 검색"
+  >
+
+  <section id="categoryList">
+    <p>카테고리를 불러오는 중...</p>
+  </section>
+
+  <hr class="admin-section-divider">
+
+  <!-- 상품 사진 묶음 등록·수정 영역 -->
+  <section class="product-card">
+    <h2>상품 사진 묶음 등록·수정</h2>
+
+    <input id="groupId" type="hidden">
+
+    <label for="groupCategory">소속 카테고리 *</label>
+    <select
+      id="groupCategory"
+      class="order-input"
+    >
+      <option value="">카테고리를 선택하세요</option>
+    </select>
+
+    <label for="groupTitle">사진 묶음 이름 *</label>
+    <input
+      id="groupTitle"
+      class="order-input"
+      type="text"
+      placeholder="예: 661~663"
+    >
+
+    <label for="groupImage">상품사진 경로</label>
+    <input
+      id="groupImage"
+      class="order-input"
+      type="text"
+      placeholder="예: images/661~663.jpg"
+    >
+
+    <label for="groupNumbers">포함 품번 *</label>
+    <input
+      id="groupNumbers"
+      class="order-input"
+      type="text"
+      placeholder="예: 661, 662, 663"
+    >
+
+    <label for="groupPrice">단가 *</label>
+    <input
+      id="groupPrice"
+      class="order-input"
+      type="number"
+      min="0"
+      placeholder="예: 1350"
+    >
+
+    <label for="groupSort">표시 순서</label>
+    <input
+      id="groupSort"
+      class="order-input"
+      type="number"
+      value="0"
+    >
+
+    <label class="checkbox-line">
+      <input
+        id="groupActive"
+        type="checkbox"
+        checked
+      >
+      주문페이지에 표시
+    </label>
+
+    <button
+      id="saveGroupButton"
+      class="cart-btn"
+      type="button"
+    >
+      상품 묶음 저장
+    </button>
+
+    <button
+      class="cart-btn gray-btn"
+      type="button"
+      onclick="resetGroupForm()"
+    >
+      입력 초기화
+    </button>
+
+    <div id="groupMessage"></div>
+  </section>
+
+  <!-- 상품 묶음 목록 -->
+  <h2 class="admin-section-title">등록된 상품 묶음</h2>
+
+  <section id="groupList">
+    <p>상품 묶음을 불러오는 중...</p>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/products.js"></script>
+
+</body>
+</html>
