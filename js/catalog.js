@@ -824,4 +824,13 @@ async function startCatalogPage() {
   await loadCatalog();
 }
 
+async function customerLogout() {
+  const confirmed = confirm("로그아웃할까요?");
+
+  if (!confirmed) return;
+
+  await supabaseClient.auth.signOut();
+  location.href = "login.html";
+}
+
 startCatalogPage();

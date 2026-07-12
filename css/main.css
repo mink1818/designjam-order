@@ -384,3 +384,14 @@ header {
   color: #174a8b;
   font-size: 18px;
 }
+
+.customer-top-menu {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.customer-top-menu .cart-btn {
+  margin: 0;
+}

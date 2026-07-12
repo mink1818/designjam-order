@@ -3,32 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>내 주문 조회</title>
+  <title>디자인 삭스 주문</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
 <header>
   <h1>🧦 디자인 삭스</h1>
-  <p>내 주문 조회</p>
+  <p>주문 페이지</p>
 </header>
 
 <main class="container">
-
-  <button
-    class="cart-btn gray-btn"
-    type="button"
-    onclick="location.href='index.html'"
-  >
-    ← 주문페이지로 돌아가기
+  <button class="cart-btn" onclick="location.href='order.html'">
+    내 주문조회
   </button>
 
-  <section id="orderResult"></section>
+  <input id="searchInput" class="search" type="text" placeholder="품번/상품명/가격 검색">
 
+  <section id="productList"></section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/order.js"></script>
+<script src="js/main.js"></script>
 
 </body>
 </html>
