@@ -543,17 +543,18 @@ header {
   }
 
   .product-card {
-    padding: 14px;
+    padding: 10px;
     border-radius: 14px;
   }
 
   .category-grid,
-  .catalog-group-grid {
-    grid-template-columns: 1fr;
-  }
+.catalog-group-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
 
   .product-slider-image {
-    max-height: 430px;
+    max-height: 300px;
   }
 
   .slider-arrow {
