@@ -828,12 +828,22 @@ generateItemsBtn.addEventListener("click", () => {
     return;
   }
 
+  if (end - start > 1000) {
+    alert("한 번에 생성할 수 있는 품번은 최대 1,000개입니다.");
+    return;
+  }
+
   const result = [];
 
   for (let i = start; i <= end; i++) {
-    result.push(i);
+    result.push(String(i));
   }
 
   document.getElementById("groupNumbers").value =
     result.join(", ");
+
+  document.getElementById("groupTitle").value =
+    start === end
+      ? String(start)
+      : `${start}~${end}`;
 });
