@@ -395,3 +395,129 @@ header {
 .customer-top-menu .cart-btn {
   margin: 0;
 }
+
+.product-slider-wrap {
+  position: relative;
+  width: 100%;
+  margin: 18px 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #f6f6f6;
+}
+
+.product-slider {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.product-slider::-webkit-scrollbar {
+  display: none;
+}
+
+.product-slider-image {
+  flex: 0 0 100%;
+  width: 100%;
+  max-height: 620px;
+  object-fit: contain;
+  scroll-snap-align: start;
+  background: #f6f6f6;
+}
+
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  width: 46px;
+  height: 58px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.48);
+  color: white;
+  font-size: 38px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.slider-prev {
+  left: 10px;
+}
+
+.slider-next {
+  right: 10px;
+}
+
+.slider-count {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 7px 11px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.qty-control-row {
+  align-items: center;
+}
+
+.qty-control {
+  display: grid;
+  grid-template-columns: 54px 1fr 54px;
+  gap: 8px;
+  width: 100%;
+}
+
+.qty-btn {
+  border: 0;
+  border-radius: 10px;
+  background: #24579c;
+  color: white;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.qty-btn:active {
+  transform: scale(0.96);
+}
+
+.qty-control .catalog-qty-input {
+  width: 100%;
+  text-align: center;
+}
+
+.live-group-total {
+  margin: 18px 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: #eef5ff;
+}
+
+.live-group-total p {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+  font-size: 19px;
+}
+
+.live-group-total strong {
+  color: #174f98;
+}
+
+.product-order-buttons {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.product-order-buttons .cart-btn {
+  margin: 0;
+}
+
+.direct-order-btn {
+  background: #176b3a;
+}

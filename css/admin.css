@@ -321,3 +321,50 @@ display:none;
     border-radius:10px;
     font-weight:bold;
 }
+
+.soldout-items-box {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 8px 0 20px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f6f6f6;
+}
+
+.soldout-items-box > p {
+  grid-column: 1 / -1;
+  margin: 4px;
+  color: #777;
+}
+
+.soldout-item-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 9px;
+  background: white;
+  cursor: pointer;
+}
+
+.soldout-item-option input {
+  width: 22px;
+  height: 22px;
+}
+
+.soldout-item-option span {
+  margin-left: auto;
+  color: #c62828;
+  font-weight: bold;
+}
+
+.soldout-item-option:has(input:checked) {
+  background: #ffe8e8;
+  border: 1px solid #e57373;
+}
+
+.statement-btn {
+  margin-top: 10px;
+  background: #176b3a;
+}

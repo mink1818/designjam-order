@@ -173,6 +173,21 @@ type="file"
 id="groupImageFile"
 accept="image/*">
 
+<label for="groupImagesFile">
+  추가 상품사진
+</label>
+
+<input
+  type="file"
+  id="groupImagesFile"
+  accept="image/*"
+  multiple
+>
+
+<small>
+대표사진 외에 여러 장을 선택할 수 있습니다.
+</small>
+
 <label for="startItem">시작 품번</label>
 
 <input
@@ -203,6 +218,12 @@ id="generateItemsBtn">
       type="text"
       placeholder="예: 661, 662, 663"
     >
+
+    <label>품절 품번 선택</label>
+
+<div id="soldoutItemsBox" class="soldout-items-box">
+  <p>포함 품번을 입력하거나 자동 생성하면 품절 선택란이 표시됩니다.</p>
+</div>
 
     <label for="groupPrice">단가 *</label>
     <input

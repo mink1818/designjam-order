@@ -10,6 +10,19 @@ document.getElementById("categoryInfoFile");
 const groupFile =
 document.getElementById("groupImageFile");
 
+const groupFiles =
+document.getElementById("groupImagesFile");
+
+const groupNumbersInput =
+  document.getElementById("groupNumbers");
+
+groupNumbersInput.addEventListener("input", () => {
+  const itemNumbers =
+    parseCommaList(groupNumbersInput.value);
+
+  renderSoldoutItems(itemNumbers, []);
+});
+
 const startItem =
 document.getElementById("startItem");
 
@@ -121,6 +134,44 @@ groupFile.addEventListener("change", async () => {
   }
 });
 
+groupFiles.addEventListener("change", async () => {
+  const files = [...groupFiles.files];
+
+  if (files.length === 0) return;
+
+  groupFiles.disabled = true;
+
+  try {
+    showMessage(
+      "groupMessage",
+      `추가사진 ${files.length}장을 업로드하는 중입니다.`
+    );
+
+    const urls = await uploadImages(
+      files,
+      "product-groups/additional"
+    );
+
+    uploadedGroupImageUrls = [
+  ...uploadedGroupImageUrls,
+  ...urls
+];
+
+    showMessage(
+      "groupMessage",
+      `추가사진 ${urls.length}장 업로드가 완료되었습니다.`
+    );
+  } catch (error) {
+    showMessage(
+      "groupMessage",
+      "추가사진 업로드 실패: " + error.message,
+      true
+    );
+  } finally {
+    groupFiles.disabled = false;
+  }
+});
+
 const supabaseKey =
   "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
@@ -135,6 +186,7 @@ const categorySearch = document.getElementById("categorySearch");
 
 let allCategories = [];
 let allGroups = [];
+let uploadedGroupImageUrls = [];
 
 document
   .getElementById("saveCategoryButton")
@@ -439,7 +491,7 @@ function renderGroupList() {
         <button
           class="cart-btn"
           type="button"
-          onclick="editGroup(${group.id})"
+          onclick="window.editGroup(${group.id})"
         >
           상품 묶음 수정
         </button>
@@ -627,6 +679,12 @@ async function saveGroup() {
     document.getElementById("groupNumbers").value
   );
 
+  const soldoutItems = [
+  ...document.querySelectorAll(
+    ".soldout-item-checkbox:checked"
+  )
+].map(checkbox => checkbox.value);
+
   const price =
     Number(document.getElementById("groupPrice").value);
 
@@ -657,14 +715,16 @@ async function saveGroup() {
   }
 
   const values = {
-    category_id: categoryId,
-    title,
-    image_url: imageUrl,
-    item_numbers: itemNumbers,
-    price,
-    sort_order: sortOrder,
-    is_active: isActive
-  };
+  category_id: categoryId,
+  title,
+  image_url: imageUrl,
+  image_urls: uploadedGroupImageUrls,
+  item_numbers: itemNumbers,
+  soldout_items: soldoutItems,
+  price,
+  sort_order: sortOrder,
+  is_active: isActive
+};
 
   let response;
 
@@ -705,7 +765,13 @@ function editGroup(id) {
     item => item.id === id
   );
 
-  if (!group) return;
+  if (!group) {
+    alert("상품 묶음 정보를 찾지 못했습니다.");
+    return;
+  }
+
+  const itemNumbers = group.item_numbers || [];
+  const soldoutItems = group.soldout_items || [];
 
   document.getElementById("groupId").value =
     group.id;
@@ -714,22 +780,71 @@ function editGroup(id) {
     group.category_id;
 
   document.getElementById("groupTitle").value =
-    group.title;
+    group.title || "";
 
   document.getElementById("groupImage").value =
     group.image_url || "";
 
+    uploadedGroupImageUrls =
+  Array.isArray(group.image_urls)
+    ? [...group.image_urls]
+    : [];
+
+    showMessage(
+  "groupMessage",
+  uploadedGroupImageUrls.length > 0
+    ? `기존 추가사진 ${uploadedGroupImageUrls.length}장이 등록되어 있습니다.`
+    : "등록된 추가사진이 없습니다."
+);
+
   document.getElementById("groupNumbers").value =
-    (group.item_numbers || []).join(", ");
+    itemNumbers.join(", ");
 
   document.getElementById("groupPrice").value =
-    group.price;
+    group.price ?? "";
 
   document.getElementById("groupSort").value =
-    group.sort_order;
+    group.sort_order ?? 0;
 
   document.getElementById("groupActive").checked =
-    group.is_active;
+    Boolean(group.is_active);
+
+  /* 시작·끝 품번 자동 표시 */
+  if (itemNumbers.length > 0) {
+    startItem.value = itemNumbers[0];
+    endItem.value = itemNumbers[itemNumbers.length - 1];
+  } else {
+    startItem.value = "";
+    endItem.value = "";
+  }
+
+  /* 품절 체크박스 표시 및 기존 품절상태 복원 */
+  const soldoutItemsBox =
+  document.getElementById("soldoutItemsBox");
+
+soldoutItemsBox.innerHTML = itemNumbers
+  .map(number => {
+    const numberText = String(number);
+
+    const checked = soldoutItems
+      .map(String)
+      .includes(numberText);
+
+    return `
+      <label class="soldout-item-option">
+        <input
+          type="checkbox"
+          class="soldout-item-checkbox"
+          value="${numberText}"
+          ${checked ? "checked" : ""}
+        >
+
+        <strong>${numberText}</strong>
+        <span>품절</span>
+      </label>
+    `;
+  })
+  .join("");
 
   document
     .getElementById("groupCategory")
@@ -738,6 +853,8 @@ function editGroup(id) {
       block: "start"
     });
 }
+
+window.editGroup = editGroup;
 
 /* 상품 묶음 입력 초기화 */
 function resetGroupForm() {
@@ -751,8 +868,14 @@ function resetGroupForm() {
   document.getElementById("groupActive").checked = true;
 
   groupFile.value = "";
-  startItem.value = "";
+groupFiles.value = "";          // 추가
+
+startItem.value = "";
 endItem.value = "";
+
+uploadedGroupImageUrls = [];    // 추가
+
+renderSoldoutItems([], []);
 }
 
 /* 상품 묶음 표시·숨김 */
@@ -819,6 +942,20 @@ async function uploadImage(file, folder) {
   return data.publicUrl;
 }
 
+async function uploadImages(files, folder) {
+  const uploadedUrls = [];
+
+  for (const file of files) {
+    const publicUrl = await uploadImage(file, folder);
+
+    if (publicUrl) {
+      uploadedUrls.push(publicUrl);
+    }
+  }
+
+  return uploadedUrls;
+}
+
 generateItemsBtn.addEventListener("click", () => {
   const start = Number(startItem.value);
   const end = Number(endItem.value);
@@ -842,8 +979,46 @@ generateItemsBtn.addEventListener("click", () => {
   document.getElementById("groupNumbers").value =
     result.join(", ");
 
+    renderSoldoutItems(result, []);
+
   document.getElementById("groupTitle").value =
     start === end
       ? String(start)
       : `${start}~${end}`;
 });
+
+function renderSoldoutItems(
+  itemNumbers = [],
+  soldoutItems = []
+) {
+  const soldoutItemsBox =
+    document.getElementById("soldoutItemsBox");
+
+  if (!soldoutItemsBox) return;
+
+  if (itemNumbers.length === 0) {
+    soldoutItemsBox.innerHTML = `
+      <p>
+        포함 품번을 입력하거나 자동 생성하면
+        품절 선택란이 표시됩니다.
+      </p>
+    `;
+    return;
+  }
+
+  soldoutItemsBox.innerHTML = itemNumbers
+    .map(number => `
+      <label class="soldout-item-option">
+        <input
+          type="checkbox"
+          class="soldout-item-checkbox"
+          value="${escapeAttribute(number)}"
+          ${soldoutItems.includes(String(number)) ? "checked" : ""}
+        >
+
+        <strong>${escapeHtml(number)}</strong>
+        <span>품절</span>
+      </label>
+    `)
+    .join("");
+}

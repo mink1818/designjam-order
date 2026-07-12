@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>디자인 삭스 거래명세서</title>
+
+  <link rel="stylesheet" href="css/statement.css">
+</head>
+
+<body>
+
+<div class="screen-menu">
+  <button type="button" onclick="window.print()">
+    인쇄 / PDF 저장
+  </button>
+
+  <button type="button" onclick="closeStatement()">
+  이전 화면
+</button>
+</div>
+
+<main id="statementArea" class="statement-sheet">
+  <p>거래명세서를 불러오는 중입니다...</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/statement.js"></script>
+
+</body>
+</html>

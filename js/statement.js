@@ -1,0 +1,273 @@
+const supabaseUrl =
+  "https://dtjhuejmxrjkcxzvilgw.supabase.co";
+
+const supabaseKey =
+  "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
+
+const supabaseClient = window.supabase.createClient(
+  supabaseUrl,
+  supabaseKey
+);
+
+const statementArea =
+  document.getElementById("statementArea");
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+
+  return new Date(value).toLocaleString("ko-KR");
+}
+
+async function checkAdminAccess() {
+  const {
+    data: { user },
+    error: userError
+  } = await supabaseClient.auth.getUser();
+
+  if (userError || !user) {
+    location.href = "admin.html";
+    return false;
+  }
+
+  const { data: customer, error: customerError } =
+    await supabaseClient
+      .from("customers")
+      .select("is_admin, blocked")
+      .eq("id", user.id)
+      .single();
+
+  if (
+    customerError ||
+    !customer ||
+    !customer.is_admin ||
+    customer.blocked
+  ) {
+    alert("관리자 권한이 없습니다.");
+    location.href = "login.html";
+    return false;
+  }
+
+  return true;
+}
+
+async function loadStatement() {
+  const params = new URLSearchParams(location.search);
+  const orderNumber = params.get("order");
+
+  if (!orderNumber) {
+    statementArea.innerHTML = `
+      <h2>주문번호가 없습니다.</h2>
+      <p>관리자 주문관리 화면에서 거래명세서를 열어주세요.</p>
+    `;
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("orders")
+    .select("*")
+    .eq("order_number", orderNumber)
+    .order("id", { ascending: true });
+
+  if (error) {
+    statementArea.innerHTML = `
+      <h2>거래명세서 불러오기 실패</h2>
+      <p>${escapeHtml(error.message)}</p>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    statementArea.innerHTML = `
+      <h2>주문을 찾을 수 없습니다.</h2>
+      <p>${escapeHtml(orderNumber)}</p>
+    `;
+    return;
+  }
+
+  renderStatement(data);
+}
+
+function renderStatement(items) {
+  const first = items[0];
+
+  const availableItems = items.filter(
+    item => !item.is_soldout
+  );
+
+  const productTotal = availableItems.reduce(
+    (sum, item) =>
+      sum + Number(item.price) * Number(item.qty) * 10,
+    0
+  );
+
+  const shippingFee =
+    Number(first.shipping_fee || 0);
+
+  const finalTotal =
+    productTotal + shippingFee;
+
+  const totalQty = availableItems.reduce(
+    (sum, item) => sum + Number(item.qty),
+    0
+  );
+
+  const itemRows = items.map((item, index) => {
+    const soldout = Boolean(item.is_soldout);
+
+    const rowTotal = soldout
+      ? 0
+      : Number(item.price) * Number(item.qty) * 10;
+
+    return `
+      <tr class="${soldout ? "soldout-row" : ""}">
+        <td>${index + 1}</td>
+
+        <td>
+          ${escapeHtml(item.item_number)}
+          ${soldout ? " (품절)" : ""}
+        </td>
+
+        <td>
+          ${Number(item.qty).toLocaleString()}
+        </td>
+
+        <td>
+          ${Number(item.price).toLocaleString()}원
+        </td>
+
+        <td>
+          ${
+            soldout
+              ? "-"
+              : rowTotal.toLocaleString() + "원"
+          }
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  statementArea.innerHTML = `
+    <header class="statement-header">
+      <div>
+        <h1>거래명세서</h1>
+        <p>디자인 삭스</p>
+      </div>
+
+      <div class="statement-date">
+        작성일<br>
+        ${formatDate(new Date())}
+      </div>
+    </header>
+
+    <section class="customer-info">
+      <div>
+        <strong>거래처</strong>
+        <span>${escapeHtml(first.customer_name || "-")}</span>
+      </div>
+
+      <div>
+        <strong>주문번호</strong>
+        <span>${escapeHtml(first.order_number)}</span>
+      </div>
+
+      <div>
+        <strong>주문일</strong>
+        <span>${formatDate(first.created_at)}</span>
+      </div>
+
+      <div>
+        <strong>주문상태</strong>
+        <span>${escapeHtml(first.status || "-")}</span>
+      </div>
+
+      <div class="full-row">
+        <strong>메모</strong>
+        <span>${escapeHtml(first.memo || "-")}</span>
+      </div>
+    </section>
+
+    <table class="statement-table">
+      <thead>
+        <tr>
+          <th>번호</th>
+          <th>품번</th>
+          <th>수량</th>
+          <th>단가</th>
+          <th>금액</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${itemRows}
+      </tbody>
+    </table>
+
+    <section class="statement-summary">
+      <div>
+        <span>출고수량</span>
+        <strong>${totalQty.toLocaleString()}개</strong>
+      </div>
+
+      <div>
+        <span>상품금액</span>
+        <strong>${productTotal.toLocaleString()}원</strong>
+      </div>
+
+      <div>
+        <span>배송비</span>
+        <strong>${shippingFee.toLocaleString()}원</strong>
+      </div>
+
+      <div class="final-row">
+        <span>최종금액</span>
+        <strong>${finalTotal.toLocaleString()}원</strong>
+      </div>
+    </section>
+
+    <section class="delivery-info">
+      <p>
+        <strong>택배사:</strong>
+        ${escapeHtml(first.courier || "-")}
+      </p>
+
+      <p>
+        <strong>송장번호:</strong>
+        ${escapeHtml(first.tracking_number || "-")}
+      </p>
+    </section>
+
+    <footer class="statement-footer">
+      <p>상기 내용과 같이 거래하였음을 확인합니다.</p>
+      <h2>디자인 삭스</h2>
+    </footer>
+  `;
+}
+
+function closeStatement() {
+  if (window.opener && !window.opener.closed) {
+    window.opener.focus();
+    window.close();
+    return;
+  }
+
+  location.href = "admin.html";
+}
+
+async function startStatementPage() {
+  const allowed = await checkAdminAccess();
+
+  if (!allowed) return;
+
+  await loadStatement();
+}
+
+startStatementPage();

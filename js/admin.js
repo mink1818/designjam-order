@@ -253,6 +253,14 @@ class="order-detail">
         >
           ${group.status === "출고완료" ? "주문접수로 되돌리기" : "출고완료"}
         </button>
+
+        <button
+  class="cart-btn statement-btn"
+  type="button"
+  onclick="openStatement('${group.orderNumber}')"
+>
+  거래명세서 출력
+</button>
       </div>
       </div>
     `;
@@ -347,4 +355,11 @@ function toggleDetail(id) {
   const isHidden = window.getComputedStyle(box).display === "none";
 
   box.style.display = isHidden ? "block" : "none";
+}
+
+function openStatement(orderNumber) {
+  const url =
+    `statement.html?order=${encodeURIComponent(orderNumber)}`;
+
+  window.open(url, "_blank");
 }

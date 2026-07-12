@@ -413,20 +413,40 @@ function openGroup(groupId) {
   );
 
   const quantityRows = (group.item_numbers || [])
-    .map(number => `
-      <div class="order-row">
-        <label>${escapeHtml(number)}</label>
+  .map(number => `
+    <div class="order-row qty-control-row">
+      <label>${escapeHtml(number)}</label>
+
+      <div class="qty-control">
+        <button
+          type="button"
+          class="qty-btn"
+          onclick="changeCatalogQty('${escapeAttribute(number)}', -1)"
+        >
+          −
+        </button>
 
         <input
+          id="qty-${escapeAttribute(number)}"
           class="catalog-qty-input"
           type="number"
           min="0"
           value="0"
           data-number="${escapeAttribute(number)}"
+          oninput="recalculateGroupTotal(${group.id})"
         >
+
+        <button
+          type="button"
+          class="qty-btn"
+          onclick="changeCatalogQty('${escapeAttribute(number)}', 1)"
+        >
+          +
+        </button>
       </div>
-    `)
-    .join("");
+    </div>
+  `)
+  .join("");
 
   catalogList.innerHTML = `
     ${cartTopButton()}
@@ -448,17 +468,7 @@ function openGroup(groupId) {
         ${Number(group.price).toLocaleString()}원
       </p>
 
-      ${
-        group.image_url
-          ? `
-            <img
-              class="order-detail-img"
-              src="${escapeAttribute(group.image_url)}"
-              alt="${escapeAttribute(group.title)}"
-            >
-          `
-          : ""
-      }
+      ${renderProductSlider(group)}
 
       <div class="section-label">
         품번별 주문수량
@@ -466,19 +476,116 @@ function openGroup(groupId) {
 
       ${quantityRows}
 
-      <button
-        class="cart-btn"
-        type="button"
-        onclick="addGroupToCart(${group.id})"
-      >
-        장바구니 담기
-      </button>
+      <input
+  id="currentGroupId"
+  type="hidden"
+  value="${group.id}"
+>
+
+<div class="live-group-total">
+  <p>
+    총수량:
+    <strong>
+      <span id="liveGroupQty">0</span>개
+    </strong>
+  </p>
+
+  <p>
+    총금액:
+    <strong>
+      <span id="liveGroupPrice">0</span>원
+    </strong>
+  </p>
+</div>
+
+      <div class="product-order-buttons">
+
+  <button
+    class="cart-btn"
+    type="button"
+    onclick="addGroupToCart(${group.id}, 'cart')"
+  >
+    🛒 장바구니 담기
+  </button>
+
+  <button
+    class="cart-btn direct-order-btn"
+    type="button"
+    onclick="addGroupToCart(${group.id}, 'order')"
+  >
+    바로 주문하기
+  </button>
+
+  <button
+    class="cart-btn gray-btn"
+    type="button"
+    onclick="openCategory(${group.category_id})"
+  >
+    다른 상품 계속 보기
+  </button>
+
+</div>
     </div>
   `;
 }
 
+function changeCatalogQty(itemNumber, amount) {
+  const input = document.getElementById(`qty-${itemNumber}`);
+
+  if (!input) return;
+
+  const currentQty = Number(input.value) || 0;
+  const nextQty = Math.max(0, currentQty + amount);
+
+  input.value = nextQty;
+
+  const groupId =
+    Number(document.getElementById("currentGroupId")?.value);
+
+  if (groupId) {
+    recalculateGroupTotal(groupId);
+  }
+}
+
+function recalculateGroupTotal(groupId) {
+  const group = groups.find(
+    item => item.id === groupId
+  );
+
+  if (!group) return;
+
+  const inputs =
+    document.querySelectorAll(".catalog-qty-input");
+
+  let totalQty = 0;
+
+  inputs.forEach(input => {
+    totalQty += Number(input.value) || 0;
+  });
+
+  const totalPrice =
+    totalQty * Number(group.price) * 10;
+
+  const qtyBox =
+    document.getElementById("liveGroupQty");
+
+  const priceBox =
+    document.getElementById("liveGroupPrice");
+
+  if (qtyBox) {
+    qtyBox.textContent = totalQty.toLocaleString();
+  }
+
+  if (priceBox) {
+    priceBox.textContent = totalPrice.toLocaleString();
+  }
+}
+
+window.changeCatalogQty = changeCatalogQty;
+window.recalculateGroupTotal = recalculateGroupTotal;
+
 /* 입력한 품번과 수량을 장바구니에 담기 */
-function addGroupToCart(groupId) {
+function addGroupToCart(groupId, nextAction = "cart") {
   const group = groups.find(
     item => item.id === groupId
   );
@@ -525,7 +632,12 @@ function addGroupToCart(groupId) {
 
   alert(`${addedQty}개가 장바구니에 담겼습니다.`);
 
-  renderCart();
+if (nextAction === "order") {
+  showOrderForm();
+  return;
+}
+
+renderCart();
 }
 
 /* 장바구니 화면 */
@@ -800,6 +912,82 @@ function resetOrder() {
   renderTagFilters();
   renderCategories();
 }
+
+/* 상품 이미지 슬라이더 */
+function renderProductSlider(group) {
+  const imageUrls = [
+    group.image_url,
+    ...(Array.isArray(group.image_urls)
+      ? group.image_urls
+      : [])
+  ].filter(Boolean);
+
+  if (imageUrls.length === 0) {
+    return `
+      <div class="catalog-no-image">
+        등록된 사진 없음
+      </div>
+    `;
+  }
+
+  return `
+    <div class="product-slider-wrap">
+      <div
+        id="product-slider-${group.id}"
+        class="product-slider"
+      >
+        ${imageUrls.map((url, index) => `
+          <img
+            class="product-slider-image"
+            src="${escapeAttribute(url)}"
+            alt="${escapeAttribute(group.title)} 사진 ${index + 1}"
+          >
+        `).join("")}
+      </div>
+
+      ${
+        imageUrls.length > 1
+          ? `
+            <button
+              type="button"
+              class="slider-arrow slider-prev"
+              onclick="moveProductSlider(${group.id}, -1)"
+            >
+              ‹
+            </button>
+
+            <button
+              type="button"
+              class="slider-arrow slider-next"
+              onclick="moveProductSlider(${group.id}, 1)"
+            >
+              ›
+            </button>
+
+            <div class="slider-count">
+              사진 ${imageUrls.length}장
+            </div>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function moveProductSlider(groupId, direction) {
+  const slider = document.getElementById(
+    `product-slider-${groupId}`
+  );
+
+  if (!slider) return;
+
+  slider.scrollBy({
+    left: slider.clientWidth * direction,
+    behavior: "smooth"
+  });
+}
+
+window.moveProductSlider = moveProductSlider;
 
 /* HTML 출력 안전처리 */
 function escapeHtml(value) {
