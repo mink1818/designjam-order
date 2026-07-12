@@ -612,3 +612,14 @@ header {
     font-size: 15px;
   }
 }
+
+/* 모바일 좌우 흔들림 방지 */
+html,
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+* {
+    box-sizing: border-box;
+}
