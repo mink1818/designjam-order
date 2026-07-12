@@ -10,6 +10,15 @@ document.getElementById("categoryInfoFile");
 const groupFile =
 document.getElementById("groupImageFile");
 
+const startItem =
+document.getElementById("startItem");
+
+const endItem =
+document.getElementById("endItem");
+
+const generateItemsBtn =
+document.getElementById("generateItemsBtn");
+
 coverFile.addEventListener("change", async () => {
   const file = coverFile.files[0];
 
@@ -742,6 +751,8 @@ function resetGroupForm() {
   document.getElementById("groupActive").checked = true;
 
   groupFile.value = "";
+  startItem.value = "";
+endItem.value = "";
 }
 
 /* 상품 묶음 표시·숨김 */
@@ -807,3 +818,22 @@ async function uploadImage(file, folder) {
 
   return data.publicUrl;
 }
+
+generateItemsBtn.addEventListener("click", () => {
+  const start = Number(startItem.value);
+  const end = Number(endItem.value);
+
+  if (!start || !end || end < start) {
+    alert("시작 품번과 끝 품번을 확인해주세요.");
+    return;
+  }
+
+  const result = [];
+
+  for (let i = start; i <= end; i++) {
+    result.push(i);
+  }
+
+  document.getElementById("groupNumbers").value =
+    result.join(", ");
+});
