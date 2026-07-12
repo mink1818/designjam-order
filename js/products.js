@@ -1,6 +1,117 @@
 const supabaseUrl =
   "https://dtjhuejmxrjkcxzvilgw.supabase.co";
 
+  const coverFile =
+document.getElementById("categoryCoverFile");
+
+const infoFile =
+document.getElementById("categoryInfoFile");
+
+const groupFile =
+document.getElementById("groupImageFile");
+
+coverFile.addEventListener("change", async () => {
+  const file = coverFile.files[0];
+
+  if (!file) return;
+
+  coverFile.disabled = true;
+
+  try {
+    showMessage(
+      "categoryMessage",
+      "대표사진을 업로드하는 중입니다."
+    );
+
+    const publicUrl =
+      await uploadImage(file, "category-cover");
+
+    document.getElementById("categoryCover").value =
+      publicUrl;
+
+    showMessage(
+      "categoryMessage",
+      "대표사진 업로드가 완료되었습니다."
+    );
+  } catch (error) {
+    showMessage(
+      "categoryMessage",
+      "대표사진 업로드 실패: " + error.message,
+      true
+    );
+  } finally {
+    coverFile.disabled = false;
+  }
+});
+
+infoFile.addEventListener("change", async () => {
+  const file = infoFile.files[0];
+
+  if (!file) return;
+
+  infoFile.disabled = true;
+
+  try {
+    showMessage(
+      "categoryMessage",
+      "상세사진을 업로드하는 중입니다."
+    );
+
+    const publicUrl =
+      await uploadImage(file, "category-info");
+
+    document.getElementById("categoryInfo").value =
+      publicUrl;
+
+    showMessage(
+      "categoryMessage",
+      "상세사진 업로드가 완료되었습니다."
+    );
+  } catch (error) {
+    showMessage(
+      "categoryMessage",
+      "상세사진 업로드 실패: " + error.message,
+      true
+    );
+  } finally {
+    infoFile.disabled = false;
+  }
+});
+
+groupFile.addEventListener("change", async () => {
+  const file = groupFile.files[0];
+
+  if (!file) return;
+
+  groupFile.disabled = true;
+
+  try {
+    showMessage(
+      "groupMessage",
+      "상품사진을 업로드하는 중입니다."
+    );
+
+    const publicUrl =
+      await uploadImage(file, "product-groups");
+
+    document.getElementById("groupImage").value =
+      publicUrl;
+
+    showMessage(
+      "groupMessage",
+      "상품사진 업로드가 완료되었습니다."
+    );
+  } catch (error) {
+    showMessage(
+      "groupMessage",
+      "상품사진 업로드 실패: " + error.message,
+      true
+    );
+  } finally {
+    groupFile.disabled = false;
+  }
+});
+
 const supabaseKey =
   "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
@@ -467,6 +578,9 @@ function resetCategoryForm() {
   document.getElementById("categoryInfo").value = "";
   document.getElementById("categorySort").value = "0";
   document.getElementById("categoryActive").checked = true;
+
+  coverFile.value = "";
+infoFile.value = "";
 }
 
 /* 카테고리 표시·숨김 */
@@ -626,6 +740,8 @@ function resetGroupForm() {
   document.getElementById("groupPrice").value = "";
   document.getElementById("groupSort").value = "0";
   document.getElementById("groupActive").checked = true;
+
+  groupFile.value = "";
 }
 
 /* 상품 묶음 표시·숨김 */
@@ -655,3 +771,39 @@ async function startProductsPage() {
 }
 
 startProductsPage();
+
+async function uploadImage(file, folder) {
+  if (!file) return "";
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("이미지 파일만 선택할 수 있습니다.");
+  }
+
+  const extension =
+    file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+  const safeFileName =
+    `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+  const filePath = `${folder}/${safeFileName}`;
+
+  const { error: uploadError } =
+    await supabaseClient.storage
+      .from("product-images")
+      .upload(filePath, file, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: false
+      });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data } =
+    supabaseClient.storage
+      .from("product-images")
+      .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
