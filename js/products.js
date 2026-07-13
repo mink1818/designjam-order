@@ -13,6 +13,30 @@ document.getElementById("groupImageFile");
 const groupFiles =
 document.getElementById("groupImagesFile");
 
+const mainCategoryName =
+document.getElementById("mainCategoryName");
+
+const mainCategoryCover =
+document.getElementById("mainCategoryCover");
+
+const mainCategoryCoverFile =
+document.getElementById("mainCategoryCoverFile");
+
+const mainCategorySort =
+document.getElementById("mainCategorySort");
+
+const mainCategoryActive =
+document.getElementById("mainCategoryActive");
+
+const saveMainCategoryButton =
+document.getElementById("saveMainCategoryButton");
+
+const mainCategoryList =
+document.getElementById("mainCategoryList");
+
+const categoryMain =
+document.getElementById("categoryMain");
+
 const groupNumbersInput =
   document.getElementById("groupNumbers");
 
@@ -65,6 +89,48 @@ coverFile.addEventListener("change", async () => {
     coverFile.disabled = false;
   }
 });
+
+mainCategoryCoverFile.addEventListener(
+  "change",
+  async () => {
+    const file =
+      mainCategoryCoverFile.files[0];
+
+    if (!file) return;
+
+    mainCategoryCoverFile.disabled = true;
+
+    try {
+      showMessage(
+        "mainCategoryMessage",
+        "대분류 대표사진을 업로드하는 중입니다."
+      );
+
+      const publicUrl =
+        await uploadImage(
+          file,
+          "main-category-cover"
+        );
+
+      mainCategoryCover.value =
+        publicUrl;
+
+      showMessage(
+        "mainCategoryMessage",
+        "대분류 대표사진 업로드가 완료되었습니다."
+      );
+    } catch (error) {
+      showMessage(
+        "mainCategoryMessage",
+        "대표사진 업로드 실패: " +
+          error.message,
+        true
+      );
+    } finally {
+      mainCategoryCoverFile.disabled = false;
+    }
+  }
+);
 
 infoFile.addEventListener("change", async () => {
   const file = infoFile.files[0];
@@ -186,6 +252,7 @@ const categorySearch = document.getElementById("categorySearch");
 
 let allCategories = [];
 let allGroups = [];
+let allMainCategories = [];
 let uploadedGroupImageUrls = [];
 
 document
@@ -195,6 +262,11 @@ document
 document
   .getElementById("saveGroupButton")
   .addEventListener("click", saveGroup);
+
+  saveMainCategoryButton.addEventListener(
+  "click",
+  saveMainCategory
+);
 
 categorySearch.addEventListener("input", renderCategoryList);
 
@@ -247,6 +319,21 @@ function showMessage(elementId, message, isError = false) {
       ${message}
     </p>
   `;
+}
+
+/* HTML 출력 안전 처리 */
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+/* HTML 속성 출력 안전 처리 */
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
 /* 카테고리와 상품 묶음 불러오기 */
@@ -510,11 +597,259 @@ function renderGroupList() {
     `;
   }).join("");
 }
+/* 대분류 저장·수정 */
+async function saveMainCategory() {
+  const id =
+    document.getElementById("mainCategoryId").value;
+
+  const name =
+    mainCategoryName.value.trim();
+
+  const coverUrl =
+    mainCategoryCover.value.trim();
+
+  const sortOrder =
+    Number(mainCategorySort.value) || 0;
+
+  const isActive =
+    mainCategoryActive.checked;
+
+  if (!name) {
+    alert("대분류명을 입력해주세요.");
+    mainCategoryName.focus();
+    return;
+  }
+
+  saveMainCategoryButton.disabled = true;
+  saveMainCategoryButton.textContent = "저장 중...";
+
+  const values = {
+    name: name,
+    cover_url: coverUrl,
+    sort_order: sortOrder,
+    is_active: isActive
+  };
+
+  let error;
+
+  if (id) {
+    const result =
+      await supabaseClient
+        .from("product_main_categories")
+        .update(values)
+        .eq("id", id);
+
+    error = result.error;
+  } else {
+    const result =
+      await supabaseClient
+        .from("product_main_categories")
+        .insert(values);
+
+    error = result.error;
+  }
+
+  saveMainCategoryButton.disabled = false;
+  saveMainCategoryButton.textContent = "대분류 저장";
+
+  if (error) {
+    showMessage(
+      "mainCategoryMessage",
+      "대분류 저장 실패: " + error.message,
+      true
+    );
+    return;
+  }
+
+  showMessage(
+    "mainCategoryMessage",
+    id
+      ? "대분류가 수정되었습니다."
+      : "대분류가 등록되었습니다."
+  );
+
+  resetMainCategoryForm();
+  await loadMainCategories();
+}
+
+/* 대분류 입력 초기화 */
+function resetMainCategoryForm() {
+  document.getElementById("mainCategoryId").value = "";
+
+  mainCategoryName.value = "";
+  mainCategoryCover.value = "";
+  mainCategorySort.value = "0";
+  mainCategoryActive.checked = true;
+  mainCategoryCoverFile.value = "";
+}
+
+/* 대분류 수정값 불러오기 */
+function editMainCategory(id) {
+  const mainCategory =
+    allMainCategories.find(
+      item => item.id === id
+    );
+
+  if (!mainCategory) return;
+
+  document
+    .getElementById("mainCategoryId")
+    .value = mainCategory.id;
+
+  mainCategoryName.value =
+    mainCategory.name || "";
+
+  mainCategoryCover.value =
+    mainCategory.cover_url || "";
+
+  mainCategorySort.value =
+    mainCategory.sort_order ?? 0;
+
+  mainCategoryActive.checked =
+    Boolean(mainCategory.is_active);
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+window.editMainCategory =
+  editMainCategory;
+
+window.resetMainCategoryForm =
+  resetMainCategoryForm;
+
+  /* 대분류 목록 불러오기 */
+async function loadMainCategories() {
+  const { data, error } =
+    await supabaseClient
+      .from("product_main_categories")
+      .select("*")
+      .order("sort_order", {
+        ascending: true
+      })
+      .order("id", {
+        ascending: true
+      });
+
+  if (error) {
+    mainCategoryList.innerHTML = `
+      <div class="product-card">
+        <h2>대분류 불러오기 실패</h2>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  allMainCategories = data || [];
+
+  renderMainCategories();
+  renderMainCategorySelect();
+}
+
+/* 등록된 대분류 화면 표시 */
+function renderMainCategories() {
+  if (allMainCategories.length === 0) {
+    mainCategoryList.innerHTML = `
+      <div class="product-card">
+        <h2>등록된 대분류가 없습니다</h2>
+      </div>
+    `;
+    return;
+  }
+
+  mainCategoryList.innerHTML =
+    allMainCategories
+      .map(mainCategory => `
+        <div class="product-card">
+
+          <div class="order-top">
+            <h2>
+              ${escapeHtml(mainCategory.name)}
+            </h2>
+
+            <span class="status-badge ${
+              mainCategory.is_active
+                ? "done"
+                : "blocked"
+            }">
+              ${
+                mainCategory.is_active
+                  ? "표시 중"
+                  : "숨김"
+              }
+            </span>
+          </div>
+
+          ${
+            mainCategory.cover_url
+              ? `
+                <img
+                  class="admin-product-image"
+                  src="${escapeAttribute(
+                    mainCategory.cover_url
+                  )}"
+                  alt="${escapeAttribute(
+                    mainCategory.name
+                  )}"
+                >
+              `
+              : ""
+          }
+
+          <p>
+            <strong>표시 순서:</strong>
+            ${mainCategory.sort_order ?? 0}
+          </p>
+
+          <button
+            class="cart-btn"
+            type="button"
+            onclick="editMainCategory(${mainCategory.id})"
+          >
+            대분류 수정
+          </button>
+
+        </div>
+      `)
+      .join("");
+}
+
+/* 기존 카테고리의 소속 대분류 선택칸 */
+function renderMainCategorySelect() {
+  categoryMain.innerHTML = `
+    <option value="">
+      대분류를 선택하세요
+    </option>
+
+    ${allMainCategories
+      .filter(item => item.is_active)
+      .map(item => `
+        <option value="${item.id}">
+          ${escapeHtml(item.name)}
+        </option>
+      `)
+      .join("")}
+  `;
+}
 
 /* 카테고리 저장 */
 async function saveCategory() {
   const id =
     document.getElementById("categoryId").value;
+
+    const mainCategoryId =
+  Number(
+    document.getElementById("categoryMain").value
+  );
+
+const descriptionText =
+  document
+    .getElementById("categoryDescription")
+    .value
+    .trim();
 
   const name =
     document.getElementById("categoryName").value.trim();
@@ -538,6 +873,12 @@ async function saveCategory() {
   const isActive =
     document.getElementById("categoryActive").checked;
 
+    if (!mainCategoryId) {
+  alert("소속 대분류를 선택해주세요.");
+  document.getElementById("categoryMain").focus();
+  return;
+}
+
   if (!name) {
     alert("카테고리명을 입력해주세요.");
     return;
@@ -549,14 +890,16 @@ async function saveCategory() {
   }
 
   const values = {
-    name,
-    price,
-    tags,
-    cover_url: coverUrl,
-    info_url: infoUrl,
-    sort_order: sortOrder,
-    is_active: isActive
-  };
+  main_category_id: mainCategoryId,
+  description_text: descriptionText,
+  name,
+  price,
+  tags,
+  cover_url: coverUrl,
+  info_url: infoUrl,
+  sort_order: sortOrder,
+  is_active: isActive
+};
 
   let response;
 
@@ -602,6 +945,12 @@ function editCategory(id) {
   document.getElementById("categoryId").value =
     category.id;
 
+    document.getElementById("categoryMain").value =
+  category.main_category_id || "";
+
+document.getElementById("categoryDescription").value =
+  category.description_text || "";
+
   document.getElementById("categoryName").value =
     category.name;
 
@@ -632,6 +981,8 @@ function editCategory(id) {
 /* 카테고리 입력 초기화 */
 function resetCategoryForm() {
   document.getElementById("categoryId").value = "";
+  document.getElementById("categoryMain").value = "";
+document.getElementById("categoryDescription").value = "";
   document.getElementById("categoryName").value = "";
   document.getElementById("categoryPrice").value = "";
   document.getElementById("categoryTags").value = "";
@@ -900,6 +1251,8 @@ async function startProductsPage() {
   const allowed = await checkAdminAccess();
 
   if (!allowed) return;
+
+  await loadMainCategories();
 
   await loadProductData();
 }

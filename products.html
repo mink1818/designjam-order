@@ -29,11 +29,112 @@
     ← 관리자 메뉴로 돌아가기
   </button>
 
+  <!-- 대분류 등록·수정 영역 -->
+<section class="product-card">
+
+  <h2>대분류 등록·수정</h2>
+
+  <input
+    id="mainCategoryId"
+    type="hidden"
+  >
+
+  <label for="mainCategoryName">
+    대분류명 *
+  </label>
+
+  <input
+    id="mainCategoryName"
+    class="order-input"
+    type="text"
+    placeholder="예: 중목양말"
+  >
+
+  <label for="mainCategoryCover">
+    대표사진 경로
+  </label>
+
+  <input
+    id="mainCategoryCover"
+    class="order-input"
+    type="text"
+    placeholder="사진 선택 시 자동 입력됩니다"
+  >
+
+  <input
+    id="mainCategoryCoverFile"
+    type="file"
+    accept="image/*"
+  >
+
+  <label for="mainCategorySort">
+    표시 순서
+  </label>
+
+  <input
+    id="mainCategorySort"
+    class="order-input"
+    type="number"
+    value="0"
+  >
+
+  <label class="checkbox-line">
+    <input
+      id="mainCategoryActive"
+      type="checkbox"
+      checked
+    >
+    주문페이지에 표시
+  </label>
+
+  <button
+    id="saveMainCategoryButton"
+    class="cart-btn"
+    type="button"
+  >
+    대분류 저장
+  </button>
+
+  <button
+    class="cart-btn gray-btn"
+    type="button"
+    onclick="resetMainCategoryForm()"
+  >
+    입력 초기화
+  </button>
+
+  <div id="mainCategoryMessage"></div>
+
+</section>
+
+<h2 class="admin-section-title">
+  등록된 대분류
+</h2>
+
+<section id="mainCategoryList">
+  <p>대분류를 불러오는 중...</p>
+</section>
+
+<hr class="admin-section-divider">
+
   <!-- 카테고리 등록·수정 영역 -->
   <section class="product-card">
     <h2>카테고리 등록·수정</h2>
 
     <input id="categoryId" type="hidden">
+
+    <label for="categoryMain">
+  소속 대분류 *
+</label>
+
+<select
+  id="categoryMain"
+  class="order-input"
+>
+  <option value="">
+    대분류를 선택하세요
+  </option>
+</select>
 
     <label for="categoryName">카테고리명 *</label>
     <input
@@ -51,6 +152,17 @@
       min="0"
       placeholder="예: 1350"
     >
+
+    <label for="categoryDescription">
+  짧은 상품 설명
+</label>
+
+<textarea
+  id="categoryDescription"
+  class="order-input"
+  rows="4"
+  placeholder="예: 여성용, 골프용, 두툼한 자수 니삭스"
+></textarea>
 
     <label for="categoryTags">검색 태그</label>
     <input

@@ -9,61 +9,44 @@ const supabaseClient = window.supabase.createClient(
   supabaseKey
 );
 
-const catalogList =
-  document.getElementById("catalogList");
+const catalogList = document.getElementById("catalogList");
+const catalogSearch = document.getElementById("catalogSearch");
+const catalogFilters = document.getElementById("catalogFilters");
 
-const catalogSearch =
-  document.getElementById("catalogSearch");
-
-const catalogFilters =
-  document.getElementById("catalogFilters");
-
+let mainCategories = [];
 let categories = [];
 let groups = [];
 let cart = [];
 
-let currentTag = "전체";
-let currentScreen = "categories";
-
+let currentScreen = "main-categories";
+let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
 
-catalogSearch.addEventListener("input", () => {
-  if (currentScreen === "categories") {
-    renderCategories();
-  }
-});
+/* ================================
+   공통 이벤트
+================================ */
 
-/* 주문번호 생성 */
-function makeOrderNumber() {
-  const now = new Date();
+if (catalogSearch) {
+  catalogSearch.addEventListener("input", () => {
+    if (currentScreen === "main-categories") {
+      renderMainCategories();
+      return;
+    }
 
-  const year = now.getFullYear();
-
-  const month = String(
-    now.getMonth() + 1
-  ).padStart(2, "0");
-
-  const day = String(
-    now.getDate()
-  ).padStart(2, "0");
-
-  const hour = String(
-    now.getHours()
-  ).padStart(2, "0");
-
-  const minute = String(
-    now.getMinutes()
-  ).padStart(2, "0");
-
-  const second = String(
-    now.getSeconds()
-  ).padStart(2, "0");
-
-  return `DJ-${year}${month}${day}-${hour}${minute}${second}`;
+    if (
+      currentScreen === "main-category-detail" &&
+      activeMainCategoryId
+    ) {
+      renderMainCategoryDetail(activeMainCategoryId);
+    }
+  });
 }
 
-/* 로그인 및 거래처 승인 확인 */
+/* ================================
+   로그인 및 데이터 불러오기
+================================ */
+
 async function checkCustomerAccess() {
   const {
     data: { user },
@@ -90,6 +73,7 @@ async function checkCustomerAccess() {
 
   if (!customer.approved) {
     alert("아직 관리자 승인 대기 중입니다.");
+    await supabaseClient.auth.signOut();
     location.href = "login.html";
     return false;
   }
@@ -103,98 +87,550 @@ async function checkCustomerAccess() {
 
   currentUser = user;
   currentCustomer = customer;
-
   return true;
 }
 
-/* Supabase 상품 데이터 불러오기 */
 async function loadCatalog() {
-  catalogList.innerHTML =
-    "<p>상품을 불러오는 중...</p>";
+  catalogList.innerHTML = "<p>상품을 불러오는 중...</p>";
 
-  const [categoryResponse, groupResponse] =
-    await Promise.all([
-      supabaseClient
-        .from("product_categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("id", { ascending: true }),
+  const [
+    mainCategoryResponse,
+    categoryResponse,
+    groupResponse
+  ] = await Promise.all([
+    supabaseClient
+      .from("product_main_categories")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true }),
 
-      supabaseClient
-        .from("product_groups")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("id", { ascending: true })
-    ]);
+    supabaseClient
+      .from("product_categories")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true }),
+
+    supabaseClient
+      .from("product_groups")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true })
+  ]);
+
+  if (mainCategoryResponse.error) {
+    showLoadError(
+      "대분류를 불러오지 못했습니다",
+      mainCategoryResponse.error
+    );
+    return;
+  }
 
   if (categoryResponse.error) {
-    catalogList.innerHTML = `
-      <div class="product-card">
-        <h2>카테고리를 불러오지 못했습니다</h2>
-        <p>${escapeHtml(categoryResponse.error.message)}</p>
-      </div>
-    `;
+    showLoadError(
+      "카테고리를 불러오지 못했습니다",
+      categoryResponse.error
+    );
     return;
   }
 
   if (groupResponse.error) {
-    catalogList.innerHTML = `
-      <div class="product-card">
-        <h2>상품 묶음을 불러오지 못했습니다</h2>
-        <p>${escapeHtml(groupResponse.error.message)}</p>
-      </div>
-    `;
+    showLoadError(
+      "상품 묶음을 불러오지 못했습니다",
+      groupResponse.error
+    );
     return;
   }
 
+  mainCategories = mainCategoryResponse.data || [];
   categories = categoryResponse.data || [];
   groups = groupResponse.data || [];
 
-  renderTagFilters();
-  renderCategories();
+  renderMainCategories();
 }
 
-/* 검색 태그 버튼 */
-function renderTagFilters() {
-  const tagSet = new Set(["전체"]);
+function showLoadError(title, error) {
+  catalogList.innerHTML = `
+    <div class="product-card">
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(error?.message || "알 수 없는 오류")}</p>
+    </div>
+  `;
+}
 
-  categories.forEach(category => {
-    (category.tags || []).forEach(tag => {
-      tagSet.add(tag);
-    });
-  });
+/* ================================
+   1단계: 대분류 목록
+================================ */
 
-  catalogFilters.innerHTML = "";
+function renderMainCategories() {
+  currentScreen = "main-categories";
+  activeMainCategoryId = null;
 
-  [...tagSet].forEach(tag => {
-    const button = document.createElement("button");
+  showSearch(true, "대분류명 검색");
+  hideLegacyFilters();
 
-    button.className = "filter-btn";
+  const keyword = normalizeSearch(catalogSearch?.value);
 
-    if (tag === currentTag) {
-      button.classList.add("active");
+  const filtered = mainCategories.filter(mainCategory =>
+    normalizeSearch(mainCategory.name).includes(keyword)
+  );
+
+  catalogList.innerHTML = `
+    ${cartTopButton()}
+
+    ${
+      filtered.length > 0
+        ? `
+          <div class="main-category-grid">
+            ${filtered.map(mainCategory => `
+              <button
+                class="main-category-card"
+                type="button"
+                onclick="openMainCategory(${mainCategory.id})"
+              >
+                ${renderMainCategoryImage(mainCategory)}
+
+                <strong>
+                  ${escapeHtml(mainCategory.name)}
+                </strong>
+              </button>
+            `).join("")}
+          </div>
+        `
+        : `
+          <div class="product-card">
+            <h2>검색 결과가 없습니다</h2>
+          </div>
+        `
     }
-
-    button.textContent = tag;
-
-    button.addEventListener("click", () => {
-      currentTag = tag;
-      currentScreen = "categories";
-
-      renderTagFilters();
-      renderCategories();
-    });
-
-    catalogFilters.appendChild(button);
-  });
+  `;
 }
 
-/* 상단 장바구니 버튼 */
+function renderMainCategoryImage(mainCategory) {
+  if (mainCategory.cover_url) {
+    return `
+      <img
+        src="${escapeAttribute(mainCategory.cover_url)}"
+        alt="${escapeAttribute(mainCategory.name)}"
+      >
+    `;
+  }
+
+  return `
+    <div class="main-category-no-image" aria-hidden="true">
+      🧦
+    </div>
+  `;
+}
+
+function openMainCategory(mainCategoryId) {
+  activeMainCategoryId = Number(mainCategoryId);
+  currentScreen = "main-category-detail";
+
+  if (catalogSearch) {
+    catalogSearch.value = "";
+  }
+
+  renderMainCategoryDetail(activeMainCategoryId);
+}
+
+/* ================================
+   2단계: 세부 카테고리 + 상품묶음
+================================ */
+
+function renderMainCategoryDetail(mainCategoryId) {
+  const numericMainCategoryId = Number(mainCategoryId);
+
+  const mainCategory = mainCategories.find(
+    item => Number(item.id) === numericMainCategoryId
+  );
+
+  if (!mainCategory) {
+    renderMainCategories();
+    return;
+  }
+
+  activeMainCategoryId = numericMainCategoryId;
+  currentScreen = "main-category-detail";
+
+  showSearch(true, "카테고리명 또는 품번 검색");
+  hideLegacyFilters();
+
+  const keyword = normalizeSearch(catalogSearch?.value);
+
+  const childCategories = categories
+    .filter(category =>
+      Number(category.main_category_id) === numericMainCategoryId
+    )
+    .map(category => ({
+      ...category,
+      categoryGroups: groups.filter(group =>
+        Number(group.category_id) === Number(category.id)
+      )
+    }))
+    .filter(category => {
+      if (!keyword) return true;
+
+      const groupText = category.categoryGroups
+        .map(group => [
+          group.title,
+          ...(Array.isArray(group.item_numbers)
+            ? group.item_numbers
+            : [])
+        ].join(" "))
+        .join(" ");
+
+      const searchableText = normalizeSearch([
+        category.name,
+        category.description_text,
+        category.price,
+        ...(Array.isArray(category.tags) ? category.tags : []),
+        groupText
+      ].join(" "));
+
+      return searchableText.includes(keyword);
+    });
+
+  catalogList.innerHTML = `
+    ${cartTopButton()}
+
+    <button
+      class="cart-btn gray-btn"
+      type="button"
+      onclick="renderMainCategories()"
+    >
+      ← 대분류 목록으로 돌아가기
+    </button>
+
+    <section class="product-card main-category-title-card">
+      <h2>${escapeHtml(mainCategory.name)}</h2>
+    </section>
+
+    ${
+      childCategories.length > 0
+        ? childCategories
+            .map(renderCategoryWithGroups)
+            .join("")
+        : `
+          <div class="product-card">
+            <h2>등록된 상품이 없습니다</h2>
+          </div>
+        `
+    }
+  `;
+}
+
+function renderCategoryWithGroups(category) {
+  const categoryGroups = category.categoryGroups || [];
+
+  return `
+    <section class="product-card category-section-card">
+      <div class="category-section-heading">
+        <div>
+          <h2>${escapeHtml(category.name)}</h2>
+
+          ${
+            category.description_text
+              ? `
+                <p class="category-short-description">
+                  ${escapeHtml(category.description_text)}
+                </p>
+              `
+              : ""
+          }
+        </div>
+
+        <strong class="price-text category-section-price">
+          ${formatWon(category.price)}
+        </strong>
+      </div>
+
+      ${
+        categoryGroups.length > 0
+          ? `
+            <div class="catalog-group-grid">
+              ${categoryGroups
+                .map(group => renderGroupCard(group))
+                .join("")}
+            </div>
+          `
+          : `
+            <p class="empty-category-message">
+              등록된 상품 사진 묶음이 없습니다.
+            </p>
+          `
+      }
+    </section>
+  `;
+}
+
+function renderGroupCard(group) {
+  const soldoutItems = getSoldoutItems(group);
+  const itemNumbers = Array.isArray(group.item_numbers)
+    ? group.item_numbers.map(String)
+    : [];
+
+  const availableCount = itemNumbers.filter(
+    number => !soldoutItems.includes(number)
+  ).length;
+
+  return `
+    <button
+      class="catalog-group-card catalog-click-card"
+      type="button"
+      onclick="openGroup(${group.id})"
+    >
+      ${
+        group.image_url
+          ? `
+            <img
+              class="catalog-group-image"
+              src="${escapeAttribute(group.image_url)}"
+              alt="${escapeAttribute(group.title)}"
+            >
+          `
+          : `
+            <div class="catalog-no-image">
+              등록된 사진 없음
+            </div>
+          `
+      }
+
+      <strong>${escapeHtml(group.title)}</strong>
+
+      <span class="catalog-item-numbers">
+        ${itemNumbers.map(escapeHtml).join(", ")}
+      </span>
+
+      <span class="price-text">
+        ${formatWon(group.price)}
+      </span>
+
+      ${
+        soldoutItems.length > 0
+          ? `
+            <small class="group-stock-summary">
+              주문 가능 ${availableCount}종 · 품절 ${soldoutItems.length}종
+            </small>
+          `
+          : ""
+      }
+    </button>
+  `;
+}
+
+/* ================================
+   3단계: 품번별 주문
+================================ */
+
+function openGroup(groupId) {
+  const group = groups.find(
+    item => Number(item.id) === Number(groupId)
+  );
+
+  if (!group) return;
+
+  const category = categories.find(
+    item => Number(item.id) === Number(group.category_id)
+  );
+
+  if (!category) return;
+
+  currentScreen = "detail";
+  activeMainCategoryId = Number(category.main_category_id) || null;
+
+  showSearch(false);
+  hideLegacyFilters();
+
+  const soldoutItems = getSoldoutItems(group);
+
+  const quantityRows = (group.item_numbers || [])
+    .map(number => {
+      const numberText = String(number);
+      const isSoldout = soldoutItems.includes(numberText);
+
+      return `
+        <div class="order-row qty-control-row ${
+          isSoldout ? "soldout-order-row" : ""
+        }">
+          <label>
+            ${escapeHtml(numberText)}
+            ${isSoldout ? '<span class="soldout-label">품절</span>' : ""}
+          </label>
+
+          <div class="qty-control">
+            <button
+              type="button"
+              class="qty-btn"
+              onclick="changeCatalogQty('${escapeJsString(numberText)}', -1)"
+              ${isSoldout ? "disabled" : ""}
+            >
+              −
+            </button>
+
+            <input
+              id="qty-${escapeAttribute(numberText)}"
+              class="catalog-qty-input"
+              type="number"
+              min="0"
+              value="0"
+              data-number="${escapeAttribute(numberText)}"
+              oninput="recalculateGroupTotal(${group.id})"
+              ${isSoldout ? "disabled" : ""}
+            >
+
+            <button
+              type="button"
+              class="qty-btn"
+              onclick="changeCatalogQty('${escapeJsString(numberText)}', 1)"
+              ${isSoldout ? "disabled" : ""}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  catalogList.innerHTML = `
+    ${cartTopButton()}
+
+    <button
+      class="cart-btn gray-btn"
+      type="button"
+      onclick="returnToActiveMainCategory()"
+    >
+      ← 상품 사진 목록으로 돌아가기
+    </button>
+
+    <div class="product-card">
+      <h2>${escapeHtml(group.title)}</h2>
+
+      <p>${escapeHtml(category.name)}</p>
+
+      <p class="price-text">
+        ${formatWon(group.price)}
+      </p>
+
+      ${renderProductSlider(group)}
+
+      <div class="section-label">
+        품번별 주문수량
+      </div>
+
+      ${quantityRows}
+
+      <input
+        id="currentGroupId"
+        type="hidden"
+        value="${group.id}"
+      >
+
+      <div class="live-group-total">
+        <p>
+          총수량:
+          <strong>
+            <span id="liveGroupQty">0</span>개
+          </strong>
+        </p>
+
+        <p>
+          총금액:
+          <strong>
+            <span id="liveGroupPrice">0</span>원
+          </strong>
+        </p>
+      </div>
+
+      <div class="product-order-buttons">
+        <button
+          class="cart-btn"
+          type="button"
+          onclick="addGroupToCart(${group.id}, 'cart')"
+        >
+          🛒 장바구니 담기
+        </button>
+
+        <button
+          class="cart-btn direct-order-btn"
+          type="button"
+          onclick="addGroupToCart(${group.id}, 'order')"
+        >
+          바로 주문하기
+        </button>
+
+        <button
+          class="cart-btn gray-btn"
+          type="button"
+          onclick="returnToActiveMainCategory()"
+        >
+          다른 상품 계속 보기
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function returnToActiveMainCategory() {
+  if (activeMainCategoryId) {
+    if (catalogSearch) catalogSearch.value = "";
+    renderMainCategoryDetail(activeMainCategoryId);
+    return;
+  }
+
+  renderMainCategories();
+}
+
+function changeCatalogQty(itemNumber, amount) {
+  const input = document.getElementById(`qty-${itemNumber}`);
+  if (!input || input.disabled) return;
+
+  const currentQty = Number(input.value) || 0;
+  input.value = Math.max(0, currentQty + amount);
+
+  const groupId = Number(
+    document.getElementById("currentGroupId")?.value
+  );
+
+  if (groupId) {
+    recalculateGroupTotal(groupId);
+  }
+}
+
+function recalculateGroupTotal(groupId) {
+  const group = groups.find(
+    item => Number(item.id) === Number(groupId)
+  );
+
+  if (!group) return;
+
+  let totalQty = 0;
+
+  document
+    .querySelectorAll(".catalog-qty-input:not(:disabled)")
+    .forEach(input => {
+      totalQty += Math.max(0, Number(input.value) || 0);
+    });
+
+  const totalPrice = totalQty * Number(group.price || 0) * 10;
+
+  const qtyBox = document.getElementById("liveGroupQty");
+  const priceBox = document.getElementById("liveGroupPrice");
+
+  if (qtyBox) qtyBox.textContent = totalQty.toLocaleString();
+  if (priceBox) priceBox.textContent = totalPrice.toLocaleString();
+}
+
+/* ================================
+   장바구니
+================================ */
+
 function cartTopButton() {
   const totalQty = cart.reduce(
-    (sum, item) => sum + item.qty,
+    (sum, item) => sum + Number(item.qty || 0),
     0
   );
 
@@ -209,421 +645,43 @@ function cartTopButton() {
   `;
 }
 
-/* 1단계: 카테고리 목록 */
-function renderCategories() {
-  currentScreen = "categories";
-
-  catalogSearch.style.display = "block";
-  catalogFilters.style.display = "flex";
-
-  const keyword =
-    catalogSearch.value.trim().toLowerCase();
-
-  const filtered = categories.filter(category => {
-    const categoryGroups = groups.filter(
-      group => group.category_id === category.id
-    );
-
-    const itemText = categoryGroups
-      .map(group => [
-        group.title,
-        ...(group.item_numbers || []),
-        group.price
-      ].join(" "))
-      .join(" ");
-
-    const searchableText = [
-      category.name,
-      category.price,
-      ...(category.tags || []),
-      itemText
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const matchesTag =
-      currentTag === "전체" ||
-      (category.tags || []).includes(currentTag);
-
-    return (
-      matchesTag &&
-      searchableText.includes(keyword)
-    );
-  });
-
-  if (filtered.length === 0) {
-    catalogList.innerHTML = `
-      ${cartTopButton()}
-
-      <div class="product-card">
-        <h2>표시할 카테고리가 없습니다</h2>
-      </div>
-    `;
-    return;
-  }
-
-  catalogList.innerHTML = `
-    ${cartTopButton()}
-
-    <div class="category-grid">
-      ${filtered.map(category => `
-        <button
-          type="button"
-          class="category-main-card catalog-click-card"
-          onclick="openCategory(${category.id})"
-        >
-          ${
-            category.cover_url
-              ? `
-                <img
-                  src="${escapeAttribute(category.cover_url)}"
-                  alt="${escapeAttribute(category.name)}"
-                >
-              `
-              : `
-                <div class="catalog-no-image">
-                  등록된 사진 없음
-                </div>
-              `
-          }
-
-          <h2>${escapeHtml(category.name)}</h2>
-
-          <div class="price-text">
-            ${Number(category.price).toLocaleString()}원
-          </div>
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
-/* 2단계: 선택한 카테고리의 상품 묶음 */
-function openCategory(categoryId) {
-  currentScreen = "groups";
-
-  catalogSearch.style.display = "none";
-  catalogFilters.style.display = "none";
-
-  const category = categories.find(
-    item => item.id === categoryId
-  );
-
-  if (!category) return;
-
-  const categoryGroups = groups.filter(
-    group => group.category_id === categoryId
-  );
-
-  catalogList.innerHTML = `
-    ${cartTopButton()}
-
-    <button
-      class="cart-btn gray-btn"
-      type="button"
-      onclick="renderCategories()"
-    >
-      ← 카테고리로 돌아가기
-    </button>
-
-    <div class="product-card">
-      <h2>${escapeHtml(category.name)}</h2>
-
-      ${
-        category.info_url
-          ? `
-            <img
-              class="catalog-info-image"
-              src="${escapeAttribute(category.info_url)}"
-              alt="${escapeAttribute(category.name)} 상세사진"
-            >
-          `
-          : ""
-      }
-
-      <p class="price-text">
-        기본 단가:
-        ${Number(category.price).toLocaleString()}원
-      </p>
-    </div>
-
-    <div class="catalog-group-grid">
-      ${
-        categoryGroups.length > 0
-          ? categoryGroups.map(group => `
-              <button
-                type="button"
-                class="catalog-group-card catalog-click-card"
-                onclick="openGroup(${group.id})"
-              >
-                ${
-                  group.image_url
-                    ? `
-                      <img
-                        class="catalog-group-image"
-                        src="${escapeAttribute(group.image_url)}"
-                        alt="${escapeAttribute(group.title)}"
-                      >
-                    `
-                    : `
-                      <div class="catalog-no-image">
-                        등록된 사진 없음
-                      </div>
-                    `
-                }
-
-                <h3>${escapeHtml(group.title)}</h3>
-
-                <p class="catalog-item-numbers">
-                  ${(group.item_numbers || [])
-                    .map(escapeHtml)
-                    .join(", ")}
-                </p>
-
-                <p class="price-text">
-                  ${Number(group.price).toLocaleString()}원
-                </p>
-              </button>
-            `).join("")
-          : `
-            <div class="product-card">
-              <h2>등록된 상품 묶음이 없습니다</h2>
-            </div>
-          `
-      }
-    </div>
-  `;
-}
-
-/* 3단계: 품번별 수량 입력 */
-function openGroup(groupId) {
-  currentScreen = "detail";
-
-  catalogSearch.style.display = "none";
-  catalogFilters.style.display = "none";
-
-  const group = groups.find(
-    item => item.id === groupId
-  );
-
-  if (!group) return;
-
-  const category = categories.find(
-    item => item.id === group.category_id
-  );
-
-  const quantityRows = (group.item_numbers || [])
-  .map(number => `
-    <div class="order-row qty-control-row">
-      <label>${escapeHtml(number)}</label>
-
-      <div class="qty-control">
-        <button
-          type="button"
-          class="qty-btn"
-          onclick="changeCatalogQty('${escapeAttribute(number)}', -1)"
-        >
-          −
-        </button>
-
-        <input
-          id="qty-${escapeAttribute(number)}"
-          class="catalog-qty-input"
-          type="number"
-          min="0"
-          value="0"
-          data-number="${escapeAttribute(number)}"
-          oninput="recalculateGroupTotal(${group.id})"
-        >
-
-        <button
-          type="button"
-          class="qty-btn"
-          onclick="changeCatalogQty('${escapeAttribute(number)}', 1)"
-        >
-          +
-        </button>
-      </div>
-    </div>
-  `)
-  .join("");
-
-  catalogList.innerHTML = `
-    ${cartTopButton()}
-
-    <button
-      class="cart-btn gray-btn"
-      type="button"
-      onclick="openCategory(${group.category_id})"
-    >
-      ← 상품 사진 목록으로 돌아가기
-    </button>
-
-    <div class="product-card">
-      <h2>${escapeHtml(group.title)}</h2>
-
-      <p>${escapeHtml(category?.name || "")}</p>
-
-      <p class="price-text">
-        ${Number(group.price).toLocaleString()}원
-      </p>
-
-      ${renderProductSlider(group)}
-
-      <div class="section-label">
-        품번별 주문수량
-      </div>
-
-      ${quantityRows}
-
-      <input
-  id="currentGroupId"
-  type="hidden"
-  value="${group.id}"
->
-
-<div class="live-group-total">
-  <p>
-    총수량:
-    <strong>
-      <span id="liveGroupQty">0</span>개
-    </strong>
-  </p>
-
-  <p>
-    총금액:
-    <strong>
-      <span id="liveGroupPrice">0</span>원
-    </strong>
-  </p>
-</div>
-
-      <div class="product-order-buttons">
-
-  <button
-    class="cart-btn"
-    type="button"
-    onclick="addGroupToCart(${group.id}, 'cart')"
-  >
-    🛒 장바구니 담기
-  </button>
-
-  <button
-    class="cart-btn direct-order-btn"
-    type="button"
-    onclick="addGroupToCart(${group.id}, 'order')"
-  >
-    바로 주문하기
-  </button>
-
-  <button
-    class="cart-btn gray-btn"
-    type="button"
-    onclick="openCategory(${group.category_id})"
-  >
-    다른 상품 계속 보기
-  </button>
-
-</div>
-    </div>
-  `;
-}
-
-function changeCatalogQty(itemNumber, amount) {
-  const input = document.getElementById(`qty-${itemNumber}`);
-
-  if (!input) return;
-
-  const currentQty = Number(input.value) || 0;
-  const nextQty = Math.max(0, currentQty + amount);
-
-  input.value = nextQty;
-
-  const groupId =
-    Number(document.getElementById("currentGroupId")?.value);
-
-  if (groupId) {
-    recalculateGroupTotal(groupId);
-  }
-}
-
-function recalculateGroupTotal(groupId) {
-  const group = groups.find(
-    item => item.id === groupId
-  );
-
-  if (!group) return;
-
-  const inputs =
-    document.querySelectorAll(".catalog-qty-input");
-
-  let totalQty = 0;
-
-  inputs.forEach(input => {
-    totalQty += Number(input.value) || 0;
-  });
-
-  const totalPrice =
-    totalQty * Number(group.price) * 10;
-
-  const qtyBox =
-    document.getElementById("liveGroupQty");
-
-  const priceBox =
-    document.getElementById("liveGroupPrice");
-
-  if (qtyBox) {
-    qtyBox.textContent = totalQty.toLocaleString();
-  }
-
-  if (priceBox) {
-    priceBox.textContent = totalPrice.toLocaleString();
-  }
-}
-
-window.changeCatalogQty = changeCatalogQty;
-window.recalculateGroupTotal = recalculateGroupTotal;
-
-/* 입력한 품번과 수량을 장바구니에 담기 */
 function addGroupToCart(groupId, nextAction = "cart") {
   const group = groups.find(
-    item => item.id === groupId
+    item => Number(item.id) === Number(groupId)
   );
 
   if (!group) return;
-
-  const inputs =
-    document.querySelectorAll(".catalog-qty-input");
 
   let addedQty = 0;
 
-  inputs.forEach(input => {
-    const qty = Number(input.value) || 0;
-    const number = input.dataset.number;
+  document
+    .querySelectorAll(".catalog-qty-input:not(:disabled)")
+    .forEach(input => {
+      const qty = Math.max(0, Number(input.value) || 0);
+      const number = String(input.dataset.number || "");
 
-    if (qty <= 0) return;
+      if (qty <= 0 || !number) return;
 
-    const existingItem = cart.find(
-      item =>
-        item.groupId === group.id &&
+      const existingItem = cart.find(item =>
+        Number(item.groupId) === Number(group.id) &&
         item.number === number
-    );
+      );
 
-    if (existingItem) {
-      existingItem.qty += qty;
-    } else {
-      cart.push({
-        groupId: group.id,
-        categoryId: group.category_id,
-        title: group.title,
-        number,
-        qty,
-        price: Number(group.price)
-      });
-    }
+      if (existingItem) {
+        existingItem.qty += qty;
+      } else {
+        cart.push({
+          groupId: group.id,
+          categoryId: group.category_id,
+          title: group.title,
+          number,
+          qty,
+          price: Number(group.price)
+        });
+      }
 
-    addedQty += qty;
-  });
+      addedQty += qty;
+    });
 
   if (addedQty === 0) {
     alert("수량을 1개 이상 입력해주세요.");
@@ -632,20 +690,18 @@ function addGroupToCart(groupId, nextAction = "cart") {
 
   alert(`${addedQty}개가 장바구니에 담겼습니다.`);
 
-if (nextAction === "order") {
-  showOrderForm();
-  return;
+  if (nextAction === "order") {
+    showOrderForm();
+    return;
+  }
+
+  renderCart();
 }
 
-renderCart();
-}
-
-/* 장바구니 화면 */
 function renderCart() {
   currentScreen = "cart";
-
-  catalogSearch.style.display = "none";
-  catalogFilters.style.display = "none";
+  showSearch(false);
+  hideLegacyFilters();
 
   if (cart.length === 0) {
     catalogList.innerHTML = `
@@ -655,7 +711,7 @@ function renderCart() {
         <button
           class="cart-btn"
           type="button"
-          onclick="renderCategories()"
+          onclick="renderMainCategories()"
         >
           상품 보러가기
         </button>
@@ -667,42 +723,42 @@ function renderCart() {
   let totalQty = 0;
   let totalPrice = 0;
 
-  const itemHtml = cart.map((item, index) => {
-    const itemTotal =
-      item.qty * item.price * 10;
+  const itemHtml = cart
+    .map((item, index) => {
+      const itemTotal =
+        Number(item.qty) * Number(item.price) * 10;
 
-    totalQty += item.qty;
-    totalPrice += itemTotal;
+      totalQty += Number(item.qty);
+      totalPrice += itemTotal;
 
-    return `
-      <div class="cart-item">
-        <div>
-          <strong>${escapeHtml(item.number)}</strong>
-          <small>${escapeHtml(item.title)}</small>
+      return `
+        <div class="cart-item">
+          <div>
+            <strong>${escapeHtml(item.number)}</strong>
+            <small>${escapeHtml(item.title)}</small>
+          </div>
+
+          <span>${Number(item.qty).toLocaleString()}개</span>
+
+          <span>${itemTotal.toLocaleString()}원</span>
+
+          <button
+            class="cart-remove-button"
+            type="button"
+            onclick="removeCartItem(${index})"
+          >
+            삭제
+          </button>
         </div>
-
-        <span>${item.qty}개</span>
-
-        <span>
-          ${itemTotal.toLocaleString()}원
-        </span>
-
-        <button
-          class="cart-remove-button"
-          type="button"
-          onclick="removeCartItem(${index})"
-        >
-          삭제
-        </button>
-      </div>
-    `;
-  }).join("");
+      `;
+    })
+    .join("");
 
   catalogList.innerHTML = `
     <button
       class="cart-btn gray-btn"
       type="button"
-      onclick="renderCategories()"
+      onclick="continueShopping()"
     >
       ← 계속 쇼핑하기
     </button>
@@ -714,7 +770,7 @@ function renderCart() {
 
       <hr>
 
-      <h3>총수량: ${totalQty}개</h3>
+      <h3>총수량: ${totalQty.toLocaleString()}개</h3>
 
       <h2 class="price-text">
         총금액: ${totalPrice.toLocaleString()}원
@@ -731,14 +787,30 @@ function renderCart() {
   `;
 }
 
-/* 장바구니 품목 삭제 */
+function continueShopping() {
+  if (activeMainCategoryId) {
+    renderMainCategoryDetail(activeMainCategoryId);
+    return;
+  }
+
+  renderMainCategories();
+}
+
 function removeCartItem(index) {
   cart.splice(index, 1);
   renderCart();
 }
 
-/* 주문정보 화면 */
+/* ================================
+   주문 접수
+================================ */
+
 function showOrderForm() {
+  if (cart.length === 0) {
+    alert("장바구니가 비어 있습니다.");
+    return;
+  }
+
   if (!currentUser || !currentCustomer) {
     alert("로그인 정보를 확인할 수 없습니다.");
     location.href = "login.html";
@@ -746,6 +818,8 @@ function showOrderForm() {
   }
 
   currentScreen = "order";
+  showSearch(false);
+  hideLegacyFilters();
 
   catalogList.innerHTML = `
     <div class="product-card">
@@ -785,7 +859,6 @@ function showOrderForm() {
   `;
 }
 
-/* Supabase orders 테이블에 주문 저장 */
 async function submitOrder() {
   if (cart.length === 0) {
     alert("장바구니가 비어 있습니다.");
@@ -798,8 +871,9 @@ async function submitOrder() {
     return;
   }
 
-  const submitButton =
-    document.getElementById("submitOrderButton");
+  const submitButton = document.getElementById(
+    "submitOrderButton"
+  );
 
   const memo =
     document.getElementById("orderMemo")?.value.trim() || "";
@@ -812,24 +886,28 @@ async function submitOrder() {
     customer_name: currentCustomer.business_name,
     memo,
     item_number: item.number,
-    qty: item.qty,
-    price: item.price,
-    total: item.qty * item.price * 10,
+    qty: Number(item.qty),
+    price: Number(item.price),
+    total: Number(item.qty) * Number(item.price) * 10,
     status: "주문접수",
     shipping_fee: 0,
     is_soldout: false
   }));
 
-  submitButton.disabled = true;
-  submitButton.textContent = "주문 저장 중...";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "주문 저장 중...";
+  }
 
   const { error } = await supabaseClient
     .from("orders")
     .insert(orderRows);
 
   if (error) {
-    submitButton.disabled = false;
-    submitButton.textContent = "주문 접수하기";
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "주문 접수하기";
+    }
 
     alert("주문 저장 실패: " + error.message);
     return;
@@ -838,21 +916,23 @@ async function submitOrder() {
   let totalQty = 0;
   let totalPrice = 0;
 
-  const completeItems = cart.map(item => {
-    const itemTotal =
-      item.qty * item.price * 10;
+  const completeItems = cart
+    .map(item => {
+      const itemTotal =
+        Number(item.qty) * Number(item.price) * 10;
 
-    totalQty += item.qty;
-    totalPrice += itemTotal;
+      totalQty += Number(item.qty);
+      totalPrice += itemTotal;
 
-    return `
-      <div class="cart-item">
-        <strong>${escapeHtml(item.number)}</strong>
-        <span>${item.qty}개</span>
-        <span>${itemTotal.toLocaleString()}원</span>
-      </div>
-    `;
-  }).join("");
+      return `
+        <div class="cart-item">
+          <strong>${escapeHtml(item.number)}</strong>
+          <span>${Number(item.qty).toLocaleString()}개</span>
+          <span>${itemTotal.toLocaleString()}원</span>
+        </div>
+      `;
+    })
+    .join("");
 
   catalogList.innerHTML = `
     <div class="product-card">
@@ -860,7 +940,7 @@ async function submitOrder() {
 
       <p>
         <strong>주문번호:</strong>
-        ${orderNumber}
+        ${escapeHtml(orderNumber)}
       </p>
 
       <p>
@@ -877,7 +957,7 @@ async function submitOrder() {
 
       <hr>
 
-      <h3>총수량: ${totalQty}개</h3>
+      <h3>총수량: ${totalQty.toLocaleString()}개</h3>
 
       <h2 class="price-text">
         총금액: ${totalPrice.toLocaleString()}원
@@ -904,16 +984,34 @@ async function submitOrder() {
   cart = [];
 }
 
-/* 주문 완료 후 초기화 */
 function resetOrder() {
-  currentTag = "전체";
-  catalogSearch.value = "";
-
-  renderTagFilters();
-  renderCategories();
+  if (catalogSearch) catalogSearch.value = "";
+  activeMainCategoryId = null;
+  renderMainCategories();
 }
 
-/* 상품 이미지 슬라이더 */
+function makeOrderNumber() {
+  const now = new Date();
+
+  const datePart = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("");
+
+  const timePart = [
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0")
+  ].join("");
+
+  return `DJ-${datePart}-${timePart}`;
+}
+
+/* ================================
+   사진 슬라이더
+================================ */
+
 function renderProductSlider(group) {
   const imageUrls = [
     group.image_url,
@@ -952,6 +1050,7 @@ function renderProductSlider(group) {
               type="button"
               class="slider-arrow slider-prev"
               onclick="moveProductSlider(${group.id}, -1)"
+              aria-label="이전 사진"
             >
               ‹
             </button>
@@ -960,6 +1059,7 @@ function renderProductSlider(group) {
               type="button"
               class="slider-arrow slider-next"
               onclick="moveProductSlider(${group.id}, 1)"
+              aria-label="다음 사진"
             >
               ›
             </button>
@@ -987,9 +1087,40 @@ function moveProductSlider(groupId, direction) {
   });
 }
 
-window.moveProductSlider = moveProductSlider;
+/* ================================
+   보조 함수
+================================ */
 
-/* HTML 출력 안전처리 */
+function getSoldoutItems(group) {
+  return Array.isArray(group.soldout_items)
+    ? group.soldout_items.map(String)
+    : [];
+}
+
+function showSearch(visible, placeholder = "검색") {
+  if (!catalogSearch) return;
+
+  catalogSearch.style.display = visible ? "block" : "none";
+  catalogSearch.placeholder = placeholder;
+}
+
+function hideLegacyFilters() {
+  if (catalogFilters) {
+    catalogFilters.style.display = "none";
+    catalogFilters.innerHTML = "";
+  }
+}
+
+function normalizeSearch(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function formatWon(value) {
+  return `${Number(value || 0).toLocaleString()}원`;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -1003,22 +1134,49 @@ function escapeAttribute(value) {
   return escapeHtml(value);
 }
 
-/* 상품 페이지 시작 */
-async function startCatalogPage() {
-  const allowed = await checkCustomerAccess();
-
-  if (!allowed) return;
-
-  await loadCatalog();
+function escapeJsString(value) {
+  return String(value ?? "")
+    .replaceAll("\\", "\\\\")
+    .replaceAll("'", "\\'")
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r");
 }
+
+/* ================================
+   로그아웃 및 시작
+================================ */
 
 async function customerLogout() {
   const confirmed = confirm("로그아웃할까요?");
-
   if (!confirmed) return;
 
   await supabaseClient.auth.signOut();
   location.href = "login.html";
 }
+
+async function startCatalogPage() {
+  const allowed = await checkCustomerAccess();
+  if (!allowed) return;
+
+  await loadCatalog();
+}
+
+/* inline onclick에서 사용 */
+window.renderMainCategories = renderMainCategories;
+window.openMainCategory = openMainCategory;
+window.renderMainCategoryDetail = renderMainCategoryDetail;
+window.openGroup = openGroup;
+window.returnToActiveMainCategory = returnToActiveMainCategory;
+window.changeCatalogQty = changeCatalogQty;
+window.recalculateGroupTotal = recalculateGroupTotal;
+window.addGroupToCart = addGroupToCart;
+window.renderCart = renderCart;
+window.continueShopping = continueShopping;
+window.removeCartItem = removeCartItem;
+window.showOrderForm = showOrderForm;
+window.submitOrder = submitOrder;
+window.resetOrder = resetOrder;
+window.moveProductSlider = moveProductSlider;
+window.customerLogout = customerLogout;
 
 startCatalogPage();
