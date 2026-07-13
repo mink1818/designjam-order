@@ -1022,3 +1022,17 @@ function renderSoldoutItems(
     `)
     .join("");
 }
+
+async function uploadExcelProducts() {
+
+    const file =
+        document.getElementById("excelFile").files[0];
+
+    if (!file) {
+        alert("엑셀 파일을 선택해주세요.");
+        return;
+    }
+
+    alert(file.name);
+
+}

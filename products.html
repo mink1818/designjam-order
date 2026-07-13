@@ -125,6 +125,30 @@ accept="image/*">
   <!-- 카테고리 검색 및 목록 -->
   <h2 class="admin-section-title">등록된 카테고리</h2>
 
+  <hr>
+
+<section class="product-card">
+
+  <h2>엑셀 상품 업로드</h2>
+
+  <input
+    type="file"
+    id="excelFile"
+    accept=".xlsx,.xls"
+  >
+
+  <button
+    class="cart-btn"
+    type="button"
+    onclick="uploadExcelProducts()"
+  >
+    엑셀 업로드
+  </button>
+
+  <div id="excelMessage"></div>
+
+</section>
+
   <input
     id="categorySearch"
     class="search"
@@ -281,6 +305,8 @@ id="generateItemsBtn">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/products.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 </body>
 </html>

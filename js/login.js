@@ -1,85 +1,172 @@
-const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
-const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
+const supabaseUrl =
+  "https://dtjhuejmxrjkcxzvilgw.supabase.co";
+
+const supabaseKey =
+  "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
 const supabaseClient = window.supabase.createClient(
   supabaseUrl,
   supabaseKey
 );
 
-const loginButton = document.getElementById("loginButton");
-const loginMessage = document.getElementById("loginMessage");
+const loginButton =
+  document.getElementById("loginButton");
 
-loginButton.addEventListener("click", loginCustomer);
+const loginMessage =
+  document.getElementById("loginMessage");
 
-async function loginCustomer() {
-  const email = document.getElementById("loginEmail").value.trim();
-  const password = document.getElementById("loginPassword").value;
+const loginPhoneInput =
+  document.getElementById("loginPhone");
 
-  if (!email || !password) {
-    alert("이메일과 비밀번호를 입력해주세요.");
+loginButton.addEventListener(
+  "click",
+  loginCustomer
+);
+
+loginPhoneInput.addEventListener(
+  "keydown",
+  event => {
+    if (event.key === "Enter") {
+      loginCustomer();
+    }
+  }
+);
+
+document
+  .getElementById("loginPassword")
+  .addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      loginCustomer();
+    }
+  });
+
+function normalizePhone(value) {
+  return String(value || "")
+    .replace(/[^0-9]/g, "");
+}
+
+/* 휴대폰번호 자동 하이픈 */
+loginPhoneInput.addEventListener("input", () => {
+  const numbers =
+    normalizePhone(loginPhoneInput.value)
+      .slice(0, 11);
+
+  if (numbers.length <= 3) {
+    loginPhoneInput.value = numbers;
     return;
   }
+
+  if (numbers.length <= 7) {
+    loginPhoneInput.value =
+      `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    return;
+  }
+
+  loginPhoneInput.value =
+    `${numbers.slice(0, 3)}-` +
+    `${numbers.slice(3, 7)}-` +
+    `${numbers.slice(7)}`;
+});
+
+async function loginCustomer() {
+  const phone =
+    normalizePhone(loginPhoneInput.value);
+
+  const password =
+    document
+      .getElementById("loginPassword")
+      .value;
+
+  loginMessage.innerHTML = "";
+
+  if (!/^01[0-9]{8,9}$/.test(phone)) {
+    alert("휴대폰번호를 정확히 입력해주세요.");
+    loginPhoneInput.focus();
+    return;
+  }
+
+  if (!password) {
+    alert("비밀번호를 입력해주세요.");
+    return;
+  }
+
+  /* 회원가입 때 만든 내부 인증용 이메일 */
+  const authEmail =
+    `${phone}@phone.designsocks.kr`;
 
   loginButton.disabled = true;
   loginButton.textContent = "로그인 중...";
-  loginMessage.innerHTML = "";
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
+  try {
+    const { data, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email: authEmail,
+        password
+      });
 
-  loginButton.disabled = false;
-  loginButton.textContent = "로그인";
+    if (error) {
+      throw new Error(
+        "휴대폰번호 또는 비밀번호가 맞지 않습니다."
+      );
+    }
 
-  if (error) {
-    loginMessage.innerHTML = `
-      <p class="auth-error">로그인 실패: ${error.message}</p>
-    `;
-    return;
-  }
+    const { data: customer, error: customerError } =
+      await supabaseClient
+        .from("customers")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
 
-  const user = data.user;
+    if (customerError || !customer) {
+      await supabaseClient.auth.signOut();
 
-  const { data: customer, error: customerError } = await supabaseClient
-    .from("customers")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+      throw new Error(
+        "거래처 정보를 불러오지 못했습니다."
+      );
+    }
 
-  if (customerError) {
-    await supabaseClient.auth.signOut();
+    if (customer.blocked) {
+      await supabaseClient.auth.signOut();
 
+      throw new Error(
+        "사용이 차단된 계정입니다. 관리자에게 문의해주세요."
+      );
+    }
+
+    if (!customer.approved) {
+      await supabaseClient.auth.signOut();
+
+      loginMessage.innerHTML = `
+        <div class="auth-success">
+          <h3>관리자 승인 대기 중입니다.</h3>
+          <p>
+            관리자 승인 후 주문페이지를 이용할 수 있습니다.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    location.href = "index.html";
+
+  } catch (error) {
     loginMessage.innerHTML = `
       <p class="auth-error">
-        거래처 정보를 불러오지 못했습니다.
+        ${escapeHtml(error.message)}
       </p>
     `;
-    return;
+  } finally {
+    loginButton.disabled = false;
+    loginButton.textContent = "로그인";
   }
+}
 
-  if (customer.blocked) {
-    await supabaseClient.auth.signOut();
-
-    loginMessage.innerHTML = `
-      <p class="auth-error">
-        사용이 차단된 계정입니다. 관리자에게 문의해주세요.
-      </p>
-    `;
-    return;
-  }
-
-  if (!customer.approved) {
-    await supabaseClient.auth.signOut();
-
-    loginMessage.innerHTML = `
-      <div class="auth-success">
-        <h3>관리자 승인 대기 중입니다.</h3>
-        <p>승인 완료 후 주문페이지를 이용할 수 있습니다.</p>
-      </div>
-    `;
-    return;
-  }
-
-  location.href = "index.html";
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
