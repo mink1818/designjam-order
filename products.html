@@ -121,6 +121,13 @@
   <section class="product-card">
     <h2>카테고리 등록·수정</h2>
 
+    <p class="admin-help-text">
+  기존 카테고리를 다른 대분류로 이동하려면
+  아래 목록에서 ‘카테고리 수정·대분류 이동’을 누른 뒤
+  소속 대분류를 변경하고 저장하세요.
+  연결된 상품 묶음은 그대로 유지됩니다.
+</p>
+
     <input id="categoryId" type="hidden">
 
     <label for="categoryMain">
@@ -185,20 +192,7 @@ type="file"
 id="categoryCoverFile"
 accept="image/*">
 
-    <label for="categoryInfo">상세 설명사진 경로</label>
-    <input
-      id="categoryInfo"
-      class="order-input"
-      type="text"
-      placeholder="예: images/661~663.jpg"
-    >
-
-    <input
-type="file"
-id="categoryInfoFile"
-accept="image/*">
-
-    <label for="categorySort">표시 순서</label>
+        <label for="categorySort">표시 순서</label>
     <input
       id="categorySort"
       class="order-input"
@@ -257,6 +251,15 @@ accept="image/*">
     엑셀 업로드
   </button>
 
+  <button
+  id="registerExcelButton"
+  class="cart-btn"
+  type="button"
+  style="display:none;"
+>
+  미리보기 상품 실제 등록
+</button>
+
   <div id="excelMessage"></div>
 
 </section>
@@ -277,6 +280,12 @@ accept="image/*">
   <!-- 상품 사진 묶음 등록·수정 영역 -->
   <section class="product-card">
     <h2>상품 사진 묶음 등록·수정</h2>
+
+    <p class="admin-help-text">
+  기존 상품 묶음을 다른 카테고리로 이동하려면
+  아래 목록에서 ‘상품 묶음 수정·이동’을 누른 뒤
+  소속 카테고리를 변경하고 저장하세요.
+</p>
 
     <input id="groupId" type="hidden">
 
@@ -345,6 +354,25 @@ type="button"
 class="cart-btn"
 id="generateItemsBtn">
 품번 자동 생성
+</button>
+
+<label for="itemPattern">
+  혼합 품번 입력
+</label>
+
+<input
+  id="itemPattern"
+  class="order-input"
+  type="text"
+  placeholder="예: 700~705, 1410, 1501~1503"
+>
+
+<button
+  id="generatePatternItemsBtn"
+  class="cart-btn"
+  type="button"
+>
+  혼합 품번 자동 생성
 </button>
 
     <label for="groupNumbers">포함 품번 *</label>
@@ -416,9 +444,10 @@ id="generateItemsBtn">
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/products.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script src="js/products.js"></script>
 
 </body>
 </html>

@@ -29,18 +29,28 @@ let currentCustomer = null;
 
 if (catalogSearch) {
   catalogSearch.addEventListener("input", () => {
-    if (currentScreen === "main-categories") {
-      renderMainCategories();
+  const keyword =
+    catalogSearch.value.trim();
+
+  /* 검색어가 있으면 대분류와 관계없이 전체 상품 검색 */
+  if (keyword) {
+    renderGlobalSearchResults();
+    return;
+  }
+
+  /* 검색어를 지우면 현재 화면으로 복귀 */
+  if (currentScreen === "main-category-detail") {
+    const activeMainCategoryId =
+      Number(catalogList.dataset.mainCategoryId);
+
+    if (activeMainCategoryId) {
+      renderMainCategoryDetail(activeMainCategoryId);
       return;
     }
+  }
 
-    if (
-      currentScreen === "main-category-detail" &&
-      activeMainCategoryId
-    ) {
-      renderMainCategoryDetail(activeMainCategoryId);
-    }
-  });
+  renderMainCategories();
+});
 }
 
 /* ================================
@@ -207,6 +217,148 @@ function renderMainCategories() {
     }
   `;
 }
+
+/* 브랜드·카테고리·품번 전체 검색 */
+function renderGlobalSearchResults() {
+  const keyword =
+    catalogSearch.value
+      .trim()
+      .toLowerCase();
+
+  currentScreen = "global-search";
+
+  catalogFilters.style.display = "none";
+
+  const matchedGroups = groups.filter(group => {
+    const category = categories.find(
+      item => item.id === group.category_id
+    );
+
+    const mainCategory = mainCategories.find(
+      item => item.id === category?.main_category_id
+    );
+
+    const searchableText = [
+      mainCategory?.name || "",
+      category?.name || "",
+      category?.description_text || "",
+      ...(category?.tags || []),
+      group.title || "",
+      ...(group.item_numbers || [])
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(keyword);
+  });
+
+  if (matchedGroups.length === 0) {
+    catalogList.innerHTML = `
+      ${cartTopButton()}
+
+      <button
+        class="cart-btn gray-btn"
+        type="button"
+        onclick="clearCatalogSearch()"
+      >
+        ← 대분류 목록으로 돌아가기
+      </button>
+
+      <div class="product-card">
+        <h2>검색 결과가 없습니다</h2>
+        <p>
+          브랜드명, 카테고리명 또는 품번을 다시 입력해주세요.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  catalogList.innerHTML = `
+    ${cartTopButton()}
+
+    <button
+      class="cart-btn gray-btn"
+      type="button"
+      onclick="clearCatalogSearch()"
+    >
+      ← 대분류 목록으로 돌아가기
+    </button>
+
+    <section class="product-card">
+      <h2>
+        “${escapeHtml(catalogSearch.value.trim())}” 검색 결과
+      </h2>
+
+      <p>
+        총 ${matchedGroups.length}개의 상품 묶음
+      </p>
+    </section>
+
+    <div class="catalog-group-grid">
+      ${matchedGroups.map(group => {
+        const category = categories.find(
+          item => item.id === group.category_id
+        );
+
+        const mainCategory = mainCategories.find(
+          item => item.id === category?.main_category_id
+        );
+
+        return `
+          <button
+            class="catalog-group-card catalog-click-card"
+            type="button"
+            onclick="openGroup(${group.id})"
+          >
+            ${
+              group.image_url
+                ? `
+                  <img
+                    class="catalog-group-image"
+                    src="${escapeAttribute(group.image_url)}"
+                    alt="${escapeAttribute(group.title)}"
+                  >
+                `
+                : `
+                  <div class="catalog-no-image">
+                    등록된 사진 없음
+                  </div>
+                `
+            }
+
+            <h3>${escapeHtml(group.title)}</h3>
+
+            <p class="global-search-path">
+              ${escapeHtml(mainCategory?.name || "대분류 없음")}
+              &gt;
+              ${escapeHtml(category?.name || "카테고리 없음")}
+            </p>
+
+            <p class="catalog-item-numbers">
+              ${(group.item_numbers || [])
+                .map(escapeHtml)
+                .join(", ")}
+            </p>
+
+            <p class="price-text">
+              ${Number(group.price).toLocaleString()}원
+            </p>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function clearCatalogSearch() {
+  catalogSearch.value = "";
+  delete catalogList.dataset.mainCategoryId;
+  renderMainCategories();
+}
+
+window.clearCatalogSearch =
+  clearCatalogSearch;
 
 function renderMainCategoryImage(mainCategory) {
   if (mainCategory.cover_url) {

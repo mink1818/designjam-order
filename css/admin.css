@@ -368,3 +368,78 @@ display:none;
   margin-top: 10px;
   background: #176b3a;
 }
+
+.delete-btn {
+  background: #c62828;
+  color: #fff;
+}
+
+.delete-btn:hover {
+  background: #a91f1f;
+}
+
+.clone-btn {
+  background: #6b46c1;
+  color: white;
+}
+
+.clone-btn:hover {
+  background: #55349d;
+}
+
+.excel-preview-wrap {
+  width: 100%;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.excel-preview-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  background: white;
+}
+
+.excel-preview-table th,
+.excel-preview-table td {
+  padding: 10px;
+  border: 1px solid #ccc;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.excel-preview-table th {
+  background: #24579c;
+  color: white;
+}
+
+.excel-preview-table tbody tr:nth-child(even) {
+  background: #f6f8fb;
+}
+
+.excel-error-list {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #d9534f;
+  border-radius: 10px;
+  background: #fff1f1;
+}
+
+.excel-error-list h3 {
+  margin-top: 0;
+  color: #b52323;
+}
+
+.excel-error-list p {
+  margin: 6px 0;
+  color: #8b1d1d;
+}
+
+.admin-help-text {
+  margin: 8px 0 18px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #244a80;
+  line-height: 1.6;
+}
