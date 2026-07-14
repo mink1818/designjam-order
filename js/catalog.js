@@ -482,16 +482,6 @@ function renderCategoryWithGroups(category) {
       <div class="category-section-heading">
         <div>
           <h2>${escapeHtml(category.name)}</h2>
-
-          ${
-            category.description_text
-              ? `
-                <p class="category-short-description">
-                  ${escapeHtml(category.description_text)}
-                </p>
-              `
-              : ""
-          }
         </div>
 
         <strong class="price-text category-section-price">
@@ -520,6 +510,7 @@ function renderCategoryWithGroups(category) {
 
 function renderGroupCard(group) {
   const soldoutItems = getSoldoutItems(group);
+
   const itemNumbers = Array.isArray(group.item_numbers)
     ? group.item_numbers.map(String)
     : [];
@@ -550,7 +541,30 @@ function renderGroupCard(group) {
           `
       }
 
-      <strong>${escapeHtml(group.title)}</strong>
+      <strong class="group-title">
+        ${escapeHtml(group.title)}
+      </strong>
+
+      ${
+        group.description_text
+          ? `
+            <div class="group-description">
+              ${escapeHtml(group.description_text)}
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        group.brand_text
+          ? `
+            <div class="group-brand">
+              ${escapeHtml(group.brand_text)
+                .replaceAll(",", " · ")}
+            </div>
+          `
+          : ""
+      }
 
       <span class="catalog-item-numbers">
         ${itemNumbers.map(escapeHtml).join(", ")}

@@ -178,3 +178,26 @@ header h1 { margin: 0; }
   .customer-top-menu { grid-template-columns: 1fr; }
   .cart-item { gap: 8px; font-size: 15px; }
 }
+
+.group-title{
+    display:block;
+    margin-top:10px;
+    font-size:18px;
+    font-weight:700;
+}
+
+.group-description{
+    margin-top:6px;
+    font-size:14px;
+    color:#222;
+    font-weight:500;
+    line-height:1.5;
+    white-space:pre-line;
+}
+
+.group-brand{
+    margin-top:4px;
+    font-size:13px;
+    color:#666;
+    line-height:1.5;
+}

@@ -560,6 +560,20 @@ function renderGroupList() {
         </p>
 
         <p>
+  <strong>설명:</strong><br>
+  ${escapeHtml(
+    group.description_text || "-"
+  )}
+</p>
+
+<p>
+  <strong>포함 브랜드:</strong><br>
+  ${escapeHtml(
+    group.brand_text || "-"
+  )}
+</p>
+
+        <p>
           <strong>단가:</strong>
           ${Number(group.price).toLocaleString()}원
         </p>
@@ -1240,6 +1254,19 @@ async function saveGroup() {
   const values = {
   category_id: categoryId,
   title,
+
+  description_text:
+    document
+      .getElementById("groupDescription")
+      .value
+      .trim(),
+
+  brand_text:
+    document
+      .getElementById("groupBrand")
+      .value
+      .trim(),
+
   image_url: imageUrl,
   image_urls: uploadedGroupImageUrls,
   item_numbers: itemNumbers,
@@ -1307,6 +1334,12 @@ function editGroup(id) {
 
   document.getElementById("groupImage").value =
     group.image_url || "";
+
+    document.getElementById("groupDescription").value =
+  group.description_text || "";
+
+document.getElementById("groupBrand").value =
+  group.brand_text || "";
 
     uploadedGroupImageUrls =
   Array.isArray(group.image_urls)
@@ -1476,6 +1509,9 @@ function resetGroupForm() {
   document.getElementById("groupCategory").value = "";
   document.getElementById("groupTitle").value = "";
   document.getElementById("groupImage").value = "";
+document.getElementById("groupDescription").value = "";
+
+document.getElementById("groupBrand").value = "";
   document.getElementById("groupNumbers").value = "";
   document.getElementById("groupPrice").value = "";
   document.getElementById("groupSort").value = "0";
@@ -2163,18 +2199,17 @@ async function registerExcelProducts() {
             error: categoryError
           } = await supabaseClient
             .from("product_categories")
-            .insert({
-              main_category_id:
-                mainCategory.id,
-              name: categoryName,
-              description_text:
-                descriptionText,
-              price,
-              tags: brandTags,
-              cover_url: imageUrl,
-              sort_order: sortOrder,
-              is_active: true
-            })
+.insert({
+  main_category_id:
+    mainCategory.id,
+  name: categoryName,
+  description_text: "",
+  price,
+  tags: brandTags,
+  cover_url: imageUrl,
+  sort_order: sortOrder,
+  is_active: true
+})
             .select()
             .single();
 
@@ -2199,14 +2234,6 @@ async function registerExcelProducts() {
           const updateValues = {
             tags: updatedTags
           };
-
-          if (
-            !category.description_text &&
-            descriptionText
-          ) {
-            updateValues.description_text =
-              descriptionText;
-          }
 
           await supabaseClient
             .from("product_categories")
@@ -2237,6 +2264,10 @@ async function registerExcelProducts() {
           .insert({
             category_id: category.id,
             title: groupTitle,
+            
+            description_text: descriptionText,
+brand_text: brandText,
+
             image_url: imageUrl,
             image_urls: [],
             item_numbers: itemNumbers,
