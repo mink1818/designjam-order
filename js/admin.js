@@ -1,6 +1,16 @@
 const ADMIN_SESSION_KEY = "designjam_admin_session";
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
 
+const DESIGNJAM_ADMIN_EMAILS = new Set([
+  "900smk@naver.com",
+  "sm0727sm@hanmail.net",
+  "p1028p@naver.com"
+]);
+
+function isDesignjamAdminEmail(email) {
+  return DESIGNJAM_ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
+}
+
 async function adminLogin() {
   const email = document.getElementById("adminEmail").value.trim();
   const password = document.getElementById("adminPassword").value;
@@ -33,12 +43,10 @@ async function adminLogin() {
       .eq("id", data.user.id)
       .single();
 
-  if (
-    customerError ||
-    !customer ||
-    !customer.is_admin ||
-    customer.blocked
-  ) {
+  const emailAllowed = isDesignjamAdminEmail(data.user.email);
+  const databaseAllowed = !customerError && customer?.is_admin === true && customer?.blocked !== true;
+
+  if (!emailAllowed && !databaseAllowed) {
     await supabaseClient.auth.signOut();
 
     messageBox.innerHTML = `
@@ -418,7 +426,10 @@ async function initializeAdminPage() {
     .eq("id", user.id)
     .single();
 
-  if (!customer?.is_admin || customer.blocked) {
+  const emailAllowed = isDesignjamAdminEmail(user.email);
+  const databaseAllowed = customer?.is_admin === true && customer?.blocked !== true;
+
+  if (!emailAllowed && !databaseAllowed) {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     await supabaseClient.auth.signOut();
     document.getElementById("loginBox").style.display = "block";

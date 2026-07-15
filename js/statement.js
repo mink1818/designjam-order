@@ -11,6 +11,17 @@ const supabaseClient = window.supabase.createClient(
 
 const ADMIN_SESSION_KEY = "designjam_admin_session";
 
+const DESIGNJAM_ADMIN_EMAILS = new Set([
+  "900smk@naver.com",
+  "sm0727sm@hanmail.net",
+  "p1028p@naver.com"
+]);
+
+function isDesignjamAdminEmail(email) {
+  return DESIGNJAM_ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
+}
+
+
 const statementArea =
   document.getElementById("statementArea");
 
@@ -51,12 +62,10 @@ async function checkAdminAccess() {
       .eq("id", user.id)
       .single();
 
-  if (
-    customerError ||
-    !customer ||
-    !customer.is_admin ||
-    customer.blocked
-  ) {
+  const emailAllowed = isDesignjamAdminEmail(user.email);
+  const databaseAllowed = !customerError && customer?.is_admin === true && customer?.blocked !== true;
+
+  if (!emailAllowed && !databaseAllowed) {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     await supabaseClient.auth.signOut();
     location.replace("admin.html");
