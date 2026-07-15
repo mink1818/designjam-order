@@ -278,28 +278,60 @@ function sameId(left, right) {
   return String(left ?? "") === String(right ?? "");
 }
 
-function buildGroupSearchText(group) {
-  const category = categories.find(item => sameId(item.id, group.category_id));
-  const mainCategory = mainCategories.find(item =>
-    sameId(item.id, category?.main_category_id ?? group.main_category_id)
-  );
+function flattenSearchValues(value, result = []) {
+  if (value === null || value === undefined) return result;
 
+  if (Array.isArray(value)) {
+    value.forEach(item => flattenSearchValues(item, result));
+    return result;
+  }
+
+  if (typeof value === "object") {
+    Object.entries(value).forEach(([key, item]) => {
+      // 이미지 URL이나 시스템 날짜처럼 검색에 의미 없는 값은 제외합니다.
+      if (/url|created_at|updated_at/i.test(key)) return;
+      flattenSearchValues(item, result);
+    });
+    return result;
+  }
+
+  result.push(String(value));
+  return result;
+}
+
+function resolveGroupCategory(group) {
+  return categories.find(item => sameId(item.id, group.category_id)) || null;
+}
+
+function resolveGroupMainCategory(group, category = resolveGroupCategory(group)) {
+  const possibleMainCategoryIds = [
+    category?.main_category_id,
+    category?.mainCategoryId,
+    group.main_category_id,
+    group.mainCategoryId
+  ].filter(value => value !== null && value !== undefined && value !== "");
+
+  for (const mainCategoryId of possibleMainCategoryIds) {
+    const found = mainCategories.find(item => sameId(item.id, mainCategoryId));
+    if (found) return found;
+  }
+
+  return null;
+}
+
+function buildGroupSearchText(group) {
+  const category = resolveGroupCategory(group);
+  const mainCategory = resolveGroupMainCategory(group, category);
+
+  // 특정 필드뿐 아니라 대분류·카테고리·상품 묶음의 텍스트 필드를
+  // 함께 합쳐 브랜드명이 어느 단계에 저장돼 있어도 검색되게 합니다.
   const values = [
-    mainCategory?.name,
-    mainCategory?.brand_name,
-    category?.name,
-    category?.brand_name,
-    category?.description_text,
-    ...(Array.isArray(category?.tags) ? category.tags : []),
-    group.title,
-    group.brand_name,
-    group.product_name,
-    group.description_text,
-    ...(Array.isArray(group.search_tags) ? group.search_tags : []),
-    ...(Array.isArray(group.item_numbers) ? group.item_numbers : [])
+    ...flattenSearchValues(mainCategory),
+    ...flattenSearchValues(category),
+    ...flattenSearchValues(group)
   ];
 
-  return normalizeSearch(values.filter(Boolean).join(" "));
+  return normalizeSearch(values.join(" "));
 }
 
 /* 브랜드·카테고리·품번 전체 검색 */
@@ -1382,8 +1414,11 @@ function hideLegacyFilters() {
 
 function normalizeSearch(value) {
   return String(value || "")
+    .normalize("NFKC")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    // "언더 아머"와 "언더아머", 하이픈·특수문자 차이를 같은 검색어로 처리합니다.
+    .replace(/[\s\-_./·,()\[\]{}]+/g, "");
 }
 
 function formatWon(value) {
