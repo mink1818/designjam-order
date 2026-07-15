@@ -1,49 +1,67 @@
 const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
 const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
 
-const supabaseClient = window.supabase.createClient(
-  supabaseUrl,
-  supabaseKey
-);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-const orderResult = document.getElementById("orderResult");
+const activeOrderResult = document.getElementById("activeOrderResult");
+const completedOrderResult = document.getElementById("completedOrderResult");
+const completedPeriod = document.getElementById("completedPeriod");
+let myOrderGroups = [];
+
+completedPeriod?.addEventListener("change", renderMyOrders);
 
 async function loadMyOrders() {
-  orderResult.innerHTML = "<p>내 주문을 불러오는 중...</p>";
+  activeOrderResult.innerHTML = "<p>내 주문을 불러오는 중...</p>";
+  completedOrderResult.innerHTML = "";
 
-  const {
-    data: { user },
-    error: userError
-  } = await supabaseClient.auth.getUser();
-
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
   if (userError || !user) {
     location.href = "login.html";
     return;
   }
 
-  const { data, error } = await supabaseClient
+  const { data: customer, error: customerError } = await supabaseClient
+    .from("customers")
+    .select("business_name")
+    .eq("id", user.id)
+    .single();
+
+  if (customerError || !customer) {
+    activeOrderResult.innerHTML = "<p>거래처 정보를 불러오지 못했습니다.</p>";
+    return;
+  }
+
+  const { data: idOrders, error: idOrderError } = await supabaseClient
     .from("orders")
     .select("*")
     .eq("customer_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    orderResult.innerHTML = `<p>조회 실패: ${error.message}</p>`;
+  if (idOrderError) {
+    activeOrderResult.innerHTML = `<p>조회 실패: ${escapeHtml(idOrderError.message)}</p>`;
     return;
   }
 
-  if (!data || data.length === 0) {
-    orderResult.innerHTML = `
-      <div class="product-card">
-        <h2>주문 내역이 없습니다</h2>
-      </div>
-    `;
-    return;
+  let legacyOrders = [];
+  if (customer.business_name) {
+    const { data: nameOrders, error: nameOrderError } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .eq("customer_name", customer.business_name)
+      .order("created_at", { ascending: false });
+
+    if (!nameOrderError) legacyOrders = nameOrders || [];
   }
+
+  const uniqueRows = new Map();
+  [...(idOrders || []), ...legacyOrders].forEach(row => {
+    const key = row.id || [row.order_number, row.item_number, row.created_at].join("|");
+    uniqueRows.set(key, row);
+  });
+  const data = [...uniqueRows.values()];
 
   const grouped = {};
-
-  data.forEach(order => {
+  (data || []).forEach(order => {
     if (!grouped[order.order_number]) {
       grouped[order.order_number] = {
         orderNumber: order.order_number,
@@ -57,106 +75,133 @@ async function loadMyOrders() {
         items: []
       };
     }
-
     grouped[order.order_number].items.push(order);
+
+    if (order.status === "출고완료") {
+      grouped[order.order_number].status = "출고완료";
+    } else if (grouped[order.order_number].status !== "출고완료" && order.status) {
+      grouped[order.order_number].status = order.status;
+    }
+
+    if (new Date(order.created_at) > new Date(grouped[order.order_number].createdAt)) {
+      grouped[order.order_number].createdAt = order.created_at;
+    }
   });
 
-  renderOrders(Object.values(grouped));
+  myOrderGroups = Object.values(grouped).sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  renderMyOrders();
 }
 
-function renderOrders(groups) {
-  let html = "";
+function renderMyOrders() {
+  const activeGroups = myOrderGroups.filter(group => group.status !== "출고완료");
+  const completedGroups = myOrderGroups.filter(group =>
+    group.status === "출고완료" && isWithinPeriod(group.createdAt)
+  );
 
-  groups.forEach(group => {
-    let itemHtml = "";
-    let qtyTotal = 0;
-    let productTotal = 0;
+  activeOrderResult.innerHTML = activeGroups.length
+    ? `<h2 class="order-section-title">진행 중 주문</h2>${activeGroups.map(renderFullOrder).join("")}`
+    : `<div class="product-card empty-order-card"><h2>진행 중인 주문이 없습니다</h2></div>`;
 
-    group.items.forEach(item => {
-      const isSoldout = item.is_soldout;
-      const rowTotal = item.price * item.qty * 10;
+  completedOrderResult.innerHTML = completedGroups.length
+    ? completedGroups.map(renderCompletedOrder).join("")
+    : `<div class="product-card empty-order-card"><p>선택한 기간의 출고완료 주문이 없습니다.</p></div>`;
+}
 
-      if (!isSoldout) {
-        qtyTotal += item.qty;
-        productTotal += rowTotal;
-      }
+function isWithinPeriod(createdAt) {
+  const value = completedPeriod?.value || "90";
+  if (value === "all") return true;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - Number(value));
+  return created >= cutoff;
+}
 
-      itemHtml += `
-        <div class="cart-item ${isSoldout ? "soldout-item" : ""}">
-          <strong>
-            ${item.item_number}${isSoldout ? " 품절" : ""}
-          </strong>
-          <span>${item.qty}개</span>
-          <span>
-            ${isSoldout ? "-" : rowTotal.toLocaleString() + "원"}
-          </span>
-        </div>
-      `;
-    });
+function getOrderSummary(group) {
+  let qtyTotal = 0;
+  let productTotal = 0;
+  const itemRows = group.items.map(item => {
+    const isSoldout = item.is_soldout;
+    const rowTotal = item.price * item.qty * 10;
+    if (!isSoldout) {
+      qtyTotal += item.qty;
+      productTotal += rowTotal;
+    }
+    return `<div class="cart-item ${isSoldout ? "soldout-item" : ""}">
+      <strong>${escapeHtml(item.item_number)}${isSoldout ? " 품절" : ""}</strong>
+      <span>${item.qty}개</span>
+      <span>${isSoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
+    </div>`;
+  }).join("");
 
-    const finalTotal =
-      productTotal + Number(group.shippingFee || 0);
+  return {
+    qtyTotal,
+    productTotal,
+    finalTotal: productTotal + Number(group.shippingFee || 0),
+    itemRows
+  };
+}
 
-    html += `
-      <div class="product-card">
-        <h2>${group.customerName}</h2>
+function renderFullOrder(group) {
+  const summary = getOrderSummary(group);
+  return `<div class="product-card order-history-card">
+    <h2>${escapeHtml(group.customerName || "거래처")}</h2>
+    <p><strong>주문일:</strong> ${formatDate(group.createdAt)}</p>
+    <p><strong>주문번호:</strong> ${escapeHtml(group.orderNumber)}</p>
+    <p><strong>상태:</strong> ${escapeHtml(group.status)}</p>
+    <p><strong>메모:</strong> ${escapeHtml(group.memo || "")}</p>
+    ${summary.itemRows}
+    <hr>
+    <h3>출고수량: ${summary.qtyTotal}개</h3>
+    <p><strong>상품금액:</strong> ${summary.productTotal.toLocaleString()}원</p>
+    <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
+    <h2 class="price-text">최종금액: ${summary.finalTotal.toLocaleString()}원</h2>
+    <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
+  </div>`;
+}
 
-        <p>
-          <strong>주문번호:</strong>
-          ${group.orderNumber}
-        </p>
+function renderCompletedOrder(group) {
+  const summary = getOrderSummary(group);
+  const id = `completed-${String(group.orderNumber).replace(/[^a-zA-Z0-9가-힣_-]/g, "-")}`;
+  return `<article class="completed-order-row">
+    <button class="completed-order-summary" type="button" onclick="toggleCompletedOrder('${id}')">
+      <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
+      <span>${summary.qtyTotal}개</span>
+      <span>${summary.finalTotal.toLocaleString()}원</span>
+      <span class="completed-toggle">상세보기 ▼</span>
+    </button>
+    <div id="${id}" class="completed-order-detail">
+      ${summary.itemRows}
+      <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
+      <p><strong>택배사:</strong> ${escapeHtml(group.courier)}</p>
+      <p><strong>송장번호:</strong> ${escapeHtml(group.trackingNumber || "입력 전")}</p>
+      ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
+    </div>
+  </article>`;
+}
 
-        <p>
-          <strong>상태:</strong>
-          ${group.status}
-        </p>
+function toggleCompletedOrder(id) {
+  const detail = document.getElementById(id);
+  if (!detail) return;
+  detail.classList.toggle("open");
+}
 
-        <p>
-          <strong>메모:</strong>
-          ${group.memo || ""}
-        </p>
+function formatDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+}
 
-        ${itemHtml}
-
-        <hr>
-
-        <h3>출고수량: ${qtyTotal}개</h3>
-
-        <p>
-          <strong>상품금액:</strong>
-          ${productTotal.toLocaleString()}원
-        </p>
-
-        <p>
-          <strong>배송비:</strong>
-          ${Number(group.shippingFee).toLocaleString()}원
-        </p>
-
-        <h2 class="price-text">
-          최종금액: ${finalTotal.toLocaleString()}원
-        </h2>
-
-        ${
-          group.status === "출고완료"
-            ? `
-              <p><strong>택배사:</strong> ${group.courier}</p>
-              <p>
-                <strong>송장번호:</strong>
-                ${group.trackingNumber || "입력 전"}
-              </p>
-            `
-            : `
-              <p>
-                <strong>배송정보:</strong>
-                출고 준비 중입니다
-              </p>
-            `
-        }
-      </div>
-    `;
-  });
-
-  orderResult.innerHTML = html;
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 loadMyOrders();

@@ -24,6 +24,50 @@ let currentUser = null;
 let currentCustomer = null;
 
 /* ================================
+   거래처별 장바구니 영구 저장
+================================ */
+
+function getCartStorageKey() {
+  return currentUser?.id
+    ? `designjam_cart_${currentUser.id}`
+    : null;
+}
+
+function loadSavedCart() {
+  const key = getCartStorageKey();
+  if (!key) return;
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || "[]");
+    cart = Array.isArray(saved)
+      ? saved.filter(item => item && item.number && Number(item.qty) > 0)
+      : [];
+  } catch (error) {
+    console.warn("장바구니 복원 실패", error);
+    cart = [];
+  }
+}
+
+function saveCart() {
+  const key = getCartStorageKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(cart));
+}
+
+function clearSavedCart() {
+  const key = getCartStorageKey();
+  if (key) localStorage.removeItem(key);
+}
+
+function getCartItemImage(item) {
+  if (item.imageUrl) return item.imageUrl;
+  const group = groups.find(groupItem =>
+    Number(groupItem.id) === Number(item.groupId)
+  );
+  return group?.image_url || "";
+}
+
+/* ================================
    공통 이벤트
 ================================ */
 
@@ -842,7 +886,8 @@ function addGroupToCart(groupId, nextAction = "cart") {
           title: group.title,
           number,
           qty,
-          price: Number(group.price)
+          price: Number(group.price),
+          imageUrl: group.image_url || ""
         });
       }
 
@@ -854,6 +899,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
     return;
   }
 
+  saveCart();
   alert(`${addedQty}개가 장바구니에 담겼습니다.`);
 
   if (nextAction === "order") {
@@ -897,16 +943,34 @@ function renderCart() {
       totalQty += Number(item.qty);
       totalPrice += itemTotal;
 
+      const imageUrl = getCartItemImage(item);
+
       return `
-        <div class="cart-item">
-          <div>
-            <strong>${escapeHtml(item.number)}</strong>
-            <small>${escapeHtml(item.title)}</small>
+        <div class="cart-item cart-edit-item">
+          <div class="cart-product-info">
+            ${imageUrl
+              ? `<img class="cart-thumb" src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(item.title)}">`
+              : `<div class="cart-thumb cart-thumb-empty">사진 없음</div>`
+            }
+            <div>
+              <strong>${escapeHtml(item.number)}</strong>
+              <small>${escapeHtml(item.title)}</small>
+            </div>
           </div>
 
-          <span>${Number(item.qty).toLocaleString()}개</span>
+          <div class="cart-qty-editor" aria-label="${escapeAttribute(item.number)} 수량 수정">
+            <button type="button" onclick="changeCartQty(${index}, -1)">−</button>
+            <input
+              type="number"
+              min="1"
+              value="${Number(item.qty)}"
+              onchange="setCartQty(${index}, this.value)"
+              inputmode="numeric"
+            >
+            <button type="button" onclick="changeCartQty(${index}, 1)">＋</button>
+          </div>
 
-          <span>${itemTotal.toLocaleString()}원</span>
+          <strong class="cart-line-total">${itemTotal.toLocaleString()}원</strong>
 
           <button
             class="cart-remove-button"
@@ -964,6 +1028,23 @@ function continueShopping() {
 
 function removeCartItem(index) {
   cart.splice(index, 1);
+  saveCart();
+  renderCart();
+}
+
+function setCartQty(index, value) {
+  const qty = Math.max(1, Math.floor(Number(value) || 1));
+  if (!cart[index]) return;
+  cart[index].qty = qty;
+  saveCart();
+  renderCart();
+}
+
+function changeCartQty(index, change) {
+  if (!cart[index]) return;
+  const nextQty = Math.max(1, Number(cart[index].qty || 1) + Number(change || 0));
+  cart[index].qty = nextQty;
+  saveCart();
   renderCart();
 }
 
@@ -1148,6 +1229,7 @@ async function submitOrder() {
   `;
 
   cart = [];
+  clearSavedCart();
 }
 
 function resetOrder() {
@@ -1324,6 +1406,7 @@ async function startCatalogPage() {
   const allowed = await checkCustomerAccess();
   if (!allowed) return;
 
+  loadSavedCart();
   await loadCatalog();
 }
 
@@ -1339,6 +1422,8 @@ window.addGroupToCart = addGroupToCart;
 window.renderCart = renderCart;
 window.continueShopping = continueShopping;
 window.removeCartItem = removeCartItem;
+window.setCartQty = setCartQty;
+window.changeCartQty = changeCartQty;
 window.showOrderForm = showOrderForm;
 window.submitOrder = submitOrder;
 window.resetOrder = resetOrder;
