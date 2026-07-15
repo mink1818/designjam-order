@@ -764,3 +764,6 @@ button {
   .completed-toolbar { align-items: stretch; }
   .completed-toolbar label, .completed-toolbar select, .completed-toolbar span { width: 100%; }
 }
+
+body.auth-pending { visibility: hidden; }
+body.auth-pending.auth-ready { visibility: visible; }

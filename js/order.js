@@ -7,6 +7,7 @@ const activeOrderResult = document.getElementById("activeOrderResult");
 const completedOrderResult = document.getElementById("completedOrderResult");
 const completedPeriod = document.getElementById("completedPeriod");
 let myOrderGroups = [];
+const CUSTOMER_SESSION_KEY = "designjam_customer_session";
 
 completedPeriod?.addEventListener("change", renderMyOrders);
 
@@ -15,10 +16,15 @@ async function loadMyOrders() {
   completedOrderResult.innerHTML = "";
 
   const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-  if (userError || !user) {
-    location.href = "login.html";
+  const sessionUserId = sessionStorage.getItem(CUSTOMER_SESSION_KEY);
+  if (userError || !user || sessionUserId !== user.id) {
+    sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
+    if (user) await supabaseClient.auth.signOut();
+    location.replace("login.html");
     return;
   }
+
+  document.body.classList.add("auth-ready");
 
   const { data: customer, error: customerError } = await supabaseClient
     .from("customers")

@@ -1,3 +1,6 @@
+const ADMIN_SESSION_KEY = "designjam_admin_session";
+const CUSTOMER_SESSION_KEY = "designjam_customer_session";
+
 async function adminLogin() {
   const email = document.getElementById("adminEmail").value.trim();
   const password = document.getElementById("adminPassword").value;
@@ -46,6 +49,8 @@ async function adminLogin() {
     return;
   }
 
+  sessionStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
+  sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("adminContent").style.display = "block";
 
@@ -54,6 +59,7 @@ async function adminLogin() {
 
 const adminOrders = document.getElementById("adminOrders");
 const adminSearch = document.getElementById("adminSearch");
+const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 
 let adminFilter = "전체";
 
@@ -115,6 +121,10 @@ tracking_number: order.tracking_number || "",
     .filter(group => {
       if (adminFilter !== "전체" && group.status !== adminFilter) return false;
 
+      if (group.status === "출고완료" && !isWithinCompletedPeriod(group.createdAt)) {
+        return false;
+      }
+
       if (!keyword) return true;
 
       const itemText = group.items.map(item => item.item_number).join(" ");
@@ -137,6 +147,27 @@ tracking_number: order.tracking_number || "",
     });
 
   renderOrderCards(filteredGroups);
+}
+
+function isWithinCompletedPeriod(createdAt) {
+  const value = adminCompletedPeriod?.value || "30";
+  if (value === "all") return true;
+
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return true;
+
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - Number(value));
+  return created >= cutoff;
+}
+
+function formatOrderDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric", month: "2-digit", day: "2-digit"
+  });
 }
 
 function renderOrderCards(groups) {
@@ -185,7 +216,7 @@ summaryTotal += Number(group.shipping_fee || 0);
                 <div class="order-header" onclick="toggleDetail('detail-${index}')">
   <div>
     <h2>${group.customerName || "거래처 미입력"}</h2>
-    <p class="order-summary-number">${group.orderNumber}</p>
+    <p class="order-summary-number">${group.orderNumber} · ${formatOrderDate(group.createdAt)}</p>
     <p class="order-summary-money">출고수량 ${summaryQty}개 / ${summaryTotal.toLocaleString()}원</p>
   </div>
 
@@ -363,3 +394,36 @@ function openStatement(orderNumber) {
 
   window.open(url, "_blank");
 }
+
+async function initializeAdminPage() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
+
+  if (!user || sessionUserId !== user.id) {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    if (user) await supabaseClient.auth.signOut();
+    document.getElementById("loginBox").style.display = "block";
+    document.getElementById("adminContent").style.display = "none";
+    return;
+  }
+
+  const { data: customer } = await supabaseClient
+    .from("customers")
+    .select("is_admin, blocked")
+    .eq("id", user.id)
+    .single();
+
+  if (!customer?.is_admin || customer.blocked) {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    await supabaseClient.auth.signOut();
+    document.getElementById("loginBox").style.display = "block";
+    document.getElementById("adminContent").style.display = "none";
+    return;
+  }
+
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("adminContent").style.display = "block";
+  loadOrders();
+}
+
+initializeAdminPage();

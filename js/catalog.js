@@ -23,6 +23,8 @@ let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
 
+const CUSTOMER_SESSION_KEY = "designjam_customer_session";
+
 /* ================================
    거래처별 장바구니 영구 저장
 ================================ */
@@ -107,8 +109,12 @@ async function checkCustomerAccess() {
     error: userError
   } = await supabaseClient.auth.getUser();
 
-  if (userError || !user) {
-    location.href = "login.html";
+  const sessionUserId = sessionStorage.getItem(CUSTOMER_SESSION_KEY);
+
+  if (userError || !user || sessionUserId !== user.id) {
+    sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
+    if (user) await supabaseClient.auth.signOut();
+    location.replace("login.html");
     return false;
   }
 
@@ -141,6 +147,7 @@ async function checkCustomerAccess() {
 
   currentUser = user;
   currentCustomer = customer;
+  document.body.classList.add("auth-ready");
   return true;
 }
 
@@ -262,6 +269,34 @@ function renderMainCategories() {
   `;
 }
 
+function sameId(left, right) {
+  return String(left ?? "") === String(right ?? "");
+}
+
+function buildGroupSearchText(group) {
+  const category = categories.find(item => sameId(item.id, group.category_id));
+  const mainCategory = mainCategories.find(item =>
+    sameId(item.id, category?.main_category_id ?? group.main_category_id)
+  );
+
+  const values = [
+    mainCategory?.name,
+    mainCategory?.brand_name,
+    category?.name,
+    category?.brand_name,
+    category?.description_text,
+    ...(Array.isArray(category?.tags) ? category.tags : []),
+    group.title,
+    group.brand_name,
+    group.product_name,
+    group.description_text,
+    ...(Array.isArray(group.search_tags) ? group.search_tags : []),
+    ...(Array.isArray(group.item_numbers) ? group.item_numbers : [])
+  ];
+
+  return normalizeSearch(values.filter(Boolean).join(" "));
+}
+
 /* 브랜드·카테고리·품번 전체 검색 */
 function renderGlobalSearchResults() {
   const keyword =
@@ -273,28 +308,9 @@ function renderGlobalSearchResults() {
 
   catalogFilters.style.display = "none";
 
-  const matchedGroups = groups.filter(group => {
-    const category = categories.find(
-      item => item.id === group.category_id
-    );
-
-    const mainCategory = mainCategories.find(
-      item => item.id === category?.main_category_id
-    );
-
-    const searchableText = [
-      mainCategory?.name || "",
-      category?.name || "",
-      category?.description_text || "",
-      ...(category?.tags || []),
-      group.title || "",
-      ...(group.item_numbers || [])
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    return searchableText.includes(keyword);
-  });
+  const matchedGroups = groups.filter(group =>
+    buildGroupSearchText(group).includes(normalizeSearch(keyword))
+  );
 
   if (matchedGroups.length === 0) {
     catalogList.innerHTML = `
@@ -342,11 +358,11 @@ function renderGlobalSearchResults() {
     <div class="catalog-group-grid">
       ${matchedGroups.map(group => {
         const category = categories.find(
-          item => item.id === group.category_id
+          item => sameId(item.id, group.category_id)
         );
 
         const mainCategory = mainCategories.find(
-          item => item.id === category?.main_category_id
+          item => sameId(item.id, category?.main_category_id ?? group.main_category_id)
         );
 
         return `
@@ -949,7 +965,7 @@ function renderCart() {
         <div class="cart-item cart-edit-item">
           <div class="cart-product-info">
             ${imageUrl
-              ? `<img class="cart-thumb" src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(item.title)}">`
+              ? `<button class="cart-thumb-button" type="button" onclick="openCartImagePreview('${escapeJsString(imageUrl)}', '${escapeJsString(item.title)}')" aria-label="${escapeAttribute(item.title)} 사진 크게 보기"><img class="cart-thumb" src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(item.title)}"></button>`
               : `<div class="cart-thumb cart-thumb-empty">사진 없음</div>`
             }
             <div>
@@ -1390,6 +1406,41 @@ function escapeJsString(value) {
     .replaceAll("\r", "\\r");
 }
 
+function openCartImagePreview(imageUrl, title = "상품 사진") {
+  let modal = document.getElementById("cartImagePreviewModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "cartImagePreviewModal";
+    modal.className = "image-preview-modal";
+    modal.innerHTML = `
+      <button class="image-preview-backdrop" type="button" aria-label="사진 닫기"></button>
+      <div class="image-preview-dialog" role="dialog" aria-modal="true">
+        <button class="image-preview-close" type="button" aria-label="닫기">×</button>
+        <img class="image-preview-large" alt="">
+        <p class="image-preview-title"></p>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector(".image-preview-backdrop").addEventListener("click", closeCartImagePreview);
+    modal.querySelector(".image-preview-close").addEventListener("click", closeCartImagePreview);
+  }
+
+  modal.querySelector(".image-preview-large").src = imageUrl;
+  modal.querySelector(".image-preview-large").alt = title;
+  modal.querySelector(".image-preview-title").textContent = title;
+  modal.classList.add("open");
+  document.body.classList.add("modal-open");
+}
+
+function closeCartImagePreview() {
+  document.getElementById("cartImagePreviewModal")?.classList.remove("open");
+  document.body.classList.remove("modal-open");
+}
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeCartImagePreview();
+});
+
 /* ================================
    로그아웃 및 시작
 ================================ */
@@ -1398,8 +1449,9 @@ async function customerLogout() {
   const confirmed = confirm("로그아웃할까요?");
   if (!confirmed) return;
 
+  sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
   await supabaseClient.auth.signOut();
-  location.href = "login.html";
+  location.replace("login.html");
 }
 
 async function startCatalogPage() {
@@ -1429,5 +1481,7 @@ window.submitOrder = submitOrder;
 window.resetOrder = resetOrder;
 window.moveProductSlider = moveProductSlider;
 window.customerLogout = customerLogout;
+window.openCartImagePreview = openCartImagePreview;
+window.closeCartImagePreview = closeCartImagePreview;
 
 startCatalogPage();

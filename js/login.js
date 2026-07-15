@@ -18,6 +18,9 @@ const loginMessage =
 const loginPhoneInput =
   document.getElementById("loginPhone");
 
+const CUSTOMER_SESSION_KEY = "designjam_customer_session";
+const ADMIN_SESSION_KEY = "designjam_admin_session";
+
 loginButton.addEventListener(
   "click",
   loginCustomer
@@ -148,7 +151,9 @@ async function loginCustomer() {
       return;
     }
 
-    location.href = "index.html";
+    sessionStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    location.replace("index.html");
 
   } catch (error) {
     loginMessage.innerHTML = `

@@ -23,6 +23,8 @@ memberSearch.addEventListener(
   renderFilteredCustomers
 );
 
+const ADMIN_SESSION_KEY = "designjam_admin_session";
+
 /* 관리자 권한 확인 */
 async function checkAdminAccess() {
   const {
@@ -30,8 +32,12 @@ async function checkAdminAccess() {
     error: userError
   } = await supabaseClient.auth.getUser();
 
-  if (userError || !user) {
-    location.href = "admin.html";
+  const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
+
+  if (userError || !user || sessionUserId !== user.id) {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    if (user) await supabaseClient.auth.signOut();
+    location.replace("admin.html");
     return false;
   }
 
@@ -53,6 +59,7 @@ async function checkAdminAccess() {
     return false;
   }
 
+  document.body.classList.add("auth-ready");
   return true;
 }
 
