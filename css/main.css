@@ -353,3 +353,73 @@ body.modal-open { overflow: hidden; }
 
 body.auth-pending { visibility: hidden; }
 body.auth-pending.auth-ready { visibility: visible; }
+
+
+/* ===== V2 현재 로그인 정보 ===== */
+.session-status {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 9px 10px 9px 12px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 16px;
+  background: rgba(18, 32, 56, .94);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  backdrop-filter: blur(10px);
+}
+.session-status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 999px;
+  background: #47d16c;
+  box-shadow: 0 0 0 4px rgba(71,209,108,.17);
+}
+.session-status-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.session-status-text strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.session-status-text span {
+  max-width: 180px;
+  overflow: hidden;
+  color: rgba(255,255,255,.82);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-status-logout {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.session-status-logout:hover { background: rgba(255,255,255,.25); }
+.session-status-customer { background: rgba(31, 78, 145, .96); }
+
+@media (max-width: 680px) {
+  .session-status {
+    top: 8px;
+    right: 8px;
+    padding: 7px 8px 7px 10px;
+    border-radius: 13px;
+  }
+  .session-status-text span { max-width: 105px; }
+  .session-status-logout { padding: 6px 8px; font-size: 11px; }
+}
+

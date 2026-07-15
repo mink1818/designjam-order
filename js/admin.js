@@ -51,10 +51,9 @@ async function adminLogin() {
 
   sessionStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
   sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("adminContent").style.display = "block";
 
-  loadOrders();
+  // 관리자 로그인 성공 시 전체 관리자 메뉴로 이동
+  location.replace("admin-home.html");
 }
 
 const adminOrders = document.getElementById("adminOrders");

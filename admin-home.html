@@ -14,7 +14,7 @@ content="width=device-width, initial-scale=1">
 
 </head>
 
-<body class="auth-pending">
+<body class="auth-pending" data-session-page="admin">
 
 <header>
 
@@ -26,6 +26,14 @@ content="width=device-width, initial-scale=1">
 
 <main class="container">
 
+<section class="admin-welcome-card">
+  <div>
+    <h2>관리자 전체 메뉴</h2>
+    <p>주문·상품·회원·거래처 업무를 선택하세요.</p>
+  </div>
+</section>
+
+<div class="admin-menu-grid">
 <button class="cart-btn"
 onclick="location.href='admin.html'">
 
@@ -60,11 +68,17 @@ onclick="location.href='stats.html'">
 📈 통계
 
 </button>
+</div>
+
+<button class="cart-btn admin-logout-main" type="button" onclick="window.designjamSession?.logout()">
+  로그아웃
+</button>
 
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/admin-home.js"></script>
+<script src="js/session-status.js"></script>
 </body>
 
 </html>

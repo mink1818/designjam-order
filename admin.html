@@ -6,7 +6,7 @@
   <title>주문관리</title>
   <link rel="stylesheet" href="css/admin.css">
 </head>
-<body>
+<body data-session-page="admin">
 
 <header>
   <h1>🧦 주문관리</h1>
@@ -41,6 +41,11 @@
 </div>
 
 <div id="adminContent" style="display:none;">
+  <div class="admin-page-actions">
+    <button class="cart-btn gray-btn" type="button" onclick="location.href='admin-home.html'">
+      ← 관리자 전체 메뉴
+    </button>
+  </div>
   <div class="dashboard">
     <div><strong id="totalCount">0</strong><span>전체</span></div>
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
@@ -78,6 +83,7 @@
 <script src="js/admin-data.js"></script>
 <script src="js/admin-ui.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/session-status.js"></script>
 
 </body>
 </html>
