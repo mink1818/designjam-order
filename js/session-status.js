@@ -24,7 +24,19 @@
       .replaceAll("'", "&#039;");
   }
 
+  function ensureStyles() {
+    if (document.getElementById("designjamSessionStatusStyles")) return;
+    const style = document.createElement("style");
+    style.id = "designjamSessionStatusStyles";
+    style.textContent = `
+      .session-status{position:fixed!important;top:10px!important;right:10px!important;z-index:2147483647!important;display:flex!important;align-items:center!important;gap:8px!important;max-width:calc(100vw - 20px)!important;padding:8px 9px 8px 11px!important;border:1px solid rgba(255,255,255,.3)!important;border-radius:14px!important;background:rgba(18,32,56,.96)!important;color:#fff!important;box-shadow:0 8px 24px rgba(0,0,0,.22)!important;font-family:Arial,sans-serif!important}
+      .session-status-customer{background:rgba(31,78,145,.97)!important}.session-status-dot{width:9px!important;height:9px!important;flex:0 0 9px!important;border-radius:50%!important;background:#47d16c!important;box-shadow:0 0 0 4px rgba(71,209,108,.17)!important}.session-status-text{min-width:0!important;display:flex!important;flex-direction:column!important;line-height:1.2!important}.session-status-text strong{font-size:12px!important;color:#fff!important;white-space:nowrap!important}.session-status-text span{max-width:170px!important;overflow:hidden!important;color:rgba(255,255,255,.85)!important;font-size:11px!important;text-overflow:ellipsis!important;white-space:nowrap!important}.session-status-logout{flex:0 0 auto!important;padding:7px 9px!important;border:0!important;border-radius:9px!important;background:rgba(255,255,255,.18)!important;color:#fff!important;font-size:12px!important;font-weight:700!important;cursor:pointer!important}@media(max-width:680px){.session-status{top:6px!important;right:6px!important;padding:7px 8px!important}.session-status-text span{max-width:100px!important}}
+    `;
+    document.head.appendChild(style);
+  }
+
   function createStatusBar({ role, title, detail }) {
+    ensureStyles();
     document.getElementById("designjamSessionStatus")?.remove();
 
     const box = document.createElement("aside");
@@ -64,6 +76,7 @@
   }
 
   async function render() {
+    try {
     const expectedRole = document.body.dataset.sessionPage;
     if (!expectedRole) return;
 
@@ -85,7 +98,8 @@
     if (!customer || customer.blocked) return;
 
     if (expectedRole === "admin") {
-      if (adminSession !== user.id || !customer.is_admin) return;
+      if (!customer.is_admin) return;
+      if (adminSession !== user.id) sessionStorage.setItem(ADMIN_SESSION_KEY, user.id);
       createStatusBar({
         role: "admin",
         title: "관리자 로그인 중",
@@ -96,15 +110,18 @@
 
     if (
       expectedRole === "customer" &&
-      customerSession === user.id &&
       customer.approved &&
       !customer.is_admin
     ) {
+      if (customerSession !== user.id) sessionStorage.setItem(CUSTOMER_SESSION_KEY, user.id);
       createStatusBar({
         role: "customer",
         title: "거래처 로그인 중",
         detail: customer.business_name || customer.representative || customer.phone || "거래처"
       });
+    }
+    } catch (error) {
+      console.warn("로그인 정보 표시 오류:", error);
     }
   }
 
