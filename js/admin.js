@@ -61,7 +61,7 @@ async function adminLogin() {
   localStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
   sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
   localStorage.removeItem(CUSTOMER_SESSION_KEY);
-  const adminName = customer.business_name || customer.representative || data.user.email || "관리자";
+  const adminName = customer?.business_name || customer?.representative || data.user.email || "관리자";
   const adminProfile = JSON.stringify({ name: adminName, email: data.user.email || "", userId: data.user.id });
   sessionStorage.setItem("designjam_admin_profile", adminProfile);
   localStorage.setItem("designjam_admin_profile", adminProfile);
@@ -76,7 +76,7 @@ const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 
 let adminFilter = "전체";
 
-adminSearch.addEventListener("input", loadOrders);
+if (adminSearch) adminSearch.addEventListener("input", loadOrders);
 
 function setAdminFilter(status) {
   adminFilter = status;
@@ -128,7 +128,7 @@ tracking_number: order.tracking_number || "",
   document.getElementById("doneCount").textContent =
     groups.filter(g => g.status === "출고완료").length;
 
-  const keyword = adminSearch.value.trim();
+  const keyword = adminSearch?.value?.trim() || "";
 
   const filteredGroups = groups
     .filter(group => {
@@ -411,14 +411,22 @@ function openStatement(orderNumber) {
 async function initializeAdminPage() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
+  const savedUserId = localStorage.getItem(ADMIN_SESSION_KEY);
+  const knownAdminEmail = isDesignjamAdminEmail(user?.email);
+  const hasSavedAdminSession = Boolean(user && (sessionUserId === user.id || savedUserId === user.id));
 
-  if (!user || sessionUserId !== user.id) {
+  if (!user || (!hasSavedAdminSession && !knownAdminEmail)) {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    localStorage.removeItem(ADMIN_SESSION_KEY);
     if (user) await supabaseClient.auth.signOut();
     document.getElementById("loginBox").style.display = "block";
     document.getElementById("adminContent").style.display = "none";
     return;
   }
+
+  // 새 탭에서도 확인된 관리자 세션을 현재 탭에 복원
+  sessionStorage.setItem(ADMIN_SESSION_KEY, user.id);
+  localStorage.setItem(ADMIN_SESSION_KEY, user.id);
 
   const { data: customer } = await supabaseClient
     .from("customers")
