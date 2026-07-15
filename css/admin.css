@@ -737,3 +737,30 @@ button {
   .inventory-item-info { grid-column: auto; }
   .inventory-save { width: 100%; }
 }
+
+
+/* V2 완료 주문 보관 조회 */
+.completed-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.completed-toolbar label { font-weight: 700; }
+.completed-toolbar select {
+  min-width: 140px;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+}
+.completed-toolbar span { color: #64748b; font-size: 13px; }
+@media (max-width: 640px) {
+  .completed-toolbar { align-items: stretch; }
+  .completed-toolbar label, .completed-toolbar select, .completed-toolbar span { width: 100%; }
+}

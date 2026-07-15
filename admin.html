@@ -41,15 +41,6 @@
 </div>
 
 <div id="adminContent" style="display:none;">
-  <div class="admin-menu">
-  <button class="cart-btn" onclick="showAdminSection('orders')">
-    주문관리
-  </button>
-
-  <button class="cart-btn gray-btn" onclick="showAdminSection('members')">
-    회원관리
-  </button>
-</div>
   <div class="dashboard">
     <div><strong id="totalCount">0</strong><span>전체</span></div>
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
@@ -62,6 +53,18 @@
     <button onclick="setAdminFilter('전체')">전체</button>
     <button onclick="setAdminFilter('주문접수')">주문접수</button>
     <button onclick="setAdminFilter('출고완료')">출고완료</button>
+  </div>
+
+  <div class="completed-toolbar">
+    <label for="adminCompletedPeriod">출고완료 보관기간</label>
+    <select id="adminCompletedPeriod" onchange="loadOrders()">
+      <option value="30">최근 30일</option>
+      <option value="90">최근 3개월</option>
+      <option value="180">최근 6개월</option>
+      <option value="365">최근 1년</option>
+      <option value="all">전체 기간</option>
+    </select>
+    <span>오래된 완료 주문은 기간을 선택해 조회합니다.</span>
   </div>
 
   <button class="cart-btn" onclick="loadOrders()">주문 새로고침</button>

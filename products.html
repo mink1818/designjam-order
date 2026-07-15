@@ -27,7 +27,6 @@
     <button type="button" data-scroll-target="excelUploader">엑셀 업로드</button>
     <button type="button" data-scroll-target="groupEditor">상품 묶음</button>
     <button type="button" data-scroll-target="groupManagement">목록 관리</button>
-    <button type="button" data-scroll-target="inventoryManager">재고 관리</button>
   </section>
 
   <section class="product-summary-grid" aria-label="상품 등록 현황">
@@ -496,45 +495,6 @@ placeholder="예: 나이키, 아디다스, 다이와">
     <div id="groupMessage"></div>
   </section>
 
-
-<section id="inventoryManager" class="product-card admin-anchor-section inventory-manager-section">
-  <div class="inventory-heading-row">
-    <div>
-      <h2>품번별 재고관리</h2>
-      <p class="admin-help-text">상품 묶음에 등록된 품번을 기준으로 현재고와 창고 위치를 관리합니다. 데이터는 이 브라우저에 안전하게 저장되며, 추후 Supabase 재고 테이블과 바코드·피킹 기능으로 확장할 수 있습니다.</p>
-    </div>
-    <span class="status-badge done">V2 운영기능</span>
-  </div>
-
-  <div class="inventory-summary-grid">
-    <article><span>전체 품번</span><strong id="inventorySkuCount">0</strong></article>
-    <article><span>총 현재고</span><strong id="inventoryTotalQuantity">0</strong></article>
-    <article><span>재고 부족</span><strong id="inventoryLowStockCount">0</strong></article>
-    <article><span>품절</span><strong id="inventoryOutOfStockCount">0</strong></article>
-  </div>
-
-  <div class="inventory-filter-grid">
-    <label>품번·묶음 검색
-      <input id="inventorySearch" class="order-input" type="search" placeholder="예: 661 또는 묶음명">
-    </label>
-    <label>재고 상태
-      <select id="inventoryStatusFilter" class="order-input">
-        <option value="all">전체</option>
-        <option value="normal">정상</option>
-        <option value="low">부족(10개 이하)</option>
-        <option value="out">품절</option>
-      </select>
-    </label>
-    <button id="inventoryResetFilters" class="cart-btn gray-btn" type="button">검색 초기화</button>
-    <button id="inventoryExportButton" class="cart-btn" type="button">재고 CSV 다운로드</button>
-  </div>
-
-  <div id="inventoryMessage" aria-live="polite"></div>
-  <div id="inventoryList" class="inventory-list"><p>상품 데이터를 불러온 뒤 재고 목록이 표시됩니다.</p></div>
-</section>
-
-<hr class="admin-section-divider">
-
   <!-- 상품 묶음 목록 -->
   <h2 class="admin-section-title">등록된 상품 묶음</h2>
 
@@ -642,7 +602,6 @@ class="order-input">
 
 <script src="js/operations-core.js"></script>
 <script src="js/products.js"></script>
-<script src="js/inventory-manager.js"></script>
 
 <script src="js/group-manager.js"></script>
 
