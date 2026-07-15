@@ -476,7 +476,7 @@ function renderCategoryList() {
   }
 
   categoryList.innerHTML = filtered.map(category => `
-    <div class="product-card product-admin-card">
+    <div class="product-card product-admin-card compact-category-card">
       <div class="product-admin-top">
         <div>
           <h2>${category.name}</h2>
@@ -1209,7 +1209,7 @@ function renderMainCategories() {
   mainCategoryList.innerHTML =
     allMainCategories
       .map(mainCategory => `
-        <div class="product-card">
+        <div class="product-card compact-main-category-card">
 
           <div class="order-top">
             <h2>

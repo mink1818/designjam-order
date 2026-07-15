@@ -147,6 +147,11 @@ async function checkCustomerAccess() {
 
   currentUser = user;
   currentCustomer = customer;
+  const customerName = customer.business_name || customer.representative || customer.phone || "거래처";
+  const customerProfile = JSON.stringify({ name: customerName, email: user.email || "", userId: user.id });
+  sessionStorage.setItem("designjam_customer_profile", customerProfile);
+  localStorage.setItem("designjam_customer_profile", customerProfile);
+  window.designjamSession?.refresh();
   document.body.classList.add("auth-ready");
   return true;
 }

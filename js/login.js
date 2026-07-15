@@ -152,7 +152,13 @@ async function loginCustomer() {
     }
 
     sessionStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
+    localStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    const customerName = customer.business_name || customer.representative || customer.phone || "거래처";
+    const customerProfile = JSON.stringify({ name: customerName, email: data.user.email || "", userId: data.user.id });
+    sessionStorage.setItem("designjam_customer_profile", customerProfile);
+    localStorage.setItem("designjam_customer_profile", customerProfile);
     location.replace("index.html");
 
   } catch (error) {
