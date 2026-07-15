@@ -1,6 +1,19 @@
 const supabaseUrl =
   "https://dtjhuejmxrjkcxzvilgw.supabase.co";
 
+/* V2 운영 확장 공통 모듈 연결 */
+const operationsCore = window.DesignJamOperations || null;
+
+function initializeV2ProductAdmin() {
+  const versionBadge = document.getElementById("appVersionBadge");
+
+  if (versionBadge && operationsCore) {
+    versionBadge.textContent = `V${operationsCore.version.split(".")[0]}`;
+    versionBadge.title = `Design Jam Order ${operationsCore.version}`;
+  }
+}
+
+
   const coverFile =
 document.getElementById("categoryCoverFile");
 
@@ -58,6 +71,15 @@ const itemPattern =
 
 const generatePatternItemsBtn =
   document.getElementById("generatePatternItemsBtn");
+
+  const bulkGroupImages =
+  document.getElementById("bulkGroupImages");
+
+const matchBulkImagesButton =
+  document.getElementById("matchBulkImagesButton");
+
+const bulkImageMessage =
+  document.getElementById("bulkImageMessage");
 
 coverFile.addEventListener("change", async () => {
   const file = coverFile.files[0];
@@ -217,6 +239,38 @@ const supabaseClient = window.supabase.createClient(
 
 const categoryList = document.getElementById("categoryList");
 const groupList = document.getElementById("groupList");
+
+const groupMainFilter =
+  document.getElementById("groupMainFilter");
+
+const groupCategoryFilter =
+  document.getElementById("groupCategoryFilter");
+
+const groupAdminSearch =
+  document.getElementById("groupAdminSearch");
+
+const groupActiveFilter =
+  document.getElementById("groupActiveFilter");
+
+const resetGroupFiltersButton =
+  document.getElementById("resetGroupFiltersButton");
+
+const groupPaginationTop =
+  document.getElementById("groupPaginationTop");
+
+const groupPaginationBottom =
+  document.getElementById("groupPaginationBottom");
+
+  const browseMainCategory =
+document.getElementById("browseMainCategory");
+
+const browseCategory =
+document.getElementById("browseCategory");
+
+let groupAdminPage = 1;
+
+const GROUPS_PER_PAGE = 20;
+
 const categorySearch = document.getElementById("categorySearch");
 
 let allCategories = [];
@@ -354,6 +408,15 @@ async function loadProductData() {
   renderCategoryOptions();
   renderCategoryList();
   renderGroupList();
+  updateProductSummary();
+
+  window.dispatchEvent(new CustomEvent("designjam:products-loaded", {
+    detail: {
+      groups: allGroups,
+      categories: allCategories,
+      mainCategories: allMainCategories
+    }
+  }));
 }
 
 /* 상품 묶음 등록창의 카테고리 선택 목록 */
@@ -507,125 +570,421 @@ function renderCategoryList() {
   `).join("");
 }
 
+function renderBrowseCategories(){
+
+browseMainCategory.innerHTML=
+`
+<option value="">
+대분류 선택
+</option>
+
+${allMainCategories.map(item=>`
+
+<option value="${item.id}">
+${item.name}
+</option>
+
+`).join("")}
+`;
+
+}
+
+function renderGroupAdminFilters() {
+  const selectedMainId =
+    groupMainFilter.value;
+
+  const selectedCategoryId =
+    groupCategoryFilter.value;
+
+  groupMainFilter.innerHTML = `
+    <option value="">전체 대분류</option>
+
+    ${allMainCategories
+      .map(mainCategory => `
+        <option value="${mainCategory.id}">
+          ${escapeHtml(mainCategory.name)}
+        </option>
+      `)
+      .join("")}
+  `;
+
+  groupMainFilter.value = selectedMainId;
+
+  const filteredCategories = selectedMainId
+    ? allCategories.filter(category =>
+        Number(category.main_category_id) ===
+        Number(selectedMainId)
+      )
+    : allCategories;
+
+  groupCategoryFilter.innerHTML = `
+    <option value="">전체 카테고리</option>
+
+    ${filteredCategories
+      .map(category => `
+        <option value="${category.id}">
+          ${escapeHtml(category.name)}
+        </option>
+      `)
+      .join("")}
+  `;
+
+  const categoryStillExists =
+    filteredCategories.some(category =>
+      String(category.id) ===
+      String(selectedCategoryId)
+    );
+
+  groupCategoryFilter.value =
+    categoryStillExists
+      ? selectedCategoryId
+      : "";
+}
+
 /* 상품 사진 묶음 목록 출력 */
 function renderGroupList() {
-  if (allGroups.length === 0) {
+  renderGroupAdminFilters();
+
+  const mainCategoryId =
+    Number(groupMainFilter.value) || 0;
+
+  const categoryId =
+    Number(groupCategoryFilter.value) || 0;
+
+  const keyword =
+    groupAdminSearch.value
+      .trim()
+      .toLowerCase();
+
+  const activeFilter =
+    groupActiveFilter.value;
+
+  const filteredGroups =
+    allGroups.filter(group => {
+      const category =
+        allCategories.find(
+          item =>
+            Number(item.id) ===
+            Number(group.category_id)
+        );
+
+      const matchesMainCategory =
+        !mainCategoryId ||
+        Number(category?.main_category_id) ===
+          mainCategoryId;
+
+      const matchesCategory =
+        !categoryId ||
+        Number(group.category_id) === categoryId;
+
+      const itemText =
+        Array.isArray(group.item_numbers)
+          ? group.item_numbers.join(" ")
+          : "";
+
+      const searchableText = [
+        group.title,
+        itemText,
+        group.description_text,
+        group.brand_text,
+        category?.name
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const matchesKeyword =
+        !keyword ||
+        searchableText.includes(keyword);
+
+      const matchesActive =
+        activeFilter === "all" ||
+        (
+          activeFilter === "active" &&
+          group.is_active
+        ) ||
+        (
+          activeFilter === "hidden" &&
+          !group.is_active
+        );
+
+      return (
+        matchesMainCategory &&
+        matchesCategory &&
+        matchesKeyword &&
+        matchesActive
+      );
+    });
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredGroups.length /
+      GROUPS_PER_PAGE
+    )
+  );
+
+  if (groupAdminPage > totalPages) {
+    groupAdminPage = totalPages;
+  }
+
+  const startIndex =
+    (groupAdminPage - 1) *
+    GROUPS_PER_PAGE;
+
+  const visibleGroups =
+    filteredGroups.slice(
+      startIndex,
+      startIndex + GROUPS_PER_PAGE
+    );
+
+  renderGroupPagination(
+    filteredGroups.length,
+    totalPages
+  );
+
+  if (visibleGroups.length === 0) {
     groupList.innerHTML = `
       <div class="product-card">
-        <h2>등록된 상품 묶음이 없습니다</h2>
+        <h2>검색 결과가 없습니다</h2>
+        <p>
+          검색어나 필터 조건을 변경해주세요.
+        </p>
       </div>
     `;
     return;
   }
 
-  groupList.innerHTML = allGroups.map(group => {
-    const category = allCategories.find(
-      item => item.id === group.category_id
-    );
+  groupList.innerHTML =
+    visibleGroups.map(group => {
+      const category =
+        allCategories.find(
+          item =>
+            Number(item.id) ===
+            Number(group.category_id)
+        );
 
-    return `
-      <div class="product-card product-admin-card">
-        <div class="product-admin-top">
-          <div>
-            <h2>${group.title}</h2>
+      const mainCategory =
+        allMainCategories.find(
+          item =>
+            Number(item.id) ===
+            Number(category?.main_category_id)
+        );
 
-            <p>
-              <strong>카테고리:</strong>
-              ${category?.name || "카테고리 없음"}
-            </p>
+      return `
+        <div class="product-card product-admin-card">
+
+          <div class="product-admin-top">
+            <div>
+              <h2>
+                ${escapeHtml(group.title)}
+              </h2>
+
+              <p>
+                <strong>대분류:</strong>
+                ${escapeHtml(
+                  mainCategory?.name || "-"
+                )}
+              </p>
+
+              <p>
+                <strong>카테고리:</strong>
+                ${escapeHtml(
+                  category?.name ||
+                  "카테고리 없음"
+                )}
+              </p>
+            </div>
+
+            <span class="status-badge ${
+              group.is_active
+                ? "done"
+                : "blocked"
+            }">
+              ${
+                group.is_active
+                  ? "표시 중"
+                  : "숨김"
+              }
+            </span>
           </div>
 
-          <span class="status-badge ${
-            group.is_active ? "done" : "blocked"
-          }">
-            ${group.is_active ? "표시 중" : "숨김"}
-          </span>
+          ${
+            group.image_url
+              ? `
+                <img
+                  class="admin-product-image"
+                  src="${escapeAttribute(
+                    group.image_url
+                  )}"
+                  alt="${escapeAttribute(
+                    group.title
+                  )}"
+                >
+              `
+              : ""
+          }
+
+          <p>
+            <strong>포함 품번:</strong>
+            ${escapeHtml(
+              (group.item_numbers || [])
+                .join(", ") || "-"
+            )}
+          </p>
+
+          <p>
+            <strong>설명:</strong>
+            ${escapeHtml(
+              group.description_text || "-"
+            )}
+          </p>
+
+          <p>
+            <strong>포함 브랜드:</strong>
+            ${escapeHtml(
+              group.brand_text || "-"
+            )}
+          </p>
+
+          <p>
+            <strong>단가:</strong>
+            ${Number(
+              group.price || 0
+            ).toLocaleString()}원
+          </p>
+
+          <button
+            class="cart-btn"
+            type="button"
+            onclick="window.editGroup(${group.id})"
+          >
+            상품 묶음 수정·이동
+          </button>
+
+          <button
+            class="cart-btn clone-btn"
+            type="button"
+            onclick="cloneGroup(${group.id})"
+          >
+            상품 묶음 복제
+          </button>
+
+          <button
+            class="cart-btn gray-btn"
+            type="button"
+            onclick="toggleGroupActive(
+              ${group.id},
+              ${group.is_active}
+            )"
+          >
+            ${
+              group.is_active
+                ? "상품 묶음 숨기기"
+                : "다시 표시"
+            }
+          </button>
+
+          <button
+            class="cart-btn delete-btn"
+            type="button"
+            onclick="deleteGroup(
+              ${group.id},
+              '${escapeAttribute(group.title)}'
+            )"
+          >
+            상품 묶음 완전 삭제
+          </button>
+
         </div>
+      `;
+    }).join("");
+}
 
-        ${
-          group.image_url
-            ? `
-              <img
-                class="admin-product-image"
-                src="${group.image_url}"
-                alt="${group.title}"
-              >
-            `
-            : ""
-        }
+function renderGroupPagination(
+  totalItems,
+  totalPages
+) {
+  const startItem =
+    totalItems === 0
+      ? 0
+      : (
+          (groupAdminPage - 1) *
+          GROUPS_PER_PAGE
+        ) + 1;
 
-        <p>
-          <strong>포함 품번:</strong>
-          ${(group.item_numbers || []).join(", ") || "-"}
-        </p>
+  const endItem = Math.min(
+    groupAdminPage * GROUPS_PER_PAGE,
+    totalItems
+  );
 
-        <p>
-  <strong>설명:</strong><br>
-  ${escapeHtml(
-    group.description_text || "-"
-  )}
-</p>
+  const paginationHtml = `
+    <div class="admin-pagination">
 
-<p>
-  <strong>포함 브랜드:</strong><br>
-  ${escapeHtml(
-    group.brand_text || "-"
-  )}
-</p>
+      <p>
+        총 ${totalItems}개 중
+        ${startItem}~${endItem}개 표시
+      </p>
 
-        <p>
-          <strong>단가:</strong>
-          ${Number(group.price).toLocaleString()}원
-        </p>
-
-        <p>
-          <strong>사진 경로:</strong>
-          ${group.image_url || "-"}
-        </p>
-
-        <p>
-          <strong>표시 순서:</strong>
-          ${group.sort_order}
-        </p>
-
-        <button
-  class="cart-btn"
-  type="button"
-  onclick="window.editGroup(${group.id})"
->
-  상품 묶음 수정·이동
-</button>
-
-        <button
-  class="cart-btn clone-btn"
-  type="button"
-  onclick="cloneGroup(${group.id})"
->
-  상품 묶음 복제
-</button>
+      <div class="admin-pagination-buttons">
 
         <button
           class="cart-btn gray-btn"
           type="button"
-          onclick="toggleGroupActive(
-            ${group.id},
-            ${group.is_active}
-          )"
+          onclick="changeGroupAdminPage(-1)"
+          ${groupAdminPage <= 1
+            ? "disabled"
+            : ""}
         >
-          ${group.is_active ? "상품 묶음 숨기기" : "다시 표시"}
+          이전
         </button>
 
+        <strong>
+          ${groupAdminPage} / ${totalPages}
+        </strong>
+
         <button
-  class="cart-btn delete-btn"
-  type="button"
-  onclick="deleteGroup(${group.id}, '${escapeAttribute(group.title)}')"
->
-  상품 묶음 완전 삭제
-</button>
+          class="cart-btn"
+          type="button"
+          onclick="changeGroupAdminPage(1)"
+          ${groupAdminPage >= totalPages
+            ? "disabled"
+            : ""}
+        >
+          다음
+        </button>
+
       </div>
-    `;
-  }).join("");
+    </div>
+  `;
+
+  groupPaginationTop.innerHTML =
+    paginationHtml;
+
+  groupPaginationBottom.innerHTML =
+    paginationHtml;
 }
+
+function changeGroupAdminPage(amount) {
+  groupAdminPage += amount;
+
+  if (groupAdminPage < 1) {
+    groupAdminPage = 1;
+  }
+
+  renderGroupList();
+
+  document
+    .getElementById("groupList")
+    .scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+}
+
+window.changeGroupAdminPage =
+  changeGroupAdminPage;
+
 /* 대분류 저장·수정 */
 async function saveMainCategory() {
   const id =
@@ -825,6 +1184,7 @@ async function loadMainCategories() {
 
   renderMainCategories();
   renderMainCategorySelect();
+  updateProductSummary();
 }
 
 /* 등록된 대분류 화면 표시 */
@@ -1503,6 +1863,52 @@ function cloneGroup(id) {
 
 window.cloneGroup = cloneGroup;
 
+groupMainFilter.addEventListener(
+  "change",
+  () => {
+    groupAdminPage = 1;
+    groupCategoryFilter.value = "";
+    renderGroupList();
+  }
+);
+
+groupCategoryFilter.addEventListener(
+  "change",
+  () => {
+    groupAdminPage = 1;
+    renderGroupList();
+  }
+);
+
+groupAdminSearch.addEventListener(
+  "input",
+  () => {
+    groupAdminPage = 1;
+    renderGroupList();
+  }
+);
+
+groupActiveFilter.addEventListener(
+  "change",
+  () => {
+    groupAdminPage = 1;
+    renderGroupList();
+  }
+);
+
+resetGroupFiltersButton.addEventListener(
+  "click",
+  () => {
+    groupMainFilter.value = "";
+    groupCategoryFilter.value = "";
+    groupAdminSearch.value = "";
+    groupActiveFilter.value = "all";
+    groupAdminPage = 1;
+
+    renderGroupList();
+  }
+);
+
 /* 상품 묶음 입력 초기화 */
 function resetGroupForm() {
   document.getElementById("groupId").value = "";
@@ -1591,6 +1997,134 @@ async function startProductsPage() {
 
   await loadProductData();
 }
+
+
+
+/* 상품관리 상단 현황 숫자 갱신 */
+function updateProductSummary() {
+  const summaryValues = {
+    mainCategoryCount: allMainCategories.length,
+    categoryCount: allCategories.length,
+    groupCount: allGroups.length,
+    activeGroupCount: allGroups.filter(group => group.is_active !== false).length
+  };
+
+  Object.entries(summaryValues).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = Number(value || 0).toLocaleString("ko-KR");
+  });
+}
+
+/* 상단 빠른 이동 메뉴 */
+function setupProductQuickNavigation() {
+  document.querySelectorAll("[data-scroll-target]").forEach(button => {
+    button.addEventListener("click", () => {
+      const target = document.getElementById(button.dataset.scrollTarget);
+      if (!target) return;
+
+      if (target.classList.contains("admin-section-collapsed")) {
+        target.querySelector(":scope > .admin-section-toggle")?.click();
+      }
+
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+/* ESC 키로 열려 있는 편집 입력을 안전하게 초기화 */
+function setupProductsKeyboardShortcuts() {
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+
+    const active = document.activeElement;
+    if (active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) {
+      active.blur();
+    }
+  });
+}
+
+/* 상품관리 등록 영역 접기·펼치기 */
+function setupAdminSectionToggles() {
+  const foldableTitles = new Set([
+    "대분류 등록·수정",
+    "카테고리 등록·수정",
+    "엑셀 상품 업로드",
+    "상품 사진 묶음 등록·수정"
+  ]);
+
+  const sections =
+    document.querySelectorAll(
+      "section.product-card"
+    );
+
+  sections.forEach(section => {
+    const title = section.querySelector(
+      ":scope > h2"
+    );
+
+    if (!title) return;
+
+    const titleText =
+      title.textContent.trim();
+
+    if (!foldableTitles.has(titleText)) {
+      return;
+    }
+
+    /* 중복 버튼 생성 방지 */
+    if (
+      section.querySelector(
+        ":scope > .admin-section-toggle"
+      )
+    ) {
+      return;
+    }
+
+    const toggleButton =
+      document.createElement("button");
+
+    toggleButton.type = "button";
+    toggleButton.className =
+      "admin-section-toggle";
+
+    toggleButton.innerHTML = `
+      <span>${escapeHtml(titleText)}</span>
+      <strong>펼치기 ▼</strong>
+    `;
+
+    title.style.display = "none";
+
+    section.insertBefore(
+      toggleButton,
+      section.firstChild
+    );
+
+    /* 처음에는 모두 접힌 상태 */
+    section.classList.add(
+      "admin-section-collapsed"
+    );
+
+    toggleButton.addEventListener(
+      "click",
+      () => {
+        const isCollapsed =
+          section.classList.toggle(
+            "admin-section-collapsed"
+          );
+
+        toggleButton.querySelector(
+          "strong"
+        ).textContent = isCollapsed
+          ? "펼치기 ▼"
+          : "접기 ▲";
+      }
+    );
+  });
+}
+
+setupAdminSectionToggles();
+setupProductQuickNavigation();
+setupProductsKeyboardShortcuts();
 
 startProductsPage();
 
@@ -2363,3 +2897,331 @@ document
 
 window.registerExcelProducts =
   registerExcelProducts;
+
+  /* 사진 파일명과 엑셀 묶음명을 비교하기 위한 정리 */
+function normalizeGroupImageKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    /* 파일 확장자 제거 */
+    .replace(/\.(jpg|jpeg|png|webp|gif)$/i, "")
+    /* 물결표와 여러 종류의 대시를 일반 대시로 변경 */
+    .replace(/[~～–—]/g, "-")
+    /* 쉼표, 밑줄, 공백 제거 */
+    .replace(/[,\s_]+/g, "")
+    /* 괄호 제거 */
+    .replace(/[()[\]{}]/g, "")
+    /* 숫자·영문·한글·대시 이외 제거 */
+    .replace(/[^0-9a-z가-힣-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function parseBulkImageFileName(fileName) {
+  const withoutExtension = String(fileName || "")
+    .replace(/\.[^/.]+$/, "");
+
+  const match = withoutExtension.match(
+    /^(.*?)(?:[-_](\d+))?$/
+  );
+
+  const baseName = match?.[1] || withoutExtension;
+  const imageOrder = Number(match?.[2] || 1);
+
+  return {
+    key: normalizeGroupImageKey(baseName),
+    order: imageOrder
+  };
+}
+
+
+/* 사진 일괄 업로드 후 엑셀 묶음명과 자동 매칭 */
+async function uploadAndMatchBulkImages() {
+  const files = Array.from(
+    bulkGroupImages?.files || []
+  );
+
+  const rows =
+    Array.isArray(window.pendingExcelRows)
+      ? window.pendingExcelRows
+      : [];
+
+  if (rows.length === 0) {
+    alert(
+      "먼저 엑셀 파일을 선택하고 '엑셀 업로드'를 눌러주세요."
+    );
+    return;
+  }
+
+  if (files.length === 0) {
+    alert("업로드할 상품 사진을 선택해주세요.");
+    return;
+  }
+
+  const confirmed = confirm(
+    `사진 ${files.length}장을 업로드하고\n` +
+    `엑셀 ${rows.length}개 행과 자동 매칭할까요?`
+  );
+
+  if (!confirmed) return;
+
+  matchBulkImagesButton.disabled = true;
+  matchBulkImagesButton.textContent =
+    "사진 업로드 중...";
+
+  bulkImageMessage.innerHTML = `
+    <div class="product-success">
+      <h3>사진 업로드를 시작합니다</h3>
+      <p>
+        브라우저를 닫거나 새로고침하지 마세요.
+      </p>
+    </div>
+  `;
+
+  /*
+    같은 파일명이 중복 선택되었는지 확인하기 위한 Map
+    key: 정리된 파일명
+    value: 파일 객체
+  */
+  const fileMap = new Map();
+
+files.forEach(file => {
+  const parsed =
+    parseBulkImageFileName(file.name);
+
+  if (!parsed.key) return;
+
+  if (!fileMap.has(parsed.key)) {
+    fileMap.set(parsed.key, []);
+  }
+
+  fileMap.get(parsed.key).push({
+    file,
+    order: parsed.order
+  });
+});
+
+/* 대표사진부터 순서대로 정렬 */
+fileMap.forEach(fileItems => {
+  fileItems.sort(
+    (a, b) => a.order - b.order
+  );
+});
+
+  const uploadedUrlMap = new Map();
+
+  let uploadedCount = 0;
+  let uploadErrorCount = 0;
+
+  const uploadErrors = [];
+
+  try {
+    /*
+      사진을 한 장씩 업로드
+      한 번에 수백 개를 동시에 올리면 브라우저나
+      Supabase 요청 제한에 걸릴 수 있어 순차 처리
+    */
+    for (const [key, file] of fileMap.entries()) {
+      try {
+        bulkImageMessage.innerHTML = `
+          <div class="product-success">
+            <h3>사진 업로드 중</h3>
+
+            <p>
+              ${uploadedCount + uploadErrorCount + 1}
+              / ${fileMap.size}
+            </p>
+
+            <p>
+              현재 파일:
+              ${escapeHtml(file.name)}
+            </p>
+
+            <p>
+              성공 ${uploadedCount}장 /
+              실패 ${uploadErrorCount}장
+            </p>
+          </div>
+        `;
+
+        const publicUrl =
+          await uploadImage(
+            file,
+            "bulk-group-images"
+          );
+
+        uploadedUrlMap.set(key, publicUrl);
+
+        uploadedCount++;
+
+      } catch (error) {
+        uploadErrorCount++;
+
+        uploadErrors.push(
+          `${file.name}: ${error.message}`
+        );
+      }
+    }
+
+    let matchedCount = 0;
+    let unmatchedRowCount = 0;
+
+    const unmatchedRows = [];
+
+    /*
+      엑셀의 묶음명과 업로드된 사진 파일명 비교
+    */
+    rows.forEach((row, index) => {
+      const groupTitle =
+        String(row["묶음명"] || "").trim();
+
+      const key =
+        normalizeGroupImageKey(groupTitle);
+
+      const matchedUrl =
+        uploadedUrlMap.get(key);
+
+      if (matchedUrl) {
+        /*
+          registerExcelProducts()에서 읽는
+          기존 열 이름을 그대로 사용
+        */
+        row["대표사진URL"] = matchedUrl;
+
+        matchedCount++;
+      } else {
+        unmatchedRowCount++;
+
+        unmatchedRows.push(
+          `${index + 2}행: ${groupTitle || "묶음명 없음"}`
+        );
+      }
+    });
+
+    /*
+      엑셀 미리보기 화면에도 사진 매칭 결과 표시
+    */
+    bulkImageMessage.innerHTML = `
+      <div class="product-success">
+        <h3>사진 업로드 및 자동 매칭 완료</h3>
+
+        <p>
+          선택한 사진:
+          ${files.length}장
+        </p>
+
+        <p>
+          업로드 성공:
+          ${uploadedCount}장
+        </p>
+
+        <p>
+          업로드 실패:
+          ${uploadErrorCount}장
+        </p>
+
+        <p>
+          엑셀 자동 매칭:
+          ${matchedCount}개
+        </p>
+
+        <p>
+          사진을 찾지 못한 엑셀 행:
+          ${unmatchedRowCount}개
+        </p>
+      </div>
+
+      ${
+        duplicateFileNames.length > 0
+          ? `
+            <div class="excel-error-list">
+              <h3>중복된 사진 파일명</h3>
+
+              ${duplicateFileNames
+                .map(name => `
+                  <p>${escapeHtml(name)}</p>
+                `)
+                .join("")}
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        unmatchedRows.length > 0
+          ? `
+            <div class="excel-error-list">
+              <h3>사진과 매칭되지 않은 묶음</h3>
+
+              ${unmatchedRows
+                .slice(0, 100)
+                .map(message => `
+                  <p>${escapeHtml(message)}</p>
+                `)
+                .join("")}
+
+              ${
+                unmatchedRows.length > 100
+                  ? `
+                    <p>
+                      외 ${unmatchedRows.length - 100}개
+                    </p>
+                  `
+                  : ""
+              }
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        uploadErrors.length > 0
+          ? `
+            <div class="excel-error-list">
+              <h3>업로드 실패 사진</h3>
+
+              ${uploadErrors
+                .map(message => `
+                  <p>${escapeHtml(message)}</p>
+                `)
+                .join("")}
+            </div>
+          `
+          : ""
+      }
+    `;
+
+    /*
+      모든 엑셀 행에 사진이 연결되었을 때 안내
+    */
+    if (
+      matchedCount === rows.length &&
+      uploadErrorCount === 0
+    ) {
+      alert(
+        "모든 사진이 엑셀과 정상적으로 매칭되었습니다.\n\n" +
+        "이제 '미리보기 상품 실제 등록' 버튼을 누르세요."
+      );
+    } else {
+      alert(
+        `사진 자동 매칭이 완료되었습니다.\n\n` +
+        `매칭 ${matchedCount}개\n` +
+        `미매칭 ${unmatchedRowCount}개\n` +
+        `업로드 실패 ${uploadErrorCount}개`
+      );
+    }
+
+  } finally {
+    matchBulkImagesButton.disabled = false;
+    matchBulkImagesButton.textContent =
+      "사진 업로드 및 엑셀 자동 매칭";
+  }
+}
+
+if (matchBulkImagesButton) {
+  matchBulkImagesButton.addEventListener(
+    "click",
+    uploadAndMatchBulkImages
+  );
+}
+
+initializeV2ProductAdmin();

@@ -12,14 +12,30 @@
   <link rel="stylesheet" href="css/admin.css">
 </head>
 
-<body>
+<body data-app-version="2.0.0">
 
 <header>
   <h1>🧦 상품관리</h1>
-  <p>카테고리 및 상품 사진 묶음 관리</p>
+  <p>카테고리 및 상품 사진 묶음 관리 <span class="app-version-badge" id="appVersionBadge">V2</span></p>
 </header>
 
-<main class="container">
+<main class="container products-admin-page">
+
+  <section class="admin-product-toolbar" aria-label="상품관리 빠른 메뉴">
+    <button type="button" data-scroll-target="mainCategoryEditor">대분류</button>
+    <button type="button" data-scroll-target="categoryEditor">카테고리</button>
+    <button type="button" data-scroll-target="excelUploader">엑셀 업로드</button>
+    <button type="button" data-scroll-target="groupEditor">상품 묶음</button>
+    <button type="button" data-scroll-target="groupManagement">목록 관리</button>
+    <button type="button" data-scroll-target="inventoryManager">재고 관리</button>
+  </section>
+
+  <section class="product-summary-grid" aria-label="상품 등록 현황">
+    <article><span>대분류</span><strong id="mainCategoryCount">0</strong></article>
+    <article><span>카테고리</span><strong id="categoryCount">0</strong></article>
+    <article><span>상품 묶음</span><strong id="groupCount">0</strong></article>
+    <article><span>표시 중</span><strong id="activeGroupCount">0</strong></article>
+  </section>
 
   <button
     class="cart-btn gray-btn"
@@ -30,7 +46,7 @@
   </button>
 
   <!-- 대분류 등록·수정 영역 -->
-<section class="product-card">
+<section id="mainCategoryEditor" class="product-card admin-anchor-section">
 
   <h2>대분류 등록·수정</h2>
 
@@ -118,7 +134,7 @@
 <hr class="admin-section-divider">
 
   <!-- 카테고리 등록·수정 영역 -->
-  <section class="product-card">
+  <section id="categoryEditor" class="product-card admin-anchor-section">
     <h2>카테고리 등록·수정</h2>
 
     <p class="admin-help-text">
@@ -233,7 +249,7 @@ accept="image/*">
 
   <hr>
 
-<section class="product-card">
+<section id="excelUploader" class="product-card admin-anchor-section">
 
   <h2>엑셀 상품 업로드</h2>
 
@@ -242,6 +258,32 @@ accept="image/*">
     id="excelFile"
     accept=".xlsx,.xls"
   >
+
+  <label for="bulkGroupImages">
+  상품 대표사진 일괄 선택
+</label>
+
+<input
+  type="file"
+  id="bulkGroupImages"
+  accept="image/*"
+  multiple
+>
+
+<small>
+  사진 파일명을 묶음명과 맞춰주세요.
+  예: 661~663.jpg, 700-705_1410.jpg
+</small>
+
+<button
+  id="matchBulkImagesButton"
+  class="cart-btn"
+  type="button"
+>
+  사진 업로드 및 엑셀 자동 매칭
+</button>
+
+<div id="bulkImageMessage"></div>
 
   <button
     class="cart-btn"
@@ -278,7 +320,7 @@ accept="image/*">
   <hr class="admin-section-divider">
 
   <!-- 상품 사진 묶음 등록·수정 영역 -->
-  <section class="product-card">
+  <section id="groupEditor" class="product-card admin-anchor-section">
     <h2>상품 사진 묶음 등록·수정</h2>
 
     <p class="admin-help-text">
@@ -454,12 +496,143 @@ placeholder="예: 나이키, 아디다스, 다이와">
     <div id="groupMessage"></div>
   </section>
 
+
+<section id="inventoryManager" class="product-card admin-anchor-section inventory-manager-section">
+  <div class="inventory-heading-row">
+    <div>
+      <h2>품번별 재고관리</h2>
+      <p class="admin-help-text">상품 묶음에 등록된 품번을 기준으로 현재고와 창고 위치를 관리합니다. 데이터는 이 브라우저에 안전하게 저장되며, 추후 Supabase 재고 테이블과 바코드·피킹 기능으로 확장할 수 있습니다.</p>
+    </div>
+    <span class="status-badge done">V2 운영기능</span>
+  </div>
+
+  <div class="inventory-summary-grid">
+    <article><span>전체 품번</span><strong id="inventorySkuCount">0</strong></article>
+    <article><span>총 현재고</span><strong id="inventoryTotalQuantity">0</strong></article>
+    <article><span>재고 부족</span><strong id="inventoryLowStockCount">0</strong></article>
+    <article><span>품절</span><strong id="inventoryOutOfStockCount">0</strong></article>
+  </div>
+
+  <div class="inventory-filter-grid">
+    <label>품번·묶음 검색
+      <input id="inventorySearch" class="order-input" type="search" placeholder="예: 661 또는 묶음명">
+    </label>
+    <label>재고 상태
+      <select id="inventoryStatusFilter" class="order-input">
+        <option value="all">전체</option>
+        <option value="normal">정상</option>
+        <option value="low">부족(10개 이하)</option>
+        <option value="out">품절</option>
+      </select>
+    </label>
+    <button id="inventoryResetFilters" class="cart-btn gray-btn" type="button">검색 초기화</button>
+    <button id="inventoryExportButton" class="cart-btn" type="button">재고 CSV 다운로드</button>
+  </div>
+
+  <div id="inventoryMessage" aria-live="polite"></div>
+  <div id="inventoryList" class="inventory-list"><p>상품 데이터를 불러온 뒤 재고 목록이 표시됩니다.</p></div>
+</section>
+
+<hr class="admin-section-divider">
+
   <!-- 상품 묶음 목록 -->
   <h2 class="admin-section-title">등록된 상품 묶음</h2>
+
+  <section id="groupManagement" class="product-card group-management-filter admin-anchor-section">
+
+  <label for="groupMainFilter">
+    대분류 선택
+  </label>
+
+  <select
+    id="groupMainFilter"
+    class="order-input"
+  >
+    <option value="">전체 대분류</option>
+  </select>
+
+  <label for="groupCategoryFilter">
+    카테고리 선택
+  </label>
+
+  <select
+    id="groupCategoryFilter"
+    class="order-input"
+  >
+    <option value="">전체 카테고리</option>
+  </select>
+
+  <label for="groupAdminSearch">
+    상품 묶음 검색
+  </label>
+
+  <input
+    id="groupAdminSearch"
+    class="order-input"
+    type="text"
+    placeholder="묶음명 또는 품번 검색"
+  >
+
+  <label for="groupActiveFilter">
+    표시 상태
+  </label>
+
+  <select
+    id="groupActiveFilter"
+    class="order-input"
+  >
+    <option value="all">전체</option>
+    <option value="active">표시 중</option>
+    <option value="hidden">숨김</option>
+  </select>
+
+  <button
+    id="resetGroupFiltersButton"
+    class="cart-btn gray-btn"
+    type="button"
+  >
+    검색 조건 초기화
+  </button>
+
+</section>
+
+<section class="product-card">
+
+<h2>상품목록 선택</h2>
+
+<label>대분류</label>
+
+<select
+id="browseMainCategory"
+class="order-input">
+
+<option value="">
+대분류 선택
+</option>
+
+</select>
+
+<label>카테고리</label>
+
+<select
+id="browseCategory"
+class="order-input">
+
+<option value="">
+카테고리 선택
+</option>
+
+</select>
+
+</section>
+
+<div id="groupPaginationTop"></div>
 
   <section id="groupList">
     <p>상품 묶음을 불러오는 중...</p>
   </section>
+
+  <div id="groupPaginationBottom"></div>
 
 </main>
 
@@ -467,7 +640,11 @@ placeholder="예: 나이키, 아디다스, 다이와">
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
+<script src="js/operations-core.js"></script>
 <script src="js/products.js"></script>
+<script src="js/inventory-manager.js"></script>
+
+<script src="js/group-manager.js"></script>
 
 </body>
 </html>

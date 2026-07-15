@@ -201,3 +201,36 @@ header h1 { margin: 0; }
     color:#666;
     line-height:1.5;
 }
+
+.group-management-filter {
+  margin-bottom: 16px;
+}
+
+.admin-pagination {
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+
+.admin-pagination p {
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.admin-pagination-buttons {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-pagination-buttons .cart-btn {
+  margin: 0;
+}
+
+.admin-pagination-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
