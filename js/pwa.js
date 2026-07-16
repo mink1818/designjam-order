@@ -2,7 +2,7 @@
   'use strict';
   const app=document.body?.dataset?.pwaApp||'customer';
   const name=app==='admin'?'디자인 삭스 관리자':'디자인 삭스';
-  const icon=app==='admin'?'/icons/admin-v2-192.png?v=351':'/icons/customer-v2-192.png?v=351';
+  const icon=app==='admin'?'/icons/admin-v3-192.png?v=352':'/icons/customer-v3-192.png?v=352';
   let deferredPrompt=null;
 
   function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
@@ -150,7 +150,7 @@
     }
     document.querySelectorAll('[data-install-app]').forEach(b=>b.addEventListener('click',installApp));
     if('serviceWorker'in navigator){
-      navigator.serviceWorker.register('/service-worker.js?v=351').then(reg=>reg.update()).catch(console.warn);
+      navigator.serviceWorker.register('/service-worker.js?v=352').then(reg=>reg.update()).catch(console.warn);
     }
   });
 })();
