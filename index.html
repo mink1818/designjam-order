@@ -7,12 +7,20 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>디자인 삭스 상품 테스트</title>
+  <title>디자인 삭스 주문관리</title>
 
   <link rel="stylesheet" href="css/main.css">
+
+  <meta name="theme-color" content="#24589f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="디자인 삭스">
+  <link rel="manifest" href="manifest-customer.webmanifest">
+  <link rel="icon" href="icons/customer-192.png">
+  <link rel="apple-touch-icon" href="icons/customer-180.png">
 </head>
 
-<body class="auth-pending" data-session-page="customer">
+<body class="auth-pending" data-session-page="customer" data-pwa-app="customer">
 
 <header>
   <h1>🧦 디자인 삭스</h1>
@@ -20,6 +28,8 @@
 </header>
 
 <main class="container">
+
+  <button id="adminQuickMenu" class="cart-btn admin-customer-quick" type="button" onclick="location.href='admin-home.html'" hidden>관리자 메뉴로 이동</button>
 
   <div class="customer-top-menu">
   <button
@@ -58,5 +68,6 @@
 <script src="js/catalog.js"></script>
 
 <script src="js/session-status.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>

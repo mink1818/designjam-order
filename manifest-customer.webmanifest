@@ -1,0 +1,89 @@
+{
+  "id": "/design-socks-customer",
+  "name": "디자인 삭스 주문관리",
+  "short_name": "디자인 삭스",
+  "description": "디자인 삭스 거래처 주문관리",
+  "lang": "ko-KR",
+  "start_url": "/login.html?app=customer",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#24589f",
+  "categories": [
+    "business",
+    "shopping"
+  ],
+  "icons": [
+    {
+      "src": "/icons/customer-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/customer-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "상품 주문",
+      "url": "/index.html",
+      "icons": [
+        {
+          "src": "/icons/customer-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "내 주문조회",
+      "url": "/order.html",
+      "icons": [
+        {
+          "src": "/icons/customer-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

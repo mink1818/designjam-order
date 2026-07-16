@@ -3,11 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>디자인잠 관리자 대시보드 V3.4</title>
+<title>디자인 삭스 관리자 V3.5</title>
 <link rel="stylesheet" href="css/admin.css">
+
+  <meta name="theme-color" content="#112437">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="삭스 관리자">
+  <link rel="manifest" href="manifest-admin.webmanifest">
+  <link rel="icon" href="icons/admin-192.png">
+  <link rel="apple-touch-icon" href="icons/admin-180.png">
 </head>
-<body class="auth-pending" data-session-page="admin">
-<header><h1>🧦 디자인잠 도매관리 V3.4</h1><p>관리자 운영 대시보드</p></header>
+<body class="auth-pending" data-session-page="admin" data-pwa-app="admin">
+<header><h1>🧦 디자인 삭스 주문관리 V3.5</h1><p>관리자 운영 대시보드</p></header>
 <main class="container">
   <section class="admin-welcome-card dashboard-welcome">
     <div><h2>오늘의 운영 현황</h2><p id="dashboardUpdatedAt">데이터를 불러오는 중입니다.</p></div>
@@ -46,5 +54,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/admin-home.js"></script>
 <script src="js/session-status.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>

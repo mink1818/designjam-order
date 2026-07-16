@@ -10,13 +10,21 @@
   <title>디자인 삭스 상품관리</title>
 
   <link rel="stylesheet" href="css/admin.css">
+
+  <meta name="theme-color" content="#112437">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="삭스 관리자">
+  <link rel="manifest" href="manifest-admin.webmanifest">
+  <link rel="icon" href="icons/admin-192.png">
+  <link rel="apple-touch-icon" href="icons/admin-180.png">
 </head>
 
-<body class="auth-pending" data-app-version="2.0.0" data-session-page="admin">
+<body class="auth-pending" data-app-version="3.5.0" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
-  <p>카테고리 및 상품 사진 묶음 관리 <span class="app-version-badge" id="appVersionBadge">V2</span></p>
+  <p>카테고리 및 상품 사진 묶음 관리 <span class="app-version-badge" id="appVersionBadge">V3.5</span></p>
 </header>
 
 <main class="container products-admin-page">
@@ -606,5 +614,6 @@ class="order-input">
 <script src="js/group-manager.js"></script>
 
 <script src="js/session-status.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>

@@ -1052,3 +1052,6 @@ body.auth-pending.auth-ready { visibility: visible; }
 
 /* V3.3 + V3.4 통합 */
 .v3-account-card.inactive{opacity:.68;background:#f4f5f7}.account-state{display:inline-block;margin-top:5px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.account-state.active{background:#dcfce7;color:#166534}.account-state.inactive{background:#e5e7eb;color:#4b5563}.danger-btn{background:#b42318!important;color:#fff!important}.notice-link{display:inline-block;padding:8px 11px;border-radius:8px;background:#eef5ff;color:#174b91;font-weight:800;text-decoration:none}
+
+/* V3.5 PWA / 브랜드 */
+.install-app-button{margin-top:10px!important;background:#102b52!important}.auth-mode-link{display:block;width:100%;margin:-4px 0 12px;padding:8px;border:0;background:transparent;color:#24589f;font-weight:800;text-align:right;cursor:pointer}.admin-customer-quick{margin-bottom:12px!important;background:#112437!important}

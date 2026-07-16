@@ -8,25 +8,33 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>디자인 삭스 로그인</title>
+  <title>디자인 삭스 주문관리</title>
 
   <link rel="stylesheet" href="css/main.css">
+
+  <meta name="theme-color" content="#24589f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="디자인 삭스">
+  <link rel="manifest" href="manifest-customer.webmanifest">
+  <link rel="icon" href="icons/customer-192.png">
+  <link rel="apple-touch-icon" href="icons/customer-180.png">
 </head>
 
-<body>
+<body data-pwa-app="customer">
 
 <header>
   <h1>🧦 디자인 삭스</h1>
-  <p>거래처 로그인</p>
+  <p>주문관리</p>
 </header>
 
 <main class="container">
 
   <section class="product-card auth-card">
 
-    <h2>로그인</h2>
+    <h2>거래처 로그인</h2>
 
-    <label for="loginPhone">
+    <label for="loginPhone" id="loginIdentityLabel">
       휴대폰번호
     </label>
 
@@ -52,6 +60,8 @@
       placeholder="비밀번호"
     >
 
+    <button type="button" id="adminCustomerModeBtn" class="auth-mode-link">관리자 계정으로 거래처 화면 이용</button>
+
     <button
       id="loginButton"
       class="cart-btn"
@@ -68,6 +78,8 @@
       회원가입
     </button>
 
+    <button class="cart-btn install-app-button" type="button" data-install-app>홈 화면에 추가</button>
+
     <div id="loginMessage"></div>
 
   </section>
@@ -77,5 +89,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/login.js"></script>
 
+<script src="js/pwa.js"></script>
 </body>
 </html>

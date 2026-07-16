@@ -1,3 +1,11 @@
+
+function updateAdminCustomerQuickMenu() {
+  const button = document.getElementById("adminQuickMenu");
+  if (!button) return;
+  let profile = null;
+  try { profile = JSON.parse(sessionStorage.getItem("designjam_customer_profile") || localStorage.getItem("designjam_customer_profile") || "null"); } catch (_) {}
+  button.hidden = !(profile?.isAdmin === true);
+}
 const supabaseUrl =
   "https://dtjhuejmxrjkcxzvilgw.supabase.co";
 
@@ -155,6 +163,7 @@ async function checkCustomerAccess() {
   sessionStorage.setItem("designjam_customer_profile", customerProfile);
   localStorage.setItem("designjam_customer_profile", customerProfile);
   window.designjamSession?.refresh();
+  updateAdminCustomerQuickMenu();
   document.body.classList.add("auth-ready");
   return true;
 }
@@ -1562,3 +1571,5 @@ function renderBankTransferBox(){
   const b=customerBankSettings||{}; if(!b.account)return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>관리자가 계좌번호를 등록하면 이곳에 표시됩니다.</p></div>`;
   return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(b.bankName||"")} ${escapeHtml(b.account||"")}</p><p>예금주: ${escapeHtml(b.holder||"")}</p><small>주문금액을 위 계좌로 송금해주세요.</small></div>`;
 }
+
+window.addEventListener("DOMContentLoaded", updateAdminCustomerQuickMenu);

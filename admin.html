@@ -3,14 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>주문관리</title>
+  <title>디자인 삭스 관리자</title>
   <link rel="stylesheet" href="css/admin.css">
+
+  <meta name="theme-color" content="#112437">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="삭스 관리자">
+  <link rel="manifest" href="manifest-admin.webmanifest">
+  <link rel="icon" href="icons/admin-192.png">
+  <link rel="apple-touch-icon" href="icons/admin-180.png">
 </head>
-<body data-session-page="admin">
+<body data-session-page="admin" data-pwa-app="admin">
 
 <header>
-  <h1>🧦 주문관리</h1>
-  <p>주문관리 페이지 (관리자)</p>
+  <h1>🧦 디자인 삭스 관리자</h1>
+  <p>주문관리</p>
 </header>
 
 <main class="container">
@@ -37,6 +45,8 @@
     관리자 로그인
   </button>
 
+  <button class="cart-btn install-app-button" type="button" data-install-app>관리자 앱 홈 화면에 추가</button>
+
   <div id="adminLoginMessage"></div>
 </div>
 
@@ -51,13 +61,6 @@
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
     <div><strong id="doneCount">0</strong><span>출고완료</span></div>
   </div>
-
-  <section class="admin-bank-settings">
-    <label>은행명<input id="bankName" type="text" placeholder="예: 국민은행"></label>
-    <label>계좌번호<input id="bankAccount" type="text" placeholder="계좌번호"></label>
-    <label>예금주<input id="bankHolder" type="text" placeholder="예금주"></label>
-    <button class="cart-btn" type="button" onclick="saveBankSettings()">계좌 저장</button>
-  </section>
 
   <input id="adminSearch" class="search" placeholder="거래처명 / 품번 / 주문번호 검색">
 
@@ -92,5 +95,6 @@
 <script src="js/admin.js"></script>
 <script src="js/session-status.js"></script>
 
+<script src="js/pwa.js"></script>
 </body>
 </html>

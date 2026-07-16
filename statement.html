@@ -10,9 +10,17 @@
   <title>디자인 삭스 거래명세서</title>
 
   <link rel="stylesheet" href="css/statement.css">
+
+  <meta name="theme-color" content="#112437">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="삭스 관리자">
+  <link rel="manifest" href="manifest-admin.webmanifest">
+  <link rel="icon" href="icons/admin-192.png">
+  <link rel="apple-touch-icon" href="icons/admin-180.png">
 </head>
 
-<body class="auth-pending" data-session-page="admin">
+<body class="auth-pending" data-session-page="admin" data-pwa-app="admin">
 
 <div class="screen-menu">
   <button type="button" onclick="window.print()">
@@ -32,5 +40,6 @@
 <script src="js/statement.js"></script>
 
 <script src="js/session-status.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>
