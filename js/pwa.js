@@ -21,6 +21,7 @@
       #dsSplash{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:${app==='admin'?'#112437':'#fff'};transition:opacity .3s ease}#dsSplash.hide{opacity:0;pointer-events:none}#dsSplash .inner{text-align:center;color:${app==='admin'?'#fff':'#102b52'};font-family:Arial,sans-serif}#dsSplash img{width:118px;height:118px;border-radius:26px;box-shadow:0 14px 35px rgba(0,0,0,.15)}#dsSplash h1{margin:18px 0 5px;font-size:27px}#dsSplash p{margin:0;opacity:.75;font-weight:700}
       #dsInstallGuide{position:fixed;inset:0;z-index:2147483647;background:rgba(3,12,25,.72);display:grid;place-items:center;padding:18px;font-family:Arial,sans-serif}#dsInstallGuide[hidden]{display:none!important}.ds-guide-card{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);color:#17243a}.ds-guide-head{display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid #e7ebf0}.ds-guide-head img{width:54px;height:54px;border-radius:13px}.ds-guide-head h2{margin:0;font-size:20px}.ds-guide-head p{margin:3px 0 0;color:#657188;font-size:13px}.ds-guide-close{margin-left:auto;border:0;background:#eef2f7;border-radius:50%;width:36px;height:36px;font-size:22px;cursor:pointer}.ds-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px 0}.ds-tabs button{border:1px solid #dbe3ee;background:#f6f8fb;padding:11px;border-radius:11px;font-weight:800}.ds-tabs button.active{background:#24589f;color:white;border-color:#24589f}.ds-guide-body{padding:18px}.ds-device-guide{display:none}.ds-device-guide.active{display:block}.ds-warning{background:#fff6dd;border:1px solid #f1cf68;border-radius:12px;padding:12px;margin-bottom:14px;font-size:13px;line-height:1.55}.ds-step{display:grid;grid-template-columns:34px 1fr;gap:10px;margin:12px 0;align-items:start}.ds-step-num{width:30px;height:30px;border-radius:50%;background:#24589f;color:#fff;display:grid;place-items:center;font-weight:900}.ds-step b{display:block;margin-bottom:3px}.ds-step p{margin:0;color:#536176;font-size:14px;line-height:1.55}.ds-guide-actions{padding:0 18px 18px;display:grid;gap:9px}.ds-guide-actions button{border:0;border-radius:12px;padding:13px;font-weight:900;cursor:pointer}.ds-guide-primary{background:#24589f;color:#fff}.ds-guide-secondary{background:#edf2f8;color:#27364d}.ds-mini-note{font-size:12px;color:#6d788a;text-align:center;line-height:1.45;margin-top:8px}
       @media(max-width:520px){#dsPwaInstall{right:8px;left:8px;bottom:8px}.ds-guide-card{max-height:92vh}.ds-guide-head{padding:15px}.ds-guide-body{padding:15px}.ds-tabs{padding:12px 15px 0}.ds-guide-actions{padding:0 15px 15px}}
+      #dsBackToTop{position:fixed;right:18px;bottom:22px;z-index:2147482500;width:48px;height:48px;border:0;border-radius:50%;background:#24589f;color:#fff;font-size:24px;font-weight:900;line-height:1;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.24);cursor:pointer;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .2s ease,transform .2s ease,visibility .2s}#dsBackToTop.show{opacity:1;visibility:visible;transform:translateY(0)}#dsBackToTop:focus-visible{outline:3px solid #8fc1ff;outline-offset:3px}@media(max-width:520px){#dsBackToTop{right:14px;bottom:78px;width:46px;height:46px}}
     `;
     document.head.appendChild(s);
   }
@@ -141,16 +142,35 @@
   });
   window.designSocksInstallApp=installApp;
 
+
+  function ensureBackToTop(){
+    let btn=document.getElementById('dsBackToTop');
+    if(btn)return btn;
+    btn=document.createElement('button');
+    btn.id='dsBackToTop';
+    btn.type='button';
+    btn.setAttribute('aria-label','맨 위로 이동');
+    btn.title='맨 위로';
+    btn.textContent='↑';
+    btn.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+    document.body.appendChild(btn);
+    const update=()=>btn.classList.toggle('show',window.scrollY>420);
+    window.addEventListener('scroll',update,{passive:true});
+    update();
+    return btn;
+  }
+
   document.addEventListener('DOMContentLoaded',()=>{
     injectStyles();
     showSplash();
+    ensureBackToTop();
     if(!isStandalone()&&(isIOS()||isKakao()||isSamsung())){
       const el=ensureInstall();
       if(el)el.hidden=false;
     }
     document.querySelectorAll('[data-install-app]').forEach(b=>b.addEventListener('click',installApp));
     if('serviceWorker'in navigator){
-      navigator.serviceWorker.register('/service-worker.js?v=352').then(reg=>reg.update()).catch(console.warn);
+      navigator.serviceWorker.register('/service-worker.js?v=3522').then(reg=>reg.update()).catch(console.warn);
     }
   });
 })();

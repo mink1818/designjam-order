@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>디자인 삭스 관리자</title>
+  
+  <meta name="description" content="거래처 상품 주문부터 관리자 주문·출고 관리까지 한 번에 이용하는 디자인삭스 주문관리 시스템">
+  <meta property="og:title" content="디자인삭스 주문관리 시스템">
+  <meta property="og:description" content="거래처 상품 주문부터 관리자 주문·출고 관리까지 한 번에">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://designjam-order.vercel.app/admin.html">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=3522">
+<title>디자인 삭스 관리자</title>
   <link rel="stylesheet" href="css/admin.css">
 
   <meta name="theme-color" content="#112437">
@@ -61,14 +68,6 @@
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
     <div><strong id="doneCount">0</strong><span>출고완료</span></div>
   </div>
-
-  <section class="admin-bank-settings">
-    <label>은행명<input id="bankName" type="text" placeholder="예: 국민은행"></label>
-    <label>계좌번호<input id="bankAccount" type="text" placeholder="계좌번호"></label>
-    <label>예금주<input id="bankHolder" type="text" placeholder="예금주"></label>
-    <button class="cart-btn" type="button" onclick="saveBankSettings()">계좌 저장</button>
-  </section>
-
   <input id="adminSearch" class="search" placeholder="거래처명 / 품번 / 주문번호 검색">
 
   <div class="admin-filter">

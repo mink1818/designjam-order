@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v3.5.2-icons-final';
+const CACHE_NAME='design-socks-v3.5.2.1';
 const APP_SHELL=['/offline.html','/css/main.css','/css/admin.css','/css/statement.css','/js/pwa.js','/icons/customer-192.png?v=3521','/icons/customer-512.png?v=3521','/icons/admin-192.png?v=3521','/icons/admin-512.png?v=3521'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
