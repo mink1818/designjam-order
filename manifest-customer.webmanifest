@@ -1,8 +1,8 @@
 {
   "id": "/design-socks-customer",
-  "name": "디자인 삭스 주문관리",
-  "short_name": "디자인 삭스",
-  "description": "디자인 삭스 거래처 주문관리",
+  "name": "디자인삭스 주문관리 (거래처)",
+  "short_name": "디자인삭스 거래처",
+  "description": "디자인삭스 거래처용 상품 주문 및 주문조회 시스템",
   "lang": "ko-KR",
   "start_url": "/login.html?app=customer",
   "scope": "/",

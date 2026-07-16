@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const app=document.body?.dataset?.pwaApp||'customer';
-  const name=app==='admin'?'디자인 삭스 관리자':'디자인 삭스';
+  const name=app==='admin'?'디자인삭스 주문관리 (관리자)':'디자인삭스 주문관리 (거래처)';
   const icon=app==='admin'?'/icons/admin-192.png?v=3521':'/icons/customer-192.png?v=3521';
   let deferredPrompt=null;
 
@@ -132,8 +132,7 @@
   window.addEventListener('beforeinstallprompt',e=>{
     e.preventDefault();
     deferredPrompt=e;
-    const el=ensureInstall();
-    if(el)el.hidden=false;
+    // 설치 안내는 사용자가 '홈 화면에 추가' 버튼을 눌렀을 때만 표시합니다.
   });
   window.addEventListener('appinstalled',()=>{
     const el=document.getElementById('dsPwaInstall');
@@ -164,13 +163,9 @@
     injectStyles();
     showSplash();
     ensureBackToTop();
-    if(!isStandalone()&&(isIOS()||isKakao()||isSamsung())){
-      const el=ensureInstall();
-      if(el)el.hidden=false;
-    }
     document.querySelectorAll('[data-install-app]').forEach(b=>b.addEventListener('click',installApp));
     if('serviceWorker'in navigator){
-      navigator.serviceWorker.register('/service-worker.js?v=3522').then(reg=>reg.update()).catch(console.warn);
+      navigator.serviceWorker.register('/service-worker.js?v=3524').then(reg=>reg.update()).catch(console.warn);
     }
   });
 })();

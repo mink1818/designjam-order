@@ -1,8 +1,8 @@
 {
   "id": "/design-socks-admin",
-  "name": "디자인 삭스 관리자",
-  "short_name": "삭스 관리자",
-  "description": "디자인 삭스 관리자 주문관리",
+  "name": "디자인삭스 주문관리 (관리자)",
+  "short_name": "디자인삭스 관리자",
+  "description": "디자인삭스 관리자용 주문·출고 관리 시스템",
   "lang": "ko-KR",
   "start_url": "/admin.html?app=admin",
   "scope": "/",

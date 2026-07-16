@@ -4,6 +4,20 @@ function updateAdminPreviewBanner() {
   const banner = document.getElementById("adminPreviewBanner");
   if (banner) banner.hidden = !ADMIN_PREVIEW_MODE;
   document.body.classList.toggle("admin-preview-mode", ADMIN_PREVIEW_MODE);
+
+  if (ADMIN_PREVIEW_MODE) {
+    const orderButton = document.querySelector("[data-customer-orders-button]");
+    if (orderButton) {
+      orderButton.textContent = "내 주문조회";
+      orderButton.onclick = renderOrderHistoryPreview;
+    }
+
+    const logoutButton = document.querySelector("[data-customer-logout-button]");
+    if (logoutButton) {
+      logoutButton.textContent = "관리자 메뉴";
+      logoutButton.onclick = () => { location.href = "admin-home.html"; };
+    }
+  }
 }
 const supabaseUrl =
   "https://dtjhuejmxrjkcxzvilgw.supabase.co";
@@ -920,6 +934,23 @@ function recalculateGroupTotal(groupId) {
   if (priceBox) priceBox.textContent = totalPrice.toLocaleString();
 }
 
+function renderOrderHistoryPreview() {
+  currentScreen = "order-history-preview";
+  showSearch(false);
+  hideLegacyFilters();
+  catalogList.innerHTML = `
+    <button class="cart-btn gray-btn" type="button" onclick="renderMainCategories()">← 상품목록으로</button>
+    <div class="product-card">
+      <h2>📋 내 주문조회</h2>
+      <p>실제 거래처가 로그인하면 진행 중 주문과 출고완료 내역이 이 화면에 표시됩니다.</p>
+      <div class="preview-order-sample">
+        <strong>관리자 미리보기 안내</strong>
+        <p>관리자 계정에는 거래처 주문내역이 연결되지 않으므로 미리보기에서는 실제 주문 데이터가 표시되지 않습니다.</p>
+      </div>
+    </div>
+  `;
+}
+
 /* ================================
    장바구니
 ================================ */
@@ -998,7 +1029,6 @@ function addGroupToCart(groupId, nextAction = "cart") {
 }
 
 function renderCart() {
-  if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   currentScreen = "cart";
   showSearch(false);
   hideLegacyFilters();
@@ -1560,6 +1590,7 @@ window.submitOrder = submitOrder;
 window.resetOrder = resetOrder;
 window.moveProductSlider = moveProductSlider;
 window.customerLogout = customerLogout;
+window.renderOrderHistoryPreview = renderOrderHistoryPreview;
 window.openCartImagePreview = openCartImagePreview;
 window.closeCartImagePreview = closeCartImagePreview;
 

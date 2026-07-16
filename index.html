@@ -39,7 +39,7 @@
   <section id="adminPreviewBanner" class="admin-preview-banner" hidden>
     <div>
       <strong>관리자 미리보기 모드</strong>
-      <span>거래처 화면을 확인하는 중입니다. 주문 기능은 사용할 수 없습니다.</span>
+      <span>거래처 화면을 확인하는 중입니다. 장바구니와 주문조회 화면은 확인할 수 있으며 주문 접수만 차단됩니다.</span>
     </div>
     <button class="cart-btn compact-action" type="button" onclick="location.href='admin-home.html'">관리자 메뉴로 돌아가기</button>
   </section>
@@ -48,7 +48,7 @@
   <button
     class="cart-btn"
     type="button"
-    onclick="location.href='order.html'"
+    data-customer-orders-button onclick="location.href='order.html'"
   >
     내 주문조회
   </button>
@@ -56,7 +56,7 @@
   <button
     class="cart-btn gray-btn"
     type="button"
-    onclick="customerLogout()"
+    data-customer-logout-button onclick="customerLogout()"
   >
     로그아웃
   </button>
