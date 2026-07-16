@@ -27,11 +27,11 @@
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=3526">
 </head>
 
-<body class="auth-pending" data-app-version="3.6.0" data-session-page="admin" data-pwa-app="admin">
+<body class="auth-pending" data-app-version="3.6.3" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
-  <p>대분류·카테고리·상품·품절 통합 관리 <span class="app-version-badge" id="appVersionBadge">V3.6</span></p>
+  <p>대분류·카테고리·상품·품절 통합 관리 <span class="app-version-badge" id="appVersionBadge">V3.6.3</span></p>
 </header>
 
 <main class="container products-admin-page">
@@ -268,60 +268,77 @@ accept="image/*">
 
   <hr>
 
-<section id="excelUploader" class="product-card admin-anchor-section">
+<section id="excelUploader" class="product-card admin-anchor-section bulk-product-uploader">
 
-  <h2>엑셀 상품 업로드</h2>
+  <h2>엑셀·사진 대량등록</h2>
 
-  <input
-    type="file"
-    id="excelFile"
-    accept=".xlsx,.xls"
-  >
+  <div class="bulk-upload-step">
+    <strong>1. 사진 보관함 등록</strong>
+    <p>
+      사진을 먼저 올려두거나 엑셀과 함께 올릴 수 있습니다.
+      파일명은 엑셀의 <b>이미지파일명</b> 또는 <b>묶음명</b>과 맞춰주세요.
+    </p>
 
-  <label for="bulkGroupImages">
-  상품 대표사진 일괄 선택
-</label>
+    <input
+      type="file"
+      id="bulkGroupImages"
+      accept="image/*"
+      multiple
+    >
 
-<input
-  type="file"
-  id="bulkGroupImages"
-  accept="image/*"
-  multiple
->
+    <small>
+      예: 661~663.jpg / 661~663-2.jpg / 700-705_1410.jpg<br>
+      같은 묶음의 첫 사진은 대표사진, -2·-3 사진은 추가사진으로 연결됩니다.
+    </small>
 
-<small>
-  사진 파일명을 묶음명과 맞춰주세요.
-  예: 661~663.jpg, 700-705_1410.jpg
-</small>
+    <div class="bulk-upload-actions">
+      <button id="saveBulkImagesButton" class="cart-btn" type="button">
+        선택 사진을 보관함에 등록
+      </button>
+      <button id="refreshImageLibraryButton" class="cart-btn gray-btn" type="button">
+        기존 사진 보관함 새로고침
+      </button>
+    </div>
 
-<button
-  id="matchBulkImagesButton"
-  class="cart-btn"
-  type="button"
->
-  사진 업로드 및 엑셀 자동 매칭
-</button>
+    <div id="imageLibrarySummary" class="image-library-summary">
+      사진 보관함을 확인하는 중...
+    </div>
+    <div id="bulkImageMessage"></div>
+  </div>
 
-<div id="bulkImageMessage"></div>
+  <div class="bulk-upload-step">
+    <strong>2. 엑셀 읽기·자동 매칭</strong>
+    <p>
+      필수 열: 대분류, 카테고리, 묶음명, 품번, 단가<br>
+      권장 열: 이미지파일명. 같은 사진을 여러 행에 연결해도 됩니다.
+    </p>
 
-  <button
-    class="cart-btn"
-    type="button"
-    onclick="uploadExcelProducts()"
-  >
-    엑셀 업로드
-  </button>
+    <input
+      type="file"
+      id="excelFile"
+      accept=".xlsx,.xls"
+    >
 
-  <button
-  id="registerExcelButton"
-  class="cart-btn"
-  type="button"
-  style="display:none;"
->
-  미리보기 상품 실제 등록
-</button>
+    <div class="bulk-upload-actions">
+      <button class="cart-btn" type="button" onclick="uploadExcelProducts()">
+        엑셀 읽기 및 사진 자동 매칭
+      </button>
+      <button id="rematchExcelButton" class="cart-btn gray-btn" type="button" style="display:none;">
+        사진 다시 매칭
+      </button>
+    </div>
 
-  <div id="excelMessage"></div>
+    <button
+      id="registerExcelButton"
+      class="cart-btn"
+      type="button"
+      style="display:none;"
+    >
+      미리보기 상품 실제 등록
+    </button>
+
+    <div id="excelMessage"></div>
+  </div>
 
 </section>
 

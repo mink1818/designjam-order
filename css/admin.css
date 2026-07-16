@@ -1131,3 +1131,136 @@ body.auth-pending.auth-ready::after { display: none; }
 .admin-filter button.active{background:#1b4b91;color:#fff}
 @media(max-width:700px){.container:has(#customerList){max-width:none}.compact-customer-summary-row{grid-template-columns:minmax(0,1fr) auto 18px;gap:7px;padding:11px 10px}.customer-main-info strong{font-size:15px}.customer-meta-info{display:grid;grid-template-columns:auto auto;gap:4px 5px}.customer-meta-info small{grid-column:1/-1;text-align:right;font-size:10px}.status-badge{padding:4px 7px;font-size:11px}.grade-chip{padding:3px 6px}.customer-contact-grid{grid-template-columns:1fr}.customer-list-head{font-size:12px}.dashboard div{padding:12px 5px}.dashboard strong{font-size:23px}}
 @media(max-width:430px){.admin-filter{display:grid;grid-template-columns:repeat(2,1fr)}.v3-toolbar{grid-template-columns:1fr}.compact-customer-summary-row{grid-template-columns:minmax(0,1fr) auto}.customer-chevron{display:none}.customer-meta-info{align-self:start}.customer-main-info small{font-size:12px}}
+
+/* ===== V3.6.3 엑셀·사진 대량등록 ===== */
+.bulk-product-uploader {
+  display: grid;
+  gap: 18px;
+}
+
+.bulk-upload-step {
+  padding: 18px;
+  border: 1px solid #d8e2ef;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.bulk-upload-step > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #163e70;
+  font-size: 18px;
+}
+
+.bulk-upload-step p,
+.bulk-upload-step small {
+  line-height: 1.65;
+}
+
+.bulk-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.bulk-upload-actions .cart-btn {
+  width: auto;
+  min-width: 190px;
+  margin: 0;
+}
+
+.image-library-summary {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 13px 15px;
+  border: 1px solid #bcd0e8;
+  border-radius: 12px;
+  background: #fff;
+  color: #294f7d;
+}
+
+.image-library-summary strong {
+  font-size: 16px;
+}
+
+.image-library-summary small {
+  color: #64748b;
+}
+
+.bulk-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.bulk-result-grid span {
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: rgba(255,255,255,.72);
+}
+
+.bulk-preview-table {
+  min-width: 980px;
+}
+
+.bulk-preview-image-cell {
+  width: 78px;
+  text-align: center !important;
+}
+
+.bulk-preview-image-cell img {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.bulk-no-image {
+  color: #a33;
+  font-size: 12px;
+}
+
+.image-match-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.image-match-badge.matched {
+  background: #dff7e8;
+  color: #17653b;
+}
+
+.image-match-badge.direct {
+  background: #e3efff;
+  color: #1f5b9c;
+}
+
+.image-match-badge.unmatched {
+  background: #ffe7e7;
+  color: #a42727;
+}
+
+@media (max-width: 640px) {
+  .bulk-upload-step {
+    padding: 14px;
+  }
+
+  .bulk-upload-actions {
+    display: grid;
+  }
+
+  .bulk-upload-actions .cart-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}

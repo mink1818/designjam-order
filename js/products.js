@@ -75,11 +75,24 @@ const generatePatternItemsBtn =
   const bulkGroupImages =
   document.getElementById("bulkGroupImages");
 
-const matchBulkImagesButton =
-  document.getElementById("matchBulkImagesButton");
+const saveBulkImagesButton =
+  document.getElementById("saveBulkImagesButton");
+
+const refreshImageLibraryButton =
+  document.getElementById("refreshImageLibraryButton");
+
+const rematchExcelButton =
+  document.getElementById("rematchExcelButton");
 
 const bulkImageMessage =
   document.getElementById("bulkImageMessage");
+
+const imageLibrarySummary =
+  document.getElementById("imageLibrarySummary");
+
+const BULK_IMAGE_FOLDER = "bulk-image-library";
+const BULK_IMAGE_PAGE_SIZE = 1000;
+let bulkImageLibrary = new Map();
 
 coverFile.addEventListener("change", async () => {
   const file = coverFile.files[0];
@@ -2351,13 +2364,156 @@ function renderSoldoutItems(
     .join("");
 }
 
+function getExcelImageMatchKey(row) {
+  return String(
+    row?.["이미지파일명"] ||
+    row?.["사진파일명"] ||
+    row?.["묶음명"] ||
+    ""
+  ).trim();
+}
+
+function parseImageUrlList(value) {
+  if (Array.isArray(value)) {
+    return value.map(String).map(item => item.trim()).filter(Boolean);
+  }
+
+  const text = String(value || "").trim();
+  if (!text) return [];
+
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      return parsed.map(String).map(item => item.trim()).filter(Boolean);
+    }
+  } catch (_) {
+    // 쉼표 또는 줄바꿈 형식으로 계속 처리
+  }
+
+  return text
+    .split(/[\n,]+/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function applyImageLibraryMatches(rows) {
+  let matchedCount = 0;
+  let unmatchedCount = 0;
+  let directUrlCount = 0;
+  const unmatchedRows = [];
+
+  rows.forEach((row, index) => {
+    const directUrl = String(row["대표사진URL"] || "").trim();
+
+    if (directUrl) {
+      row.__imageMatchStatus = "direct";
+      row.__imageMatchKey = "URL 직접입력";
+      row.__matchedImageCount = 1 + parseImageUrlList(row["추가사진URL"]).length;
+      directUrlCount++;
+      return;
+    }
+
+    const sourceName = getExcelImageMatchKey(row);
+    const key = normalizeGroupImageKey(sourceName);
+    const libraryItem = bulkImageLibrary.get(key);
+
+    if (libraryItem?.urls?.length) {
+      row["대표사진URL"] = libraryItem.urls[0];
+      row["추가사진URL"] = libraryItem.urls.slice(1);
+      row.__imageMatchStatus = "matched";
+      row.__imageMatchKey = libraryItem.displayName || sourceName;
+      row.__matchedImageCount = libraryItem.urls.length;
+      matchedCount++;
+    } else {
+      row.__imageMatchStatus = "unmatched";
+      row.__imageMatchKey = sourceName;
+      row.__matchedImageCount = 0;
+      unmatchedCount++;
+      unmatchedRows.push(`${index + 2}행: ${sourceName || "이미지파일명·묶음명 없음"}`);
+    }
+  });
+
+  return {
+    matchedCount,
+    unmatchedCount,
+    directUrlCount,
+    unmatchedRows
+  };
+}
+
+function renderExcelPreview(rows, matchResult) {
+  const excelMessage = document.getElementById("excelMessage");
+  const previewRows = rows.slice(0, 50);
+
+  excelMessage.innerHTML = `
+    <div class="product-success">
+      <h3>엑셀 읽기 완료: 총 ${rows.length}개 상품 묶음</h3>
+      <div class="bulk-result-grid">
+        <span>사진 자동 매칭 <strong>${matchResult.matchedCount}개</strong></span>
+        <span>URL 직접입력 <strong>${matchResult.directUrlCount}개</strong></span>
+        <span>사진 없음 <strong>${matchResult.unmatchedCount}개</strong></span>
+        <span>보관함 묶음 <strong>${bulkImageLibrary.size}개</strong></span>
+      </div>
+      <p>아래는 처음 ${previewRows.length}개 미리보기입니다.</p>
+    </div>
+
+    <div class="excel-preview-wrap">
+      <table class="excel-preview-table bulk-preview-table">
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>사진</th>
+            <th>대분류</th>
+            <th>카테고리</th>
+            <th>묶음명</th>
+            <th>품번</th>
+            <th>단가</th>
+            <th>매칭</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${previewRows.map((row, index) => {
+            const imageUrl = String(row["대표사진URL"] || "").trim();
+            const status = row.__imageMatchStatus || "unmatched";
+            const statusText = status === "matched"
+              ? `${row.__matchedImageCount || 1}장 연결`
+              : status === "direct"
+                ? "URL 사용"
+                : "사진 없음";
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td class="bulk-preview-image-cell">
+                  ${imageUrl
+                    ? `<img src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(row["묶음명"] || "상품사진")}">`
+                    : `<span class="bulk-no-image">없음</span>`}
+                </td>
+                <td>${escapeHtml(row["대분류"])}</td>
+                <td>${escapeHtml(row["카테고리"])}</td>
+                <td>${escapeHtml(row["묶음명"])}</td>
+                <td>${escapeHtml(row["품번"])}</td>
+                <td>${Number(String(row["단가"]).replace(/[^0-9.-]/g, "") || 0).toLocaleString()}원</td>
+                <td><span class="image-match-badge ${status}">${statusText}</span></td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    ${matchResult.unmatchedRows.length > 0 ? `
+      <div class="excel-error-list">
+        <h3>사진을 찾지 못한 행</h3>
+        ${matchResult.unmatchedRows.slice(0, 100).map(message => `<p>${escapeHtml(message)}</p>`).join("")}
+        ${matchResult.unmatchedRows.length > 100 ? `<p>외 ${matchResult.unmatchedRows.length - 100}개</p>` : ""}
+      </div>
+    ` : ""}
+  `;
+}
+
 async function uploadExcelProducts() {
-  const excelFileInput =
-    document.getElementById("excelFile");
-
-  const excelMessage =
-    document.getElementById("excelMessage");
-
+  const excelFileInput = document.getElementById("excelFile");
+  const excelMessage = document.getElementById("excelMessage");
   const file = excelFileInput.files[0];
 
   if (!file) {
@@ -2366,164 +2522,51 @@ async function uploadExcelProducts() {
   }
 
   if (typeof XLSX === "undefined") {
-    alert(
-      "엑셀 라이브러리를 불러오지 못했습니다.\n" +
-      "products.html의 스크립트 순서를 확인해주세요."
-    );
+    alert("엑셀 라이브러리를 불러오지 못했습니다.");
     return;
   }
 
-  excelMessage.innerHTML =
-    "<p>엑셀 내용을 읽는 중입니다...</p>";
+  excelMessage.innerHTML = "<p>엑셀과 사진 보관함을 확인하는 중입니다...</p>";
 
   try {
-    const arrayBuffer =
-      await file.arrayBuffer();
-
-    const workbook =
-      XLSX.read(arrayBuffer, {
-        type: "array"
-      });
-
-    const firstSheetName =
-      workbook.SheetNames[0];
-
-    if (!firstSheetName) {
-      throw new Error(
-        "엑셀 파일에 시트가 없습니다."
-      );
+    if (bulkImageLibrary.size === 0) {
+      await refreshBulkImageLibrary({ silent: true });
     }
 
-    const worksheet =
-      workbook.Sheets[firstSheetName];
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
 
-    const rows =
-      XLSX.utils.sheet_to_json(
-        worksheet,
-        {
-          defval: "",
-          raw: false
-        }
-      );
+    if (!firstSheetName) throw new Error("엑셀 파일에 시트가 없습니다.");
 
-    if (rows.length === 0) {
-      throw new Error(
-        "엑셀에 등록할 내용이 없습니다."
-      );
-    }
+    const rows = XLSX.utils.sheet_to_json(
+      workbook.Sheets[firstSheetName],
+      { defval: "", raw: false }
+    );
 
-    const requiredHeaders = [
-  "대분류",
-  "카테고리",
-  "묶음명",
-  "품번",
-  "단가"
-];
+    if (rows.length === 0) throw new Error("엑셀에 등록할 내용이 없습니다.");
 
-    const firstRowKeys =
-      Object.keys(rows[0]);
-
-    const missingHeaders =
-      requiredHeaders.filter(
-        header =>
-          !firstRowKeys.includes(header)
-      );
+    const requiredHeaders = ["대분류", "카테고리", "묶음명", "품번", "단가"];
+    const firstRowKeys = Object.keys(rows[0]);
+    const missingHeaders = requiredHeaders.filter(header => !firstRowKeys.includes(header));
 
     if (missingHeaders.length > 0) {
-      throw new Error(
-        "필수 제목이 없습니다: " +
-        missingHeaders.join(", ")
-      );
+      throw new Error("필수 제목이 없습니다: " + missingHeaders.join(", "));
     }
 
-    const previewRows =
-      rows.slice(0, 20);
-
-    excelMessage.innerHTML = `
-      <div class="product-success">
-        <h3>
-          엑셀 읽기 성공: 총 ${rows.length}개 상품 묶음
-        </h3>
-
-        <p>
-          아래는 처음 ${previewRows.length}개 미리보기입니다.
-        </p>
-      </div>
-
-      <div class="excel-preview-wrap">
-        <table class="excel-preview-table">
-          <thead>
-            <tr>
-              <th>번호</th>
-              <th>대분류</th>
-              <th>카테고리</th>
-              <th>묶음명</th>
-              <th>품번</th>
-              <th>단가</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${previewRows
-              .map((row, index) => `
-                <tr>
-                  <td>${index + 1}</td>
-
-                  <td>
-                    ${escapeHtml(row["대분류"])}
-                  </td>
-
-                  <td>
-                    ${escapeHtml(row["카테고리"])}
-                  </td>
-
-                  <td>
-                    ${escapeHtml(row["묶음명"])}
-                  </td>
-
-                  <td>
-                    ${escapeHtml(row["품번"])}
-                  </td>
-
-                  <td>
-                    ${Number(
-                      String(row["단가"])
-                        .replace(/[^0-9.-]/g, "")
-                    ).toLocaleString()}원
-                  </td>
-                </tr>
-              `)
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    /*
-      다음 단계에서 Supabase 저장에 사용할 수 있도록
-      읽은 데이터를 임시 보관합니다.
-    */
     window.pendingExcelRows = rows;
+    const matchResult = applyImageLibraryMatches(rows);
+    renderExcelPreview(rows, matchResult);
 
-    const registerButton =
-  document.getElementById("registerExcelButton");
-
-registerButton.style.display = "block";
-
+    document.getElementById("registerExcelButton").style.display = "block";
+    if (rematchExcelButton) rematchExcelButton.style.display = "inline-flex";
   } catch (error) {
     console.error(error);
-
-    excelMessage.innerHTML = `
-      <p class="auth-error">
-        엑셀 읽기 실패:
-        ${escapeHtml(error.message)}
-      </p>
-    `;
+    excelMessage.innerHTML = `<p class="auth-error">엑셀 읽기 실패: ${escapeHtml(error.message)}</p>`;
   }
 }
 
-window.uploadExcelProducts =
-  uploadExcelProducts;
+window.uploadExcelProducts = uploadExcelProducts;
 
 function parseItemPattern(value) {
   const parts = String(value || "")
@@ -2620,9 +2663,12 @@ async function registerExcelProducts() {
     return;
   }
 
+  const rowsWithoutImage = rows.filter(row => !String(row["대표사진URL"] || "").trim()).length;
   const confirmed = confirm(
     `총 ${rows.length}개의 상품 묶음을 실제 등록할까요?\n\n` +
-    "같은 카테고리와 묶음명이 이미 있으면 해당 행은 건너뜁니다."
+    `사진 연결 완료 ${rows.length - rowsWithoutImage}개 / 사진 없음 ${rowsWithoutImage}개\n` +
+    "같은 카테고리와 묶음명이 이미 있으면 해당 행은 건너뜁니다." +
+    (rowsWithoutImage > 0 ? "\n\n사진이 없는 행도 상품은 등록됩니다." : "")
   );
 
   if (!confirmed) return;
@@ -2820,7 +2866,7 @@ async function registerExcelProducts() {
 brand_text: brandText,
 
             image_url: imageUrl,
-            image_urls: [],
+            image_urls: parseImageUrlList(row["추가사진URL"]),
             item_numbers: itemNumbers,
             soldout_items: [],
             price,
@@ -2915,330 +2961,274 @@ document
 window.registerExcelProducts =
   registerExcelProducts;
 
-  /* 사진 파일명과 엑셀 묶음명을 비교하기 위한 정리 */
+/* 사진 파일명과 엑셀 묶음명을 비교하기 위한 정리 */
 function normalizeGroupImageKey(value) {
   return String(value || "")
     .toLowerCase()
-    /* 파일 확장자 제거 */
-    .replace(/\.(jpg|jpeg|png|webp|gif)$/i, "")
-    /* 물결표와 여러 종류의 대시를 일반 대시로 변경 */
+    .replace(/^.*[\\/]/, "")
+    .replace(/\.(jpg|jpeg|png|webp|gif|avif)$/i, "")
+    .replace(/(?:[-_](?:img|image|photo))?[-_](\d+)$/i, "")
     .replace(/[~～–—]/g, "-")
-    /* 쉼표, 밑줄, 공백 제거 */
     .replace(/[,\s_]+/g, "")
-    /* 괄호 제거 */
     .replace(/[()[\]{}]/g, "")
-    /* 숫자·영문·한글·대시 이외 제거 */
     .replace(/[^0-9a-z가-힣-]/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
 
 function parseBulkImageFileName(fileName) {
-  const withoutExtension = String(fileName || "")
-    .replace(/\.[^/.]+$/, "");
-
-  const match = withoutExtension.match(
-    /^(.*?)(?:[-_](\d+))?$/
-  );
-
-  const baseName = match?.[1] || withoutExtension;
-  const imageOrder = Number(match?.[2] || 1);
+  const originalBase = String(fileName || "").replace(/\.[^/.]+$/, "");
+  const possibleOrderMatch = originalBase.match(/(?:[-_](?:img|image|photo))?[-_](\d+)$/i);
+  const possibleOrder = Number(possibleOrderMatch?.[1] || 1);
+  const orderMatch = possibleOrderMatch && possibleOrder >= 2 && possibleOrder <= 50
+    ? possibleOrderMatch
+    : null;
+  const order = orderMatch ? possibleOrder : 1;
+  const baseName = orderMatch
+    ? originalBase.slice(0, orderMatch.index)
+    : originalBase;
 
   return {
     key: normalizeGroupImageKey(baseName),
-    order: imageOrder
+    order: Number.isFinite(order) && order > 0 ? order : 1,
+    displayName: baseName.trim() || originalBase.trim()
   };
 }
 
+function buildLibraryStorageName(file, parsed) {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const safeKey = parsed.key || `photo-${Date.now()}`;
+  const orderText = String(parsed.order).padStart(3, "0");
+  return `${safeKey}__${orderText}.${extension}`;
+}
 
-/* 사진 일괄 업로드 후 엑셀 묶음명과 자동 매칭 */
-async function uploadAndMatchBulkImages() {
-  const files = Array.from(
-    bulkGroupImages?.files || []
-  );
+function parseStoredLibraryFile(fileName) {
+  const match = String(fileName || "").match(/^(.*?)__(\d+)\.(jpg|jpeg|png|webp|gif|avif)$/i);
+  if (!match) return null;
+  return {
+    key: match[1],
+    order: Number(match[2]) || 1,
+    displayName: match[1]
+  };
+}
 
-  const rows =
-    Array.isArray(window.pendingExcelRows)
-      ? window.pendingExcelRows
-      : [];
+function renderImageLibrarySummary() {
+  if (!imageLibrarySummary) return;
 
-  if (rows.length === 0) {
-    alert(
-      "먼저 엑셀 파일을 선택하고 '엑셀 업로드'를 눌러주세요."
-    );
-    return;
+  const photoCount = [...bulkImageLibrary.values()]
+    .reduce((sum, item) => sum + item.urls.length, 0);
+
+  imageLibrarySummary.innerHTML = `
+    <strong>사진 보관함</strong>
+    <span>묶음 ${bulkImageLibrary.size}개 · 사진 ${photoCount}장</span>
+    <small>사진을 먼저 등록해두면 나중에 엑셀 업로드 시 자동으로 찾아 연결합니다.</small>
+  `;
+}
+
+async function refreshBulkImageLibrary({ silent = false } = {}) {
+  if (!silent && imageLibrarySummary) {
+    imageLibrarySummary.textContent = "사진 보관함을 새로고침하는 중...";
   }
+
+  const library = new Map();
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseClient.storage
+      .from("product-images")
+      .list(BULK_IMAGE_FOLDER, {
+        limit: BULK_IMAGE_PAGE_SIZE,
+        offset,
+        sortBy: { column: "name", order: "asc" }
+      });
+
+    if (error) throw error;
+
+    const files = (data || []).filter(item => item?.name && item.id);
+
+    files.forEach(item => {
+      const parsed = parseStoredLibraryFile(item.name);
+      if (!parsed) return;
+
+      const { data: publicData } = supabaseClient.storage
+        .from("product-images")
+        .getPublicUrl(`${BULK_IMAGE_FOLDER}/${item.name}`);
+
+      if (!library.has(parsed.key)) {
+        library.set(parsed.key, {
+          displayName: parsed.displayName,
+          photos: []
+        });
+      }
+
+      library.get(parsed.key).photos.push({
+        order: parsed.order,
+        url: publicData.publicUrl,
+        fileName: item.name
+      });
+    });
+
+    if (files.length < BULK_IMAGE_PAGE_SIZE) break;
+    offset += BULK_IMAGE_PAGE_SIZE;
+  }
+
+  library.forEach(item => {
+    item.photos.sort((a, b) => a.order - b.order);
+    item.urls = item.photos.map(photo => photo.url);
+  });
+
+  bulkImageLibrary = library;
+  renderImageLibrarySummary();
+  return library;
+}
+
+async function saveSelectedImagesToLibrary() {
+  const files = Array.from(bulkGroupImages?.files || []);
 
   if (files.length === 0) {
-    alert("업로드할 상품 사진을 선택해주세요.");
+    alert("보관함에 등록할 사진을 선택해주세요.");
     return;
   }
 
-  const confirmed = confirm(
-    `사진 ${files.length}장을 업로드하고\n` +
-    `엑셀 ${rows.length}개 행과 자동 매칭할까요?`
-  );
+  const parsedFiles = files.map(file => ({
+    file,
+    parsed: parseBulkImageFileName(file.name)
+  }));
 
-  if (!confirmed) return;
-
-  matchBulkImagesButton.disabled = true;
-  matchBulkImagesButton.textContent =
-    "사진 업로드 중...";
-
-  bulkImageMessage.innerHTML = `
-    <div class="product-success">
-      <h3>사진 업로드를 시작합니다</h3>
-      <p>
-        브라우저를 닫거나 새로고침하지 마세요.
-      </p>
-    </div>
-  `;
-
-  /*
-    같은 파일명이 중복 선택되었는지 확인하기 위한 Map
-    key: 정리된 파일명
-    value: 파일 객체
-  */
-  const fileMap = new Map();
-
-files.forEach(file => {
-  const parsed =
-    parseBulkImageFileName(file.name);
-
-  if (!parsed.key) return;
-
-  if (!fileMap.has(parsed.key)) {
-    fileMap.set(parsed.key, []);
+  const invalidFiles = parsedFiles.filter(item => !item.parsed.key);
+  if (invalidFiles.length > 0) {
+    alert("파일명을 인식하지 못한 사진이 있습니다. 품번 또는 묶음명이 포함된 파일명을 사용해주세요.");
+    return;
   }
 
-  fileMap.get(parsed.key).push({
-    file,
-    order: parsed.order
+  const duplicateNames = [];
+  const seenStorageNames = new Set();
+  parsedFiles.forEach(item => {
+    item.storageName = buildLibraryStorageName(item.file, item.parsed);
+    if (seenStorageNames.has(item.storageName)) duplicateNames.push(item.file.name);
+    seenStorageNames.add(item.storageName);
   });
-});
 
-/* 대표사진부터 순서대로 정렬 */
-fileMap.forEach(fileItems => {
-  fileItems.sort(
-    (a, b) => a.order - b.order
-  );
-});
+  if (duplicateNames.length > 0) {
+    alert("같은 묶음·순번으로 인식되는 사진이 중복되었습니다:\n" + duplicateNames.join("\n"));
+    return;
+  }
 
-  const uploadedUrlMap = new Map();
+  if (!confirm(`사진 ${files.length}장을 보관함에 등록할까요?\n같은 파일명이 있으면 새 사진으로 교체됩니다.`)) {
+    return;
+  }
 
-  let uploadedCount = 0;
-  let uploadErrorCount = 0;
-
-  const uploadErrors = [];
+  saveBulkImagesButton.disabled = true;
+  let successCount = 0;
+  let errorCount = 0;
+  const errors = [];
 
   try {
-    /*
-      사진을 한 장씩 업로드
-      한 번에 수백 개를 동시에 올리면 브라우저나
-      Supabase 요청 제한에 걸릴 수 있어 순차 처리
-    */
-    for (const [key, file] of fileMap.entries()) {
+    for (let index = 0; index < parsedFiles.length; index++) {
+      const item = parsedFiles[index];
+      saveBulkImagesButton.textContent = `사진 등록 중 ${index + 1}/${parsedFiles.length}`;
+      bulkImageMessage.innerHTML = `
+        <div class="product-success">
+          <h3>사진 보관함 등록 중</h3>
+          <p>${index + 1} / ${parsedFiles.length}</p>
+          <p>${escapeHtml(item.file.name)}</p>
+          <p>성공 ${successCount}장 / 실패 ${errorCount}장</p>
+        </div>
+      `;
+
       try {
-        bulkImageMessage.innerHTML = `
-          <div class="product-success">
-            <h3>사진 업로드 중</h3>
-
-            <p>
-              ${uploadedCount + uploadErrorCount + 1}
-              / ${fileMap.size}
-            </p>
-
-            <p>
-              현재 파일:
-              ${escapeHtml(file.name)}
-            </p>
-
-            <p>
-              성공 ${uploadedCount}장 /
-              실패 ${uploadErrorCount}장
-            </p>
-          </div>
-        `;
-
-        const publicUrl =
-          await uploadImage(
-            file,
-            "bulk-group-images"
-          );
-
-        uploadedUrlMap.set(key, publicUrl);
-
-        uploadedCount++;
-
+        const filePath = `${BULK_IMAGE_FOLDER}/${item.storageName}`;
+        const { error } = await supabaseClient.storage
+          .from("product-images")
+          .upload(filePath, item.file, {
+            contentType: item.file.type,
+            cacheControl: "3600",
+            upsert: true
+          });
+        if (error) throw error;
+        successCount++;
       } catch (error) {
-        uploadErrorCount++;
-
-        uploadErrors.push(
-          `${file.name}: ${error.message}`
-        );
+        errorCount++;
+        errors.push(`${item.file.name}: ${error.message}`);
       }
     }
 
-    let matchedCount = 0;
-    let unmatchedRowCount = 0;
+    await refreshBulkImageLibrary({ silent: true });
 
-    const unmatchedRows = [];
+    bulkImageMessage.innerHTML = `
+      <div class="product-success">
+        <h3>사진 보관함 등록 완료</h3>
+        <p>성공 ${successCount}장 / 실패 ${errorCount}장</p>
+        <p>현재 보관함: 묶음 ${bulkImageLibrary.size}개</p>
+      </div>
+      ${errors.length ? `<div class="excel-error-list"><h3>등록 실패</h3>${errors.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}
+    `;
 
-    /*
-      엑셀의 묶음명과 업로드된 사진 파일명 비교
-    */
-    rows.forEach((row, index) => {
-      const groupTitle =
-        String(row["묶음명"] || "").trim();
+    bulkGroupImages.value = "";
 
-      const key =
-        normalizeGroupImageKey(groupTitle);
+    if (Array.isArray(window.pendingExcelRows) && window.pendingExcelRows.length) {
+      const result = applyImageLibraryMatches(window.pendingExcelRows);
+      renderExcelPreview(window.pendingExcelRows, result);
+    }
+  } finally {
+    saveBulkImagesButton.disabled = false;
+    saveBulkImagesButton.textContent = "선택 사진을 보관함에 등록";
+  }
+}
 
-      const matchedUrl =
-        uploadedUrlMap.get(key);
+async function rematchPendingExcelRows() {
+  const rows = Array.isArray(window.pendingExcelRows) ? window.pendingExcelRows : [];
+  if (rows.length === 0) {
+    alert("먼저 엑셀 파일을 읽어주세요.");
+    return;
+  }
 
-      if (matchedUrl) {
-        /*
-          registerExcelProducts()에서 읽는
-          기존 열 이름을 그대로 사용
-        */
-        row["대표사진URL"] = matchedUrl;
+  try {
+    rematchExcelButton.disabled = true;
+    rematchExcelButton.textContent = "다시 매칭 중...";
+    await refreshBulkImageLibrary({ silent: true });
 
-        matchedCount++;
-      } else {
-        unmatchedRowCount++;
-
-        unmatchedRows.push(
-          `${index + 2}행: ${groupTitle || "묶음명 없음"}`
-        );
+    rows.forEach(row => {
+      if (row.__imageMatchStatus === "matched" || row.__imageMatchStatus === "unmatched") {
+        row["대표사진URL"] = "";
+        row["추가사진URL"] = [];
       }
     });
 
-    /*
-      엑셀 미리보기 화면에도 사진 매칭 결과 표시
-    */
-    bulkImageMessage.innerHTML = `
-      <div class="product-success">
-        <h3>사진 업로드 및 자동 매칭 완료</h3>
-
-        <p>
-          선택한 사진:
-          ${files.length}장
-        </p>
-
-        <p>
-          업로드 성공:
-          ${uploadedCount}장
-        </p>
-
-        <p>
-          업로드 실패:
-          ${uploadErrorCount}장
-        </p>
-
-        <p>
-          엑셀 자동 매칭:
-          ${matchedCount}개
-        </p>
-
-        <p>
-          사진을 찾지 못한 엑셀 행:
-          ${unmatchedRowCount}개
-        </p>
-      </div>
-
-      ${
-        duplicateFileNames.length > 0
-          ? `
-            <div class="excel-error-list">
-              <h3>중복된 사진 파일명</h3>
-
-              ${duplicateFileNames
-                .map(name => `
-                  <p>${escapeHtml(name)}</p>
-                `)
-                .join("")}
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        unmatchedRows.length > 0
-          ? `
-            <div class="excel-error-list">
-              <h3>사진과 매칭되지 않은 묶음</h3>
-
-              ${unmatchedRows
-                .slice(0, 100)
-                .map(message => `
-                  <p>${escapeHtml(message)}</p>
-                `)
-                .join("")}
-
-              ${
-                unmatchedRows.length > 100
-                  ? `
-                    <p>
-                      외 ${unmatchedRows.length - 100}개
-                    </p>
-                  `
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        uploadErrors.length > 0
-          ? `
-            <div class="excel-error-list">
-              <h3>업로드 실패 사진</h3>
-
-              ${uploadErrors
-                .map(message => `
-                  <p>${escapeHtml(message)}</p>
-                `)
-                .join("")}
-            </div>
-          `
-          : ""
-      }
-    `;
-
-    /*
-      모든 엑셀 행에 사진이 연결되었을 때 안내
-    */
-    if (
-      matchedCount === rows.length &&
-      uploadErrorCount === 0
-    ) {
-      alert(
-        "모든 사진이 엑셀과 정상적으로 매칭되었습니다.\n\n" +
-        "이제 '미리보기 상품 실제 등록' 버튼을 누르세요."
-      );
-    } else {
-      alert(
-        `사진 자동 매칭이 완료되었습니다.\n\n` +
-        `매칭 ${matchedCount}개\n` +
-        `미매칭 ${unmatchedRowCount}개\n` +
-        `업로드 실패 ${uploadErrorCount}개`
-      );
-    }
-
+    const result = applyImageLibraryMatches(rows);
+    renderExcelPreview(rows, result);
   } finally {
-    matchBulkImagesButton.disabled = false;
-    matchBulkImagesButton.textContent =
-      "사진 업로드 및 엑셀 자동 매칭";
+    rematchExcelButton.disabled = false;
+    rematchExcelButton.textContent = "사진 다시 매칭";
   }
 }
 
-if (matchBulkImagesButton) {
-  matchBulkImagesButton.addEventListener(
-    "click",
-    uploadAndMatchBulkImages
-  );
+if (saveBulkImagesButton) {
+  saveBulkImagesButton.addEventListener("click", saveSelectedImagesToLibrary);
 }
+
+if (refreshImageLibraryButton) {
+  refreshImageLibraryButton.addEventListener("click", async () => {
+    try {
+      refreshImageLibraryButton.disabled = true;
+      await refreshBulkImageLibrary();
+    } catch (error) {
+      imageLibrarySummary.innerHTML = `<span class="auth-error">보관함 조회 실패: ${escapeHtml(error.message)}</span>`;
+    } finally {
+      refreshImageLibraryButton.disabled = false;
+    }
+  });
+}
+
+if (rematchExcelButton) {
+  rematchExcelButton.addEventListener("click", rematchPendingExcelRows);
+}
+
+refreshBulkImageLibrary({ silent: true }).catch(error => {
+  console.warn("사진 보관함 초기 조회 실패", error);
+  if (imageLibrarySummary) {
+    imageLibrarySummary.innerHTML = `<span class="auth-error">사진 보관함을 불러오지 못했습니다. 새로고침 버튼을 눌러주세요.</span>`;
+  }
+});
 
 initializeV2ProductAdmin();
