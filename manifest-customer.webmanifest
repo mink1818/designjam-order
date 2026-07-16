@@ -16,49 +16,49 @@
   ],
   "icons": [
     {
-      "src": "/icons/customer-72.png?v=3521",
+      "src": "/icons/customer-72.png?v=3526",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-96.png?v=3521",
+      "src": "/icons/customer-96.png?v=3526",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-128.png?v=3521",
+      "src": "/icons/customer-128.png?v=3526",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-144.png?v=3521",
+      "src": "/icons/customer-144.png?v=3526",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-192.png?v=3521",
+      "src": "/icons/customer-192.png?v=3526",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-256.png?v=3521",
+      "src": "/icons/customer-256.png?v=3526",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-384.png?v=3521",
+      "src": "/icons/customer-384.png?v=3526",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/customer-512.png?v=3521",
+      "src": "/icons/customer-512.png?v=3526",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -70,7 +70,7 @@
       "url": "/index.html",
       "icons": [
         {
-          "src": "/icons/customer-192.png?v=3521",
+          "src": "/icons/customer-192.png?v=3526",
           "sizes": "192x192"
         }
       ]
@@ -80,7 +80,7 @@
       "url": "/order.html",
       "icons": [
         {
-          "src": "/icons/customer-192.png?v=3521",
+          "src": "/icons/customer-192.png?v=3526",
           "sizes": "192x192"
         }
       ]
