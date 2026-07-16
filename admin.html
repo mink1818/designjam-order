@@ -11,8 +11,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="삭스 관리자">
   <link rel="manifest" href="manifest-admin.webmanifest">
-  <link rel="icon" href="icons/admin-192.png">
-  <link rel="apple-touch-icon" href="icons/admin-180.png">
+  <link rel="icon" href="icons/admin-v2-192.png?v=351">
+  <link rel="apple-touch-icon" href="icons/admin-v2-180.png?v=351">
 </head>
 <body data-session-page="admin" data-pwa-app="admin">
 
@@ -61,6 +61,13 @@
     <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
     <div><strong id="doneCount">0</strong><span>출고완료</span></div>
   </div>
+
+  <section class="admin-bank-settings">
+    <label>은행명<input id="bankName" type="text" placeholder="예: 국민은행"></label>
+    <label>계좌번호<input id="bankAccount" type="text" placeholder="계좌번호"></label>
+    <label>예금주<input id="bankHolder" type="text" placeholder="예금주"></label>
+    <button class="cart-btn" type="button" onclick="saveBankSettings()">계좌 저장</button>
+  </section>
 
   <input id="adminSearch" class="search" placeholder="거래처명 / 품번 / 주문번호 검색">
 
