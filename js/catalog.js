@@ -850,7 +850,7 @@ function openGroup(groupId) {
         <p>
           총수량:
           <strong>
-            <span id="liveGroupQty">0</span>개
+            <span id="liveGroupQty">0</span>죽
           </strong>
         </p>
 
@@ -1020,12 +1020,12 @@ function addGroupToCart(groupId, nextAction = "cart") {
     });
 
   if (addedQty === 0) {
-    alert("수량을 1개 이상 입력해주세요.");
+    alert("수량을 1죽 이상 입력해주세요.");
     return;
   }
 
   saveCart();
-  alert(`${addedQty}개가 장바구니에 담겼습니다.`);
+  alert(`${addedQty}죽이 장바구니에 담겼습니다.`);
 
   if (nextAction === "order") {
     showOrderForm();
@@ -1125,7 +1125,7 @@ function renderCart() {
 
       <hr>
 
-      <h3>총수량: ${totalQty.toLocaleString()}개</h3>
+      <h3>총수량: ${totalQty.toLocaleString()}죽</h3>
 
       <h2 class="price-text">
         총금액: ${totalPrice.toLocaleString()}원
@@ -1303,7 +1303,7 @@ async function submitOrder() {
       return `
         <div class="cart-item">
           <strong>${escapeHtml(item.number)}</strong>
-          <span>${Number(item.qty).toLocaleString()}개</span>
+          <span>${Number(item.qty).toLocaleString()}죽</span>
           <span>${itemTotal.toLocaleString()}원</span>
         </div>
       `;
@@ -1333,7 +1333,7 @@ async function submitOrder() {
 
       <hr>
 
-      <h3>총수량: ${totalQty.toLocaleString()}개</h3>
+      <h3>총수량: ${totalQty.toLocaleString()}죽</h3>
 
       <h2 class="price-text">
         총금액: ${totalPrice.toLocaleString()}원

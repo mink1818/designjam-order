@@ -149,7 +149,7 @@ function getOrderSummary(group) {
     }
     return `<div class="cart-item ${isSoldout ? "soldout-item" : ""}">
       <strong>${escapeHtml(item.item_number)}${isSoldout ? " 품절" : ""}</strong>
-      <span>${item.qty}개</span>
+      <span>${item.qty}죽</span>
       <span>${isSoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
     </div>`;
   }).join("");
@@ -172,7 +172,7 @@ function renderFullOrder(group) {
     <p><strong>메모:</strong> ${escapeHtml(group.memo || "")}</p>
     ${summary.itemRows}
     <hr>
-    <h3>출고수량: ${summary.qtyTotal}개</h3>
+    <h3>출고수량: ${summary.qtyTotal}죽</h3>
     <p><strong>상품금액:</strong> ${summary.productTotal.toLocaleString()}원</p>
     <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
     <h2 class="price-text">최종금액: ${summary.finalTotal.toLocaleString()}원</h2>
@@ -188,7 +188,7 @@ function renderCompletedOrder(group) {
   return `<article class="completed-order-row">
     <button class="completed-order-summary" type="button" onclick="toggleCompletedOrder('${id}')">
       <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
-      <span>${summary.qtyTotal}개</span>
+      <span>${summary.qtyTotal}죽</span>
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>

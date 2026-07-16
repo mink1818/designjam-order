@@ -240,7 +240,7 @@ function addToCart(product) {
   });
 
   if (addedCount === 0) {
-    alert("수량을 1개 이상 입력해주세요.");
+    alert("수량을 1죽 이상 입력해주세요.");
     return;
   }
 
@@ -272,7 +272,7 @@ function renderCart() {
     cartHtml += `
       <div class="cart-item">
         <strong>${item.number}</strong>
-        <span>${item.qty}개</span>
+        <span>${item.qty}죽</span>
         <span>${itemTotal.toLocaleString()}원</span>
       </div>
     `;
@@ -285,7 +285,7 @@ function renderCart() {
       <h2>🛒 장바구니</h2>
       ${cartHtml}
       <hr>
-      <h3>총수량: ${totalQty}개</h3>
+      <h3>총수량: ${totalQty}죽</h3>
       <h3>총금액: ${totalPrice.toLocaleString()}원</h3>
       <button class="cart-btn" onclick="showOrderForm()">주문하기</button>
     </div>
@@ -371,7 +371,7 @@ const customerName = currentCustomer.business_name;
     orderHtml += `
       <div class="cart-item">
         <strong>${item.number}</strong>
-        <span>${item.qty}개</span>
+        <span>${item.qty}죽</span>
         <span>${(item.qty * item.price * 10).toLocaleString()}원</span>
       </div>
     `;

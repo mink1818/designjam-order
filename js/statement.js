@@ -156,7 +156,7 @@ function renderStatement(items) {
         </td>
 
         <td>
-          ${Number(item.qty).toLocaleString()}
+          ${Number(item.qty).toLocaleString()}죽
         </td>
 
         <td>
@@ -219,7 +219,7 @@ function renderStatement(items) {
         <tr>
           <th>번호</th>
           <th>품번</th>
-          <th>수량</th>
+          <th>수량(죽)</th>
           <th>단가</th>
           <th>금액</th>
         </tr>
@@ -233,7 +233,7 @@ function renderStatement(items) {
     <section class="statement-summary">
       <div>
         <span>출고수량</span>
-        <strong>${totalQty.toLocaleString()}개</strong>
+        <strong>${totalQty.toLocaleString()}죽</strong>
       </div>
 
       <div>

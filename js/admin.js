@@ -75,6 +75,8 @@ const adminSearch = document.getElementById("adminSearch");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 
 let adminFilter = "전체";
+const requestedAdminStatus = new URLSearchParams(location.search).get("status");
+if (["전체", "주문접수", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let paymentAccounts = [];
 
@@ -223,7 +225,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
           <strong>${item.item_number}</strong>
-          <span>× ${item.qty}</span>
+          <span>× ${item.qty}죽</span>
           <em>${rowTotal.toLocaleString()}원</em>
         </label>
       `;
@@ -235,7 +237,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div>
     <h2>${group.customerName || "거래처 미입력"}</h2>
     <p class="order-summary-number">${group.orderNumber} · ${formatOrderDate(group.createdAt)}</p>
-    <p class="order-summary-money">출고수량 ${summaryQty}개 / ${summaryTotal.toLocaleString()}원</p>
+    <p class="order-summary-money">출고수량 ${summaryQty}죽 / ${summaryTotal.toLocaleString()}원</p>
     ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
   </div>
 
@@ -297,7 +299,7 @@ class="order-detail">
 
         ${renderPaymentAccountEditor(group, index, isDone)}
 
-        <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
+        <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>죽</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
         <p><strong>배송비:</strong> <span class="calc-shipping-fee">0</span>원</p>
         <h2 class="final-total">최종금액: <span class="calc-final-total">0</span>원</h2>

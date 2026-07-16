@@ -1,18 +1,93 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="디자인삭스 관리자용 주문·출고 관리 시스템">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="디자인삭스 관리자용 주문·매출 통계">
   <meta property="og:title" content="디자인삭스 주문관리 (관리자)">
-  <meta property="og:description" content="디자인삭스 관리자용 주문·출고 관리 시스템">
+  <meta property="og:description" content="디자인삭스 관리자용 주문·매출 통계">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/stats.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=3526">
-<title>디자인삭스 주문관리 (관리자)</title><link rel="stylesheet" href="css/admin.css">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=364">
+  <title>디자인삭스 주문관리 (관리자)</title>
+  <link rel="stylesheet" href="css/admin.css">
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인삭스 관리자">
   <link rel="manifest" href="manifest-admin.webmanifest">
-  <link rel="icon" href="icons/admin-192.png?v=3526">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=3526">
-</head><body class="auth-pending" data-session-page="admin" data-pwa-app="admin"><header><h1>📈 통계</h1><p>주문과 매출의 기본 현황</p></header><main class="container"><button class="cart-btn gray-btn" onclick="location.href='admin-home.html'">← 관리자 대시보드</button><div id="statsCards" class="v3-metric-grid"></div><section class="product-card"><h2>안내</h2><p>현재 버전에서는 기본 주문·매출 통계를 제공합니다. 브랜드별·상품별·거래처별 상세 차트는 다음 통계 고도화 단계에서 추가됩니다.</p></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/stats.js"></script><script src="js/session-status.js"></script><script src="js/pwa.js"></script>
+  <link rel="icon" href="icons/admin-192.png?v=364">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=364">
+</head>
+<body class="auth-pending" data-session-page="admin" data-pwa-app="admin">
+<header><h1>📈 통계</h1><p>주문·매출·상품·거래처 운영 현황</p></header>
+<main class="container stats-page">
+  <button class="cart-btn gray-btn" type="button" onclick="location.href='admin-home.html'">← 관리자 대시보드</button>
+
+  <section class="product-card stats-toolbar-card">
+    <div class="stats-range-buttons" id="statsRangeButtons">
+      <button type="button" data-range="today">오늘</button>
+      <button type="button" data-range="week">이번 주</button>
+      <button type="button" data-range="month" class="active">이번 달</button>
+      <button type="button" data-range="lastMonth">지난달</button>
+      <button type="button" data-range="all">전체</button>
+    </div>
+    <div class="stats-custom-range">
+      <label>시작일<input id="statsStartDate" type="date"></label>
+      <label>종료일<input id="statsEndDate" type="date"></label>
+      <button id="applyCustomRangeBtn" class="cart-btn" type="button">기간 적용</button>
+    </div>
+    <div class="stats-options-row">
+      <label class="check-label"><input id="completedOnlyCheck" type="checkbox"> 출고완료 주문만 집계</label>
+      <div class="stats-action-buttons">
+        <button id="refreshStatsBtn" class="cart-btn gray-btn" type="button">통계 새로고침</button>
+        <button id="exportStatsBtn" class="cart-btn" type="button">통계 엑셀용 CSV 저장</button>
+      </div>
+    </div>
+    <p id="statsPeriodLabel" class="stats-period-label"></p>
+  </section>
+
+  <div id="statsCards" class="v3-metric-grid stats-metric-grid"></div>
+
+  <section class="stats-status-grid">
+    <button class="product-card stats-status-card" data-order-filter="전체"><span>전체 주문</span><strong id="statusAll">0건</strong><small>주문관리로 이동</small></button>
+    <button class="product-card stats-status-card pending" data-order-filter="주문접수"><span>주문접수</span><strong id="statusPending">0건</strong><small>미출고 주문 확인</small></button>
+    <button class="product-card stats-status-card done" data-order-filter="출고완료"><span>출고완료</span><strong id="statusDone">0건</strong><small>완료 주문 확인</small></button>
+  </section>
+
+  <section class="stats-chart-grid">
+    <article class="product-card stats-panel">
+      <div class="v3-section-heading"><h2>날짜별 주문금액</h2><span>선택 기간 기준</span></div>
+      <div id="salesTrendChart" class="stats-chart" aria-label="날짜별 주문금액 차트"></div>
+    </article>
+    <article class="product-card stats-panel">
+      <div class="v3-section-heading"><h2>날짜별 주문수량</h2><span>단위: 죽</span></div>
+      <div id="qtyTrendChart" class="stats-chart" aria-label="날짜별 주문수량 차트"></div>
+    </article>
+  </section>
+
+  <section class="stats-ranking-grid">
+    <article class="product-card stats-panel">
+      <div class="v3-section-heading"><h2>상품 판매량 TOP 10</h2><span>품절 제외 · 단위 죽</span></div>
+      <div id="topProductsList" class="stats-ranking-list"></div>
+    </article>
+    <article class="product-card stats-panel">
+      <div class="v3-section-heading"><h2>거래처 주문금액 TOP 10</h2><span>배송비 포함</span></div>
+      <div id="topCustomersList" class="stats-ranking-list"></div>
+    </article>
+  </section>
+
+  <section class="product-card stats-panel">
+    <div class="v3-section-heading"><h2>대분류별 판매 비중</h2><span>상품 데이터에 대분류 정보가 있을 때 표시</span></div>
+    <div id="categoryShareList" class="stats-share-list"></div>
+  </section>
+
+  <p id="statsMessage" class="stats-message" role="status"></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/stats.js"></script>
+<script src="js/session-status.js"></script>
+<script src="js/pwa.js"></script>
 <script src="js/admin-page-transition.js"></script>
-</body></html>
+</body>
+</html>
