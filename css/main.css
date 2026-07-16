@@ -532,3 +532,131 @@ body.auth-pending.auth-ready { visibility: visible; }
   .frequent-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .frequent-card img{height:92px}
 }
+
+
+/* V3.5.2.8 대분류 카드 안쪽 즐겨찾기 + 자주 사는 상품 확장 UI */
+.main-category-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.favorite-category-card{
+  position:relative;
+  min-width:0;
+  border:1px solid #e2e7ee;
+  border-radius:13px;
+  background:#fff;
+  box-shadow:0 3px 10px rgba(0,0,0,.08);
+  overflow:hidden;
+}
+.favorite-category-card .main-category-card{
+  width:100%;
+  min-height:76px;
+  padding:10px 42px 10px 12px;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:10px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  text-align:left;
+}
+.favorite-category-card .main-category-card img,
+.favorite-category-card .main-category-no-image{
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  aspect-ratio:1/1;
+  border-radius:9px;
+  object-fit:contain;
+}
+.favorite-category-card .main-category-no-image{
+  font-size:24px;
+}
+.favorite-category-card .main-category-card strong{
+  min-width:0;
+  padding:0;
+  font-size:16px;
+  line-height:1.25;
+  text-align:left;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.favorite-category-card .favorite-star{
+  top:50%;
+  right:12px;
+  width:24px;
+  height:24px;
+  min-width:24px;
+  transform:translateY(-50%);
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  box-shadow:none;
+  color:#6e7784;
+  font-size:20px;
+  line-height:1;
+}
+.favorite-category-card .favorite-star:hover{
+  transform:translateY(-50%) scale(1.08);
+  background:#f2f5f9;
+}
+.favorite-category-card .favorite-star.active{
+  color:#f4b400;
+  background:#fff8dc;
+}
+.frequent-card-image{
+  display:block;
+  width:100%;
+  aspect-ratio:4/3;
+  border-radius:7px;
+  overflow:hidden;
+  background:#f7f8fa;
+}
+.frequent-card-image img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+  background:#f7f8fa;
+}
+.frequent-no-image{
+  display:grid;
+  width:100%;
+  height:100%;
+  place-items:center;
+  font-size:32px;
+}
+.frequent-more-button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  margin:12px 0 0;
+  padding:8px 12px;
+  border:0;
+  background:transparent;
+  color:#24579f;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+}
+.frequent-more-button:hover{
+  text-decoration:underline;
+}
+@media(max-width:700px){
+  .main-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .favorite-category-card .main-category-card{min-height:68px;padding:8px 35px 8px 9px;gap:7px}
+  .favorite-category-card .main-category-card img,
+  .favorite-category-card .main-category-no-image{flex-basis:36px;width:36px;height:36px}
+  .favorite-category-card .main-category-card strong{font-size:14px}
+  .favorite-category-card .favorite-star{right:7px;width:22px;height:22px;min-width:22px;font-size:18px}
+}
+@media(max-width:390px){
+  .favorite-category-card .main-category-card strong{font-size:13px}
+}

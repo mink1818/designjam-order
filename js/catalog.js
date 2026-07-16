@@ -45,6 +45,7 @@ let currentUser = null;
 let currentCustomer = null;
 let favoriteMainCategoryIds = new Set();
 let frequentGroups = [];
+let frequentProductsExpanded = false;
 let customerBankSettings = { bankName:"", account:"", holder:"" };
 
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
@@ -303,11 +304,17 @@ function renderMainCategories() {
           <div class="main-category-grid">
             ${filtered.map(mainCategory => `
               <div class="favorite-category-card">
-                <button class="favorite-star ${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "active" : ""}" type="button" onclick="toggleMainCategoryFavorite(event, ${mainCategory.id})" aria-label="즐겨찾기">★</button>
                 <button class="main-category-card" type="button" onclick="openMainCategory(${mainCategory.id})">
                   ${renderMainCategoryImage(mainCategory)}
                   <strong>${escapeHtml(mainCategory.name)}</strong>
                 </button>
+                <button
+                  class="favorite-star ${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "active" : ""}"
+                  type="button"
+                  onclick="toggleMainCategoryFavorite(event, ${mainCategory.id})"
+                  aria-label="${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "즐겨찾기 해제" : "즐겨찾기 추가"}"
+                  title="${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "즐겨찾기 해제" : "즐겨찾기 추가"}"
+                >★</button>
               </div>
             `).join("")}
           </div>
@@ -1609,13 +1616,48 @@ async function loadCustomerFeatureData(){
   try{
     const {data}=await supabaseClient.from("orders").select("item_number,qty").eq("customer_id",currentUser.id).limit(1000);
     const counts={}; (data||[]).forEach(x=>counts[String(x.item_number)]=(counts[String(x.item_number)]||0)+Number(x.qty||0));
-    frequentGroups=groups.map(g=>({...g,_frequency:(g.item_numbers||[]).reduce((sum,n)=>sum+(counts[String(n)]||0),0)})).filter(g=>g._frequency>0).sort((a,b)=>b._frequency-a._frequency).slice(0,4);
+    frequentGroups=groups.map(g=>({...g,_frequency:(g.item_numbers||[]).reduce((sum,n)=>sum+(counts[String(n)]||0),0)})).filter(g=>g._frequency>0).sort((a,b)=>b._frequency-a._frequency).slice(0,16);
   }catch(e){console.warn("자주 사는 상품 계산 실패",e)}
 }
 function renderFrequentProducts(){
   if(!frequentGroups.length)return "";
-  return `<section class="product-card frequent-section"><h2>자주 사는 상품</h2><div class="frequent-grid">${frequentGroups.map(g=>`<button class="frequent-card" type="button" onclick="openGroup(${g.id})">${g.image_url?`<img src="${escapeAttribute(g.image_url)}" alt="${escapeAttribute(g.title)}">`:""}<strong>${escapeHtml(g.title)}</strong><small>${(g.item_numbers||[]).map(escapeHtml).join(", ")}</small></button>`).join("")}</div></section>`;
+
+  const visibleGroups = frequentProductsExpanded
+    ? frequentGroups
+    : frequentGroups.slice(0, 8);
+
+  const moreButton = frequentGroups.length > 8
+    ? `<button class="frequent-more-button" type="button" onclick="toggleFrequentProducts(event)">
+         ${frequentProductsExpanded ? "접기" : "더보기"}
+         <span aria-hidden="true">${frequentProductsExpanded ? "⌃" : "⌄"}</span>
+       </button>`
+    : "";
+
+  return `
+    <section class="product-card frequent-section">
+      <h2>자주 사는 상품</h2>
+      <div class="frequent-grid">
+        ${visibleGroups.map(g=>`
+          <button class="frequent-card" type="button" onclick="openGroup(${g.id})">
+            <span class="frequent-card-image">
+              ${g.image_url
+                ? `<img src="${escapeAttribute(g.image_url)}" alt="${escapeAttribute(g.title)}">`
+                : `<span class="frequent-no-image" aria-hidden="true">🧦</span>`}
+            </span>
+            <strong>${escapeHtml(g.title)}</strong>
+            <small>${(g.item_numbers||[]).map(escapeHtml).join(", ")}</small>
+          </button>`).join("")}
+      </div>
+      ${moreButton}
+    </section>`;
 }
+
+function toggleFrequentProducts(event){
+  event?.stopPropagation();
+  frequentProductsExpanded = !frequentProductsExpanded;
+  renderMainCategories();
+}
+window.toggleFrequentProducts = toggleFrequentProducts;
 async function toggleMainCategoryFavorite(event,id){
   event?.stopPropagation(); const numeric=Number(id); const active=favoriteMainCategoryIds.has(numeric);
   let result;
