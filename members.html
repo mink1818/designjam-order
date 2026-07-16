@@ -1,67 +1,9 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>회원관리</title>
-  <link rel="stylesheet" href="css/admin.css">
-</head>
-
-<body class="auth-pending" data-session-page="admin">
-<header>
-  <h1>회원관리</h1>
-</header>
-
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>거래처관리 V3.1</title><link rel="stylesheet" href="css/admin.css"></head>
+<body class="auth-pending" data-session-page="admin"><header><h1>🏢 거래처관리</h1><p>승인·등급·할인·외상·관리자 메모</p></header>
 <main class="container">
-
-  <button
-    class="cart-btn gray-btn"
-    onclick="location.href='admin-home.html'"
-  >
-    ← 관리자 메뉴로 돌아가기
-  </button>
-
-  <div class="dashboard">
-    <div>
-      <strong id="waitingCount">0</strong>
-      <span>승인대기</span>
-    </div>
-
-    <div>
-      <strong id="approvedCount">0</strong>
-      <span>승인완료</span>
-    </div>
-
-    <div>
-      <strong id="blockedCount">0</strong>
-      <span>차단회원</span>
-    </div>
-  </div>
-
-  <input
-    id="memberSearch"
-    class="search"
-    type="text"
-    placeholder="거래처명 / 대표자 / 전화번호 / 이메일 검색"
-  >
-
-  <div class="admin-filter">
-    <button onclick="setMemberFilter('전체')">전체</button>
-    <button onclick="setMemberFilter('승인대기')">승인대기</button>
-    <button onclick="setMemberFilter('승인완료')">승인완료</button>
-    <button onclick="setMemberFilter('차단')">차단회원</button>
-  </div>
-
-  <button class="cart-btn" onclick="loadCustomers()">
-    회원 새로고침
-  </button>
-
-  <div id="customerList"></div>
-
-</main>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/members.js"></script>
-<script src="js/session-status.js"></script>
-</body>
-</html>
+<button class="cart-btn gray-btn" onclick="location.href='admin-home.html'">← 관리자 대시보드</button>
+<div class="dashboard"><div><strong id="waitingCount">0</strong><span>승인대기</span></div><div><strong id="approvedCount">0</strong><span>승인완료</span></div><div><strong id="blockedCount">0</strong><span>차단</span></div><div><strong id="creditCount">0</strong><span>외상허용</span></div></div>
+<div class="v3-toolbar"><input id="memberSearch" class="search" type="text" placeholder="상호·대표자·전화번호·이메일 검색"><select id="memberSort"><option value="new">최근 가입순</option><option value="order">최근 주문순</option><option value="sales">누적금액순</option><option value="name">거래처명순</option></select></div>
+<div class="admin-filter"><button onclick="setMemberFilter('전체')">전체</button><button onclick="setMemberFilter('승인대기')">승인대기</button><button onclick="setMemberFilter('승인완료')">승인완료</button><button onclick="setMemberFilter('차단')">차단</button></div>
+<button class="cart-btn" onclick="loadCustomers()">거래처 새로고침</button><div id="customerList"></div>
+</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/members.js"></script><script src="js/session-status.js"></script></body></html>

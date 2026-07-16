@@ -1,84 +1,50 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta name="viewport"
-content="width=device-width, initial-scale=1">
-
-<title>관리자</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>디자인잠 관리자 대시보드 V3.1</title>
 <link rel="stylesheet" href="css/admin.css">
-
 </head>
-
 <body class="auth-pending" data-session-page="admin">
-
-<header>
-
-<h1>🧦 디자인 삭스 관리자</h1>
-
-<p>관리 메뉴</p>
-
-</header>
-
+<header><h1>🧦 디자인잠 도매관리 V3.1</h1><p>관리자 운영 대시보드</p></header>
 <main class="container">
+  <section class="admin-welcome-card dashboard-welcome">
+    <div><h2>오늘의 운영 현황</h2><p id="dashboardUpdatedAt">데이터를 불러오는 중입니다.</p></div>
+    <button class="cart-btn compact-action" id="refreshDashboardBtn" type="button">새로고침</button>
+  </section>
 
-<section class="admin-welcome-card">
-  <div>
-    <h2>관리자 전체 메뉴</h2>
-    <p>주문·상품·회원·거래처 업무를 선택하세요.</p>
-  </div>
-</section>
+  <section class="v3-metric-grid" aria-label="운영 현황">
+    <button class="v3-metric-card" data-link="admin.html?filter=today"><span>오늘 주문</span><strong id="todayOrderCount">-</strong><small>건</small></button>
+    <button class="v3-metric-card" data-link="admin.html?filter=pending"><span>출고 대기</span><strong id="pendingOrderCount">-</strong><small>건</small></button>
+    <button class="v3-metric-card" data-link="admin.html?filter=done"><span>출고완료</span><strong id="todayDoneCount">-</strong><small>건</small></button>
+    <button class="v3-metric-card" data-link="products.html#soldout"><span>품절상품</span><strong id="soldoutCount">-</strong><small>개</small></button>
+    <button class="v3-metric-card" data-link="members.html?filter=waiting"><span>승인 대기</span><strong id="waitingCustomerCount">-</strong><small>곳</small></button>
+    <button class="v3-metric-card" data-link="members.html"><span>전체 거래처</span><strong id="customerCount">-</strong><small>곳</small></button>
+  </section>
 
-<div class="admin-menu-grid">
-<button class="cart-btn"
-onclick="location.href='admin.html'">
+  <section class="v3-dashboard-section">
+    <div class="v3-section-heading"><h2>관리 메뉴</h2><span>업무를 선택하세요</span></div>
+    <div class="admin-menu-grid v3-menu-grid">
+      <button class="v3-menu-card" onclick="location.href='admin.html'"><b>📦 주문관리</b><span>접수·출고·송장 관리</span></button>
+      <button class="v3-menu-card" onclick="location.href='products.html'"><b>🧦 상품관리</b><span>대분류·카테고리·상품</span></button>
+      <button class="v3-menu-card" onclick="location.href='members.html'"><b>🏢 거래처관리</b><span>승인·등급·할인·메모</span></button>
+      <button class="v3-menu-card" onclick="location.href='products.html#inventoryPanel'"><b>📊 재고관리</b><span>현재고·부족·창고위치</span></button>
+      <button class="v3-menu-card" onclick="location.href='notices.html'"><b>📢 공지·이벤트</b><span>공지·특가·신상품 등록</span></button>
+      <button class="v3-menu-card" onclick="location.href='stats.html'"><b>📈 통계</b><span>주문·거래처 통계</span></button>
+      <button class="v3-menu-card" onclick="location.href='settings.html'"><b>⚙️ 환경설정</b><span>입금계좌·운영 설정</span></button>
+    </div>
+  </section>
 
-📦 주문관리
+  <section class="v3-dashboard-section">
+    <div class="v3-section-heading"><h2>최근 알림</h2><button class="text-button" id="markAllReadBtn" type="button">모두 읽음</button></div>
+    <div id="dashboardNotificationList" class="v3-notification-list"><p class="empty-copy">알림을 불러오는 중입니다.</p></div>
+  </section>
 
-</button>
-
-<button class="cart-btn"
-onclick="location.href='members.html'">
-
-👤 회원관리
-
-</button>
-
-<button class="cart-btn"
-onclick="location.href='products.html'">
-
-🧦 상품관리
-
-</button>
-
-<button class="cart-btn"
-onclick="location.href='customers.html'">
-
-🏢 거래처관리
-
-</button>
-
-<button class="cart-btn"
-onclick="location.href='stats.html'">
-
-📈 통계
-
-</button>
-</div>
-
-<button class="cart-btn admin-logout-main" type="button" onclick="window.designjamSession?.logout()">
-  로그아웃
-</button>
-
+  <button class="cart-btn admin-logout-main" type="button" onclick="window.designjamSession?.logout()">로그아웃</button>
 </main>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/admin-home.js"></script>
 <script src="js/session-status.js"></script>
 </body>
-
 </html>
