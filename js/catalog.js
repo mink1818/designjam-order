@@ -14,8 +14,8 @@ function updateAdminPreviewBanner() {
 
     const logoutButton = document.querySelector("[data-customer-logout-button]");
     if (logoutButton) {
-      logoutButton.textContent = "관리자 메뉴";
-      logoutButton.onclick = () => { location.href = "admin-home.html"; };
+      logoutButton.hidden = true;
+      logoutButton.setAttribute("aria-hidden", "true");
     }
   }
 }

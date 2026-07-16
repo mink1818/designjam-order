@@ -1,3 +1,4 @@
+// V3.5.2.5
 const CACHE_NAME='design-socks-v3-5-2-4';
 const APP_SHELL=['/offline.html','/css/main.css','/css/admin.css','/css/statement.css','/js/pwa.js','/icons/customer-192.png?v=3523','/icons/customer-512.png?v=3523','/icons/admin-192.png?v=3523','/icons/admin-512.png?v=3523'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)).then(()=>self.skipWaiting()))});
