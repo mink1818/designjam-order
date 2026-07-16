@@ -24,7 +24,7 @@ function isDesignjamAdminEmail(email) {
 
 const statementArea =
   document.getElementById("statementArea");
-let statementBankSettings = {bankName:"",account:"",holder:""};
+let statementDefaultAccount = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -111,7 +111,7 @@ async function loadStatement() {
     return;
   }
 
-  try { const {data:bank}=await supabaseClient.from("app_settings").select("value").eq("key","bank_account").maybeSingle(); statementBankSettings=bank?.value||statementBankSettings; } catch(e) { console.warn(e); }
+  try { const {data}=await supabaseClient.from("payment_accounts").select("*").eq("is_default",true).eq("is_active",true).maybeSingle(); statementDefaultAccount=data||null; } catch(e) { console.warn(e); }
   renderStatement(data);
 }
 
@@ -252,7 +252,7 @@ function renderStatement(items) {
       </div>
     </section>
 
-    ${statementBankSettings.account ? `<section class="delivery-info bank-transfer-box"><p><strong>입금 계좌:</strong> ${escapeHtml(statementBankSettings.bankName || "")} ${escapeHtml(statementBankSettings.account || "")}</p><p><strong>예금주:</strong> ${escapeHtml(statementBankSettings.holder || "")}</p></section>` : ""}
+    ${renderStatementBankBox(first)}
 
     <section class="delivery-info">
       <p>
@@ -271,6 +271,14 @@ function renderStatement(items) {
       <h2>디자인 삭스</h2>
     </footer>
   `;
+}
+
+function renderStatementBankBox(first){
+  const bankName=first.payment_bank_name||statementDefaultAccount?.bank_name||"";
+  const account=first.payment_account_number||statementDefaultAccount?.account_number||"";
+  const holder=first.payment_account_holder||statementDefaultAccount?.account_holder||"";
+  if(!account)return "";
+  return `<section class="delivery-info bank-transfer-box"><p><strong>입금 계좌:</strong> ${escapeHtml(bankName)} ${escapeHtml(account)}</p><p><strong>예금주:</strong> ${escapeHtml(holder)}</p></section>`;
 }
 
 function closeStatement() {

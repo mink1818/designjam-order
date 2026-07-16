@@ -76,7 +76,7 @@ const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 
 let adminFilter = "전체";
 let customerNotes = {};
-let bankSettings = { bankName:"", account:"", holder:"" };
+let paymentAccounts = [];
 
 if (adminSearch) adminSearch.addEventListener("input", loadOrders);
 
@@ -295,6 +295,8 @@ class="order-detail">
   ${isDone ? "disabled" : ""}
 >
 
+        ${renderPaymentAccountEditor(group, index, isDone)}
+
         <h2 class="total-qty">출고수량: <span class="calc-qty">0</span>개</h2>
         <p><strong>상품금액:</strong> <span class="calc-product-total">0</span>원</p>
         <p><strong>배송비:</strong> <span class="calc-shipping-fee">0</span>원</p>
@@ -473,17 +475,66 @@ async function loadAdminFeatureData(orderRows=[]){
     }
   }catch(e){console.warn("관리자 메모 불러오기 실패",e)}
   try{
-    const {data}=await supabaseClient.from("app_settings").select("value").eq("key","bank_account").maybeSingle();
-    bankSettings=data?.value||bankSettings;
-    const n=document.getElementById("bankName"),a=document.getElementById("bankAccount"),h=document.getElementById("bankHolder");
-    if(n)n.value=bankSettings.bankName||""; if(a)a.value=bankSettings.account||""; if(h)h.value=bankSettings.holder||"";
-  }catch(e){console.warn("계좌 설정 불러오기 실패",e)}
+    const {data,error}=await supabaseClient.from("payment_accounts").select("*").eq("is_active",true).order("is_default",{ascending:false}).order("created_at",{ascending:true});
+    if(error) throw error;
+    paymentAccounts=data||[];
+  }catch(e){console.warn("저장 계좌 불러오기 실패",e);paymentAccounts=[]}
 }
-async function saveBankSettings(){
-  const value={bankName:document.getElementById("bankName")?.value.trim()||"",account:document.getElementById("bankAccount")?.value.trim()||"",holder:document.getElementById("bankHolder")?.value.trim()||""};
-  const {error}=await supabaseClient.from("app_settings").upsert({key:"bank_account",value,updated_at:new Date().toISOString()});
-  if(error){alert("계좌 저장 실패: V2-FEATURE-SETUP.sql을 먼저 실행해주세요.\n"+error.message);return} bankSettings=value; alert("송금 계좌를 저장했습니다.")
+
+function renderPaymentAccountEditor(group,index,isDone){
+  const selectedId=group.paymentAccountId||paymentAccounts.find(a=>a.is_default)?.id||"";
+  const hasManual=Boolean(group.paymentAccountNumber&&!group.paymentAccountId);
+  const options=paymentAccounts.map(a=>`<option value="${escapeAdminAttr(a.id)}" ${selectedId===a.id&&!hasManual?"selected":""}>${escapeAdminHtml(a.label)} · ${escapeAdminHtml(a.bank_name)} ${escapeAdminHtml(a.account_number)} / ${escapeAdminHtml(a.account_holder)}</option>`).join("");
+  const selectedAccount=paymentAccounts.find(a=>a.id===selectedId);
+  const bank=hasManual?group.paymentBankName:(group.paymentBankName||selectedAccount?.bank_name||"");
+  const number=hasManual?group.paymentAccountNumber:(group.paymentAccountNumber||selectedAccount?.account_number||"");
+  const holder=hasManual?group.paymentAccountHolder:(group.paymentAccountHolder||selectedAccount?.account_holder||"");
+  return `<section class="order-payment-account" data-order-account="${escapeAdminAttr(group.orderNumber)}">
+    <label class="shipping-label">입금계좌</label>
+    <select class="payment-account-select" onchange="changePaymentAccountMode(${index},this.value)" ${isDone?"disabled":""}>
+      ${options||'<option value="">등록된 계좌 없음</option>'}
+      <option value="__manual__" ${hasManual?"selected":""}>직접 입력</option>
+    </select>
+    <div id="manual-account-${index}" class="manual-account-fields ${hasManual?'show':''}">
+      <input class="manual-bank-name" value="${escapeAdminAttr(bank)}" placeholder="은행명" ${isDone?"disabled":""}>
+      <input class="manual-account-number" value="${escapeAdminAttr(number)}" placeholder="계좌번호" ${isDone?"disabled":""}>
+      <input class="manual-account-holder" value="${escapeAdminAttr(holder)}" placeholder="예금주" ${isDone?"disabled":""}>
+    </div>
+    <div class="selected-account-preview">${number?`현재 표시: ${escapeAdminHtml(bank)} ${escapeAdminHtml(number)} / ${escapeAdminHtml(holder)}`:'표시할 계좌를 선택하세요.'}</div>
+    ${isDone?'':`<button type="button" class="cart-btn account-save-btn" onclick="saveOrderPaymentAccount('${escapeAdminAttr(group.orderNumber)}',${index})">이 주문에 계좌 저장</button>`}
+  </section>`;
 }
+function changePaymentAccountMode(index,value){
+  const box=document.getElementById(`manual-account-${index}`);if(!box)return;
+  box.classList.toggle('show',value==='__manual__');
+  if(value!=='__manual__'){
+    const a=paymentAccounts.find(x=>x.id===value);if(!a)return;
+    box.querySelector('.manual-bank-name').value=a.bank_name||'';
+    box.querySelector('.manual-account-number').value=a.account_number||'';
+    box.querySelector('.manual-account-holder').value=a.account_holder||'';
+  }
+}
+async function saveOrderPaymentAccount(orderNumber,index){
+  const detail=document.getElementById(`detail-${index}`);if(!detail)return;
+  const select=detail.querySelector('.payment-account-select');
+  const manual=select?.value==='__manual__';
+  let payload={payment_account_id:null,payment_account_label:'',payment_bank_name:'',payment_account_number:'',payment_account_holder:''};
+  if(manual){
+    payload.payment_bank_name=detail.querySelector('.manual-bank-name')?.value.trim()||'';
+    payload.payment_account_number=detail.querySelector('.manual-account-number')?.value.trim()||'';
+    payload.payment_account_holder=detail.querySelector('.manual-account-holder')?.value.trim()||'';
+    payload.payment_account_label='직접 입력';
+  }else{
+    const a=paymentAccounts.find(x=>x.id===select?.value);
+    if(a) payload={payment_account_id:a.id,payment_account_label:a.label||'',payment_bank_name:a.bank_name||'',payment_account_number:a.account_number||'',payment_account_holder:a.account_holder||''};
+  }
+  if(!payload.payment_bank_name||!payload.payment_account_number||!payload.payment_account_holder){alert('은행명, 계좌번호, 예금주를 모두 입력하거나 저장 계좌를 선택하세요.');return;}
+  const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
+  if(error){alert('주문 계좌 저장 실패: V3-1-ORDER-ACCOUNT-SETUP.sql을 먼저 실행해주세요.\n'+error.message);return;}
+  alert('이 주문에 입금계좌를 저장했습니다.');loadOrders();
+}
+window.changePaymentAccountMode=changePaymentAccountMode;window.saveOrderPaymentAccount=saveOrderPaymentAccount;
+
 async function saveCustomerNote(customerId,note){
   if(!customerId){alert("이전 주문이라 거래처 ID가 없습니다.");return}
   const {error}=await supabaseClient.from("customer_admin_notes").upsert({customer_id:customerId,note:String(note||"").trim(),updated_at:new Date().toISOString()});
