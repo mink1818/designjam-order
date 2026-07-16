@@ -9,6 +9,8 @@
   const CUSTOMER_PROFILE_KEY = "designjam_customer_profile";
 
   let client = null;
+  let notificationChannel = null;
+  let notificationUserId = null;
 
   function getClient() {
     if (client) return client;
@@ -53,8 +55,11 @@
       #designjamSessionStatus .session-status-text{min-width:0!important;display:flex!important;flex-direction:column!important;line-height:1.2!important}
       #designjamSessionStatus .session-status-text strong{font-size:12px!important;color:#fff!important;white-space:nowrap!important}
       #designjamSessionStatus .session-status-text span{max-width:180px!important;overflow:hidden!important;color:rgba(255,255,255,.88)!important;font-size:11px!important;text-overflow:ellipsis!important;white-space:nowrap!important}
-      #designjamSessionStatus .session-status-action{flex:0 0 auto!important;padding:7px 9px!important;border:0!important;border-radius:9px!important;background:rgba(255,255,255,.2)!important;color:#fff!important;font-size:12px!important;font-weight:700!important;cursor:pointer!important} #designjamPasswordModal{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55)} #designjamPasswordModal[hidden]{display:none!important} #designjamPasswordModal .pw-card{width:min(420px,100%);padding:22px;border-radius:18px;background:#fff;color:#111;box-shadow:0 20px 60px rgba(0,0,0,.3)} #designjamPasswordModal input{width:100%;box-sizing:border-box;margin:7px 0 13px;padding:12px;border:1px solid #ccd4df;border-radius:10px} #designjamPasswordModal .pw-actions{display:flex;gap:8px} #designjamPasswordModal button{flex:1;padding:11px;border:0;border-radius:10px;font-weight:700;cursor:pointer} #designjamPasswordModal .primary{background:#24589f;color:#fff}
-      @media(max-width:680px){#designjamSessionStatus.session-status{top:6px!important;right:6px!important;padding:7px 8px!important}#designjamSessionStatus .session-status-text span{max-width:100px!important}}
+      #designjamSessionStatus .session-status-action{flex:0 0 auto!important;padding:7px 9px!important;border:0!important;border-radius:9px!important;background:rgba(255,255,255,.2)!important;color:#fff!important;font-size:12px!important;font-weight:700!important;cursor:pointer!important}
+      #designjamSessionStatus .session-notification-button{position:relative!important;min-width:36px!important;font-size:17px!important;padding:6px 8px!important}#designjamSessionStatus .session-notification-count{position:absolute!important;top:-5px!important;right:-5px!important;display:none!important;min-width:17px!important;height:17px!important;padding:0 3px!important;border-radius:999px!important;background:#ffcf33!important;color:#172b4d!important;font-size:10px!important;line-height:17px!important;font-weight:900!important;text-align:center!important}#designjamSessionStatus .session-notification-count.show{display:block!important}
+      #designjamNotificationPanel{position:fixed;top:70px;right:10px;z-index:2147483647;width:min(390px,calc(100vw - 20px));max-height:min(520px,70vh);overflow:auto;border:1px solid #d7e0eb;border-radius:16px;background:#fff;color:#111;box-shadow:0 18px 55px rgba(0,0,0,.28);font-family:Arial,sans-serif}#designjamNotificationPanel[hidden]{display:none!important}#designjamNotificationPanel .np-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid #e5eaf0;background:#fff}#designjamNotificationPanel .np-head strong{font-size:15px}#designjamNotificationPanel .np-head button{border:0;background:transparent;color:#24589f;font-weight:800;cursor:pointer}#designjamNotificationPanel .np-list{display:grid}#designjamNotificationPanel .np-item{display:block;width:100%;padding:13px 14px;border:0;border-bottom:1px solid #eef1f5;background:#fff;text-align:left;cursor:pointer}#designjamNotificationPanel .np-item.unread{background:#eef6ff}#designjamNotificationPanel .np-item b{display:block;font-size:13px}#designjamNotificationPanel .np-item span{display:block;margin-top:4px;color:#536274;font-size:12px;line-height:1.4}#designjamNotificationPanel .np-item small{display:block;margin-top:5px;color:#8a96a5;font-size:10px}#designjamNotificationPanel .np-empty{padding:25px 14px;text-align:center;color:#7b8794;font-size:13px}
+      #designjamPasswordModal{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55)} #designjamPasswordModal[hidden]{display:none!important} #designjamPasswordModal .pw-card{width:min(420px,100%);padding:22px;border-radius:18px;background:#fff;color:#111;box-shadow:0 20px 60px rgba(0,0,0,.3)} #designjamPasswordModal input{width:100%;box-sizing:border-box;margin:7px 0 13px;padding:12px;border:1px solid #ccd4df;border-radius:10px} #designjamPasswordModal .pw-actions{display:flex;gap:8px} #designjamPasswordModal button{flex:1;padding:11px;border:0;border-radius:10px;font-weight:700;cursor:pointer} #designjamPasswordModal .primary{background:#24589f;color:#fff}
+      @media(max-width:680px){#designjamSessionStatus.session-status{top:6px!important;right:6px!important;padding:7px 8px!important}#designjamSessionStatus .session-status-text span{max-width:82px!important}#designjamSessionStatus .session-status-password{display:none!important}#designjamNotificationPanel{top:62px;right:6px;width:calc(100vw - 12px)}}
     `;
     document.head.appendChild(style);
   }
@@ -75,10 +80,60 @@
         <strong>${escapeHtml(title)}</strong>
         <span>${escapeHtml(detail || (role === "admin" ? "관리자" : "거래처"))}</span>
       </div>
-      <button type="button" class="session-status-action session-status-password">비밀번호 변경</button><button type="button" class="session-status-action session-status-logout">로그아웃</button>
+      <button type="button" class="session-status-action session-notification-button" aria-label="알림 열기">🔔<span class="session-notification-count">0</span></button><button type="button" class="session-status-action session-status-password">비밀번호 변경</button><button type="button" class="session-status-action session-status-logout">로그아웃</button>
     `;
     box.querySelector(".session-status-logout").addEventListener("click", logout);
     box.querySelector(".session-status-password").addEventListener("click", openPasswordModal);
+    box.querySelector(".session-notification-button").addEventListener("click", toggleNotificationPanel);
+  }
+
+
+  function ensureNotificationPanel(){
+    let panel=document.getElementById("designjamNotificationPanel");
+    if(panel)return panel;
+    panel=document.createElement("section");
+    panel.id="designjamNotificationPanel";panel.hidden=true;
+    panel.innerHTML=`<div class="np-head"><strong>알림</strong><div><button type="button" class="np-read-all">모두 읽음</button><button type="button" class="np-close">닫기</button></div></div><div class="np-list"><div class="np-empty">알림을 불러오는 중입니다.</div></div>`;
+    document.body.appendChild(panel);
+    panel.querySelector(".np-close").onclick=()=>panel.hidden=true;
+    panel.querySelector(".np-read-all").onclick=markAllNotificationsRead;
+    return panel;
+  }
+
+  function notificationTime(value){
+    const d=new Date(value);if(Number.isNaN(d.getTime()))return "";
+    return d.toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  }
+
+  async function loadNotifications(){
+    const sb=getClient();if(!sb||!notificationUserId)return;
+    const panel=ensureNotificationPanel(),list=panel.querySelector(".np-list");
+    const {data,error}=await sb.from("app_notifications").select("id,title,message,is_read,created_at,link_url").eq("recipient_id",notificationUserId).order("created_at",{ascending:false}).limit(30);
+    if(error){list.innerHTML='<div class="np-empty">알림 설치 SQL 실행 후 표시됩니다.</div>';updateNotificationCount(0);return;}
+    const rows=data||[];updateNotificationCount(rows.filter(x=>!x.is_read).length);
+    list.innerHTML=rows.length?rows.map(n=>`<button type="button" class="np-item ${n.is_read?'':'unread'}" data-id="${escapeHtml(n.id)}" data-link="${escapeHtml(n.link_url||'')}"><b>${n.is_read?'':'● '}${escapeHtml(n.title)}</b><span>${escapeHtml(n.message||'')}</span><small>${notificationTime(n.created_at)}</small></button>`).join(''):'<div class="np-empty">새 알림이 없습니다.</div>';
+    list.querySelectorAll(".np-item").forEach(btn=>btn.onclick=async()=>{await sb.from("app_notifications").update({is_read:true}).eq("id",btn.dataset.id);if(btn.dataset.link)location.href=btn.dataset.link;else loadNotifications();});
+  }
+
+  function updateNotificationCount(count){
+    const badge=document.querySelector("#designjamSessionStatus .session-notification-count");if(!badge)return;
+    badge.textContent=count>99?'99+':String(count);badge.classList.toggle('show',count>0);
+  }
+
+  async function markAllNotificationsRead(){
+    const sb=getClient();if(!sb||!notificationUserId)return;
+    await sb.from("app_notifications").update({is_read:true}).eq("recipient_id",notificationUserId).eq("is_read",false);loadNotifications();
+  }
+
+  async function toggleNotificationPanel(){
+    const panel=ensureNotificationPanel();panel.hidden=!panel.hidden;if(!panel.hidden)await loadNotifications();
+  }
+
+  function startNotificationRealtime(userId){
+    const sb=getClient();notificationUserId=userId;if(!sb)return;
+    loadNotifications();
+    if(notificationChannel){try{sb.removeChannel(notificationChannel);}catch(_){}}
+    notificationChannel=sb.channel(`designjam-notifications-${userId}`).on('postgres_changes',{event:'*',schema:'public',table:'app_notifications',filter:`recipient_id=eq.${userId}`},()=>loadNotifications()).subscribe();
   }
 
 
@@ -107,6 +162,8 @@
     const sb = getClient();
     try { if (sb) await sb.auth.signOut(); } catch (error) { console.warn("로그아웃 오류:", error); }
 
+    if(notificationChannel&&sb){try{await sb.removeChannel(notificationChannel);}catch(_){}}
+    notificationChannel=null;notificationUserId=null;
     [ADMIN_SESSION_KEY, CUSTOMER_SESSION_KEY, ADMIN_PROFILE_KEY, CUSTOMER_PROFILE_KEY]
       .forEach(key => { sessionStorage.removeItem(key); localStorage.removeItem(key); });
     location.replace(role === "admin" ? "admin.html" : "login.html");
@@ -128,6 +185,7 @@
       if (sessionId !== user.id) return;
 
       // DB 조회가 늦거나 RLS로 실패하더라도 로그인 정보창부터 즉시 표시
+      startNotificationRealtime(user.id);
       const cached = readProfile(role) || {};
       createStatusBar({
         role,
