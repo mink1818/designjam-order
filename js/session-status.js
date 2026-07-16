@@ -53,7 +53,7 @@
       #designjamSessionStatus .session-status-text{min-width:0!important;display:flex!important;flex-direction:column!important;line-height:1.2!important}
       #designjamSessionStatus .session-status-text strong{font-size:12px!important;color:#fff!important;white-space:nowrap!important}
       #designjamSessionStatus .session-status-text span{max-width:180px!important;overflow:hidden!important;color:rgba(255,255,255,.88)!important;font-size:11px!important;text-overflow:ellipsis!important;white-space:nowrap!important}
-      #designjamSessionStatus .session-status-logout{flex:0 0 auto!important;padding:7px 9px!important;border:0!important;border-radius:9px!important;background:rgba(255,255,255,.2)!important;color:#fff!important;font-size:12px!important;font-weight:700!important;cursor:pointer!important}
+      #designjamSessionStatus .session-status-action{flex:0 0 auto!important;padding:7px 9px!important;border:0!important;border-radius:9px!important;background:rgba(255,255,255,.2)!important;color:#fff!important;font-size:12px!important;font-weight:700!important;cursor:pointer!important} #designjamPasswordModal{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55)} #designjamPasswordModal[hidden]{display:none!important} #designjamPasswordModal .pw-card{width:min(420px,100%);padding:22px;border-radius:18px;background:#fff;color:#111;box-shadow:0 20px 60px rgba(0,0,0,.3)} #designjamPasswordModal input{width:100%;box-sizing:border-box;margin:7px 0 13px;padding:12px;border:1px solid #ccd4df;border-radius:10px} #designjamPasswordModal .pw-actions{display:flex;gap:8px} #designjamPasswordModal button{flex:1;padding:11px;border:0;border-radius:10px;font-weight:700;cursor:pointer} #designjamPasswordModal .primary{background:#24589f;color:#fff}
       @media(max-width:680px){#designjamSessionStatus.session-status{top:6px!important;right:6px!important;padding:7px 8px!important}#designjamSessionStatus .session-status-text span{max-width:100px!important}}
     `;
     document.head.appendChild(style);
@@ -75,9 +75,31 @@
         <strong>${escapeHtml(title)}</strong>
         <span>${escapeHtml(detail || (role === "admin" ? "관리자" : "거래처"))}</span>
       </div>
-      <button type="button" class="session-status-logout">로그아웃</button>
+      <button type="button" class="session-status-action session-status-password">비밀번호 변경</button><button type="button" class="session-status-action session-status-logout">로그아웃</button>
     `;
     box.querySelector(".session-status-logout").addEventListener("click", logout);
+    box.querySelector(".session-status-password").addEventListener("click", openPasswordModal);
+  }
+
+
+  function ensurePasswordModal() {
+    let modal=document.getElementById("designjamPasswordModal");
+    if(modal) return modal;
+    modal=document.createElement("div"); modal.id="designjamPasswordModal"; modal.hidden=true;
+    modal.innerHTML=`<div class="pw-card"><h2>비밀번호 변경</h2><p>새 비밀번호를 8자 이상 입력하세요.</p><label>새 비밀번호<input id="designjamNewPassword" type="password" minlength="8" autocomplete="new-password"></label><label>비밀번호 확인<input id="designjamNewPasswordConfirm" type="password" minlength="8" autocomplete="new-password"></label><div class="pw-actions"><button type="button" id="designjamPasswordCancel">취소</button><button type="button" class="primary" id="designjamPasswordSave">변경</button></div></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector("#designjamPasswordCancel").onclick=()=>{modal.hidden=true};
+    modal.addEventListener("click",e=>{if(e.target===modal)modal.hidden=true});
+    modal.querySelector("#designjamPasswordSave").onclick=changeOwnPassword;
+    return modal;
+  }
+  function openPasswordModal(){const m=ensurePasswordModal();m.hidden=false;m.querySelector("#designjamNewPassword").focus();}
+  async function changeOwnPassword(){
+    const modal=ensurePasswordModal(), p1=modal.querySelector("#designjamNewPassword").value, p2=modal.querySelector("#designjamNewPasswordConfirm").value;
+    if(p1.length<8)return alert("비밀번호는 8자 이상 입력하세요."); if(p1!==p2)return alert("비밀번호 확인이 일치하지 않습니다.");
+    const sb=getClient(); const btn=modal.querySelector("#designjamPasswordSave"); btn.disabled=true;
+    const {error}=await sb.auth.updateUser({password:p1}); btn.disabled=false; if(error)return alert("변경 실패: "+error.message);
+    alert("비밀번호가 변경되었습니다."); modal.hidden=true; modal.querySelectorAll("input").forEach(i=>i.value="");
   }
 
   async function logout() {
@@ -135,7 +157,7 @@
     }
   }
 
-  window.designjamSession = { logout, refresh: render };
+  window.designjamSession = { logout, refresh: render, openPasswordModal };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", render, { once: true });
   } else {

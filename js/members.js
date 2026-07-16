@@ -61,7 +61,7 @@ function renderCustomers(rows){
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <p><strong>주소:</strong> ${esc(c.address||'-')}</p><p><strong>가입일:</strong> ${date(c.created_at)}</p>
-   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button></div>
+   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="issueTempPassword('${c.id}','${esc(c.email||'')}')">임시 비밀번호</button><button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button></div>
   </article>`;}).join('')}</div>`;
 }
 async function saveCustomer(id){
@@ -71,6 +71,16 @@ async function saveCustomer(id){
 }
 async function approveCustomer(id){const {error}=await supabaseClient.from('customers').update({approved:true,blocked:false}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
 async function toggleBlock(id,blocked){if(!confirm(blocked?'차단을 해제할까요?':'이 거래처를 차단할까요?'))return;const {error}=await supabaseClient.from('customers').update({blocked:!blocked}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
+
+async function callAdminUserManagement(body){
+ const {data:{session}}=await supabaseClient.auth.getSession(); if(!session)throw new Error('관리자 로그인이 필요합니다.');
+ const res=await fetch(`${supabaseUrl}/functions/v1/admin-user-management`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify(body)});
+ const json=await res.json().catch(()=>({})); if(!res.ok)throw new Error(json.error||'처리 실패'); return json;
+}
+async function issueTempPassword(userId,email){const password=prompt(`${email||'거래처'}의 임시 비밀번호를 입력하세요. (8자 이상)`);if(password===null)return;if(password.length<8)return alert('8자 이상 입력하세요.');try{await callAdminUserManagement({action:'reset_password',user_id:userId,password});alert('임시 비밀번호가 설정되었습니다.');}catch(e){alert(e.message);}}
+async function createAdminAccount(){const email=newAdminEmail.value.trim(),name=newAdminName.value.trim(),password=newAdminPassword.value;if(!email||!name||password.length<8)return alert('이메일, 관리자명, 8자 이상 비밀번호를 입력하세요.');try{createAdminBtn.disabled=true;await callAdminUserManagement({action:'create_admin',email,name,password});alert('관리자 계정이 추가되었습니다.');newAdminEmail.value='';newAdminName.value='';newAdminPassword.value='';}catch(e){alert(e.message);}finally{createAdminBtn.disabled=false;}}
+window.issueTempPassword=issueTempPassword;
+
 window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;
 search.addEventListener('input',renderFilteredCustomers);sort.addEventListener('change',renderFilteredCustomers);
-document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){const f=new URLSearchParams(location.search).get('filter');if(f==='waiting')memberFilter='승인대기';loadCustomers();}});
+document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){const f=new URLSearchParams(location.search).get('filter');if(f==='waiting')memberFilter='승인대기';document.getElementById('createAdminBtn')?.addEventListener('click',createAdminAccount);loadCustomers();}});

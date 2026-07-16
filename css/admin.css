@@ -1044,3 +1044,8 @@ body.auth-pending.auth-ready { visibility: visible; }
 
 /* V3.1 주문별 입금계좌 선택 */
 .order-payment-account{margin:16px 0;padding:14px;border:1px solid #dbe4f0;border-radius:12px;background:#f8fbff}.payment-account-select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.manual-account-fields{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px}.manual-account-fields.show{display:grid}.manual-account-fields input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px}.selected-account-preview{margin-top:9px;padding:9px 10px;border-radius:8px;background:#eaf2ff;color:#174b91;font-size:13px;font-weight:700}.account-save-btn{margin-top:9px!important}@media(max-width:650px){.manual-account-fields{grid-template-columns:1fr}}
+
+/* V3.1 인증·공지 이미지 보강 */
+.notice-upload-preview img,.notice-admin-image{display:block;max-width:100%;max-height:320px;object-fit:contain;border-radius:12px;margin:10px 0;background:#f4f6f8}
+.admin-account-create{margin-top:18px}
+@media(max-width:680px){#designjamSessionStatus .session-status-password{display:none!important}.notice-upload-preview img,.notice-admin-image{max-height:220px}}
