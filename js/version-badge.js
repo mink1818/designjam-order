@@ -1,15 +1,18 @@
-(() => {
-  const VERSION = 'V3.7.0';
-  window.DESIGNJAM_VERSION = VERSION;
-  document.documentElement.dataset.appVersion = VERSION;
-  console.info(`[디자인삭스] ${VERSION}`);
-
-  document.addEventListener('DOMContentLoaded', () => {
-    if (document.querySelector('.app-version-badge')) return;
-    const badge = document.createElement('div');
-    badge.className = 'app-version-badge';
-    badge.textContent = VERSION;
-    badge.title = '현재 배포 버전';
-    document.body.appendChild(badge);
-  });
+(()=>{
+  const VERSION='V3.7.0';
+  function addBadge(){
+    if(document.getElementById('appVersionBadge')) return;
+    const b=document.createElement('div');
+    b.id='appVersionBadge';
+    b.textContent=VERSION;
+    b.title='현재 배포 버전';
+    Object.assign(b.style,{position:'fixed',left:'8px',bottom:'8px',zIndex:'99999',padding:'5px 9px',borderRadius:'999px',background:'rgba(17,36,55,.88)',color:'#fff',fontSize:'11px',fontWeight:'800',letterSpacing:'.02em',boxShadow:'0 3px 12px rgba(0,0,0,.2)',pointerEvents:'none'});
+    document.body.appendChild(b);
+  }
+  async function refreshWorker(){
+    if(!('serviceWorker' in navigator)) return;
+    try{const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.update()));}catch(_){ }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>{addBadge();refreshWorker();});
+  else {addBadge();refreshWorker();}
 })();

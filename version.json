@@ -1,6 +1,5 @@
 {
-  "name": "디자인삭스 주문관리 시스템",
   "version": "3.7.0",
   "build": "2026-07-17",
-  "notes": "Actual uploaded project baseline; network-first PWA cache and visible deployment marker"
+  "label": "V3.7.0 실제 프로젝트"
 }

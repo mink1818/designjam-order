@@ -1271,6 +1271,3 @@ body.auth-pending.auth-ready::after { display: none; }
 @media(max-width:1000px){.stats-metric-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.stats-custom-range{grid-template-columns:1fr 1fr}.stats-custom-range .cart-btn{grid-column:1/-1}.stats-chart-grid,.stats-ranking-grid{grid-template-columns:1fr}.stats-status-grid{grid-template-columns:1fr 1fr 1fr}.stats-status-card{padding:13px}.stats-status-card strong{font-size:21px}}
 @media(max-width:520px){.stats-metric-grid{grid-template-columns:repeat(2,1fr)}.stats-status-grid{grid-template-columns:1fr}.stats-custom-range{grid-template-columns:1fr}.stats-custom-range .cart-btn{grid-column:auto}.stats-options-row{align-items:stretch}.stats-action-buttons{display:grid;width:100%}.stats-action-buttons .cart-btn{width:100%}.stats-share-row{grid-template-columns:90px minmax(70px,1fr);}.stats-share-row strong{grid-column:2;text-align:right}.stats-bars{gap:4px}.stats-bar-item{min-width:38px}}
-
-/* V3.7.0 deployment marker */
-.app-version-badge{position:fixed;left:10px;bottom:10px;z-index:9997;padding:4px 8px;border:1px solid rgba(17,36,55,.22);border-radius:999px;background:rgba(255,255,255,.92);color:#112437;font-size:11px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.08);pointer-events:none;backdrop-filter:blur(4px)}

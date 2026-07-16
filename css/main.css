@@ -660,6 +660,3 @@ body.auth-pending.auth-ready { visibility: visible; }
 @media(max-width:390px){
   .favorite-category-card .main-category-card strong{font-size:13px}
 }
-
-/* V3.7.0 deployment marker */
-.app-version-badge{position:fixed;left:10px;bottom:10px;z-index:9997;padding:4px 8px;border:1px solid rgba(36,88,159,.2);border-radius:999px;background:rgba(255,255,255,.9);color:#24589f;font-size:11px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.08);pointer-events:none;backdrop-filter:blur(4px)}
