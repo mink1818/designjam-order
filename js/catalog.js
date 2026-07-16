@@ -1,10 +1,9 @@
+const ADMIN_PREVIEW_MODE = new URLSearchParams(location.search).get("adminPreview") === "1";
 
-function updateAdminCustomerQuickMenu() {
-  const button = document.getElementById("adminQuickMenu");
-  if (!button) return;
-  let profile = null;
-  try { profile = JSON.parse(sessionStorage.getItem("designjam_customer_profile") || localStorage.getItem("designjam_customer_profile") || "null"); } catch (_) {}
-  button.hidden = !(profile?.isAdmin === true);
+function updateAdminPreviewBanner() {
+  const banner = document.getElementById("adminPreviewBanner");
+  if (banner) banner.hidden = !ADMIN_PREVIEW_MODE;
+  document.body.classList.toggle("admin-preview-mode", ADMIN_PREVIEW_MODE);
 }
 const supabaseUrl =
   "https://dtjhuejmxrjkcxzvilgw.supabase.co";
@@ -115,28 +114,52 @@ if (catalogSearch) {
 ================================ */
 
 async function checkCustomerAccess() {
-  const {
-    data: { user },
-    error: userError
-  } = await supabaseClient.auth.getUser();
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
-  const sessionUserId = sessionStorage.getItem(CUSTOMER_SESSION_KEY);
+  if (ADMIN_PREVIEW_MODE) {
+    const adminSessionId = sessionStorage.getItem("designjam_admin_session") || localStorage.getItem("designjam_admin_session");
+    if (userError || !user || adminSessionId !== user.id) {
+      location.replace("admin.html");
+      return false;
+    }
+
+    const { data: adminProfile, error: adminError } = await supabaseClient
+      .from("customers")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (adminError || !adminProfile?.is_admin || adminProfile.blocked) {
+      alert("관리자 권한을 확인할 수 없습니다.");
+      location.replace("admin.html");
+      return false;
+    }
+
+    currentUser = user;
+    currentCustomer = adminProfile;
+    cart = [];
+    updateAdminPreviewBanner();
+    document.body.classList.add("auth-ready");
+    return true;
+  }
+
+  const sessionUserId = sessionStorage.getItem(CUSTOMER_SESSION_KEY) || localStorage.getItem(CUSTOMER_SESSION_KEY);
 
   if (userError || !user || sessionUserId !== user.id) {
     sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
+    localStorage.removeItem(CUSTOMER_SESSION_KEY);
     if (user) await supabaseClient.auth.signOut();
     location.replace("login.html");
     return false;
   }
 
-  const { data: customer, error: customerError } =
-    await supabaseClient
-      .from("customers")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+  const { data: customer, error: customerError } = await supabaseClient
+    .from("customers")
+    .select("*")
+    .eq("id", user.id)
+    .single();
 
-  if (customerError || !customer) {
+  if (customerError || !customer || customer.is_admin) {
     alert("거래처 정보를 불러오지 못했습니다.");
     location.href = "login.html";
     return false;
@@ -159,11 +182,11 @@ async function checkCustomerAccess() {
   currentUser = user;
   currentCustomer = customer;
   const customerName = customer.business_name || customer.representative || customer.phone || "거래처";
-  const customerProfile = JSON.stringify({ name: customerName, email: user.email || "", userId: user.id });
+  const customerProfile = JSON.stringify({ name: customerName, email: user.email || "", userId: user.id, isAdmin: false });
   sessionStorage.setItem("designjam_customer_profile", customerProfile);
   localStorage.setItem("designjam_customer_profile", customerProfile);
   window.designjamSession?.refresh();
-  updateAdminCustomerQuickMenu();
+  updateAdminPreviewBanner();
   document.body.classList.add("auth-ready");
   return true;
 }
@@ -919,6 +942,7 @@ function cartTopButton() {
 }
 
 function addGroupToCart(groupId, nextAction = "cart") {
+  if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   const group = groups.find(
     item => Number(item.id) === Number(groupId)
   );
@@ -974,6 +998,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
 }
 
 function renderCart() {
+  if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   currentScreen = "cart";
   showSearch(false);
   hideLegacyFilters();
@@ -1116,6 +1141,7 @@ function changeCartQty(index, change) {
 ================================ */
 
 function showOrderForm() {
+  if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   if (cart.length === 0) {
     alert("장바구니가 비어 있습니다.");
     return;
@@ -1172,6 +1198,7 @@ function showOrderForm() {
 }
 
 async function submitOrder() {
+  if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   if (cart.length === 0) {
     alert("장바구니가 비어 있습니다.");
     return;
@@ -1572,4 +1599,4 @@ function renderBankTransferBox(){
   return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(b.bankName||"")} ${escapeHtml(b.account||"")}</p><p>예금주: ${escapeHtml(b.holder||"")}</p><small>주문금액을 위 계좌로 송금해주세요.</small></div>`;
 }
 
-window.addEventListener("DOMContentLoaded", updateAdminCustomerQuickMenu);
+window.addEventListener("DOMContentLoaded", updateAdminPreviewBanner);

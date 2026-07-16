@@ -36,7 +36,13 @@
 
 <main class="container">
 
-  <button id="adminQuickMenu" class="cart-btn admin-customer-quick" type="button" onclick="location.href='admin-home.html'" hidden>관리자 메뉴로 이동</button>
+  <section id="adminPreviewBanner" class="admin-preview-banner" hidden>
+    <div>
+      <strong>관리자 미리보기 모드</strong>
+      <span>거래처 화면을 확인하는 중입니다. 주문 기능은 사용할 수 없습니다.</span>
+    </div>
+    <button class="cart-btn compact-action" type="button" onclick="location.href='admin-home.html'">관리자 메뉴로 돌아가기</button>
+  </section>
 
   <button
     class="cart-btn gray-btn"

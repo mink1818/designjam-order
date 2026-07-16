@@ -17,10 +17,6 @@ const loginMessage =
 
 const loginPhoneInput =
   document.getElementById("loginPhone");
-const adminCustomerModeBtn = document.getElementById("adminCustomerModeBtn");
-const loginIdentityLabel = document.getElementById("loginIdentityLabel");
-let adminCustomerMode = false;
-const ADMIN_EMAILS = new Set(["900smk@naver.com","sm0727sm@hanmail.net","p1028p@naver.com"]);
 
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
 const ADMIN_SESSION_KEY = "designjam_admin_session";
@@ -52,22 +48,8 @@ function normalizePhone(value) {
     .replace(/[^0-9]/g, "");
 }
 
-adminCustomerModeBtn?.addEventListener("click", () => {
-  adminCustomerMode = !adminCustomerMode;
-  loginPhoneInput.value = "";
-  loginPhoneInput.type = adminCustomerMode ? "email" : "tel";
-  loginPhoneInput.inputMode = adminCustomerMode ? "email" : "numeric";
-  if (adminCustomerMode) loginPhoneInput.removeAttribute("maxlength");
-  else loginPhoneInput.setAttribute("maxlength", "13");
-  loginPhoneInput.placeholder = adminCustomerMode ? "관리자 이메일" : "예: 010-1234-5678";
-  loginIdentityLabel.textContent = adminCustomerMode ? "관리자 이메일" : "휴대폰번호";
-  adminCustomerModeBtn.textContent = adminCustomerMode ? "휴대폰번호로 거래처 로그인" : "관리자 계정으로 거래처 화면 이용";
-  loginPhoneInput.focus();
-});
-
 /* 휴대폰번호 자동 하이픈 */
 loginPhoneInput.addEventListener("input", () => {
-  if (adminCustomerMode) return;
   const numbers =
     normalizePhone(loginPhoneInput.value)
       .slice(0, 11);
@@ -91,7 +73,7 @@ loginPhoneInput.addEventListener("input", () => {
 
 async function loginCustomer() {
   const rawIdentity = loginPhoneInput.value.trim();
-  const phone = adminCustomerMode ? "" : normalizePhone(rawIdentity);
+  const phone = normalizePhone(rawIdentity);
 
   const password =
     document
@@ -100,9 +82,7 @@ async function loginCustomer() {
 
   loginMessage.innerHTML = "";
 
-  if (adminCustomerMode) {
-    if (!rawIdentity.includes("@")) { alert("관리자 이메일을 정확히 입력해주세요."); loginPhoneInput.focus(); return; }
-  } else if (!/^01[0-9]{8,9}$/.test(phone)) {
+  if (!/^01[0-9]{8,9}$/.test(phone)) {
     alert("휴대폰번호를 정확히 입력해주세요.");
     loginPhoneInput.focus();
     return;
@@ -114,9 +94,7 @@ async function loginCustomer() {
   }
 
   /* 회원가입 때 만든 내부 인증용 이메일 */
-  const authEmail = adminCustomerMode
-    ? rawIdentity.toLowerCase()
-    : `${phone}@phone.designsocks.kr`;
+  const authEmail = `${phone}@phone.designsocks.kr`;
 
   loginButton.disabled = true;
   loginButton.textContent = "로그인 중...";
@@ -141,14 +119,17 @@ async function loginCustomer() {
         .eq("id", data.user.id)
         .single();
 
-    const isAdminAccount = ADMIN_EMAILS.has(String(data.user.email || "").toLowerCase()) || customer?.is_admin === true;
-
-    if ((customerError || !customer) && !isAdminAccount) {
+    if (customerError || !customer) {
       await supabaseClient.auth.signOut();
       throw new Error("거래처 정보를 불러오지 못했습니다.");
     }
 
-    if (!isAdminAccount && customer.blocked) {
+    if (customer.is_admin) {
+      await supabaseClient.auth.signOut();
+      throw new Error("관리자 계정은 관리자 로그인 화면을 이용해주세요.");
+    }
+
+    if (customer.blocked) {
       await supabaseClient.auth.signOut();
 
       throw new Error(
@@ -156,7 +137,7 @@ async function loginCustomer() {
       );
     }
 
-    if (!isAdminAccount && !customer.approved) {
+    if (!customer.approved) {
       await supabaseClient.auth.signOut();
 
       loginMessage.innerHTML = `
@@ -173,15 +154,10 @@ async function loginCustomer() {
 
     sessionStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
     localStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
-    if (isAdminAccount) {
-      sessionStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
-      localStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
-    } else {
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      localStorage.removeItem(ADMIN_SESSION_KEY);
-    }
-    const customerName = customer?.business_name || customer?.representative || customer?.phone || (isAdminAccount ? "관리자" : "거래처");
-    const customerProfile = JSON.stringify({ name: customerName, email: data.user.email || "", userId: data.user.id, isAdmin: isAdminAccount });
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    const customerName = customer?.business_name || customer?.representative || customer?.phone || "거래처";
+    const customerProfile = JSON.stringify({ name: customerName, email: data.user.email || "", userId: data.user.id, isAdmin: false });
     sessionStorage.setItem("designjam_customer_profile", customerProfile);
     localStorage.setItem("designjam_customer_profile", customerProfile);
     location.replace("index.html");

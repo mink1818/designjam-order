@@ -435,3 +435,11 @@ body.auth-pending.auth-ready { visibility: visible; }
 
 /* V3.5 PWA / 브랜드 */
 .install-app-button{margin-top:10px!important;background:#102b52!important}.auth-mode-link{display:block;width:100%;margin:-4px 0 12px;padding:8px;border:0;background:transparent;color:#24589f;font-weight:800;text-align:right;cursor:pointer}.admin-customer-quick{margin-bottom:12px!important;background:#112437!important}
+
+
+/* V3.5.2.2 관리자 거래처 화면 미리보기 */
+.admin-preview-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 18px;padding:16px 18px;border:2px solid #24589f;border-radius:16px;background:#eef5ff;color:#12345b;box-shadow:0 8px 20px rgba(36,88,159,.12)}
+.admin-preview-banner[hidden]{display:none!important}
+.admin-preview-banner div{display:flex;flex-direction:column;gap:4px}.admin-preview-banner strong{font-size:18px}.admin-preview-banner span{font-size:14px}
+.admin-preview-mode .customer-top-menu,.admin-preview-mode .catalog-cart-button{display:none!important}
+@media(max-width:640px){.admin-preview-banner{align-items:stretch;flex-direction:column}.admin-preview-banner .cart-btn{width:100%}}
