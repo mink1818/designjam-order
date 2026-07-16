@@ -420,47 +420,68 @@ function openStatement(orderNumber) {
 }
 
 async function initializeAdminPage() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
-  const savedUserId = localStorage.getItem(ADMIN_SESSION_KEY);
-  const knownAdminEmail = isDesignjamAdminEmail(user?.email);
-  const hasSavedAdminSession = Boolean(user && (sessionUserId === user.id || savedUserId === user.id));
+  const loginBox = document.getElementById("loginBox");
+  const adminContent = document.getElementById("adminContent");
 
-  if (!user || (!hasSavedAdminSession && !knownAdminEmail)) {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    if (user) await supabaseClient.auth.signOut();
-    document.getElementById("loginBox").style.display = "block";
-    document.getElementById("adminContent").style.display = "none";
-    return;
+  const showLogin = () => {
+    if (loginBox) loginBox.style.display = "block";
+    if (adminContent) adminContent.style.display = "none";
+  };
+  const showAdmin = () => {
+    if (loginBox) loginBox.style.display = "none";
+    if (adminContent) adminContent.style.display = "block";
+  };
+
+  try {
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError) console.warn("관리자 세션 확인 오류:", userError);
+
+    const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
+    const savedUserId = localStorage.getItem(ADMIN_SESSION_KEY);
+    const knownAdminEmail = isDesignjamAdminEmail(user?.email);
+    const hasSavedAdminSession = Boolean(user && (sessionUserId === user.id || savedUserId === user.id));
+
+    if (!user || (!hasSavedAdminSession && !knownAdminEmail)) {
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      if (user) await supabaseClient.auth.signOut();
+      showLogin();
+      return;
+    }
+
+    sessionStorage.setItem(ADMIN_SESSION_KEY, user.id);
+    localStorage.setItem(ADMIN_SESSION_KEY, user.id);
+
+    const { data: customer, error: profileError } = await supabaseClient
+      .from("customers")
+      .select("is_admin, blocked")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) console.warn("관리자 권한 조회 오류:", profileError);
+
+    const emailAllowed = isDesignjamAdminEmail(user.email);
+    const databaseAllowed = customer?.is_admin === true && customer?.blocked !== true;
+
+    if (!emailAllowed && !databaseAllowed) {
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      await supabaseClient.auth.signOut();
+      showLogin();
+      return;
+    }
+
+    showAdmin();
+    await loadOrders();
+  } catch (error) {
+    console.error("관리자 페이지 초기화 실패:", error);
+    showLogin();
+    const messageBox = document.getElementById("adminLoginMessage");
+    if (messageBox) messageBox.innerHTML = '<p class="auth-error">화면을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.</p>';
+  } finally {
+    document.body.classList.add("auth-ready");
   }
-
-  // 새 탭에서도 확인된 관리자 세션을 현재 탭에 복원
-  sessionStorage.setItem(ADMIN_SESSION_KEY, user.id);
-  localStorage.setItem(ADMIN_SESSION_KEY, user.id);
-
-  const { data: customer } = await supabaseClient
-    .from("customers")
-    .select("is_admin, blocked")
-    .eq("id", user.id)
-    .single();
-
-  const emailAllowed = isDesignjamAdminEmail(user.email);
-  const databaseAllowed = customer?.is_admin === true && customer?.blocked !== true;
-
-  if (!emailAllowed && !databaseAllowed) {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    await supabaseClient.auth.signOut();
-    document.getElementById("loginBox").style.display = "block";
-    document.getElementById("adminContent").style.display = "none";
-    return;
-  }
-
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("adminContent").style.display = "block";
-  loadOrders();
 }
-
 initializeAdminPage();
 
 

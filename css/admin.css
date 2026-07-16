@@ -765,8 +765,54 @@ button {
   .completed-toolbar label, .completed-toolbar select, .completed-toolbar span { width: 100%; }
 }
 
-body.auth-pending { visibility: hidden; }
-body.auth-pending.auth-ready { visibility: visible; }
+/* V3.6.1 관리자 화면 전환 깜빡임 방지 */
+body.auth-pending,
+body.admin-page-leaving { visibility: visible; }
+body.auth-pending > *,
+body.admin-page-leaving > * { visibility: hidden !important; }
+body.auth-pending::before,
+body.admin-page-leaving::before {
+  content: "디자인삭스 관리자\A화면을 불러오는 중...";
+  white-space: pre-line;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  display: grid;
+  place-items: center;
+  padding-top: 54px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 50% calc(50% - 48px), #24589f 0 7px, transparent 8px),
+    linear-gradient(180deg, #f7faff 0%, #eef4fb 100%);
+  color: #173d73;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.8;
+}
+body.auth-pending::after,
+body.admin-page-leaving::after {
+  content: "";
+  position: fixed;
+  left: 50%;
+  top: calc(50% - 43px);
+  z-index: 2147483647;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 3px solid rgba(36,88,159,.18);
+  border-top-color: #24589f;
+  border-radius: 50%;
+  animation: adminGateSpin .75s linear infinite;
+}
+body.auth-pending.auth-ready > * { visibility: visible !important; }
+body.auth-pending.auth-ready::before,
+body.auth-pending.auth-ready::after { display: none; }
+@keyframes adminGateSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  body.auth-pending::after,
+  body.admin-page-leaving::after { animation: none; }
+}
 
 
 /* ===== V2 현재 로그인 정보 ===== */
