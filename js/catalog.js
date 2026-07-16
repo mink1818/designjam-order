@@ -22,6 +22,9 @@ let currentScreen = "main-categories";
 let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
+let favoriteMainCategoryIds = new Set();
+let frequentGroups = [];
+let customerBankSettings = { bankName:"", account:"", holder:"" };
 
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
 
@@ -214,6 +217,7 @@ async function loadCatalog() {
   categories = categoryResponse.data || [];
   groups = groupResponse.data || [];
 
+  await loadCustomerFeatureData();
   renderMainCategories();
 }
 
@@ -241,27 +245,24 @@ function renderMainCategories() {
 
   const filtered = mainCategories.filter(mainCategory =>
     normalizeSearch(mainCategory.name).includes(keyword)
-  );
+  ).sort((a,b) => Number(favoriteMainCategoryIds.has(Number(b.id))) - Number(favoriteMainCategoryIds.has(Number(a.id))));
 
   catalogList.innerHTML = `
     ${cartTopButton()}
+    ${renderFrequentProducts()}
 
     ${
       filtered.length > 0
         ? `
           <div class="main-category-grid">
             ${filtered.map(mainCategory => `
-              <button
-                class="main-category-card"
-                type="button"
-                onclick="openMainCategory(${mainCategory.id})"
-              >
-                ${renderMainCategoryImage(mainCategory)}
-
-                <strong>
-                  ${escapeHtml(mainCategory.name)}
-                </strong>
-              </button>
+              <div class="favorite-category-card">
+                <button class="favorite-star ${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "active" : ""}" type="button" onclick="toggleMainCategoryFavorite(event, ${mainCategory.id})" aria-label="즐겨찾기">★</button>
+                <button class="main-category-card" type="button" onclick="openMainCategory(${mainCategory.id})">
+                  ${renderMainCategoryImage(mainCategory)}
+                  <strong>${escapeHtml(mainCategory.name)}</strong>
+                </button>
+              </div>
             `).join("")}
           </div>
         `
@@ -1130,6 +1131,8 @@ function showOrderForm() {
         ${escapeHtml(currentCustomer.business_name)}
       </p>
 
+      ${renderBankTransferBox()}
+
       <label for="orderMemo">메모</label>
 
       <input
@@ -1525,3 +1528,37 @@ window.openCartImagePreview = openCartImagePreview;
 window.closeCartImagePreview = closeCartImagePreview;
 
 startCatalogPage();
+
+
+async function loadCustomerFeatureData(){
+  try{
+    const {data}=await supabaseClient.from("customer_favorites").select("target_id").eq("customer_id",currentUser.id).eq("target_type","main_category");
+    favoriteMainCategoryIds=new Set((data||[]).map(x=>Number(x.target_id)));
+  }catch(e){console.warn("즐겨찾기 불러오기 실패",e)}
+  try{
+    const {data}=await supabaseClient.from("app_settings").select("value").eq("key","bank_account").maybeSingle();
+    customerBankSettings=data?.value||customerBankSettings;
+  }catch(e){console.warn("계좌정보 불러오기 실패",e)}
+  try{
+    const {data}=await supabaseClient.from("orders").select("item_number,qty").eq("customer_id",currentUser.id).limit(1000);
+    const counts={}; (data||[]).forEach(x=>counts[String(x.item_number)]=(counts[String(x.item_number)]||0)+Number(x.qty||0));
+    frequentGroups=groups.map(g=>({...g,_frequency:(g.item_numbers||[]).reduce((sum,n)=>sum+(counts[String(n)]||0),0)})).filter(g=>g._frequency>0).sort((a,b)=>b._frequency-a._frequency).slice(0,4);
+  }catch(e){console.warn("자주 사는 상품 계산 실패",e)}
+}
+function renderFrequentProducts(){
+  if(!frequentGroups.length)return "";
+  return `<section class="product-card frequent-section"><h2>자주 사는 상품</h2><div class="frequent-grid">${frequentGroups.map(g=>`<button class="frequent-card" type="button" onclick="openGroup(${g.id})">${g.image_url?`<img src="${escapeAttribute(g.image_url)}" alt="${escapeAttribute(g.title)}">`:""}<strong>${escapeHtml(g.title)}</strong><small>${(g.item_numbers||[]).map(escapeHtml).join(", ")}</small></button>`).join("")}</div></section>`;
+}
+async function toggleMainCategoryFavorite(event,id){
+  event?.stopPropagation(); const numeric=Number(id); const active=favoriteMainCategoryIds.has(numeric);
+  let result;
+  if(active) result=await supabaseClient.from("customer_favorites").delete().eq("customer_id",currentUser.id).eq("target_type","main_category").eq("target_id",numeric);
+  else result=await supabaseClient.from("customer_favorites").insert({customer_id:currentUser.id,target_type:"main_category",target_id:numeric});
+  if(result.error){alert("즐겨찾기 저장 실패: V2-FEATURE-SETUP.sql을 먼저 실행해주세요.\n"+result.error.message);return}
+  active?favoriteMainCategoryIds.delete(numeric):favoriteMainCategoryIds.add(numeric);
+  renderMainCategories();
+}
+function renderBankTransferBox(){
+  const b=customerBankSettings||{}; if(!b.account)return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>관리자가 계좌번호를 등록하면 이곳에 표시됩니다.</p></div>`;
+  return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(b.bankName||"")} ${escapeHtml(b.account||"")}</p><p>예금주: ${escapeHtml(b.holder||"")}</p><small>주문금액을 위 계좌로 송금해주세요.</small></div>`;
+}

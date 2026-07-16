@@ -24,6 +24,7 @@ function isDesignjamAdminEmail(email) {
 
 const statementArea =
   document.getElementById("statementArea");
+let statementBankSettings = {bankName:"",account:"",holder:""};
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -110,6 +111,7 @@ async function loadStatement() {
     return;
   }
 
+  try { const {data:bank}=await supabaseClient.from("app_settings").select("value").eq("key","bank_account").maybeSingle(); statementBankSettings=bank?.value||statementBankSettings; } catch(e) { console.warn(e); }
   renderStatement(data);
 }
 
@@ -249,6 +251,8 @@ function renderStatement(items) {
         <strong>${finalTotal.toLocaleString()}원</strong>
       </div>
     </section>
+
+    ${statementBankSettings.account ? `<section class="delivery-info bank-transfer-box"><p><strong>입금 계좌:</strong> ${escapeHtml(statementBankSettings.bankName || "")} ${escapeHtml(statementBankSettings.account || "")}</p><p><strong>예금주:</strong> ${escapeHtml(statementBankSettings.holder || "")}</p></section>` : ""}
 
     <section class="delivery-info">
       <p>

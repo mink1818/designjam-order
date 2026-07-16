@@ -7,6 +7,8 @@ const activeOrderResult = document.getElementById("activeOrderResult");
 const completedOrderResult = document.getElementById("completedOrderResult");
 const completedPeriod = document.getElementById("completedPeriod");
 let myOrderGroups = [];
+let currentOrderUser = null;
+let orderBankSettings = {bankName:"",account:"",holder:""};
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
 
 completedPeriod?.addEventListener("change", renderMyOrders);
@@ -24,7 +26,9 @@ async function loadMyOrders() {
     return;
   }
 
+  currentOrderUser = user;
   document.body.classList.add("auth-ready");
+  try { const {data:bank}=await supabaseClient.from("app_settings").select("value").eq("key","bank_account").maybeSingle(); orderBankSettings=bank?.value||orderBankSettings; } catch(e) { console.warn(e); }
 
   const { data: customer, error: customerError } = await supabaseClient
     .from("customers")
@@ -166,6 +170,8 @@ function renderFullOrder(group) {
     <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
     <h2 class="price-text">최종금액: ${summary.finalTotal.toLocaleString()}원</h2>
     <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
+    ${renderOrderBankBox()}
+    <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
   </div>`;
 }
 
@@ -185,6 +191,8 @@ function renderCompletedOrder(group) {
       <p><strong>택배사:</strong> ${escapeHtml(group.courier)}</p>
       <p><strong>송장번호:</strong> ${escapeHtml(group.trackingNumber || "입력 전")}</p>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
+      ${renderOrderBankBox()}
+      <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
     </div>
   </article>`;
 }
@@ -211,3 +219,13 @@ function escapeHtml(value) {
 }
 
 loadMyOrders();
+
+
+function renderOrderBankBox(){const b=orderBankSettings||{};if(!b.account)return "";return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(b.bankName||"")} ${escapeHtml(b.account||"")}</p><p>예금주: ${escapeHtml(b.holder||"")}</p></div>`}
+function copyOrderToCart(orderNumber){
+  const group=myOrderGroups.find(x=>x.orderNumber===orderNumber); if(!group||!currentOrderUser)return;
+  const cart=group.items.filter(x=>!x.is_soldout).map(x=>({groupId:null,categoryId:null,title:"최근 주문",number:String(x.item_number),qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:""}));
+  if(!cart.length){alert("다시 담을 수 있는 상품이 없습니다.");return}
+  localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));
+  if(confirm(`${cart.length}개 품번을 장바구니에 담았습니다. 상품 주문 화면으로 이동할까요?`)) location.href="catalog.html";
+}

@@ -1032,3 +1032,6 @@ body.auth-pending.auth-ready { visibility: visible; }
     height: 52px;
   }
 }
+
+/* V2 compact admin orders / account / customer notes */
+.order-card{padding:0;overflow:hidden}.order-header{padding:16px 18px}.order-detail{display:none;padding:14px 18px;border-top:1px solid #e5e7eb}.order-header h2{font-size:20px;margin:0 0 4px}.order-summary-number,.order-summary-money{margin:2px 0;font-size:13px}.admin-bank-settings{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;margin:14px 0;padding:14px;background:#fff;border-radius:14px}.admin-bank-settings label{font-size:12px;font-weight:700}.admin-bank-settings input{width:100%;padding:10px;border:1px solid #ccd3df;border-radius:8px}.customer-note-input{width:100%;padding:10px;border:1px solid #ccd3df;border-radius:8px;margin:8px 0}.admin-note-badge{display:inline-block;margin-top:5px;padding:4px 8px;border-radius:999px;background:#fff3cd;color:#6b5200;font-size:12px}@media(max-width:700px){.admin-bank-settings{grid-template-columns:1fr}.order-header{padding:13px}.order-header h2{font-size:18px}}

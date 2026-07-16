@@ -75,6 +75,8 @@ const adminSearch = document.getElementById("adminSearch");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 
 let adminFilter = "전체";
+let customerNotes = {};
+let bankSettings = { bankName:"", account:"", holder:"" };
 
 if (adminSearch) adminSearch.addEventListener("input", loadOrders);
 
@@ -95,6 +97,8 @@ try {
   return;
 }
 
+  await loadAdminFeatureData(data);
+
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
     return;
@@ -107,6 +111,7 @@ try {
       grouped[order.order_number] = {
         orderNumber: order.order_number,
         customerName: order.customer_name,
+        customerId: order.customer_id,
         memo: order.memo,
         status: order.status,
         createdAt: order.created_at,
@@ -231,6 +236,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     <h2>${group.customerName || "거래처 미입력"}</h2>
     <p class="order-summary-number">${group.orderNumber} · ${formatOrderDate(group.createdAt)}</p>
     <p class="order-summary-money">출고수량 ${summaryQty}개 / ${summaryTotal.toLocaleString()}원</p>
+    ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
   </div>
 
   <span>
@@ -247,6 +253,9 @@ class="order-detail">
         </div>
 
         <hr>
+
+        <label class="shipping-label">관리자 메모</label>
+        <input class="customer-note-input" type="text" value="${escapeAdminAttr(customerNotes[group.customerId] || "")}" placeholder="예: 전화요망, 합배송, 후불" onchange="saveCustomerNote('${group.customerId || ""}', this.value)">
 
         <label class="shipping-label">배송비</label>
         
@@ -451,3 +460,32 @@ async function initializeAdminPage() {
 }
 
 initializeAdminPage();
+
+
+function escapeAdminHtml(value){return String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function escapeAdminAttr(value){return escapeAdminHtml(value)}
+async function loadAdminFeatureData(orderRows=[]){
+  try{
+    const ids=[...new Set(orderRows.map(r=>r.customer_id).filter(Boolean))];
+    if(ids.length){
+      const {data}=await supabaseClient.from("customer_admin_notes").select("customer_id,note").in("customer_id",ids);
+      customerNotes=Object.fromEntries((data||[]).map(x=>[x.customer_id,x.note||""]));
+    }
+  }catch(e){console.warn("관리자 메모 불러오기 실패",e)}
+  try{
+    const {data}=await supabaseClient.from("app_settings").select("value").eq("key","bank_account").maybeSingle();
+    bankSettings=data?.value||bankSettings;
+    const n=document.getElementById("bankName"),a=document.getElementById("bankAccount"),h=document.getElementById("bankHolder");
+    if(n)n.value=bankSettings.bankName||""; if(a)a.value=bankSettings.account||""; if(h)h.value=bankSettings.holder||"";
+  }catch(e){console.warn("계좌 설정 불러오기 실패",e)}
+}
+async function saveBankSettings(){
+  const value={bankName:document.getElementById("bankName")?.value.trim()||"",account:document.getElementById("bankAccount")?.value.trim()||"",holder:document.getElementById("bankHolder")?.value.trim()||""};
+  const {error}=await supabaseClient.from("app_settings").upsert({key:"bank_account",value,updated_at:new Date().toISOString()});
+  if(error){alert("계좌 저장 실패: V2-FEATURE-SETUP.sql을 먼저 실행해주세요.\n"+error.message);return} bankSettings=value; alert("송금 계좌를 저장했습니다.")
+}
+async function saveCustomerNote(customerId,note){
+  if(!customerId){alert("이전 주문이라 거래처 ID가 없습니다.");return}
+  const {error}=await supabaseClient.from("customer_admin_notes").upsert({customer_id:customerId,note:String(note||"").trim(),updated_at:new Date().toISOString()});
+  if(error){alert("메모 저장 실패: V2-FEATURE-SETUP.sql을 먼저 실행해주세요.\n"+error.message);return} customerNotes[customerId]=String(note||"").trim(); loadOrders();
+}
