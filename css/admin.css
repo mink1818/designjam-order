@@ -1055,3 +1055,16 @@ body.auth-pending.auth-ready { visibility: visible; }
 
 /* V3.5 PWA / 브랜드 */
 .install-app-button{margin-top:10px!important;background:#102b52!important}.auth-mode-link{display:block;width:100%;margin:-4px 0 12px;padding:8px;border:0;background:transparent;color:#24589f;font-weight:800;text-align:right;cursor:pointer}.admin-customer-quick{margin-bottom:12px!important;background:#112437!important}
+
+/* V3.6 통합 상품관리 안내 */
+.product-management-guide{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:14px 0;padding:14px 16px;border:1px solid #c9d8ef;
+  border-radius:14px;background:#f4f8ff;color:#173d73;
+}
+.product-management-guide strong{font-size:16px;white-space:nowrap}
+.product-management-guide span{font-size:14px;line-height:1.5;color:#516b8f}
+@media(max-width:640px){
+  .product-management-guide{display:block}
+  .product-management-guide strong{display:block;margin-bottom:5px}
+}

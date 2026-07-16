@@ -27,11 +27,11 @@
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=3526">
 </head>
 
-<body class="auth-pending" data-app-version="3.5.0" data-session-page="admin" data-pwa-app="admin">
+<body class="auth-pending" data-app-version="3.6.0" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
-  <p>카테고리 및 상품 사진 묶음 관리 <span class="app-version-badge" id="appVersionBadge">V3.5</span></p>
+  <p>대분류·카테고리·상품·품절 통합 관리 <span class="app-version-badge" id="appVersionBadge">V3.6</span></p>
 </header>
 
 <main class="container products-admin-page">
@@ -41,7 +41,12 @@
     <button type="button" data-scroll-target="categoryEditor">카테고리</button>
     <button type="button" data-scroll-target="excelUploader">엑셀 업로드</button>
     <button type="button" data-scroll-target="groupEditor">상품 묶음</button>
-    <button type="button" data-scroll-target="groupManagement">목록 관리</button>
+    <button type="button" data-scroll-target="groupManagement">상품·품절 관리</button>
+  </section>
+
+  <section class="product-management-guide" aria-label="통합 상품관리 안내">
+    <strong>통합 상품관리</strong>
+    <span>상품 등록부터 표시·숨김·품절 관리까지 이 화면에서 처리합니다. 재고수량·바코드 기능도 이 상품관리 안에 이어서 확장됩니다.</span>
   </section>
 
   <section class="product-summary-grid" aria-label="상품 등록 현황">
