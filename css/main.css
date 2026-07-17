@@ -669,3 +669,17 @@ body.auth-pending.auth-ready { visibility: visible; }
   width:100%;
   text-align:center;
 }
+
+/* V3.7.2.2 compact customer order history */
+.active-order-row { border-left: 4px solid #f59e0b; }
+.order-status-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 72px; padding: 5px 9px; border-radius: 999px;
+  background: #eff6ff; color: #1d4ed8; font-weight: 800; font-size: 13px;
+}
+@media (max-width: 640px) {
+  .completed-order-summary { grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; }
+  .completed-order-summary > span:nth-child(4) { grid-column: 2 / 4; text-align: right; }
+  .completed-order-summary > span:nth-child(5) { grid-column: 1 / 4; text-align: right; font-size: 12px; }
+  .order-status-badge { min-width: 58px; font-size: 12px; }
+}

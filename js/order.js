@@ -118,7 +118,7 @@ function renderMyOrders() {
   );
 
   activeOrderResult.innerHTML = activeGroups.length
-    ? `<h2 class="order-section-title">진행 중 주문</h2>${activeGroups.map(renderFullOrder).join("")}`
+    ? `<h2 class="order-section-title">진행 중 주문</h2>${activeGroups.map(renderCompactActiveOrder).join("")}`
     : `<div class="product-card empty-order-card"><h2>진행 중인 주문이 없습니다</h2></div>`;
 
   completedOrderResult.innerHTML = completedGroups.length
@@ -162,6 +162,34 @@ function getOrderSummary(group) {
   };
 }
 
+
+function safeOrderId(prefix, orderNumber) {
+  return `${prefix}-${String(orderNumber).replace(/[^a-zA-Z0-9가-힣_-]/g, "-")}`;
+}
+
+function renderCompactActiveOrder(group) {
+  const summary = getOrderSummary(group);
+  const id = safeOrderId("active", group.orderNumber);
+  return `<article class="completed-order-row active-order-row">
+    <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
+      <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
+      <span class="order-status-badge">${escapeHtml(group.status || "주문접수")}</span>
+      <span>${summary.qtyTotal}죽</span>
+      <span>${summary.finalTotal.toLocaleString()}원</span>
+      <span class="completed-toggle">상세보기 ▼</span>
+    </button>
+    <div id="${id}" class="completed-order-detail">
+      ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
+      ${summary.itemRows}
+      <p><strong>상품금액:</strong> ${summary.productTotal.toLocaleString()}원</p>
+      <p><strong>배송비:</strong> ${Number(group.shippingFee || 0).toLocaleString()}원</p>
+      <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
+      ${renderOrderBankBox(group)}
+      <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
+    </div>
+  </article>`;
+}
+
 function renderFullOrder(group) {
   const summary = getOrderSummary(group);
   return `<div class="product-card order-history-card">
@@ -184,9 +212,9 @@ function renderFullOrder(group) {
 
 function renderCompletedOrder(group) {
   const summary = getOrderSummary(group);
-  const id = `completed-${String(group.orderNumber).replace(/[^a-zA-Z0-9가-힣_-]/g, "-")}`;
+  const id = safeOrderId("completed", group.orderNumber);
   return `<article class="completed-order-row">
-    <button class="completed-order-summary" type="button" onclick="toggleCompletedOrder('${id}')">
+    <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
       <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
       <span>${summary.qtyTotal}죽</span>
       <span>${summary.finalTotal.toLocaleString()}원</span>
@@ -204,10 +232,16 @@ function renderCompletedOrder(group) {
   </article>`;
 }
 
-function toggleCompletedOrder(id) {
+function toggleOrderDetail(id, button) {
   const detail = document.getElementById(id);
   if (!detail) return;
-  detail.classList.toggle("open");
+  const isOpen = detail.classList.toggle("open");
+  const toggle = button?.querySelector(".completed-toggle");
+  if (toggle) toggle.textContent = isOpen ? "접기 ▲" : "상세보기 ▼";
+}
+
+function toggleCompletedOrder(id) {
+  toggleOrderDetail(id, null);
 }
 
 function formatDate(value) {
@@ -236,3 +270,5 @@ function copyOrderToCart(orderNumber){
   localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));
   if(confirm(`${cart.length}개 품번을 장바구니에 담았습니다. 상품 주문 화면으로 이동할까요?`)) location.href="catalog.html";
 }
+
+window.toggleOrderDetail = toggleOrderDetail;
