@@ -8,8 +8,8 @@ function initializeV2ProductAdmin() {
   const versionBadge = document.getElementById("productPageVersionBadge");
 
   if (versionBadge) {
-    versionBadge.textContent = "V3.7.2.1";
-    versionBadge.title = "디자인삭스 상품관리 V3.7.2.1";
+    versionBadge.textContent = "V3.8.0";
+    versionBadge.title = "디자인삭스 상품관리 V3.8.0";
   }
 }
 
@@ -2241,62 +2241,92 @@ generateItemsBtn.addEventListener("click", () => {
 
 function parseItemPattern(value) {
   const parts = String(value || "")
-    .split(",")
+    .replace(/[～〜]/g, "~")
+    .replace(/[–—−]/g, "-")
+    .split(/[\n,]+/)
     .map(item => item.trim())
     .filter(Boolean);
 
   const result = [];
 
-  for (const part of parts) {
-    const normalized = part.replace(/-/g, "~");
+  function parseCode(codeText) {
+    const text = String(codeText || "").trim().toUpperCase();
+    const match = text.match(/^([^0-9]*)(\d+)([^0-9]*)$/);
 
-    if (normalized.includes("~")) {
-      const rangeParts = normalized
-        .split("~")
-        .map(item => item.trim());
+    if (!match) {
+      return { text, isNumberCode: false };
+    }
 
-      if (rangeParts.length !== 2) {
-        throw new Error(
-          `"${part}" 입력 형식을 확인해주세요.`
-        );
+    return {
+      text,
+      isNumberCode: true,
+      prefix: match[1],
+      numberText: match[2],
+      number: Number(match[2]),
+      suffix: match[3]
+    };
+  }
+
+  for (const originalPart of parts) {
+    const part = originalPart.replace(/\s+/g, "");
+    let normalized = part;
+
+    // 물결표가 없는 단순 품번 범위(예: 1-6, 1A-6A)만 하이픈을 범위 기호로 처리합니다.
+    // NK-001 같은 품번 내부 하이픈은 그대로 유지합니다.
+    if (!normalized.includes("~")) {
+      const simpleHyphenRange = normalized.match(/^(\d+[^0-9-]*)-(\d+[^0-9-]*)$/);
+      if (simpleHyphenRange) {
+        normalized = `${simpleHyphenRange[1]}~${simpleHyphenRange[2]}`;
       }
+    }
 
-      const start = Number(rangeParts[0]);
-      const end = Number(rangeParts[1]);
+    const rangeParts = normalized.split("~").filter(item => item !== "");
 
-      if (
-        !Number.isInteger(start) ||
-        !Number.isInteger(end) ||
-        end < start
-      ) {
-        throw new Error(
-          `"${part}" 품번 범위를 확인해주세요.`
-        );
+    if (rangeParts.length === 1) {
+      const code = parseCode(rangeParts[0]);
+      if (!code.text) {
+        throw new Error(`"${originalPart}" 품번을 확인해주세요.`);
       }
+      result.push(code.text);
+      continue;
+    }
 
-      if (end - start > 1000) {
-        throw new Error(
-          `"${part}" 범위가 너무 큽니다.`
-        );
-      }
+    if (rangeParts.length !== 2) {
+      throw new Error(`"${originalPart}" 입력 형식을 확인해주세요.`);
+    }
 
-      for (
-        let number = start;
-        number <= end;
-        number++
-      ) {
-        result.push(String(number));
-      }
-    } else {
-      const number = Number(normalized);
+    const startCode = parseCode(rangeParts[0]);
+    const endCode = parseCode(rangeParts[1]);
 
-      if (!Number.isInteger(number)) {
-        throw new Error(
-          `"${part}" 품번을 확인해주세요.`
-        );
-      }
+    if (!startCode.isNumberCode || !endCode.isNumberCode) {
+      throw new Error(`"${originalPart}" 품번 범위를 확인해주세요.`);
+    }
 
-      result.push(String(number));
+    if (startCode.prefix !== endCode.prefix || startCode.suffix !== endCode.suffix) {
+      throw new Error(
+        `"${originalPart}" 범위의 영문 앞·뒤 문자를 동일하게 입력해주세요.`
+      );
+    }
+
+    const distance = Math.abs(endCode.number - startCode.number);
+    if (distance > 1000) {
+      throw new Error(`"${originalPart}" 범위가 너무 큽니다. 최대 1,001개까지 가능합니다.`);
+    }
+
+    const step = endCode.number >= startCode.number ? 1 : -1;
+    const preservePadding =
+      startCode.numberText.startsWith("0") || endCode.numberText.startsWith("0");
+    const width = Math.max(startCode.numberText.length, endCode.numberText.length);
+
+    for (
+      let number = startCode.number;
+      step > 0 ? number <= endCode.number : number >= endCode.number;
+      number += step
+    ) {
+      const numberText = preservePadding
+        ? String(number).padStart(width, "0")
+        : String(number);
+      result.push(`${startCode.prefix}${numberText}${startCode.suffix}`);
     }
   }
 
@@ -2396,6 +2426,33 @@ function parseImageUrlList(value) {
     .filter(Boolean);
 }
 
+function validateExcelItemPatterns(rows) {
+  const errors = [];
+  let expandedItemCount = 0;
+
+  rows.forEach((row, index) => {
+    try {
+      const expanded = parseItemPattern(row["품번"]);
+      if (expanded.length === 0) {
+        throw new Error("생성된 품번이 없습니다.");
+      }
+      row.__expandedItemNumbers = expanded;
+      row.__expandedItemCount = expanded.length;
+      expandedItemCount += expanded.length;
+    } catch (error) {
+      errors.push(`${index + 2}행: ${error.message}`);
+    }
+  });
+
+  if (errors.length > 0) {
+    const preview = errors.slice(0, 100).join("\n");
+    const extra = errors.length > 100 ? `\n외 ${errors.length - 100}개 오류` : "";
+    throw new Error(`품번 자동 확장 실패\n${preview}${extra}`);
+  }
+
+  return { expandedItemCount };
+}
+
 function applyImageLibraryMatches(rows) {
   let matchedCount = 0;
   let unmatchedCount = 0;
@@ -2447,7 +2504,7 @@ function renderExcelPreview(rows, matchResult) {
 
   excelMessage.innerHTML = `
     <div class="product-success">
-      <h3>엑셀 읽기 완료: 총 ${rows.length}개 상품 묶음</h3>
+      <h3>엑셀 읽기 완료: 총 ${rows.length}개 상품 묶음 · ${matchResult.expandedItemCount || 0}개 품번</h3>
       <div class="bulk-result-grid">
         <span>사진 자동 매칭 <strong>${matchResult.matchedCount}개</strong></span>
         <span>URL 직접입력 <strong>${matchResult.directUrlCount}개</strong></span>
@@ -2491,7 +2548,7 @@ function renderExcelPreview(rows, matchResult) {
                 <td>${escapeHtml(row["대분류"])}</td>
                 <td>${escapeHtml(row["카테고리"])}</td>
                 <td>${escapeHtml(row["묶음명"])}</td>
-                <td>${escapeHtml(row["품번"])}</td>
+                <td>${escapeHtml(row["품번"])}<small class="excel-expanded-count">→ ${row.__expandedItemCount || 0}개 품번</small></td>
                 <td>${Number(String(row["단가"]).replace(/[^0-9.-]/g, "") || 0).toLocaleString()}원</td>
                 <td><span class="image-match-badge ${status}">${statusText}</span></td>
               </tr>
@@ -2554,8 +2611,10 @@ async function uploadExcelProducts() {
       throw new Error("필수 제목이 없습니다: " + missingHeaders.join(", "));
     }
 
+    const itemValidation = validateExcelItemPatterns(rows);
     window.pendingExcelRows = rows;
     const matchResult = applyImageLibraryMatches(rows);
+    matchResult.expandedItemCount = itemValidation.expandedItemCount;
     renderExcelPreview(rows, matchResult);
 
     document.getElementById("registerExcelButton").style.display = "block";
@@ -2570,51 +2629,92 @@ window.uploadExcelProducts = uploadExcelProducts;
 
 function parseItemPattern(value) {
   const parts = String(value || "")
-    .split(",")
+    .replace(/[～〜]/g, "~")
+    .replace(/[–—−]/g, "-")
+    .split(/[\n,]+/)
     .map(item => item.trim())
     .filter(Boolean);
 
   const result = [];
 
-  for (const part of parts) {
-    const normalized = part.replace(/-/g, "~");
+  function parseCode(codeText) {
+    const text = String(codeText || "").trim().toUpperCase();
+    const match = text.match(/^([^0-9]*)(\d+)([^0-9]*)$/);
 
-    if (normalized.includes("~")) {
-      const [startText, endText] =
-        normalized.split("~").map(item => item.trim());
+    if (!match) {
+      return { text, isNumberCode: false };
+    }
 
-      const start = Number(startText);
-      const end = Number(endText);
+    return {
+      text,
+      isNumberCode: true,
+      prefix: match[1],
+      numberText: match[2],
+      number: Number(match[2]),
+      suffix: match[3]
+    };
+  }
 
-      if (
-        !Number.isInteger(start) ||
-        !Number.isInteger(end) ||
-        end < start
-      ) {
-        throw new Error(
-          `"${part}" 품번 범위를 확인해주세요.`
-        );
+  for (const originalPart of parts) {
+    const part = originalPart.replace(/\s+/g, "");
+    let normalized = part;
+
+    // 물결표가 없는 단순 품번 범위(예: 1-6, 1A-6A)만 하이픈을 범위 기호로 처리합니다.
+    // NK-001 같은 품번 내부 하이픈은 그대로 유지합니다.
+    if (!normalized.includes("~")) {
+      const simpleHyphenRange = normalized.match(/^(\d+[^0-9-]*)-(\d+[^0-9-]*)$/);
+      if (simpleHyphenRange) {
+        normalized = `${simpleHyphenRange[1]}~${simpleHyphenRange[2]}`;
       }
+    }
 
-      if (end - start > 1000) {
-        throw new Error(
-          `"${part}" 범위가 너무 큽니다.`
-        );
+    const rangeParts = normalized.split("~").filter(item => item !== "");
+
+    if (rangeParts.length === 1) {
+      const code = parseCode(rangeParts[0]);
+      if (!code.text) {
+        throw new Error(`"${originalPart}" 품번을 확인해주세요.`);
       }
+      result.push(code.text);
+      continue;
+    }
 
-      for (let number = start; number <= end; number++) {
-        result.push(String(number));
-      }
-    } else {
-      const number = Number(normalized);
+    if (rangeParts.length !== 2) {
+      throw new Error(`"${originalPart}" 입력 형식을 확인해주세요.`);
+    }
 
-      if (!Number.isInteger(number)) {
-        throw new Error(
-          `"${part}" 품번을 확인해주세요.`
-        );
-      }
+    const startCode = parseCode(rangeParts[0]);
+    const endCode = parseCode(rangeParts[1]);
 
-      result.push(String(number));
+    if (!startCode.isNumberCode || !endCode.isNumberCode) {
+      throw new Error(`"${originalPart}" 품번 범위를 확인해주세요.`);
+    }
+
+    if (startCode.prefix !== endCode.prefix || startCode.suffix !== endCode.suffix) {
+      throw new Error(
+        `"${originalPart}" 범위의 영문 앞·뒤 문자를 동일하게 입력해주세요.`
+      );
+    }
+
+    const distance = Math.abs(endCode.number - startCode.number);
+    if (distance > 1000) {
+      throw new Error(`"${originalPart}" 범위가 너무 큽니다. 최대 1,001개까지 가능합니다.`);
+    }
+
+    const step = endCode.number >= startCode.number ? 1 : -1;
+    const preservePadding =
+      startCode.numberText.startsWith("0") || endCode.numberText.startsWith("0");
+    const width = Math.max(startCode.numberText.length, endCode.numberText.length);
+
+    for (
+      let number = startCode.number;
+      step > 0 ? number <= endCode.number : number >= endCode.number;
+      number += step
+    ) {
+      const numberText = preservePadding
+        ? String(number).padStart(width, "0")
+        : String(number);
+      result.push(`${startCode.prefix}${numberText}${startCode.suffix}`);
     }
   }
 
@@ -2736,7 +2836,9 @@ async function registerExcelProducts() {
         }
 
         const itemNumbers =
-          parseItemPattern(itemPatternText);
+          Array.isArray(row.__expandedItemNumbers)
+            ? row.__expandedItemNumbers
+            : parseItemPattern(itemPatternText);
 
         if (itemNumbers.length === 0) {
           throw new Error("생성된 품번이 없습니다.");
