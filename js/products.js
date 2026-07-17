@@ -5,11 +5,11 @@ const supabaseUrl =
 const operationsCore = window.DesignJamOperations || null;
 
 function initializeV2ProductAdmin() {
-  const versionBadge = document.getElementById("appVersionBadge");
+  const versionBadge = document.getElementById("productPageVersionBadge");
 
-  if (versionBadge && operationsCore) {
-    versionBadge.textContent = `V${operationsCore.version.split(".")[0]}`;
-    versionBadge.title = `Design Jam Order ${operationsCore.version}`;
+  if (versionBadge) {
+    versionBadge.textContent = "V3.7.2.1";
+    versionBadge.title = "디자인삭스 상품관리 V3.7.2.1";
   }
 }
 
