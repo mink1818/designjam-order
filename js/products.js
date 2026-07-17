@@ -8,8 +8,8 @@ function initializeV2ProductAdmin() {
   const versionBadge = document.getElementById("productPageVersionBadge");
 
   if (versionBadge) {
-    versionBadge.textContent = "V3.8.0";
-    versionBadge.title = "디자인삭스 상품관리 V3.8.0";
+    versionBadge.textContent = "V3.8.2";
+    versionBadge.title = "디자인삭스 상품관리 V3.8.2";
   }
 }
 
@@ -2618,6 +2618,8 @@ async function uploadExcelProducts() {
     renderExcelPreview(rows, matchResult);
 
     document.getElementById("registerExcelButton").style.display = "block";
+    const importModePanel = document.getElementById("excelImportModePanel");
+    if (importModePanel) importModePanel.style.display = "grid";
     if (rematchExcelButton) rematchExcelButton.style.display = "inline-flex";
   } catch (error) {
     console.error(error);
@@ -2746,266 +2748,525 @@ generatePatternItemsBtn.addEventListener(
   }
 );
 
+
+function normalizeDuplicateText(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[‐‑‒–—―]/g, "-")
+    .replace(/[～〜]/g, "~")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+function normalizeDuplicateItem(value) {
+  return normalizeDuplicateText(value).replace(/[^0-9a-z가-힣()_+\-]/g, "");
+}
+
+function makeDuplicateItemSetKey(values) {
+  const normalized = [...new Set((Array.isArray(values) ? values : [])
+    .map(normalizeDuplicateItem)
+    .filter(Boolean))]
+    .sort();
+  return normalized.join("|");
+}
+
+async function loadExistingExcelDuplicateIndex() {
+  const [mainResult, categoryResult, groupResult] = await Promise.all([
+    supabaseClient.from("product_main_categories").select("id,name,is_active"),
+    supabaseClient.from("product_categories").select("id,main_category_id,name,is_active"),
+    supabaseClient.from("product_groups").select("id,category_id,title,item_numbers,is_active,sort_order")
+  ]);
+
+  if (mainResult.error) throw mainResult.error;
+  if (categoryResult.error) throw categoryResult.error;
+  if (groupResult.error) throw groupResult.error;
+
+  const mains = mainResult.data || [];
+  const categories = categoryResult.data || [];
+  const groups = groupResult.data || [];
+
+  const mainByName = new Map();
+  mains.forEach(item => {
+    const key = normalizeDuplicateText(item.name);
+    if (key && !mainByName.has(key)) mainByName.set(key, item);
+  });
+
+  const categoryByKey = new Map();
+  categories.forEach(item => {
+    const key = `${String(item.main_category_id)}::${normalizeDuplicateText(item.name)}`;
+    if (!categoryByKey.has(key)) categoryByKey.set(key, item);
+  });
+
+  const groupsByTitleKey = new Map();
+  const groupsByItemSetKey = new Map();
+  const itemToGroups = new Map();
+  const groupTitleKeys = new Set();
+  const itemSetKeys = new Set();
+  const individualItemKeys = new Set();
+
+  groups.forEach(item => {
+    const categoryId = String(item.category_id);
+    const titleKey = `${categoryId}::${normalizeDuplicateText(item.title)}`;
+    const itemSetKey = makeDuplicateItemSetKey(item.item_numbers);
+
+    groupTitleKeys.add(titleKey);
+    if (!groupsByTitleKey.has(titleKey)) groupsByTitleKey.set(titleKey, []);
+    groupsByTitleKey.get(titleKey).push(item);
+
+    if (itemSetKey) {
+      itemSetKeys.add(itemSetKey);
+      if (!groupsByItemSetKey.has(itemSetKey)) groupsByItemSetKey.set(itemSetKey, []);
+      groupsByItemSetKey.get(itemSetKey).push(item);
+    }
+
+    (Array.isArray(item.item_numbers) ? item.item_numbers : []).forEach(number => {
+      const key = normalizeDuplicateItem(number);
+      if (!key) return;
+      individualItemKeys.add(key);
+      if (!itemToGroups.has(key)) itemToGroups.set(key, []);
+      itemToGroups.get(key).push(item);
+    });
+  });
+
+  return {
+    mains,
+    categories,
+    groups,
+    mainByName,
+    categoryByKey,
+    groupsByTitleKey,
+    groupsByItemSetKey,
+    itemToGroups,
+    groupTitleKeys,
+    itemSetKeys,
+    individualItemKeys
+  };
+}
+
+function getExcelImportMode() {
+  return document.querySelector('input[name="excelImportMode"]:checked')?.value || "append";
+}
+
+function chooseCanonicalGroup(groups) {
+  return [...(groups || [])].sort((a, b) => {
+    if (!!a.is_active !== !!b.is_active) return a.is_active ? -1 : 1;
+    const aSort = Number(a.sort_order || 0);
+    const bSort = Number(b.sort_order || 0);
+    if (aSort !== bSort) return aSort - bSort;
+    return String(a.id).localeCompare(String(b.id));
+  })[0] || null;
+}
+
+async function hideProductGroups(ids) {
+  const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+  if (!uniqueIds.length) return 0;
+  const { error } = await supabaseClient
+    .from("product_groups")
+    .update({ is_active: false })
+    .in("id", uniqueIds);
+  if (error) throw error;
+  return uniqueIds.length;
+}
+
+async function consolidateExistingStructureDuplicates(index) {
+  let removedMainCount = 0;
+  let removedCategoryCount = 0;
+  let movedGroupCount = 0;
+
+  // 동일한 대분류명은 하나로 합치고 하위 카테고리·상품을 대표 대분류로 이동합니다.
+  const mainsByName = new Map();
+  index.mains.forEach(main => {
+    const key = normalizeDuplicateText(main.name);
+    if (!key) return;
+    if (!mainsByName.has(key)) mainsByName.set(key, []);
+    mainsByName.get(key).push(main);
+  });
+
+  for (const mains of mainsByName.values()) {
+    if (mains.length < 2) continue;
+    const canonicalMain = [...mains].sort((a, b) => {
+      if (!!a.is_active !== !!b.is_active) return a.is_active ? -1 : 1;
+      return String(a.id).localeCompare(String(b.id));
+    })[0];
+
+    for (const duplicateMain of mains) {
+      if (String(duplicateMain.id) === String(canonicalMain.id)) continue;
+      const childCategories = index.categories.filter(category => String(category.main_category_id) === String(duplicateMain.id));
+
+      for (const childCategory of childCategories) {
+        const categoryNameKey = normalizeDuplicateText(childCategory.name);
+        const targetCategory = index.categories.find(category =>
+          String(category.main_category_id) === String(canonicalMain.id) &&
+          normalizeDuplicateText(category.name) === categoryNameKey &&
+          String(category.id) !== String(childCategory.id)
+        );
+
+        if (targetCategory) {
+          const { data: movedGroups, error: moveError } = await supabaseClient
+            .from("product_groups")
+            .update({ category_id: targetCategory.id })
+            .eq("category_id", childCategory.id)
+            .select("id");
+          if (moveError) throw moveError;
+          movedGroupCount += (movedGroups || []).length;
+          const { error: categoryDeleteError } = await supabaseClient
+            .from("product_categories")
+            .delete()
+            .eq("id", childCategory.id);
+          if (categoryDeleteError) throw categoryDeleteError;
+          removedCategoryCount++;
+        } else {
+          const { error: categoryMoveError } = await supabaseClient
+            .from("product_categories")
+            .update({ main_category_id: canonicalMain.id, is_active: true })
+            .eq("id", childCategory.id);
+          if (categoryMoveError) throw categoryMoveError;
+          childCategory.main_category_id = canonicalMain.id;
+        }
+      }
+
+      const { error: mainDeleteError } = await supabaseClient
+        .from("product_main_categories")
+        .delete()
+        .eq("id", duplicateMain.id);
+      if (mainDeleteError) throw mainDeleteError;
+      removedMainCount++;
+    }
+  }
+
+  // 대분류 통합 후에도 같은 이름의 카테고리가 남아 있으면 하나로 합칩니다.
+  const refreshed = await loadExistingExcelDuplicateIndex();
+  const categoriesByKey = new Map();
+  refreshed.categories.forEach(category => {
+    const key = `${String(category.main_category_id)}::${normalizeDuplicateText(category.name)}`;
+    if (!categoriesByKey.has(key)) categoriesByKey.set(key, []);
+    categoriesByKey.get(key).push(category);
+  });
+
+  for (const categories of categoriesByKey.values()) {
+    if (categories.length < 2) continue;
+    const canonicalCategory = [...categories].sort((a, b) => {
+      if (!!a.is_active !== !!b.is_active) return a.is_active ? -1 : 1;
+      return String(a.id).localeCompare(String(b.id));
+    })[0];
+
+    for (const duplicateCategory of categories) {
+      if (String(duplicateCategory.id) === String(canonicalCategory.id)) continue;
+      const { data: movedGroups, error: moveError } = await supabaseClient
+        .from("product_groups")
+        .update({ category_id: canonicalCategory.id })
+        .eq("category_id", duplicateCategory.id)
+        .select("id");
+      if (moveError) throw moveError;
+      movedGroupCount += (movedGroups || []).length;
+      const { error: deleteError } = await supabaseClient
+        .from("product_categories")
+        .delete()
+        .eq("id", duplicateCategory.id);
+      if (deleteError) throw deleteError;
+      removedCategoryCount++;
+    }
+  }
+
+  return { removedMainCount, removedCategoryCount, movedGroupCount };
+}
+
+async function removeDuplicateProductGroups(ids) {
+  const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+  if (!uniqueIds.length) return { deleted: 0, hidden: 0 };
+
+  const { error: deleteError } = await supabaseClient
+    .from("product_groups")
+    .delete()
+    .in("id", uniqueIds);
+
+  if (!deleteError) return { deleted: uniqueIds.length, hidden: 0 };
+
+  // 기존 주문 등에서 참조 중이면 삭제 대신 거래처 화면에서 보이지 않도록 숨깁니다.
+  const { error: hideError } = await supabaseClient
+    .from("product_groups")
+    .update({ is_active: false })
+    .in("id", uniqueIds);
+  if (hideError) throw hideError;
+  return { deleted: 0, hidden: uniqueIds.length };
+}
+
 async function registerExcelProducts() {
-  const rows =
-    Array.isArray(window.pendingExcelRows)
-      ? window.pendingExcelRows
-      : [];
-
-  const excelMessage =
-    document.getElementById("excelMessage");
-
-  const registerButton =
-    document.getElementById("registerExcelButton");
+  const rows = Array.isArray(window.pendingExcelRows) ? window.pendingExcelRows : [];
+  const excelMessage = document.getElementById("excelMessage");
+  const registerButton = document.getElementById("registerExcelButton");
+  const mode = getExcelImportMode();
 
   if (rows.length === 0) {
     alert("먼저 엑셀 파일을 읽어주세요.");
     return;
   }
 
+  const modeNames = {
+    append: "신규만 추가",
+    sync: "엑셀 동기화",
+    replace: "전체 교체"
+  };
   const rowsWithoutImage = rows.filter(row => !String(row["대표사진URL"] || "").trim()).length;
-  const confirmed = confirm(
-    `총 ${rows.length}개의 상품 묶음을 실제 등록할까요?\n\n` +
-    `사진 연결 완료 ${rows.length - rowsWithoutImage}개 / 사진 없음 ${rowsWithoutImage}개\n` +
-    "같은 카테고리와 묶음명이 이미 있으면 해당 행은 건너뜁니다." +
-    (rowsWithoutImage > 0 ? "\n\n사진이 없는 행도 상품은 등록됩니다." : "")
-  );
+  const warning = mode === "sync"
+    ? "엑셀에 없는 상품은 삭제하지 않고 숨김 처리되며, 기존 중복 상품도 하나만 남기고 숨김 처리됩니다."
+    : mode === "replace"
+      ? "현재 등록된 모든 상품 묶음을 먼저 숨긴 뒤 엑셀 내용을 반영합니다. 기존 주문 기록은 유지됩니다."
+      : "기존 상품은 유지하고 중복 행은 건너뜁니다.";
 
+  const confirmed = confirm(
+    `[${modeNames[mode]}] 방식으로 총 ${rows.length}개 상품 묶음을 반영할까요?\n\n` +
+    `사진 연결 완료 ${rows.length - rowsWithoutImage}개 / 사진 없음 ${rowsWithoutImage}개\n\n` +
+    warning +
+    (rowsWithoutImage > 0 ? "\n\n사진이 없는 행도 상품은 반영됩니다." : "")
+  );
   if (!confirmed) return;
 
+  if (mode === "replace") {
+    const secondConfirm = confirm("전체 교체는 모든 기존 상품 묶음을 숨김 처리합니다. 계속할까요?");
+    if (!secondConfirm) return;
+  }
+
   registerButton.disabled = true;
-  registerButton.textContent = "상품 등록 중...";
+  registerButton.textContent = "상품 반영 중...";
 
   let successCount = 0;
+  let updateCount = 0;
   let skipCount = 0;
+  let hiddenDuplicateCount = 0;
+  let deletedDuplicateCount = 0;
+  let hiddenMissingCount = 0;
   let errorCount = 0;
-
   const errorMessages = [];
+  const skippedMessages = [];
 
   try {
+    let duplicateIndex = await loadExistingExcelDuplicateIndex();
+    let structureCleanup = { removedMainCount: 0, removedCategoryCount: 0, movedGroupCount: 0 };
+    if (mode === "sync" || mode === "replace") {
+      structureCleanup = await consolidateExistingStructureDuplicates(duplicateIndex);
+      duplicateIndex = await loadExistingExcelDuplicateIndex();
+    }
+    const importGroupTitleKeys = new Set();
+    const importItemSetKeys = new Set();
+    const importIndividualItemKeys = new Set();
+    const keptGroupIds = new Set();
+    const touchedCategoryIds = new Set();
+    const duplicateIdsToHide = new Set();
+
+    if (mode === "replace") {
+      hiddenMissingCount += await hideProductGroups(duplicateIndex.groups.map(group => group.id));
+      duplicateIndex.groups.forEach(group => { group.is_active = false; });
+    }
+
     for (let index = 0; index < rows.length; index++) {
       const row = rows[index];
-
       try {
-        const mainCategoryName =
-          String(row["대분류"] || "").trim();
+        const mainCategoryName = String(row["대분류"] || "").trim();
+        const categoryName = String(row["카테고리"] || "").trim();
+        const brandText = String(row["포함브랜드"] || "").trim();
+        const groupTitle = String(row["묶음명"] || "").trim();
+        const itemPatternText = String(row["품번"] || "").trim();
+        const descriptionText = String(row["설명"] || "").trim();
+        const imageUrl = String(row["대표사진URL"] || "").trim();
+        const price = Number(String(row["단가"] || "").replace(/[^0-9.-]/g, ""));
+        const sortOrder = Number(String(row["표시순서"] || index + 1).replace(/[^0-9.-]/g, "")) || index + 1;
 
-        const categoryName =
-          String(row["카테고리"] || "").trim();
-
-        const brandText =
-          String(row["포함브랜드"] || "").trim();
-
-        const groupTitle =
-          String(row["묶음명"] || "").trim();
-
-        const itemPatternText =
-          String(row["품번"] || "").trim();
-
-        const descriptionText =
-          String(row["설명"] || "").trim();
-
-        const imageUrl =
-          String(row["대표사진URL"] || "").trim();
-
-        const price =
-          Number(
-            String(row["단가"] || "")
-              .replace(/[^0-9.-]/g, "")
-          );
-
-        const sortOrder =
-          Number(
-            String(row["표시순서"] || index + 1)
-              .replace(/[^0-9.-]/g, "")
-          ) || index + 1;
-
-        if (
-          !mainCategoryName ||
-          !categoryName ||
-          !groupTitle ||
-          !itemPatternText
-        ) {
-          throw new Error(
-            "대분류·카테고리·묶음명·품번은 필수입니다."
-          );
+        if (!mainCategoryName || !categoryName || !groupTitle || !itemPatternText) {
+          throw new Error("대분류·카테고리·묶음명·품번은 필수입니다.");
         }
+        if (!Number.isFinite(price) || price < 0) throw new Error("단가가 올바르지 않습니다.");
 
-        if (!Number.isFinite(price) || price < 0) {
-          throw new Error("단가가 올바르지 않습니다.");
-        }
+        const itemNumbers = Array.isArray(row.__expandedItemNumbers)
+          ? row.__expandedItemNumbers
+          : parseItemPattern(itemPatternText);
+        if (!itemNumbers.length) throw new Error("생성된 품번이 없습니다.");
 
-        const itemNumbers =
-          Array.isArray(row.__expandedItemNumbers)
-            ? row.__expandedItemNumbers
-            : parseItemPattern(itemPatternText);
-
-        if (itemNumbers.length === 0) {
-          throw new Error("생성된 품번이 없습니다.");
-        }
-
-        /* 1. 대분류 확인 또는 생성 */
-        let mainCategory =
-          allMainCategories.find(
-            item =>
-              String(item.name).trim() ===
-              mainCategoryName
-          );
+        const mainCategoryNameKey = normalizeDuplicateText(mainCategoryName);
+        let mainCategory = duplicateIndex.mainByName.get(mainCategoryNameKey) ||
+          allMainCategories.find(item => normalizeDuplicateText(item.name) === mainCategoryNameKey);
 
         if (!mainCategory) {
-          const {
-            data: newMainCategory,
-            error: mainCategoryError
-          } = await supabaseClient
+          const { data, error } = await supabaseClient
             .from("product_main_categories")
-            .insert({
-              name: mainCategoryName,
-              cover_url: "",
-              sort_order:
-                allMainCategories.length + 1,
-              is_active: true
-            })
-            .select()
-            .single();
-
-          if (mainCategoryError) {
-            throw mainCategoryError;
-          }
-
-          mainCategory = newMainCategory;
+            .insert({ name: mainCategoryName, cover_url: "", sort_order: allMainCategories.length + 1, is_active: true })
+            .select().single();
+          if (error) throw error;
+          mainCategory = data;
           allMainCategories.push(mainCategory);
+          duplicateIndex.mainByName.set(mainCategoryNameKey, mainCategory);
+        } else if (mainCategory.is_active === false && mode !== "append") {
+          const { error } = await supabaseClient.from("product_main_categories").update({ is_active: true }).eq("id", mainCategory.id);
+          if (error) throw error;
+          mainCategory.is_active = true;
         }
 
-        /* 2. 카테고리 확인 또는 생성 */
-        let category =
-          allCategories.find(
-            item =>
-              item.main_category_id ===
-                mainCategory.id &&
-              String(item.name).trim() ===
-                categoryName
-          );
-
-        const brandTags =
-          brandText
-            .split(",")
-            .map(item => item.trim())
-            .filter(Boolean);
+        const categoryNameKey = normalizeDuplicateText(categoryName);
+        const categoryLookupKey = `${String(mainCategory.id)}::${categoryNameKey}`;
+        let category = duplicateIndex.categoryByKey.get(categoryLookupKey) ||
+          allCategories.find(item => String(item.main_category_id) === String(mainCategory.id) && normalizeDuplicateText(item.name) === categoryNameKey);
+        const brandTags = brandText.split(",").map(item => item.trim()).filter(Boolean);
 
         if (!category) {
-          const {
-            data: newCategory,
-            error: categoryError
-          } = await supabaseClient
+          const { data, error } = await supabaseClient
             .from("product_categories")
-.insert({
-  main_category_id:
-    mainCategory.id,
-  name: categoryName,
-  description_text: "",
-  price,
-  tags: brandTags,
-  cover_url: imageUrl,
-  sort_order: sortOrder,
-  is_active: true
-})
-            .select()
-            .single();
-
-          if (categoryError) {
-            throw categoryError;
-          }
-
-          category = newCategory;
+            .insert({
+              main_category_id: mainCategory.id,
+              name: categoryName,
+              description_text: "",
+              price,
+              tags: brandTags,
+              cover_url: imageUrl,
+              sort_order: sortOrder,
+              is_active: true
+            }).select().single();
+          if (error) throw error;
+          category = data;
           allCategories.push(category);
+          duplicateIndex.categoryByKey.set(categoryLookupKey, category);
         } else {
-          /*
-            기존 카테고리는 삭제하지 않고
-            빈 설명이나 태그만 보완합니다.
-          */
-          const updatedTags = [
-            ...new Set([
-              ...(category.tags || []),
-              ...brandTags
-            ])
-          ];
-
-          const updateValues = {
-            tags: updatedTags
-          };
-
-          await supabaseClient
+          const updatedTags = [...new Set([...(category.tags || []), ...brandTags])];
+          const { error } = await supabaseClient
             .from("product_categories")
-            .update(updateValues)
+            .update({ tags: updatedTags, is_active: true })
             .eq("id", category.id);
+          if (error) throw error;
+          category.is_active = true;
         }
+        touchedCategoryIds.add(String(category.id));
 
-        /* 3. 같은 묶음이 이미 있는지 확인 */
-        const duplicateGroup =
-          allGroups.find(
-            item =>
-              item.category_id === category.id &&
-              String(item.title).trim() ===
-                groupTitle
+        const groupTitleKey = `${String(category.id)}::${normalizeDuplicateText(groupTitle)}`;
+        const itemSetKey = makeDuplicateItemSetKey(itemNumbers);
+        const normalizedItems = itemNumbers.map(normalizeDuplicateItem).filter(Boolean);
+        const titleMatches = duplicateIndex.groupsByTitleKey.get(groupTitleKey) || [];
+        const setMatches = itemSetKey ? (duplicateIndex.groupsByItemSetKey.get(itemSetKey) || []) : [];
+        const existingCandidates = [...new Map([...titleMatches, ...setMatches].map(group => [String(group.id), group])).values()];
+        const existingGroup = chooseCanonicalGroup(existingCandidates);
+
+        if (mode === "append") {
+          const overlappingItems = normalizedItems.filter(itemKey =>
+            duplicateIndex.individualItemKeys.has(itemKey) || importIndividualItemKeys.has(itemKey)
           );
-
-        if (duplicateGroup) {
-          skipCount++;
-          continue;
+          let duplicateReason = "";
+          if (duplicateIndex.groupTitleKeys.has(groupTitleKey) || importGroupTitleKeys.has(groupTitleKey)) {
+            duplicateReason = `같은 카테고리의 묶음명 '${groupTitle}'이 이미 등록되어 있습니다.`;
+          } else if (itemSetKey && (duplicateIndex.itemSetKeys.has(itemSetKey) || importItemSetKeys.has(itemSetKey))) {
+            duplicateReason = `같은 품번 구성(${itemNumbers.join(", ")})이 이미 등록되어 있습니다.`;
+          } else if (overlappingItems.length > 0) {
+            duplicateReason = `이미 등록된 품번이 포함되어 있습니다: ${[...new Set(overlappingItems)].join(", ")}`;
+          }
+          if (duplicateReason) {
+            skipCount++;
+            skippedMessages.push(`${index + 2}행: ${duplicateReason}`);
+            continue;
+          }
         }
 
-        /* 4. 상품 묶음 등록 */
-        const {
-          data: newGroup,
-          error: groupError
-        } = await supabaseClient
-          .from("product_groups")
-          .insert({
-            category_id: category.id,
-            title: groupTitle,
-            
-            description_text: descriptionText,
-brand_text: brandText,
+        const payload = {
+          category_id: category.id,
+          title: groupTitle,
+          description_text: descriptionText,
+          brand_text: brandText,
+          image_url: imageUrl,
+          image_urls: parseImageUrlList(row["추가사진URL"]),
+          item_numbers: itemNumbers,
+          price,
+          sort_order: sortOrder,
+          is_active: true
+        };
 
-            image_url: imageUrl,
-            image_urls: parseImageUrlList(row["추가사진URL"]),
-            item_numbers: itemNumbers,
-            soldout_items: [],
-            price,
-            sort_order: sortOrder,
-            is_active: true
-          })
-          .select()
-          .single();
+        let savedGroup;
+        if (existingGroup && mode !== "append") {
+          const { data, error } = await supabaseClient
+            .from("product_groups")
+            .update(payload)
+            .eq("id", existingGroup.id)
+            .select().single();
+          if (error) throw error;
+          savedGroup = data;
+          updateCount++;
 
-        if (groupError) {
-          throw groupError;
+          existingCandidates.forEach(group => {
+            if (String(group.id) !== String(existingGroup.id)) duplicateIdsToHide.add(group.id);
+          });
+        } else {
+          const { data, error } = await supabaseClient
+            .from("product_groups")
+            .insert({ ...payload, soldout_items: [] })
+            .select().single();
+          if (error) throw error;
+          savedGroup = data;
+          successCount++;
         }
 
-        allGroups.push(newGroup);
-        successCount++;
-
+        keptGroupIds.add(String(savedGroup.id));
+        duplicateIndex.groupTitleKeys.add(groupTitleKey);
+        importGroupTitleKeys.add(groupTitleKey);
+        if (!duplicateIndex.groupsByTitleKey.has(groupTitleKey)) duplicateIndex.groupsByTitleKey.set(groupTitleKey, []);
+        duplicateIndex.groupsByTitleKey.get(groupTitleKey).push(savedGroup);
+        if (itemSetKey) {
+          duplicateIndex.itemSetKeys.add(itemSetKey);
+          importItemSetKeys.add(itemSetKey);
+          if (!duplicateIndex.groupsByItemSetKey.has(itemSetKey)) duplicateIndex.groupsByItemSetKey.set(itemSetKey, []);
+          duplicateIndex.groupsByItemSetKey.get(itemSetKey).push(savedGroup);
+        }
+        normalizedItems.forEach(itemKey => {
+          duplicateIndex.individualItemKeys.add(itemKey);
+          importIndividualItemKeys.add(itemKey);
+        });
       } catch (rowError) {
         errorCount++;
-
-        errorMessages.push(
-          `${index + 2}행: ${rowError.message}`
-        );
+        errorMessages.push(`${index + 2}행: ${rowError.message}`);
       }
 
       excelMessage.innerHTML = `
         <div class="product-success">
-          <h3>엑셀 상품 등록 중...</h3>
-          <p>
-            ${index + 1} / ${rows.length}행 처리
-          </p>
-          <p>
-            성공 ${successCount}개 /
-            건너뜀 ${skipCount}개 /
-            실패 ${errorCount}개
-          </p>
-        </div>
-      `;
+          <h3>엑셀 상품 반영 중...</h3>
+          <p>${index + 1} / ${rows.length}행 처리</p>
+          <p>신규 ${successCount} / 수정 ${updateCount} / 건너뜀 ${skipCount} / 실패 ${errorCount}</p>
+        </div>`;
+    }
+
+    if (mode === "sync") {
+      // 같은 키로 이미 중복 등록된 항목은 대표 1개만 남깁니다.
+      for (const groups of duplicateIndex.groupsByTitleKey.values()) {
+        if (groups.length < 2) continue;
+        const canonical = chooseCanonicalGroup(groups);
+        groups.forEach(group => {
+          if (String(group.id) !== String(canonical?.id)) duplicateIdsToHide.add(group.id);
+        });
+      }
+      for (const groups of duplicateIndex.groupsByItemSetKey.values()) {
+        if (groups.length < 2) continue;
+        const canonical = chooseCanonicalGroup(groups);
+        groups.forEach(group => {
+          if (String(group.id) !== String(canonical?.id)) duplicateIdsToHide.add(group.id);
+        });
+      }
+
+      // 엑셀에 포함된 카테고리 범위 안에서 빠진 상품은 숨김 처리합니다.
+      duplicateIndex.groups.forEach(group => {
+        if (touchedCategoryIds.has(String(group.category_id)) && !keptGroupIds.has(String(group.id))) {
+          duplicateIdsToHide.add(group.id);
+        }
+      });
+    }
+
+    keptGroupIds.forEach(id => duplicateIdsToHide.delete(id));
+
+    if (mode === "sync") {
+      const missingIds = duplicateIndex.groups
+        .filter(group => touchedCategoryIds.has(String(group.category_id)) && !keptGroupIds.has(String(group.id)))
+        .map(group => group.id);
+      const missingIdSet = new Set(missingIds.map(String));
+      const duplicateOnlyIds = [...duplicateIdsToHide].filter(id => !missingIdSet.has(String(id)));
+      const duplicateCleanup = await removeDuplicateProductGroups(duplicateOnlyIds);
+      deletedDuplicateCount = duplicateCleanup.deleted;
+      hiddenDuplicateCount = duplicateCleanup.hidden;
+      hiddenMissingCount = await hideProductGroups([...missingIdSet]);
+    } else if (duplicateIdsToHide.size > 0) {
+      hiddenDuplicateCount = await hideProductGroups([...duplicateIdsToHide]);
     }
 
     await loadMainCategories();
@@ -3013,43 +3274,32 @@ brand_text: brandText,
 
     excelMessage.innerHTML = `
       <div class="product-success">
-        <h3>엑셀 상품 등록 완료</h3>
-
-        <p>신규 등록: ${successCount}개</p>
-        <p>중복 건너뜀: ${skipCount}개</p>
-        <p>실패: ${errorCount}개</p>
+        <h3>엑셀 상품 반영 완료 · ${modeNames[mode]}</h3>
+        <div class="excel-result-summary">
+          <span>신규 등록 <strong>${successCount}개</strong></span>
+          <span>기존 수정 <strong>${updateCount}개</strong></span>
+          <span>중복 건너뜀 <strong>${skipCount}개</strong></span>
+          <span>중복 완전 정리 <strong>${deletedDuplicateCount}개</strong></span>
+          <span>대분류 중복 정리 <strong>${structureCleanup.removedMainCount}개</strong></span>
+          <span>카테고리 중복 정리 <strong>${structureCleanup.removedCategoryCount}개</strong></span>
+          <span>숨김 처리 <strong>${hiddenDuplicateCount + hiddenMissingCount}개</strong></span>
+          <span>실패 <strong>${errorCount}개</strong></span>
+        </div>
+        <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
       </div>
-
-      ${
-        errorMessages.length > 0
-          ? `
-            <div class="excel-error-list">
-              <h3>실패한 행</h3>
-
-              ${errorMessages
-                .map(message => `
-                  <p>${escapeHtml(message)}</p>
-                `)
-                .join("")}
-            </div>
-          `
-          : ""
-      }
-    `;
+      ${skippedMessages.length ? `<div class="excel-error-list excel-skip-list"><h3>중복으로 건너뛴 행</h3>${skippedMessages.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}
+      ${errorMessages.length ? `<div class="excel-error-list"><h3>실패한 행</h3>${errorMessages.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}`;
 
     if (errorCount === 0) {
       window.pendingExcelRows = [];
-
-      document.getElementById("excelFile").value =
-        "";
-
+      document.getElementById("excelFile").value = "";
       registerButton.style.display = "none";
+      const panel = document.getElementById("excelImportModePanel");
+      if (panel) panel.style.display = "none";
     }
-
   } finally {
     registerButton.disabled = false;
-    registerButton.textContent =
-      "미리보기 상품 실제 등록";
+    registerButton.textContent = "선택한 방식으로 실제 반영";
   }
 }
 

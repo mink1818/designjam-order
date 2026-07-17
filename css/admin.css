@@ -1274,3 +1274,15 @@ body.auth-pending.auth-ready::after { display: none; }
 
 /* V3.8.0 alphanumeric item range preview */
 .excel-expanded-count{display:block;margin-top:3px;color:#2563a6;font-size:10px;font-weight:800;white-space:nowrap}
+
+/* V3.8.2 엑셀 업로드 모드 */
+.excel-import-mode-panel{display:grid;gap:10px;margin:16px 0;padding:16px;border:1px solid #bfd2ef;border-radius:14px;background:#f7faff}
+.excel-mode-option{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #d8e2ef;border-radius:12px;background:#fff;cursor:pointer}
+.excel-mode-option input{margin-top:4px;transform:scale(1.15)}
+.excel-mode-option span{display:grid;gap:3px}
+.excel-mode-option small{color:#607086;line-height:1.4}
+.excel-mode-option.recommended{border-color:#3b82f6;background:#eff6ff}
+.excel-mode-option.danger-mode{border-color:#f3b3b3;background:#fff7f7}
+.excel-mode-help{margin:2px 0 0;color:#46566d;font-size:13px}
+.excel-result-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+.excel-result-summary span{padding:10px;border-radius:10px;background:#f4f7fb}
