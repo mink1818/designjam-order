@@ -11,15 +11,15 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/admin-home.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=3526">
 <title>디자인삭스 주문관리 (관리자)</title>
-<link rel="stylesheet" href="css/admin.css?v=3712">
+<link rel="stylesheet" href="css/admin.css?v=3720">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=3712">
-  <link rel="icon" href="icons/admin-192.png?v=3712">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=3712">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=3720">
+  <link rel="icon" href="icons/admin-192.png?v=3720">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=3720">
 </head>
 <body class="auth-pending" data-session-page="admin" data-pwa-app="admin">
 <header><h1>🧦 디자인 삭스 주문관리 V3.7</h1><p>관리자 운영 대시보드</p></header>
@@ -30,9 +30,9 @@
   </section>
 
   <section class="v3-metric-grid" aria-label="운영 현황">
-    <button class="v3-metric-card" data-link="admin.html?filter=today"><span>오늘 주문</span><strong id="todayOrderCount">-</strong><small>건</small></button>
-    <button class="v3-metric-card" data-link="admin.html?filter=pending"><span>출고 대기</span><strong id="pendingOrderCount">-</strong><small>건</small></button>
-    <button class="v3-metric-card" data-link="admin.html?filter=done"><span>출고완료</span><strong id="todayDoneCount">-</strong><small>건</small></button>
+    <button class="v3-metric-card" data-link="admin.html?view=orders&filter=today"><span>오늘 주문</span><strong id="todayOrderCount">-</strong><small>건</small></button>
+    <button class="v3-metric-card" data-link="admin.html?view=orders&filter=pending"><span>출고 대기</span><strong id="pendingOrderCount">-</strong><small>건</small></button>
+    <button class="v3-metric-card" data-link="admin.html?view=orders&filter=done"><span>출고완료</span><strong id="todayDoneCount">-</strong><small>건</small></button>
     <button class="v3-metric-card" data-link="products.html#soldout"><span>품절상품</span><strong id="soldoutCount">-</strong><small>개</small></button>
     <button class="v3-metric-card" data-link="members.html?filter=waiting"><span>승인 대기</span><strong id="waitingCustomerCount">-</strong><small>곳</small></button>
     <button class="v3-metric-card" data-link="members.html"><span>전체 거래처</span><strong id="customerCount">-</strong><small>곳</small></button>
@@ -41,7 +41,7 @@
   <section class="v3-dashboard-section">
     <div class="v3-section-heading"><h2>관리 메뉴</h2><span>업무를 선택하세요</span></div>
     <div class="admin-menu-grid v3-menu-grid">
-      <button class="v3-menu-card" onclick="location.href='admin.html'"><b>📦 주문관리</b><span>접수·출고·송장 관리</span></button>
+      <button class="v3-menu-card" onclick="location.href='admin.html?view=orders'"><b>📦 주문관리</b><span>접수·출고·송장 관리</span></button>
       <button class="v3-menu-card" onclick="location.href='products.html'"><b>🧦 상품관리</b><span>대분류·카테고리·상품·품절·재고·바코드</span></button>
       <button class="v3-menu-card" onclick="location.href='members.html'"><b>🏢 거래처관리</b><span>승인·등급·할인·메모</span></button>
       <button class="v3-menu-card" onclick="location.href='notices.html'"><b>📢 공지·이벤트</b><span>공지·특가·신상품 등록</span></button>
@@ -59,10 +59,10 @@
   <button class="cart-btn admin-logout-main" type="button" onclick="window.designjamSession?.logout()">로그아웃</button>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/admin-home.js?v=3712"></script>
-<script src="js/session-status.js?v=3712"></script>
-<script src="js/pwa.js?v=3712"></script>
-<script src="js/admin-page-transition.js?v=3712"></script>
-<script src="js/version-badge.js?v=3712"></script>
+<script src="js/admin-home.js?v=3720"></script>
+<script src="js/session-status.js?v=3720"></script>
+<script src="js/pwa.js?v=3720"></script>
+<script src="js/admin-page-transition.js?v=3720"></script>
+<script src="js/version-badge.js?v=3720"></script>
 </body>
 </html>

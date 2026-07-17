@@ -474,6 +474,15 @@ async function initializeAdminPage() {
       return;
     }
 
+    // 관리자 기본 진입은 항상 대시보드로 통일합니다.
+    // 주문관리 링크에서 status 또는 view=orders를 명시한 경우에만 이 화면을 유지합니다.
+    const params = new URLSearchParams(location.search);
+    const openOrdersDirectly = params.has("status") || params.has("filter") || params.get("view") === "orders";
+    if (!openOrdersDirectly) {
+      location.replace("admin-home.html");
+      return;
+    }
+
     showAdmin();
     await loadOrders();
   } catch (error) {
