@@ -8,8 +8,8 @@ function initializeV2ProductAdmin() {
   const versionBadge = document.getElementById("productPageVersionBadge");
 
   if (versionBadge) {
-    versionBadge.textContent = "V3.8.2";
-    versionBadge.title = "디자인삭스 상품관리 V3.8.2";
+    versionBadge.textContent = "V3.8.3";
+    versionBadge.title = "디자인삭스 상품관리 V3.8.3";
   }
 }
 
@@ -3584,3 +3584,388 @@ refreshBulkImageLibrary({ silent: true }).catch(error => {
 });
 
 initializeV2ProductAdmin();
+
+/* =========================================================
+   V3.8.3 숨김 상품·카테고리·대분류 관리
+   - 선택/전체 다시 표시
+   - 선택/전체 영구 삭제
+   - 숨김 대분류 삭제 시 숨김 하위 항목을 자식부터 정리
+   ========================================================= */
+(() => {
+  const state = {
+    tab: "groups",
+    search: "",
+    selected: {
+      groups: new Set(),
+      categories: new Set(),
+      mainCategories: new Set()
+    }
+  };
+
+  const tableByTab = {
+    groups: "product_groups",
+    categories: "product_categories",
+    mainCategories: "product_main_categories"
+  };
+
+  const labelByTab = {
+    groups: "상품",
+    categories: "카테고리",
+    mainCategories: "대분류"
+  };
+
+  const getElements = () => ({
+    panel: document.getElementById("hiddenManagement"),
+    list: document.getElementById("hiddenManagementList"),
+    search: document.getElementById("hiddenItemSearch"),
+    selectAll: document.getElementById("hiddenSelectAll"),
+    selectedCount: document.getElementById("hiddenSelectedCount"),
+    message: document.getElementById("hiddenManagementMessage"),
+    restoreSelected: document.getElementById("restoreSelectedHiddenButton"),
+    deleteSelected: document.getElementById("deleteSelectedHiddenButton"),
+    restoreAll: document.getElementById("restoreAllHiddenButton"),
+    deleteAll: document.getElementById("deleteAllHiddenButton"),
+    refresh: document.getElementById("refreshHiddenManagementButton")
+  });
+
+  function normalize(value) {
+    return String(value ?? "")
+      .normalize("NFKC")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function hiddenItemsFor(tab = state.tab) {
+    if (tab === "groups") return allGroups.filter(item => item.is_active === false);
+    if (tab === "categories") return allCategories.filter(item => item.is_active === false);
+    return allMainCategories.filter(item => item.is_active === false);
+  }
+
+  function categoryForGroup(group) {
+    return allCategories.find(item => String(item.id) === String(group.category_id));
+  }
+
+  function mainForCategory(category) {
+    return allMainCategories.find(item => String(item.id) === String(category?.main_category_id));
+  }
+
+  function searchableText(item, tab) {
+    if (tab === "groups") {
+      const category = categoryForGroup(item);
+      const main = mainForCategory(category);
+      return normalize([
+        item.title,
+        ...(Array.isArray(item.item_numbers) ? item.item_numbers : []),
+        item.description_text,
+        item.brand_text,
+        category?.name,
+        main?.name
+      ].filter(Boolean).join(" "));
+    }
+    if (tab === "categories") {
+      const main = mainForCategory(item);
+      return normalize([item.name, item.description_text, ...(item.tags || []), main?.name].filter(Boolean).join(" "));
+    }
+    return normalize([item.name].filter(Boolean).join(" "));
+  }
+
+  function filteredHiddenItems() {
+    const keyword = normalize(state.search);
+    const items = hiddenItemsFor();
+    if (!keyword) return items;
+    return items.filter(item => searchableText(item, state.tab).includes(keyword));
+  }
+
+  function setMessage(html, error = false) {
+    const { message } = getElements();
+    if (!message) return;
+    message.innerHTML = `<div class="${error ? "auth-error" : "product-success"}">${html}</div>`;
+  }
+
+  function updateCounts() {
+    const groupCount = document.getElementById("hiddenGroupCount");
+    const categoryCount = document.getElementById("hiddenCategoryCount");
+    const mainCount = document.getElementById("hiddenMainCategoryCount");
+    if (groupCount) groupCount.textContent = hiddenItemsFor("groups").length.toLocaleString("ko-KR");
+    if (categoryCount) categoryCount.textContent = hiddenItemsFor("categories").length.toLocaleString("ko-KR");
+    if (mainCount) mainCount.textContent = hiddenItemsFor("mainCategories").length.toLocaleString("ko-KR");
+  }
+
+  function describeItem(item, tab) {
+    if (tab === "groups") {
+      const category = categoryForGroup(item);
+      const main = mainForCategory(category);
+      const numbers = Array.isArray(item.item_numbers) ? item.item_numbers.join(", ") : "";
+      return {
+        title: item.title || "이름 없는 상품 묶음",
+        detail: `${main?.name || "대분류 없음"} · ${category?.name || "카테고리 없음"}${numbers ? ` · 품번 ${numbers}` : ""}`
+      };
+    }
+    if (tab === "categories") {
+      const main = mainForCategory(item);
+      const childCount = allGroups.filter(group => String(group.category_id) === String(item.id)).length;
+      return {
+        title: item.name || "이름 없는 카테고리",
+        detail: `${main?.name || "대분류 없음"} · 연결 상품 ${childCount}개`
+      };
+    }
+    const categoryCount = allCategories.filter(category => String(category.main_category_id) === String(item.id)).length;
+    const groupCount = allCategories
+      .filter(category => String(category.main_category_id) === String(item.id))
+      .reduce((sum, category) => sum + allGroups.filter(group => String(group.category_id) === String(category.id)).length, 0);
+    return {
+      title: item.name || "이름 없는 대분류",
+      detail: `연결 카테고리 ${categoryCount}개 · 연결 상품 ${groupCount}개`
+    };
+  }
+
+  function render() {
+    const elements = getElements();
+    if (!elements.panel || !elements.list) return;
+
+    updateCounts();
+    document.querySelectorAll("[data-hidden-tab]").forEach(button => {
+      button.classList.toggle("active", button.dataset.hiddenTab === state.tab);
+    });
+
+    const items = filteredHiddenItems();
+    const selectedSet = state.selected[state.tab];
+    const visibleIds = items.map(item => String(item.id));
+    const visibleSelected = visibleIds.filter(id => selectedSet.has(id)).length;
+
+    if (elements.selectedCount) elements.selectedCount.textContent = `${selectedSet.size.toLocaleString("ko-KR")}개 선택`;
+    if (elements.selectAll) {
+      elements.selectAll.checked = items.length > 0 && visibleSelected === items.length;
+      elements.selectAll.indeterminate = visibleSelected > 0 && visibleSelected < items.length;
+    }
+
+    if (!items.length) {
+      elements.list.innerHTML = `<div class="product-card"><h3>숨김 ${labelByTab[state.tab]}이 없습니다</h3><p>검색 조건을 변경하거나 엑셀 동기화 결과를 확인해주세요.</p></div>`;
+      return;
+    }
+
+    elements.list.innerHTML = items.map(item => {
+      const description = describeItem(item, state.tab);
+      const id = String(item.id);
+      return `
+        <label class="hidden-management-row">
+          <input type="checkbox" class="hidden-row-checkbox" data-hidden-id="${escapeAttribute(id)}" ${selectedSet.has(id) ? "checked" : ""}>
+          <span>
+            <h3>${escapeHtml(description.title)}</h3>
+            <p>${escapeHtml(description.detail)}</p>
+          </span>
+          <span class="hidden-kind-badge">숨김 ${labelByTab[state.tab]}</span>
+        </label>`;
+    }).join("");
+  }
+
+  async function reloadAll() {
+    await loadMainCategories();
+    await loadProductData();
+    render();
+  }
+
+  function selectedIds(all = false) {
+    return all
+      ? hiddenItemsFor().map(item => String(item.id))
+      : [...state.selected[state.tab]];
+  }
+
+  async function updateActive(tab, ids, value) {
+    if (!ids.length) return { success: 0, failed: 0 };
+    const { error } = await supabaseClient
+      .from(tableByTab[tab])
+      .update({ is_active: value })
+      .in("id", ids);
+    if (error) throw error;
+    return { success: ids.length, failed: 0 };
+  }
+
+  async function restoreItems(all = false) {
+    const ids = selectedIds(all);
+    if (!ids.length) {
+      alert("다시 표시할 항목을 선택해주세요.");
+      return;
+    }
+    const label = labelByTab[state.tab];
+    if (!confirm(`${all ? "현재 탭의 모든" : "선택한"} 숨김 ${label} ${ids.length}개를 다시 표시할까요?`)) return;
+
+    try {
+      await updateActive(state.tab, ids, true);
+      state.selected[state.tab].clear();
+      await reloadAll();
+      setMessage(`${label} ${ids.length}개를 다시 표시했습니다.`);
+    } catch (error) {
+      setMessage(`다시 표시 실패: ${escapeHtml(error.message)}`, true);
+    }
+  }
+
+  async function deleteRows(table, ids) {
+    if (!ids.length) return { deleted: 0, failed: [] };
+    const failed = [];
+    let deleted = 0;
+    for (const id of ids) {
+      const { error } = await supabaseClient.from(table).delete().eq("id", id);
+      if (error) failed.push({ id, message: error.message });
+      else deleted++;
+    }
+    return { deleted, failed };
+  }
+
+  async function deleteHiddenGroups(ids) {
+    const hiddenIdSet = new Set(hiddenItemsFor("groups").map(item => String(item.id)));
+    const allowed = ids.filter(id => hiddenIdSet.has(String(id)));
+    return deleteRows("product_groups", allowed);
+  }
+
+  async function deleteHiddenCategories(ids) {
+    let deleted = 0;
+    const failed = [];
+    for (const rawId of ids) {
+      const id = String(rawId);
+      const category = allCategories.find(item => String(item.id) === id);
+      if (!category || category.is_active !== false) continue;
+
+      const children = allGroups.filter(group => String(group.category_id) === id);
+      const activeChildren = children.filter(group => group.is_active !== false);
+      if (activeChildren.length) {
+        failed.push({ id, message: `표시 중인 상품 ${activeChildren.length}개가 연결되어 있어 삭제하지 않았습니다.` });
+        continue;
+      }
+
+      const groupResult = await deleteHiddenGroups(children.map(group => String(group.id)));
+      if (groupResult.failed.length) {
+        failed.push({ id, message: `하위 상품 삭제 실패 ${groupResult.failed.length}건` });
+        continue;
+      }
+
+      const result = await deleteRows("product_categories", [id]);
+      deleted += result.deleted;
+      failed.push(...result.failed);
+    }
+    return { deleted, failed };
+  }
+
+  async function deleteHiddenMainCategories(ids) {
+    let deleted = 0;
+    const failed = [];
+    for (const rawId of ids) {
+      const id = String(rawId);
+      const main = allMainCategories.find(item => String(item.id) === id);
+      if (!main || main.is_active !== false) continue;
+
+      const categories = allCategories.filter(category => String(category.main_category_id) === id);
+      const activeCategories = categories.filter(category => category.is_active !== false);
+      const activeGroups = categories.flatMap(category =>
+        allGroups.filter(group => String(group.category_id) === String(category.id) && group.is_active !== false)
+      );
+
+      if (activeCategories.length || activeGroups.length) {
+        failed.push({
+          id,
+          message: `표시 중인 카테고리 ${activeCategories.length}개 또는 상품 ${activeGroups.length}개가 연결되어 있어 삭제하지 않았습니다.`
+        });
+        continue;
+      }
+
+      const categoryResult = await deleteHiddenCategories(categories.map(category => String(category.id)));
+      if (categoryResult.failed.length) {
+        failed.push({ id, message: `하위 카테고리 정리 실패 ${categoryResult.failed.length}건` });
+        continue;
+      }
+
+      const result = await deleteRows("product_main_categories", [id]);
+      deleted += result.deleted;
+      failed.push(...result.failed);
+    }
+    return { deleted, failed };
+  }
+
+  async function permanentlyDelete(all = false) {
+    const ids = selectedIds(all);
+    if (!ids.length) {
+      alert("영구 삭제할 항목을 선택해주세요.");
+      return;
+    }
+
+    const label = labelByTab[state.tab];
+    const scope = all ? "현재 탭의 모든" : "선택한";
+    if (!confirm(`${scope} 숨김 ${label} ${ids.length}개를 영구 삭제할까요?\n\n이 작업은 복구할 수 없습니다.`)) return;
+    const typed = prompt(`안전 확인을 위해 아래 문구를 입력해주세요.\n\n영구삭제`);
+    if (typed !== "영구삭제") {
+      alert("확인 문구가 일치하지 않아 삭제를 취소했습니다.");
+      return;
+    }
+
+    setMessage(`${label} 영구 삭제를 진행하고 있습니다...`);
+
+    try {
+      let result;
+      if (state.tab === "groups") result = await deleteHiddenGroups(ids);
+      else if (state.tab === "categories") result = await deleteHiddenCategories(ids);
+      else result = await deleteHiddenMainCategories(ids);
+
+      state.selected[state.tab].clear();
+      await reloadAll();
+
+      const failures = result.failed || [];
+      const failureHtml = failures.length
+        ? `<details><summary>삭제하지 못한 항목 ${failures.length}개</summary>${failures.map(item => `<p>${escapeHtml(item.id)}: ${escapeHtml(item.message)}</p>`).join("")}</details>`
+        : "";
+      setMessage(`영구 삭제 완료: ${result.deleted}개${failures.length ? ` · 삭제 보류 ${failures.length}개` : ""}${failureHtml}`, failures.length > 0 && result.deleted === 0);
+    } catch (error) {
+      setMessage(`영구 삭제 실패: ${escapeHtml(error.message)}`, true);
+    }
+  }
+
+  function bindEvents() {
+    const elements = getElements();
+    if (!elements.panel || elements.panel.dataset.bound === "true") return;
+    elements.panel.dataset.bound = "true";
+
+    document.querySelectorAll("[data-hidden-tab]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.tab = button.dataset.hiddenTab;
+        render();
+      });
+    });
+
+    elements.search?.addEventListener("input", event => {
+      state.search = event.target.value;
+      render();
+    });
+
+    elements.selectAll?.addEventListener("change", event => {
+      const set = state.selected[state.tab];
+      filteredHiddenItems().forEach(item => {
+        const id = String(item.id);
+        if (event.target.checked) set.add(id);
+        else set.delete(id);
+      });
+      render();
+    });
+
+    elements.list?.addEventListener("change", event => {
+      const checkbox = event.target.closest(".hidden-row-checkbox");
+      if (!checkbox) return;
+      const set = state.selected[state.tab];
+      if (checkbox.checked) set.add(checkbox.dataset.hiddenId);
+      else set.delete(checkbox.dataset.hiddenId);
+      render();
+    });
+
+    elements.restoreSelected?.addEventListener("click", () => restoreItems(false));
+    elements.deleteSelected?.addEventListener("click", () => permanentlyDelete(false));
+    elements.restoreAll?.addEventListener("click", () => restoreItems(true));
+    elements.deleteAll?.addEventListener("click", () => permanentlyDelete(true));
+    elements.refresh?.addEventListener("click", reloadAll);
+  }
+
+  window.addEventListener("designjam:products-loaded", () => {
+    bindEvents();
+    render();
+  });
+
+  bindEvents();
+})();

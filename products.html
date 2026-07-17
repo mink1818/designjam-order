@@ -16,22 +16,22 @@
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=3526">
 <title>디자인삭스 주문관리 (관리자)</title>
 
-  <link rel="stylesheet" href="css/admin.css?v=382">
+  <link rel="stylesheet" href="css/admin.css?v=383">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=382">
-  <link rel="icon" href="icons/admin-192.png?v=382">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=382">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=383">
+  <link rel="icon" href="icons/admin-192.png?v=383">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=383">
 </head>
 
-<body class="auth-pending" data-app-version="3.8.0" data-session-page="admin" data-pwa-app="admin">
+<body class="auth-pending" data-app-version="3.8.3" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
-  <p>대분류·카테고리·상품·품절 통합 관리 <span class="app-version-badge" id="productPageVersionBadge">V3.8.2</span></p>
+  <p>대분류·카테고리·상품·품절 통합 관리 <span class="app-version-badge" id="productPageVersionBadge">V3.8.3</span></p>
 </header>
 
 <main class="container products-admin-page">
@@ -48,6 +48,7 @@
     <button type="button" data-scroll-target="excelUploader">엑셀 업로드</button>
     <button type="button" data-scroll-target="groupEditor">상품 묶음</button>
     <button type="button" data-scroll-target="groupManagement">상품·품절 관리</button>
+    <button type="button" data-scroll-target="hiddenManagement">숨김 항목 관리</button>
   </section>
 
   <section class="product-management-guide" aria-label="통합 상품관리 안내">
@@ -648,20 +649,72 @@ class="order-input">
 
   <div id="groupPaginationBottom"></div>
 
+
+  <hr class="admin-section-divider">
+
+  <section id="hiddenManagement" class="product-card admin-anchor-section hidden-management-panel">
+    <div class="hidden-management-head">
+      <div>
+        <h2>숨김 항목 관리</h2>
+        <p class="admin-help-text">엑셀 동기화·중복 정리 과정에서 숨겨진 상품, 카테고리, 대분류를 다시 표시하거나 영구 삭제합니다.</p>
+      </div>
+      <button id="refreshHiddenManagementButton" class="cart-btn gray-btn compact-action-button" type="button">새로고침</button>
+    </div>
+
+    <div class="hidden-summary-grid">
+      <button type="button" class="hidden-summary-card active" data-hidden-tab="groups">
+        <span>숨김 상품</span><strong id="hiddenGroupCount">0</strong>
+      </button>
+      <button type="button" class="hidden-summary-card" data-hidden-tab="categories">
+        <span>숨김 카테고리</span><strong id="hiddenCategoryCount">0</strong>
+      </button>
+      <button type="button" class="hidden-summary-card" data-hidden-tab="mainCategories">
+        <span>숨김 대분류</span><strong id="hiddenMainCategoryCount">0</strong>
+      </button>
+    </div>
+
+    <input id="hiddenItemSearch" class="order-input" type="search" placeholder="품번·묶음명·카테고리·대분류 검색">
+
+    <div class="hidden-selection-toolbar">
+      <label class="checkbox-line hidden-select-all-line">
+        <input id="hiddenSelectAll" type="checkbox"> 현재 목록 전체 선택
+      </label>
+      <strong id="hiddenSelectedCount">0개 선택</strong>
+    </div>
+
+    <div id="hiddenManagementList" class="hidden-management-list">
+      <p>숨김 항목을 불러오는 중...</p>
+    </div>
+
+    <div class="hidden-management-actions">
+      <button id="restoreSelectedHiddenButton" class="cart-btn" type="button">선택 항목 다시 표시</button>
+      <button id="deleteSelectedHiddenButton" class="cart-btn delete-btn" type="button">선택 항목 영구 삭제</button>
+    </div>
+
+    <div class="danger-zone">
+      <h3>위험 작업</h3>
+      <p>현재 탭의 숨김 항목을 모두 삭제합니다. 대분류 삭제 시 숨김 상태인 하위 카테고리와 상품도 함께 정리합니다.</p>
+      <button id="restoreAllHiddenButton" class="cart-btn gray-btn" type="button">현재 탭 전체 다시 표시</button>
+      <button id="deleteAllHiddenButton" class="cart-btn delete-btn" type="button">현재 탭 숨김 전체 영구 삭제</button>
+    </div>
+
+    <div id="hiddenManagementMessage"></div>
+  </section>
+
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-<script src="js/operations-core.js?v=382"></script>
-<script src="js/products.js?v=382"></script>
+<script src="js/operations-core.js?v=383"></script>
+<script src="js/products.js?v=383"></script>
 
-<script src="js/group-manager.js?v=382"></script>
+<script src="js/group-manager.js?v=383"></script>
 
-<script src="js/session-status.js?v=382"></script>
-<script src="js/pwa.js?v=382"></script>
-<script src="js/admin-page-transition.js?v=382"></script>
-<script src="js/version-badge.js?v=382"></script>
+<script src="js/session-status.js?v=383"></script>
+<script src="js/pwa.js?v=383"></script>
+<script src="js/admin-page-transition.js?v=383"></script>
+<script src="js/version-badge.js?v=383"></script>
 </body>
 </html>

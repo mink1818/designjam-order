@@ -1,5 +1,5 @@
 {
-  "version": "3.8.2",
-  "label": "V3.8.2 엑셀 중복 방지·동기화 통합",
+  "version": "3.8.3",
+  "build": "hidden-item-management",
   "released": "2026-07-18"
 }
