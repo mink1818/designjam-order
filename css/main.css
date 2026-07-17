@@ -660,3 +660,12 @@ body.auth-pending.auth-ready { visibility: visible; }
 @media(max-width:390px){
   .favorite-category-card .main-category-card strong{font-size:13px}
 }
+
+/* V3.7.1 장바구니 버튼 가운데 정렬 보정 */
+.catalog-cart-button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  text-align:center;
+}

@@ -366,11 +366,12 @@ function recalcOrderCard(cardId) {
 
   rows.forEach(row => {
     const checkbox = row.querySelector("input[type='checkbox']");
-    const qtyText = row.querySelector("span").textContent.replace("×", "").trim();
-    const priceText = row.querySelector("em").textContent.replace(/[^0-9]/g, "");
+    const qtyText = row.querySelector("span")?.textContent || "";
+    const priceText = row.querySelector("em")?.textContent || "";
 
-    const qty = Number(qtyText);
-    const rowTotal = Number(priceText);
+    // 화면 표시는 "3죽"이지만 계산에는 숫자만 사용합니다.
+    const qty = Number(qtyText.replace(/[^0-9.-]/g, "")) || 0;
+    const rowTotal = Number(priceText.replace(/[^0-9.-]/g, "")) || 0;
 
     if (!checkbox.checked) {
       qtyTotal += qty;
