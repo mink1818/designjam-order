@@ -72,4 +72,19 @@ async function removeAccount(id,isDefault){
 }
 
 window.setDefault=setDefault;window.removeAccount=removeAccount;window.toggleAccountActive=toggleAccountActive;window.editAccount=startEditAccount;
-document.addEventListener('DOMContentLoaded',async()=>{if(await guard()){document.getElementById('addAccountBtn').onclick=saveAccount;document.getElementById('cancelAccountEditBtn').onclick=clearForm;loadAccounts();}});
+document.addEventListener('DOMContentLoaded',async()=>{if(await guard()){document.getElementById('addAccountBtn').onclick=saveAccount;document.getElementById('cancelAccountEditBtn').onclick=clearForm;document.getElementById('settingsPasswordBtn').onclick=changeOwnPassword;loadAccounts();}});
+async function changeOwnPassword(){
+  const next=document.getElementById('settingsNewPassword')?.value||'';
+  const confirmValue=document.getElementById('settingsNewPasswordConfirm')?.value||'';
+  if(next.length<8)return alert('새 비밀번호를 8자 이상 입력하세요.');
+  if(next!==confirmValue)return alert('비밀번호 확인 값이 일치하지 않습니다.');
+  const btn=document.getElementById('settingsPasswordBtn');
+  if(btn){btn.disabled=true;btn.textContent='변경 중...';}
+  const {error}=await supabaseClient.auth.updateUser({password:next});
+  if(btn){btn.disabled=false;btn.textContent='비밀번호 변경';}
+  if(error)return alert('비밀번호 변경 실패: '+error.message);
+  document.getElementById('settingsNewPassword').value='';
+  document.getElementById('settingsNewPasswordConfirm').value='';
+  alert('비밀번호가 변경되었습니다.');
+}
+

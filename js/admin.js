@@ -119,7 +119,12 @@ try {
         createdAt: order.created_at,
         shipping_fee: order.shipping_fee || 0,
         courier: order.courier || "로젠택배",
-tracking_number: order.tracking_number || "",
+        tracking_number: order.tracking_number || "",
+        paymentAccountId: order.payment_account_id || "",
+        paymentAccountLabel: order.payment_account_label || "",
+        paymentBankName: order.payment_bank_name || "",
+        paymentAccountNumber: order.payment_account_number || "",
+        paymentAccountHolder: order.payment_account_holder || "",
         items: []
       };
     }
@@ -581,7 +586,15 @@ async function saveOrderPaymentAccount(orderNumber,index){
   if(!payload.payment_bank_name||!payload.payment_account_number||!payload.payment_account_holder){alert('은행명, 계좌번호, 예금주를 모두 입력하거나 저장 계좌를 선택하세요.');return;}
   const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
   if(error){alert('주문 계좌 저장 실패: V3-1-ORDER-ACCOUNT-SETUP.sql을 먼저 실행해주세요.\n'+error.message);return;}
-  alert('이 주문에 입금계좌를 저장했습니다.');loadOrders();
+  const preview=detail.querySelector('.selected-account-preview');
+  if(preview){
+    preview.textContent=`저장됨: ${payload.payment_bank_name} ${payload.payment_account_number} / ${payload.payment_account_holder}`;
+    preview.classList.add('account-saved-preview');
+  }
+  const section=detail.querySelector('.order-payment-account');
+  if(section){section.dataset.savedAccount=payload.payment_account_id||'manual';}
+  alert('이 주문에 입금계좌를 저장했습니다.');
+  await loadOrders();
 }
 window.changePaymentAccountMode=changePaymentAccountMode;window.updatePaymentAccountPreview=updatePaymentAccountPreview;window.saveOrderPaymentAccount=saveOrderPaymentAccount;
 
