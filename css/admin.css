@@ -1607,3 +1607,85 @@ body[data-session-page="admin"] .search{max-width:100%}
   body[data-session-page="admin"] .stock-row{align-items:flex-start;gap:8px}
   body[data-session-page="admin"] .cart-btn{min-height:48px}
 }
+
+/* =========================================================
+   V5.1.0 ADMIN UI RENEWAL
+   스마트스토어/쿠팡 판매자센터의 정보 밀도와 조작 패턴을 참고한 자체 UI
+   ========================================================= */
+:root{
+  --admin-brand:#2563eb;
+  --admin-brand-dark:#174ea6;
+  --admin-soft:#f4f7fb;
+  --admin-line:#dbe3ee;
+  --admin-text:#172033;
+  --admin-muted:#66758a;
+  --admin-shadow:0 4px 18px rgba(15,23,42,.07);
+}
+body[data-session-page="admin"]{background:#f3f6fa;color:var(--admin-text)}
+body[data-session-page="admin"] header{min-height:64px;padding:12px 24px;background:#fff;border-bottom:1px solid var(--admin-line);box-shadow:none;color:var(--admin-text)}
+body[data-session-page="admin"] header h1{font-size:22px;color:#12325b}
+body[data-session-page="admin"] header p{font-size:12px;color:var(--admin-muted)}
+body[data-session-page="admin"] .container{margin-top:18px}
+body[data-session-page="admin"] .admin-welcome-card,
+body[data-session-page="admin"] .v3-dashboard-section,
+body[data-session-page="admin"] .product-card,
+body[data-session-page="admin"] .admin-accordion{border:1px solid var(--admin-line);border-radius:12px;background:#fff;box-shadow:var(--admin-shadow)}
+body[data-session-page="admin"] .v3-dashboard-section{padding:18px}
+body[data-session-page="admin"] .dashboard-welcome{padding:16px 18px}
+body[data-session-page="admin"] .dashboard-welcome h2{font-size:20px;margin-bottom:4px}
+body[data-session-page="admin"] .v3-metric-grid{gap:10px}
+body[data-session-page="admin"] .v3-metric-card{min-height:92px;padding:14px 15px;border:1px solid var(--admin-line);border-radius:11px;box-shadow:none;transition:.18s ease}
+body[data-session-page="admin"] .v3-metric-card:hover{transform:translateY(-2px);border-color:#9dbce8;box-shadow:0 8px 20px rgba(37,99,235,.10)}
+body[data-session-page="admin"] .v3-metric-card strong{font-size:27px}
+body[data-session-page="admin"] .admin-home-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between}
+body[data-session-page="admin"] .global-admin-search{display:grid;grid-template-columns:minmax(240px,620px) auto;gap:7px;flex:1}
+body[data-session-page="admin"] .global-admin-search input{min-height:38px;border-radius:8px}
+body[data-session-page="admin"] .global-admin-search button,
+body[data-session-page="admin"] .admin-theme-toggle,
+body[data-session-page="admin"] .compact-action{min-height:38px!important;padding:7px 13px!important;border-radius:8px!important;width:auto!important}
+body[data-session-page="admin"] .v3-section-heading{align-items:center;margin-top:16px}
+body[data-session-page="admin"] .v3-section-heading h2{font-size:18px}
+body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+body[data-session-page="admin"] .v3-menu-card{display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto auto;column-gap:11px;align-items:center;min-height:74px;padding:11px 13px;border:1px solid var(--admin-line);border-radius:10px;box-shadow:none;background:#fff}
+body[data-session-page="admin"] .v3-menu-card:hover{border-color:#8bb0e8;background:#f8fbff;transform:translateY(-1px)}
+body[data-session-page="admin"] .v3-menu-card b{grid-column:1/-1;font-size:15px;color:#173f75;white-space:nowrap}
+body[data-session-page="admin"] .v3-menu-card span{grid-column:1/-1;margin-top:3px;font-size:11px;line-height:1.35;color:#738197}
+body[data-session-page="admin"] .cart-btn,
+body[data-session-page="admin"] button{border-radius:8px}
+body[data-session-page="admin"] .cart-btn{width:auto;min-height:38px;padding:8px 13px;font-size:13px}
+body[data-session-page="admin"] .v3-card-actions .cart-btn,
+body[data-session-page="admin"] .stats-action-buttons .cart-btn,
+body[data-session-page="admin"] .barcode-result-actions .cart-btn{min-height:34px;padding:6px 10px;font-size:12px}
+body[data-session-page="admin"] table th{background:#f5f7fa;color:#43516a;font-size:12px;white-space:nowrap}
+body[data-session-page="admin"] table td{font-size:13px}
+body[data-session-page="admin"] table th,
+body[data-session-page="admin"] table td{padding:9px 10px;border-bottom:1px solid #e8edf3}
+
+@media(max-width:899px){
+  body[data-session-page="admin"] header{padding:12px 14px}
+  body[data-session-page="admin"] .v3-dashboard-section{padding:13px}
+  body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body[data-session-page="admin"] .admin-home-toolbar{align-items:stretch;flex-direction:column}
+  body[data-session-page="admin"] .global-admin-search{grid-template-columns:1fr auto}
+  body[data-session-page="admin"] .admin-theme-toggle{align-self:flex-end}
+}
+@media(max-width:520px){
+  body[data-session-page="admin"]{background:#eef2f7}
+  body[data-session-page="admin"] header{position:sticky;top:0;z-index:40;justify-content:flex-start;text-align:left}
+  body[data-session-page="admin"] header h1{font-size:19px}
+  body[data-session-page="admin"] header p{display:none}
+  body[data-session-page="admin"] .container{width:calc(100% - 16px);margin:8px auto 20px}
+  body[data-session-page="admin"] .dashboard-welcome{padding:13px}
+  body[data-session-page="admin"] .dashboard-welcome h2{font-size:18px}
+  body[data-session-page="admin"] .v3-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  body[data-session-page="admin"] .v3-metric-card{min-height:78px;padding:11px}
+  body[data-session-page="admin"] .v3-metric-card strong{font-size:23px}
+  body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  body[data-session-page="admin"] .v3-menu-card{min-height:66px;padding:10px}
+  body[data-session-page="admin"] .v3-menu-card b{font-size:14px;white-space:normal}
+  body[data-session-page="admin"] .v3-menu-card span{font-size:10px}
+  body[data-session-page="admin"] .global-admin-search{grid-template-columns:1fr}
+  body[data-session-page="admin"] .global-admin-search button{width:100%!important}
+}
+html[data-theme="dark"] body[data-session-page="admin"]{background:#0d1522}
+html[data-theme="dark"] body[data-session-page="admin"] header{background:#111d2d!important;border-color:#2c3e54!important}
