@@ -362,13 +362,6 @@ accept="image/*">
 
 </section>
 
-  <input
-    id="categorySearch"
-    class="search"
-    type="text"
-    placeholder="카테고리명 / 태그 / 가격 검색"
-  >
-
   <section id="categoryList">
     <p>카테고리를 불러오는 중...</p>
   </section>
@@ -676,6 +669,15 @@ class="order-input">
       </div>
     </div>
 
+    <div class="barcode-direct-search">
+      <label for="barcodeSearchInput">품번 검색·직접 입력</label>
+      <div class="barcode-direct-search-row">
+        <textarea id="barcodeSearchInput" class="order-input" rows="2" placeholder="예: 4008A 또는 661~663, 699, 810"></textarea>
+        <button id="barcodeSearchButton" class="cart-btn" type="button">품번 불러오기</button>
+      </div>
+      <small>한 품번, 쉼표, 줄바꿈, 661~663 범위를 입력할 수 있습니다.</small>
+    </div>
+
     <section class="barcode-size-selector" aria-label="바코드 라벨 크기 선택">
       <div>
         <strong>출력 크기</strong>
@@ -782,7 +784,7 @@ class="order-input">
 
 <script src="js/operations-core.js?v=4023"></script>
 <script src="js/products.js?v=4023"></script>
-<script src="js/barcode-manager.js?v=4023"></script>
+<script src="js/barcode-manager.js?v=4024"></script>
 
 <script src="js/group-manager.js?v=4023"></script>
 

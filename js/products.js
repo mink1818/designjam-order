@@ -297,7 +297,7 @@ document
   saveMainCategory
 );
 
-categorySearch.addEventListener("input", renderCategoryList);
+categorySearch?.addEventListener("input", renderCategoryList);
 
 const ADMIN_SESSION_KEY = "designjam_admin_session";
 
@@ -474,7 +474,7 @@ function renderCategoryOptions() {
 /* 카테고리 목록 출력 */
 function renderCategoryList() {
   const keyword =
-    categorySearch.value.trim().toLowerCase();
+    categorySearch?.value.trim().toLowerCase() || "";
 
   const filtered = allCategories.filter(category => {
     const searchableText = [

@@ -775,3 +775,21 @@ html[data-theme="dark"] .recent-viewed-list button span{color:#d6e2f1!important}
 /* V4.0.2.2: 글자크기 기능 제거 */
 html{--dj-font-scale:1!important}
 html[data-font-size="large"],html[data-font-size="xlarge"]{font-size:16px!important}
+
+
+/* V4.0.2.5 거래처 즐겨찾기 수량 유지 + 다크모드 수량/가격 대비 */
+.item-favorite-btn{transition:color .15s ease,transform .15s ease,background .15s ease}
+.item-favorite-btn.active{color:#f5b400!important;text-shadow:0 0 1px rgba(0,0,0,.2)}
+html[data-theme="dark"] .item-favorite-btn{color:#8191a8!important;background:transparent!important}
+html[data-theme="dark"] .item-favorite-btn.active{color:#ffd43b!important;background:rgba(255,212,59,.10)!important;border-radius:999px}
+html[data-theme="dark"] .qty-control-row{background:#1d2b3c!important;border:1px solid #435970!important;border-radius:12px;padding:10px}
+html[data-theme="dark"] .qty-control-row label,
+html[data-theme="dark"] .qty-control-row .favorite-item-number{color:#f5f8fc!important}
+html[data-theme="dark"] .catalog-qty-input{background:#0f1726!important;color:#ffffff!important;border:2px solid #6f86a2!important;-webkit-text-fill-color:#ffffff!important;opacity:1!important}
+html[data-theme="dark"] .catalog-qty-input:focus{border-color:#8ec1ff!important;box-shadow:0 0 0 3px rgba(74,144,226,.24)!important;outline:none}
+html[data-theme="dark"] .qty-btn{background:#24579c!important;color:#ffffff!important;border:1px solid #5e87bd!important}
+html[data-theme="dark"] .live-group-total{background:#152238!important;border:1px solid #40566f!important;color:#eef5ff!important}
+html[data-theme="dark"] .live-group-total p,
+html[data-theme="dark"] .live-group-total span{color:#dbe8f8!important}
+html[data-theme="dark"] .live-group-total strong{color:#ffffff!important}
+html[data-theme="dark"] .price-text{display:inline-block;background:#152238!important;color:#ffffff!important;border:1px solid #40566f!important;border-radius:10px;padding:7px 12px}

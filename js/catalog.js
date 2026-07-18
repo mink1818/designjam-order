@@ -49,7 +49,28 @@ const ITEM_FAVORITES_KEY='designjam_item_favorites';
 function readItemFavorites(){try{return new Set(JSON.parse(localStorage.getItem(ITEM_FAVORITES_KEY)||'[]').map(String));}catch(_){return new Set();}}
 function saveItemFavorites(set){localStorage.setItem(ITEM_FAVORITES_KEY,JSON.stringify([...set]));window.dispatchEvent(new Event('designjam-item-favorites-changed'));}
 function isItemFavorite(number){return readItemFavorites().has(String(number));}
-function toggleItemFavorite(event,number){event?.stopPropagation();const set=readItemFavorites(),key=String(number);set.has(key)?set.delete(key):set.add(key);saveItemFavorites(set);const groupId=Number(document.getElementById('currentGroupId')?.value);if(groupId)openGroup(groupId);}
+function toggleItemFavorite(event, number) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
+  const set = readItemFavorites();
+  const key = String(number);
+  const willActivate = !set.has(key);
+
+  if (willActivate) set.add(key);
+  else set.delete(key);
+
+  saveItemFavorites(set);
+
+  // 상품 상세를 다시 렌더링하지 않고 버튼 상태만 갱신한다.
+  // 재렌더링 시 사용자가 입력한 수량이 0으로 초기화되던 문제를 방지한다.
+  const button = event?.currentTarget;
+  if (button) {
+    button.classList.toggle('active', willActivate);
+    button.setAttribute('aria-pressed', willActivate ? 'true' : 'false');
+    button.setAttribute('title', willActivate ? '즐겨찾기 해제' : '즐겨찾기 추가');
+  }
+}
 function rememberViewedGroup(group){const rows=JSON.parse(localStorage.getItem('designjam_recent_viewed')||'[]');const now=new Date().toISOString();const next=[...(group.item_numbers||[]).map(number=>({number:String(number),title:group.title||'상품',image_url:group.image_url||'',viewed_at:now})),...rows];const seen=new Set();localStorage.setItem('designjam_recent_viewed',JSON.stringify(next.filter(x=>{const k=String(x.number);if(seen.has(k))return false;seen.add(k);return true}).slice(0,50)));}
 window.toggleItemFavorite=toggleItemFavorite;
 
@@ -785,7 +806,7 @@ function openGroup(groupId) {
         }">
           <label>
             <span class="favorite-item-number">${escapeHtml(numberText)}
-              <button type="button" class="item-favorite-btn ${isItemFavorite(numberText)?'active':''}" onclick="toggleItemFavorite(event,'${escapeJsString(numberText)}')" aria-label="품번 즐겨찾기">★</button>
+              <button type="button" class="item-favorite-btn ${isItemFavorite(numberText)?'active':''}" onclick="toggleItemFavorite(event,'${escapeJsString(numberText)}')" aria-label="품번 즐겨찾기" aria-pressed="${isItemFavorite(numberText)?'true':'false'}" title="${isItemFavorite(numberText)?'즐겨찾기 해제':'즐겨찾기 추가'}">★</button>
             </span>
             ${isSoldout ? '<span class="soldout-label">품절</span>' : ""}
           </label>

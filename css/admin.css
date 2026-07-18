@@ -1495,3 +1495,14 @@ html[data-theme="dark"] .stock-row:has(input:checked) strong,
 html[data-theme="dark"] .stock-row:has(input:checked) span,
 html[data-theme="dark"] .stock-row:has(input:checked) em{color:#6b7280!important}
 html[data-theme="dark"] .barcode-copy-simple label{color:#eef5ff!important}
+
+/* V4.0.2.4 바코드 직접 품번 입력 */
+.barcode-direct-search{display:grid;gap:8px;padding:14px;border:1px solid #d7e1ee;border-radius:14px;background:#f8fbff}
+.barcode-direct-search>label{font-weight:800}
+.barcode-direct-search-row{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:10px;align-items:stretch}
+.barcode-direct-search textarea{min-height:58px;resize:vertical}
+.barcode-direct-search small{color:#617087}
+html[data-theme="dark"] .barcode-direct-search{background:#1f2b3a!important;border-color:#40536b!important;color:#eef4ff!important}
+html[data-theme="dark"] .barcode-direct-search small{color:#c7d4e7!important}
+html[data-theme="dark"] .barcode-direct-search textarea{background:#0f1a2b!important;color:#f4f7fb!important;border-color:#526983!important}
+@media(max-width:760px){.barcode-direct-search-row{grid-template-columns:1fr}}
