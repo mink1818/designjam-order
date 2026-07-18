@@ -89,7 +89,7 @@
   function renderPreview() {
     elements.preview.innerHTML = `<div class="barcode-label-card"><strong class="barcode-label-number">${escapeHtml(state.active)}</strong><svg class="barcode-label-svg" aria-label="${escapeHtml(state.active)} 바코드"></svg></div>`;
     const svg = elements.preview.querySelector("svg");
-    try { window.JsBarcode(svg, state.active, { format: "CODE128", displayValue: false, margin: 0, width: 2.25, height: 82 }); }
+    try { window.JsBarcode(svg, state.active, { format: "CODE128", displayValue: false, margin: 0, width: 1.8, height: 66 }); }
     catch (error) { elements.message.innerHTML = `<p class="auth-error">바코드 미리보기 실패: ${escapeHtml(error.message)}</p>`; }
   }
 
@@ -114,7 +114,7 @@
 
   function buildCanvas(item) {
     const canvas = document.createElement("canvas");
-    window.JsBarcode(canvas, item, { format: "CODE128", displayValue: false, margin: 0, width: 3, height: 150, background: "#ffffff", lineColor: "#000000" });
+    window.JsBarcode(canvas, item, { format: "CODE128", displayValue: false, margin: 0, width: 2.4, height: 120, background: "#ffffff", lineColor: "#000000" });
     return canvas;
   }
 
@@ -135,9 +135,10 @@
       const slot = index % 21, col = slot % 3, row = Math.floor(slot / 3), x = startX + col * LABEL.width, y = startY + row * LABEL.height;
       pdf.setTextColor(0); pdf.setFont("helvetica", "bold");
       let fontSize = item.length <= 6 ? 25 : item.length <= 10 ? 21 : 16; pdf.setFontSize(fontSize);
-      pdf.text(item, x + LABEL.width / 2, y + 8.2, { align: "center", baseline: "middle", maxWidth: 56 });
+      pdf.text(item, x + LABEL.width / 2, y + 7.2, { align: "center", baseline: "middle", maxWidth: 54 });
       const canvas = buildCanvas(item); const image = canvas.toDataURL("image/png");
-      pdf.addImage(image, "PNG", x + 2.5, y + 10.2, 55, 22.5, undefined, "FAST");
+      // 품번과 바코드가 겹치지 않도록 상단 간격을 확보하고 좌우 폭을 조금 줄인다.
+      pdf.addImage(image, "PNG", x + 5, y + 12.5, 50, 17.5, undefined, "FAST");
     });
     return pdf;
   }

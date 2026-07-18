@@ -6,7 +6,7 @@
 (function initializeDesignJamOperations(global) {
   "use strict";
 
-  const APP_VERSION = "4.0.0";
+  const APP_VERSION = "4.0.1";
   const CODE_PREFIX = "DJ";
 
   function cleanText(value) {
