@@ -1319,3 +1319,26 @@ body.auth-pending.auth-ready::after { display: none; }
 /* V3.9.1 관리자 화면 접기/펼치기 */
 .admin-accordion-stack{display:grid;gap:12px;margin:18px 0 28px}.accordion-global-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:2px}.accordion-global-toolbar button{border:1px solid rgba(17,36,55,.16);background:rgba(255,255,255,.86);padding:8px 12px;border-radius:10px;font-weight:800;color:#30445a;cursor:pointer}.admin-accordion{border:1px solid rgba(17,36,55,.13);border-radius:16px;background:rgba(255,255,255,.92);box-shadow:0 7px 24px rgba(17,36,55,.07);overflow:hidden}.admin-accordion>summary{list-style:none;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:16px 18px;cursor:pointer;user-select:none}.admin-accordion>summary::-webkit-details-marker{display:none}.admin-accordion-title{font-size:18px;font-weight:900;color:#172b40}.admin-accordion summary small{font-size:13px;color:#718096}.admin-accordion-count{font-size:13px;font-weight:900;color:#265b92}.admin-accordion-chevron{font-size:22px;line-height:1;transition:transform .18s ease;color:#62748a}.admin-accordion[open] .admin-accordion-chevron{transform:rotate(180deg)}.admin-accordion-body{padding:0 14px 16px;border-top:1px solid rgba(17,36,55,.08)}.admin-accordion-body>.product-card,.admin-accordion-body>section,.admin-accordion-body>h2{margin-top:14px}.admin-accordion-body .admin-anchor-section{scroll-margin-top:16px}.settings-accordion-stack .admin-accordion-body>section:not(.product-card){padding:0}.settings-accordion-stack #accountList{display:grid;gap:10px}.settings-accordion-stack .v3-account-card{margin:0}.admin-product-toolbar{position:sticky;top:0;z-index:20;background:rgba(245,248,252,.88);backdrop-filter:blur(10px);padding:8px;border-radius:12px}
 @media(max-width:720px){.admin-accordion>summary{grid-template-columns:1fr auto;padding:14px}.admin-accordion-title{font-size:16px}.admin-accordion summary small{grid-column:1/-1;grid-row:2}.admin-accordion-count{grid-column:2;grid-row:1}.admin-accordion-chevron{grid-column:2;grid-row:2}.admin-accordion-body{padding:0 10px 12px}.accordion-global-toolbar{position:sticky;top:0;z-index:24;background:rgba(245,248,252,.9);padding:6px 0}.accordion-global-toolbar button{flex:1}.admin-product-toolbar{overflow-x:auto;display:flex;flex-wrap:nowrap}.admin-product-toolbar button{white-space:nowrap;min-width:max-content}}
+
+/* ===== V4.0 바코드관리 ===== */
+.barcode-management-panel{display:grid;gap:16px}
+.barcode-panel-head,.barcode-list-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.barcode-panel-head h2{margin:0 0 5px}
+.barcode-spec-badge{padding:7px 10px;border-radius:999px;background:#eaf2ff;color:#1d4f91;font-size:12px;font-weight:900;white-space:nowrap}
+.barcode-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.barcode-source-card{display:grid;gap:8px;padding:14px;border:1px solid #d7e1ee;border-radius:14px;background:#f8fbff}
+.barcode-source-card span{color:#617087;font-size:12px}
+.barcode-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) auto auto 120px;gap:8px;align-items:end}
+.barcode-copy-field{display:grid;gap:4px;font-size:12px;font-weight:800}
+.barcode-validation-summary{padding:12px 14px;border-radius:12px;background:#f3f6fa;color:#405168;font-weight:700}
+.barcode-validation-summary.success{background:#edf9f1;color:#176b35}.barcode-validation-summary.warning{background:#fff7e6;color:#8a5800}
+.barcode-workspace{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1fr);gap:16px}
+.barcode-item-list{max-height:360px;overflow:auto;border:1px solid #dbe3ec;border-radius:12px;background:#fff}
+.barcode-item-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #edf1f5;cursor:pointer}.barcode-item-row:last-child{border-bottom:0}.barcode-item-row:hover{background:#f7faff}.barcode-item-row strong{font-size:15px}.barcode-item-row small{margin-left:auto;color:#7b8795}
+.barcode-label-preview{display:grid;place-items:center;min-height:240px;padding:18px;border:1px dashed #b7c6d8;border-radius:14px;background:#eef2f6;overflow:auto}
+.barcode-label-card{box-sizing:border-box;width:360px;aspect-ratio:60/35;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px 8px 3px;background:#fff;color:#000;box-shadow:0 4px 18px rgba(19,38,61,.14)}
+.barcode-label-number{display:block;width:100%;height:27%;overflow:hidden;text-align:center;font:900 clamp(28px,5vw,46px)/1 Arial,sans-serif;letter-spacing:-1px;white-space:nowrap}
+.barcode-label-svg{display:block;width:100%;height:73%;overflow:visible}
+.barcode-actions{display:flex;flex-wrap:wrap;gap:8px}
+@media(max-width:760px){.barcode-source-grid,.barcode-workspace{grid-template-columns:1fr}.barcode-toolbar{grid-template-columns:1fr 1fr}.barcode-panel-head{align-items:flex-start;flex-direction:column}.barcode-label-card{width:min(360px,100%)}}
+@media print{.barcode-management-panel{display:none!important}}

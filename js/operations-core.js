@@ -6,7 +6,7 @@
 (function initializeDesignJamOperations(global) {
   "use strict";
 
-  const APP_VERSION = "2.0.0";
+  const APP_VERSION = "4.0.0";
   const CODE_PREFIX = "DJ";
 
   function cleanText(value) {
@@ -70,7 +70,7 @@
     version: APP_VERSION,
     codePrefix: CODE_PREFIX,
     featureFlags: Object.freeze({
-      barcode: false,
+      barcode: true,
       inventory: true,
       picking: false
     }),

@@ -77,6 +77,7 @@
       makeAccordion({key:'excel-import',title:'📥 엑셀·사진 대량등록',subtitle:'신규 추가·동기화·전체 교체',nodes:[document.getElementById('excelUploader')]}),
       makeAccordion({key:'group-editor',title:'🧦 상품 묶음 등록',subtitle:'상품 사진 묶음 등록·수정',nodes:[document.getElementById('groupEditor')]}),
       makeAccordion({key:'group-management',title:'📦 상품·품절 관리',subtitle:'검색·표시·품절 관리',countId:'groupCount',nodes:[groupHeading,document.getElementById('groupManagement'),productPicker,document.getElementById('groupPaginationTop'),document.getElementById('groupList'),document.getElementById('groupPaginationBottom')],open:true}),
+      makeAccordion({key:'barcode-management',title:'🖨 바코드관리',subtitle:'엑셀·ERP 품번 라벨 PDF 및 인쇄',nodes:[document.getElementById('barcodeManagement')]}),
       makeAccordion({key:'hidden-management',title:'🗂️ 숨김 항목 관리',subtitle:'숨김 상품·카테고리·대분류 복원 및 삭제',nodes:[document.getElementById('hiddenManagement')]})
     ].filter(Boolean);
     groups.forEach(g=>mount.appendChild(g));
