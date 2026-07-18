@@ -18,7 +18,7 @@
     clear: $("barcodeClearSelectionButton"), pdf: $("barcodeGeneratePdfButton"), print: $("barcodePrintButton"),
     one: $("barcodePrintOneButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
     searchAdd: $("barcodeSearchAddButton"), quickResult: $("barcodeQuickResult"), enterPrint: $("barcodeEnterPrintToggle"),
-    specBadge: $("barcodeSpecBadge"), previewSpec: $("barcodePreviewSpec"), sizeInputs: [...document.querySelectorAll('input[name="barcodeLabelSize"]')]
+    specBadge: $("barcodeSpecBadge"), previewSpec: $("barcodePreviewSpec"), searchStatus: $("barcodeSearchStatusBadge"), sizeInputs: [...document.querySelectorAll('input[name="barcodeLabelSize"]')]
   };
   if (!elements.list) return;
 
@@ -117,18 +117,22 @@
         ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item)} 상품사진">` : '<div class="barcode-result-noimage">사진 없음</div>'}
         <div class="barcode-result-info">
           <strong>${escapeHtml(item)}</strong>
-          <span>${escapeHtml(group?.title || "상품 묶음 미지정")}</span>
-          <small>${escapeHtml(category?.name || "카테고리 미지정")} · ${escapeHtml(groupPrice(group, category))}</small>
+          <span><b>상품명</b> ${escapeHtml(group?.title || "상품 묶음 미지정")}</span>
+          <small><b>가격</b> ${escapeHtml(groupPrice(group, category))} · ${escapeHtml(category?.name || "카테고리 미지정")}</small>
         </div>
         <div class="barcode-result-actions">
           <button type="button" class="cart-btn barcode-result-select" data-item="${escapeHtml(item)}">선택</button>
           <button type="button" class="cart-btn gray-btn barcode-result-preview" data-item="${escapeHtml(item)}">미리보기</button>
-          <button type="button" class="cart-btn gray-btn barcode-result-print" data-item="${escapeHtml(item)}">즉시 인쇄</button>
+          <button type="button" class="cart-btn gray-btn barcode-result-print" data-item="${escapeHtml(item)}">바코드 출력</button>
         </div>
       </article>`;
     }).join("");
     const missingHtml = missing.length ? `<p class="barcode-search-missing">ERP 미등록: ${missing.map(escapeHtml).join(", ")}</p>` : "";
-    elements.quickResult.innerHTML = `<div class="barcode-quick-head"><strong>ERP 품번 검색 결과</strong><span>${rows.length}개 확인</span></div>${cards || '<p>일치하는 ERP 품번이 없습니다.</p>'}${missingHtml}`;
+    elements.quickResult.innerHTML = `<div class="barcode-quick-head"><strong>ERP 품번 검색 결과</strong><span>${rows.length}개 확인</span></div>${cards || '<div class="barcode-search-empty-state error"><b>일치하는 ERP 품번이 없습니다.</b><span>품번 철자 또는 상품 등록 상태를 확인하세요.</span></div>'}${missingHtml}`;
+    if (elements.searchStatus) {
+      elements.searchStatus.textContent = rows.length ? `ERP 상품 ${rows.length}개 확인` : "ERP 상품 없음";
+      elements.searchStatus.className = `barcode-search-status-badge ${rows.length ? "success" : "warning"}`;
+    }
   }
 
   function searchAndSelect({ printOnEnter = false } = {}) {
@@ -136,7 +140,7 @@
     let requested = [];
     try { requested = parseItemPattern(raw); }
     catch (error) { elements.message.innerHTML = `<p class="auth-error">${escapeHtml(error.message)}</p>`; return; }
-    if (!requested.length) { elements.message.innerHTML = '<p class="auth-error">검색할 품번을 입력해주세요.</p>'; return; }
+    if (!requested.length) { elements.message.innerHTML = '<p class="auth-error">검색할 품번을 입력해주세요.</p>'; elements.search?.focus(); return; }
     const index = makeErpIndex();
     const rows = [], missing = [];
     requested.map(normalize).forEach(item => {
@@ -278,9 +282,17 @@
   elements.one?.addEventListener("click", () => generatePdf(false, true));
   [[elements.p10,10],[elements.p50,50],[elements.p100,100]].forEach(([button,count]) => button?.addEventListener("click", () => { elements.copies.value = count; state.selected = new Set([state.active]); renderList(); generatePdf(false); }));
   elements.sizeInputs.forEach(input => input.addEventListener("change", () => applyLabelSize(input.value)));
-  window.addEventListener("designjam:products-loaded", event => {
-    state.groups = Array.isArray(event.detail?.groups) ? event.detail.groups : [];
-    window.__designjamBarcodeCategories = Array.isArray(event.detail?.categories) ? event.detail.categories : [];
-  });
+  function applyProductsSnapshot(snapshot) {
+    state.groups = Array.isArray(snapshot?.groups) ? snapshot.groups : [];
+    window.__designjamBarcodeCategories = Array.isArray(snapshot?.categories) ? snapshot.categories : [];
+    if (elements.searchStatus) {
+      const itemCount = new Set(state.groups.flatMap(group => Array.isArray(group.item_numbers) ? group.item_numbers.map(normalize).filter(Boolean) : [])).size;
+      elements.searchStatus.textContent = itemCount ? `ERP 품번 ${itemCount.toLocaleString()}개 연결` : "ERP 상품 연결 대기";
+      elements.searchStatus.className = `barcode-search-status-badge ${itemCount ? "success" : ""}`;
+    }
+  }
+
+  window.addEventListener("designjam:products-loaded", event => applyProductsSnapshot(event.detail));
+  if (window.__designjamProductsSnapshot) applyProductsSnapshot(window.__designjamProductsSnapshot);
   applyLabelSize(state.size, false);
 })(window, document);

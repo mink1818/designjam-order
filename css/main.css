@@ -708,3 +708,38 @@ html[data-theme="dark"] .gray-btn{background:#334155!important;color:#fff!import
 .order-row label{display:flex;align-items:center;gap:8px}.favorite-item-number{display:inline-flex;align-items:center;gap:5px}
 .favorite-items-panel{margin:10px 0;padding:12px;border:1px solid #d7e1ee;border-radius:12px;background:#f8fbff}.favorite-items-panel h3{margin:0 0 8px}.favorite-item-chip{display:inline-flex;align-items:center;gap:5px;margin:3px;padding:7px 10px;border-radius:999px;background:#fff3bf;color:#5f4700;font-weight:900;border:1px solid #f2cf55}
 html[data-theme="dark"] .favorite-items-panel{background:#172235;border-color:#40536b}.recent-viewed-list button b,.recent-viewed-list button span{font-size:1em!important}
+
+
+/* V4.0.2 거래처 다크모드 전수 대비 보정 */
+html[data-theme="dark"] .completed-order-card,
+html[data-theme="dark"] .completed-order-summary,
+html[data-theme="dark"] .completed-order-detail,
+html[data-theme="dark"] .active-order-row,
+html[data-theme="dark"] .order-row,
+html[data-theme="dark"] .cart-item,
+html[data-theme="dark"] .customer-notice-area,
+html[data-theme="dark"] .favorite-items-panel,
+html[data-theme="dark"] .toggle-setting,
+html[data-theme="dark"] .password-change-box,
+html[data-theme="dark"] .setting-fieldset,
+html[data-theme="dark"] .settings-top-actions button{background:#1f2d3d!important;border-color:#40566f!important;color:#eef5ff!important}
+html[data-theme="dark"] .completed-order-card *,
+html[data-theme="dark"] .completed-order-summary *,
+html[data-theme="dark"] .completed-order-detail *,
+html[data-theme="dark"] .active-order-row *,
+html[data-theme="dark"] .order-row *,
+html[data-theme="dark"] .cart-item *{color:inherit}
+html[data-theme="dark"] .completed-order-detail strong,
+html[data-theme="dark"] .active-order-row strong,
+html[data-theme="dark"] .order-row strong,
+html[data-theme="dark"] .cart-item strong{color:#fff!important}
+html[data-theme="dark"] .completed-order-detail span,
+html[data-theme="dark"] .completed-order-detail small,
+html[data-theme="dark"] .active-order-row span,
+html[data-theme="dark"] .active-order-row small,
+html[data-theme="dark"] .order-row span,
+html[data-theme="dark"] .order-row small{color:#d4dfed!important}
+html[data-theme="dark"] .order-status-badge{background:#24415f!important;color:#cfe6ff!important}
+html[data-theme="dark"] .favorite-item-chip{background:#594b12!important;color:#fff4b8!important;border-color:#8a7320!important}
+html[data-theme="dark"] .customer-notice-heading,html[data-theme="dark"] .customer-notice-item summary{color:#fff0b5!important}
+html[data-theme="dark"] .settings-top-actions button{color:#d9eaff!important}

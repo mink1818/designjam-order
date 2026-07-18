@@ -13,18 +13,18 @@
   <meta property="og:description" content="디자인삭스 관리자용 주문·출고 관리 시스템">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/products.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4022">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4023">
 <title>디자인삭스 주문관리 (관리자)</title>
 
-  <link rel="stylesheet" href="css/admin.css?v=4022">
+  <link rel="stylesheet" href="css/admin.css?v=4023">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=4022">
-  <link rel="icon" href="icons/admin-192.png?v=4022">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=4022">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=4023">
+  <link rel="icon" href="icons/admin-192.png?v=4023">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=4023">
 </head>
 
 <body class="auth-pending" data-app-version="4.0.2" data-session-page="admin" data-pwa-app="admin">
@@ -688,21 +688,37 @@ class="order-input">
       </div>
     </section>
 
-    <div class="barcode-toolbar">
-      <input id="barcodeSearch" class="order-input" type="search" placeholder="품번 입력 후 Enter · 여러 품번은 쉼표/줄바꿈으로 입력">
-      <button id="barcodeSearchAddButton" class="cart-btn" type="button">ERP 검색·선택</button>
-      <button id="barcodeSelectVisibleButton" class="cart-btn gray-btn" type="button">검색결과 전체 선택</button>
-      <button id="barcodeClearSelectionButton" class="cart-btn gray-btn" type="button">선택 해제</button>
-      <label class="barcode-copy-field">출력 매수
-        <input id="barcodeCopyCount" class="order-input" type="number" min="1" max="1000" value="1">
-      </label>
-    </div>
+    <section class="barcode-erp-search-center" aria-labelledby="barcodeErpSearchTitle">
+      <div class="barcode-erp-search-heading">
+        <div>
+          <h3 id="barcodeErpSearchTitle">🔎 ERP 품번 검색센터</h3>
+          <p>품번을 입력하면 상품 존재 여부, 상품명, 가격, 사진을 확인하고 바로 선택하거나 바코드를 출력할 수 있습니다.</p>
+        </div>
+        <span class="barcode-search-status-badge" id="barcodeSearchStatusBadge">ERP 상품 연결 대기</span>
+      </div>
 
-    <div class="barcode-search-options">
-      <label><input id="barcodeEnterPrintToggle" type="checkbox"> Enter 입력 시 현재 품번 바로 인쇄</label>
-      <span>ERP에 등록된 품번을 찾아 사진·묶음명·가격을 확인하고 바로 선택할 수 있습니다.</span>
-    </div>
-    <div id="barcodeQuickResult" class="barcode-quick-result" hidden></div>
+      <div class="barcode-toolbar barcode-search-toolbar">
+        <label class="barcode-main-search-label" for="barcodeSearch">품번 검색</label>
+        <input id="barcodeSearch" class="order-input" type="search" placeholder="예: 4008A · 여러 품번은 쉼표/줄바꿈 · 범위는 661~663">
+        <button id="barcodeSearchAddButton" class="cart-btn" type="button">ERP 상품 검색</button>
+        <button id="barcodeSelectVisibleButton" class="cart-btn gray-btn" type="button">검색결과 전체 선택</button>
+        <button id="barcodeClearSelectionButton" class="cart-btn gray-btn" type="button">선택 해제</button>
+        <label class="barcode-copy-field">출력 매수
+          <input id="barcodeCopyCount" class="order-input" type="number" min="1" max="1000" value="1">
+        </label>
+      </div>
+
+      <div class="barcode-search-options">
+        <label><input id="barcodeEnterPrintToggle" type="checkbox"> Enter 입력 시 한 품번 바로 인쇄</label>
+        <span>검색 결과의 [선택] · [미리보기] · [바코드 출력] 버튼을 사용할 수 있습니다.</span>
+      </div>
+      <div id="barcodeQuickResult" class="barcode-quick-result">
+        <div class="barcode-search-empty-state">
+          <b>4008A처럼 품번을 입력해 검색하세요.</b>
+          <span>ERP 상품 존재 여부와 상품정보가 이곳에 표시됩니다.</span>
+        </div>
+      </div>
+    </section>
 
     <div id="barcodeValidationSummary" class="barcode-validation-summary">품번을 불러오거나 검색하면 자동 검사 결과가 표시됩니다.</div>
 
@@ -790,18 +806,18 @@ class="order-input">
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
-<script src="js/operations-core.js?v=4022"></script>
-<script src="js/products.js?v=4022"></script>
-<script src="js/barcode-manager.js?v=4022"></script>
+<script src="js/operations-core.js?v=4023"></script>
+<script src="js/products.js?v=4023"></script>
+<script src="js/barcode-manager.js?v=4023"></script>
 
-<script src="js/group-manager.js?v=4022"></script>
+<script src="js/group-manager.js?v=4023"></script>
 
-<script src="js/session-status.js?v=4022"></script>
-<script src="js/pwa.js?v=4022"></script>
-<script src="js/admin-page-transition.js?v=4022"></script>
-<script src="js/version-badge.js?v=4022"></script>
+<script src="js/session-status.js?v=4023"></script>
+<script src="js/pwa.js?v=4023"></script>
+<script src="js/admin-page-transition.js?v=4023"></script>
+<script src="js/version-badge.js?v=4023"></script>
 <script src="js/back-navigation.js?v=391"></script>
 <script src="js/admin-accordions.js?v=391"></script>
-<script src="js/ui-preferences.js?v=4022"></script>
+<script src="js/ui-preferences.js?v=4023"></script>
 </body>
 </html>

@@ -1376,3 +1376,64 @@ html[data-theme="dark"] .barcode-search-options,html[data-theme="dark"] .barcode
 .barcode-label-preview{--barcode-label-ratio:60 / 35}.barcode-label-card{aspect-ratio:var(--barcode-label-ratio);height:auto;min-height:0}.barcode-label-preview[data-label-size="45x25"] .barcode-label-card{width:min(100%,360px)}.barcode-label-preview[data-label-size="45x25"] .barcode-label-number{font-size:clamp(22px,4vw,34px)}.barcode-label-preview[data-label-size="80x50"] .barcode-label-card{width:min(100%,500px)}.barcode-label-preview[data-label-size="80x50"] .barcode-label-number{font-size:clamp(34px,6vw,58px)}
 html[data-theme="dark"] .barcode-size-selector,body.dark-mode .barcode-size-selector{background:#172638;border-color:#40546b}.dark-mode .barcode-size-selector>div:first-child strong,.dark-mode .barcode-size-options b{color:#f8fafc}.dark-mode .barcode-size-selector>div:first-child span,.dark-mode .barcode-size-options small{color:#cbd5e1}.dark-mode .barcode-size-options label{background:#213247;border-color:#52647a}.dark-mode .barcode-size-options label:has(input:checked){background:#294866;border-color:#7bb0ea}
 @media(max-width:900px){.product-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.barcode-size-selector{grid-template-columns:1fr}.barcode-size-options{grid-template-columns:1fr}}
+
+
+/* V4.0.2 ERP 검색센터 표시 강화 + 관리자 다크모드 전수 대비 보정 */
+.barcode-erp-search-center{display:grid;gap:12px;margin:18px 0;padding:18px;border:2px solid #b9cde6;border-radius:16px;background:linear-gradient(180deg,#f9fcff,#f3f8fe)}
+.barcode-erp-search-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.barcode-erp-search-heading h3{margin:0;color:#173f75;font-size:20px}.barcode-erp-search-heading p{margin:5px 0 0;color:#5f7086;line-height:1.5}
+.barcode-search-status-badge{display:inline-flex;align-items:center;min-height:30px;padding:5px 10px;border-radius:999px;background:#eef2f7;color:#526174;font-size:12px;font-weight:900;white-space:nowrap}.barcode-search-status-badge.success{background:#e3f6ea;color:#146c36}.barcode-search-status-badge.warning{background:#fff0e8;color:#a53d12}
+.barcode-search-toolbar{grid-template-columns:auto minmax(240px,1fr) auto auto auto 110px}.barcode-main-search-label{align-self:center;color:#173f75;font-weight:900}.barcode-search-toolbar #barcodeSearch{min-height:48px;font-size:17px;border-width:2px}.barcode-search-toolbar #barcodeSearchAddButton{min-height:48px;font-size:15px}
+.barcode-search-empty-state{display:grid;place-items:center;gap:6px;min-height:105px;padding:18px;text-align:center;color:#50647d}.barcode-search-empty-state b{font-size:16px;color:#234c7c}.barcode-search-empty-state.error b{color:#a62b22}
+.barcode-result-info span b,.barcode-result-info small b{color:#334155;margin-right:5px}.barcode-result-card{box-shadow:0 3px 12px rgba(24,63,105,.06)}
+
+/* 다크모드: 흰색 배경에 흰 글자가 남지 않도록 배경별 글자색을 명시 */
+html[data-theme="dark"] .order-card,
+html[data-theme="dark"] .order-header,
+html[data-theme="dark"] .order-detail,
+html[data-theme="dark"] .order-item,
+html[data-theme="dark"] .order-item-row,
+html[data-theme="dark"] .v3-customer-card,
+html[data-theme="dark"] .v3-customer-summary span,
+html[data-theme="dark"] .v3-notification-item,
+html[data-theme="dark"] .admin-bank-settings,
+html[data-theme="dark"] .customer-password-admin-box,
+html[data-theme="dark"] .excel-mode-option,
+html[data-theme="dark"] .excel-import-mode-panel,
+html[data-theme="dark"] .hidden-selection-toolbar,
+html[data-theme="dark"] .danger-zone,
+html[data-theme="dark"] .stats-toolbar-card,
+html[data-theme="dark"] .stats-panel,
+html[data-theme="dark"] .stats-status-card,
+html[data-theme="dark"] .barcode-erp-search-center,
+html[data-theme="dark"] .barcode-search-options,
+html[data-theme="dark"] .barcode-quick-result,
+html[data-theme="dark"] .barcode-size-selector{background:#1b2939!important;border-color:#40566f!important;color:#eef5ff!important}
+html[data-theme="dark"] .order-detail *,
+html[data-theme="dark"] .order-item *,
+html[data-theme="dark"] .order-item-row *,
+html[data-theme="dark"] .v3-customer-summary span,
+html[data-theme="dark"] .admin-bank-settings *,
+html[data-theme="dark"] .customer-password-admin-box *,
+html[data-theme="dark"] .barcode-erp-search-center *{color:inherit}
+html[data-theme="dark"] .order-detail strong,
+html[data-theme="dark"] .order-item strong,
+html[data-theme="dark"] .order-item-row strong,
+html[data-theme="dark"] .order-header strong,
+html[data-theme="dark"] .order-header h2{color:#ffffff!important}
+html[data-theme="dark"] .order-detail span,
+html[data-theme="dark"] .order-detail small,
+html[data-theme="dark"] .order-item span,
+html[data-theme="dark"] .order-item small,
+html[data-theme="dark"] .order-item-row span,
+html[data-theme="dark"] .order-item-row small{color:#d4dfed!important}
+html[data-theme="dark"] .barcode-result-card{background:#223247!important;border-color:#4a617d!important}.barcode-result-card .cart-btn{color:#fff!important}
+html[data-theme="dark"] .barcode-result-info span b,html[data-theme="dark"] .barcode-result-info small b{color:#f8fbff!important}
+html[data-theme="dark"] .barcode-search-empty-state{color:#cbd8e8!important}.barcode-search-empty-state b{color:#d9eaff}
+html[data-theme="dark"] .barcode-search-status-badge{background:#334155!important;color:#eaf2ff!important}.barcode-search-status-badge.success{background:#174d31!important;color:#c9f7dc!important}.barcode-search-status-badge.warning{background:#6c321b!important;color:#ffe0cf!important}
+html[data-theme="dark"] .stats-period-label,html[data-theme="dark"] .admin-note-badge,html[data-theme="dark"] .account-admin-note{background:#293b51!important;color:#f3f7fd!important}
+html[data-theme="dark"] .hidden-summary-card:not(.active),html[data-theme="dark"] .stats-range-buttons button:not(.active){background:#25364a!important;color:#eef5ff!important;border-color:#52677f!important}
+html[data-theme="dark"] button.gray-btn,html[data-theme="dark"] .text-button{color:#fff!important}
+/* 흰색 유지 요소는 검정 글자로 고정 */
+html[data-theme="dark"] .barcode-label-card,html[data-theme="dark"] .barcode-label-card *,html[data-theme="dark"] .print-only,html[data-theme="dark"] .print-only *{color:#000!important}
+@media(max-width:980px){.barcode-search-toolbar{grid-template-columns:1fr 1fr}.barcode-main-search-label,.barcode-search-toolbar #barcodeSearch{grid-column:1/-1}.barcode-copy-field{grid-column:1/-1}.barcode-erp-search-heading{flex-direction:column}}
+@media(max-width:620px){.barcode-search-toolbar{grid-template-columns:1fr}.barcode-main-search-label,.barcode-search-toolbar #barcodeSearch,.barcode-copy-field{grid-column:auto}.barcode-search-toolbar .cart-btn{width:100%}}

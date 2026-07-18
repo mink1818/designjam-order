@@ -433,6 +433,13 @@ async function loadProductData() {
   renderGroupList();
   updateProductSummary();
 
+  // V4.0.2 검색센터가 이벤트 등록 시점과 관계없이 최신 ERP 상품을 읽을 수 있도록 보관
+  window.__designjamProductsSnapshot = {
+    groups: allGroups,
+    categories: allCategories,
+    mainCategories: allMainCategories
+  };
+
   window.dispatchEvent(new CustomEvent("designjam:products-loaded", {
     detail: {
       groups: allGroups,
