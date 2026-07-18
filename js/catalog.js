@@ -1698,8 +1698,12 @@ function bindCustomerSearchModal(){
   const modal=document.getElementById("customerSearchModal");
   const live=document.getElementById("customerLiveSearch");
   if(!modal||!live)return;
-  catalogSearch?.addEventListener("click",openCustomerSearch);
-  catalogSearch?.addEventListener("focus",openCustomerSearch);
+  document.querySelectorAll('[data-customer-search-trigger]').forEach(trigger=>{
+    trigger.addEventListener('click',event=>{
+      event.preventDefault();
+      openCustomerSearch();
+    });
+  });
   live.addEventListener("input",()=>renderCustomerSearchResults(live.value));
   live.addEventListener("keydown",event=>{if(event.key==='Escape')closeCustomerSearch();if(event.key==='Enter'){modal.querySelector('.customer-search-result')?.click();}});
   modal.addEventListener("click",event=>{
@@ -1729,6 +1733,13 @@ async function startCatalogPage() {
   await loadCatalog();
   bindCustomerSearchModal();
   openCartFromNavigation();
+  const pageParams=new URLSearchParams(location.search);
+  if(pageParams.get('search')==='1'){
+    openCustomerSearch();
+    pageParams.delete('search');
+    const cleanQuery=pageParams.toString();
+    history.replaceState(null,'',location.pathname+(cleanQuery?'?'+cleanQuery:'')+location.hash);
+  }
 }
 
 /* inline onclick에서 사용 */
