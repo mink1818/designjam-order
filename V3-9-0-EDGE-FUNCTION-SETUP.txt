@@ -1,0 +1,15 @@
+V3.9.0 계정 관리 기능 설치
+
+이 버전의 '다른 사용자 비밀번호 변경'과 '관리자 추가'는 보안을 위해 Supabase Edge Function을 사용합니다.
+브라우저 코드에는 service_role 키가 들어 있지 않습니다.
+
+[최초 1회 배포]
+1. Node.js와 Supabase CLI를 설치합니다.
+2. 프로젝트 폴더 터미널에서 Supabase 로그인/연결 후 실행합니다.
+
+npx supabase login
+npx supabase link --project-ref dtjhuejmxrjkcxzvilgw
+npx supabase functions deploy admin-user-management
+
+Supabase 프로젝트의 기본 환경변수 SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY는 Edge Function에서 자동 제공됩니다.
+배포 후 거래처관리의 비밀번호 변경 및 환경설정의 관리자 계정 관리가 동작합니다.

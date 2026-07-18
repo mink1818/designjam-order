@@ -79,6 +79,7 @@ function renderCustomerRow(c){
     <label class="check-label"><input data-field="credit_allowed" type="checkbox" ${c.credit_allowed?'checked':''}> 외상거래 허용</label>
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
+   <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>
    <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${esc(c.business_name||'')}')">주문내역</button></div>
   </div>
  </article>`;
@@ -97,6 +98,25 @@ async function saveCustomer(id){
 }
 async function approveCustomer(id){const {error}=await supabaseClient.from('customers').update({approved:true,blocked:false}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
 async function toggleBlock(id,blocked){if(!confirm(blocked?'차단을 해제할까요?':'이 거래처를 차단할까요?'))return;const {error}=await supabaseClient.from('customers').update({blocked:!blocked}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
-window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.openCustomerOrders=openCustomerOrders;
+
+async function invokeAdminUserAction(payload){
+ const {data,error}=await supabaseClient.functions.invoke('admin-user-management',{body:payload});
+ if(error)throw new Error(error.message||'계정 관리 서버 연결에 실패했습니다.');
+ if(data?.error)throw new Error(data.error);
+ return data;
+}
+async function setCustomerPassword(id,button){
+ const card=button.closest('.compact-customer-card');
+ const first=card?.querySelector('[data-password-one]')?.value||'';
+ const second=card?.querySelector('[data-password-two]')?.value||'';
+ if(first.length<6)return alert('새 비밀번호를 6자리 이상 입력하세요.');
+ if(first!==second)return alert('비밀번호 확인 값이 일치하지 않습니다.');
+ if(!confirm('이 거래처의 비밀번호를 입력한 값으로 변경할까요?'))return;
+ button.disabled=true;button.textContent='변경 중...';
+ try{await invokeAdminUserAction({action:'set_password',target_id:id,password:first});card.querySelector('[data-password-one]').value='';card.querySelector('[data-password-two]').value='';alert('거래처 비밀번호가 변경되었습니다.');}
+ catch(error){alert('비밀번호 변경 실패: '+error.message+'\n\nEdge Function 배포 여부를 확인하세요.');}
+ finally{button.disabled=false;button.textContent='비밀번호 변경';}
+}
+window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.openCustomerOrders=openCustomerOrders;window.setCustomerPassword=setCustomerPassword;
 search.addEventListener('input',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});sort.addEventListener('change',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});
 document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){document.querySelector('[data-filter="전체"]')?.classList.add('active');const f=new URLSearchParams(location.search).get('filter');if(f==='waiting'){memberFilter='승인대기';document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='승인대기'));}loadCustomers();}});
