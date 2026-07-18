@@ -1458,3 +1458,40 @@ html[data-theme="dark"] .order-card .item-number,
 html[data-theme="dark"] .order-card [class*="item-number"],
 html[data-theme="dark"] .order-card [class*="sku"],
 html[data-theme="dark"] .order-card code{color:#ffffff!important;background:#30445d!important;border-color:#58708c!important}
+
+/* V4.0.2.2: 글자크기 기능 제거 */
+html{--dj-font-scale:1!important}
+html[data-font-size="large"],html[data-font-size="xlarge"]{font-size:16px!important}
+
+
+/* V4.0.2.2: 바코드 검색센터 제거 후 출력 매수 */
+.barcode-copy-simple{display:flex;justify-content:flex-end;margin:14px 0}
+.barcode-copy-simple label{display:grid;grid-template-columns:auto 110px;align-items:center;gap:10px;font-weight:800;color:#334155}
+.barcode-copy-simple input{min-height:42px}
+
+/* V4.0.2.2: 다크모드 주문접수 품번·수량·품절체크 행 대비 고정 */
+html[data-theme="dark"] .pick-list{background:#172235!important;border:1px solid #40536b!important}
+html[data-theme="dark"] .pick-row,
+html[data-theme="dark"] .stock-row,
+html[data-theme="dark"] label.pick-row.stock-row{
+  background:#ffffff!important;
+  color:#111827!important;
+  border-color:#d7dee8!important;
+}
+html[data-theme="dark"] .pick-row strong,
+html[data-theme="dark"] .pick-row span,
+html[data-theme="dark"] .pick-row em,
+html[data-theme="dark"] .stock-row strong,
+html[data-theme="dark"] .stock-row span,
+html[data-theme="dark"] .stock-row em,
+html[data-theme="dark"] label.pick-row.stock-row strong,
+html[data-theme="dark"] label.pick-row.stock-row span,
+html[data-theme="dark"] label.pick-row.stock-row em{
+  color:#111827!important;
+}
+html[data-theme="dark"] .stock-row:has(input:checked),
+html[data-theme="dark"] label.pick-row.stock-row:has(input:checked){background:#ffe8e8!important}
+html[data-theme="dark"] .stock-row:has(input:checked) strong,
+html[data-theme="dark"] .stock-row:has(input:checked) span,
+html[data-theme="dark"] .stock-row:has(input:checked) em{color:#6b7280!important}
+html[data-theme="dark"] .barcode-copy-simple label{color:#eef5ff!important}

@@ -771,3 +771,7 @@ html[data-theme="dark"] .order-row small,
 html[data-theme="dark"] .cart-item span,
 html[data-theme="dark"] .cart-item small,
 html[data-theme="dark"] .recent-viewed-list button span{color:#d6e2f1!important}
+
+/* V4.0.2.2: 글자크기 기능 제거 */
+html{--dj-font-scale:1!important}
+html[data-font-size="large"],html[data-font-size="xlarge"]{font-size:16px!important}

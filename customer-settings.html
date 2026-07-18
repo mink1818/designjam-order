@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>디자인삭스 거래처 환경설정</title>
-<link rel="stylesheet" href="css/main.css?v=4024">
-<meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=4021"><link rel="icon" href="icons/customer-192.png?v=4021">
+<link rel="stylesheet" href="css/main.css?v=4022">
+<meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=4022"><link rel="icon" href="icons/customer-192.png?v=4022">
 </head>
 <body class="auth-pending" data-session-page="customer" data-pwa-app="customer">
 <header><h1>⚙️ 환경설정</h1><p>거래처 계정과 화면 설정</p></header>
@@ -14,7 +14,6 @@
 
 <section class="customer-settings-summary">
   <div><span>화면 모드</span><strong id="currentThemeLabel">라이트</strong></div>
-  <div><span>글자 크기</span><strong id="currentFontLabel">보통</strong></div>
   <div><span>자동 로그인</span><strong id="currentAutoLoginLabel">사용</strong></div>
 </section>
 
@@ -42,17 +41,12 @@
 </details>
 
 <details class="customer-accordion">
- <summary><span>🌓</span><b>화면 설정</b><small>라이트·다크·글자 크기</small><i>⌄</i></summary>
+ <summary><span>🌓</span><b>화면 설정</b><small>라이트·다크 모드</small><i>⌄</i></summary>
  <div class="customer-accordion-body">
   <fieldset class="setting-fieldset"><legend>화면 모드</legend>
    <label><input type="radio" name="themeMode" value="light"> 라이트</label>
    <label><input type="radio" name="themeMode" value="dark"> 다크</label>
    <label><input type="radio" name="themeMode" value="system"> 기기 설정</label>
-  </fieldset>
-  <fieldset class="setting-fieldset"><legend>글자 크기</legend>
-   <label><input type="radio" name="fontSize" value="normal"> 보통</label>
-   <label><input type="radio" name="fontSize" value="large"> 크게</label>
-   <label><input type="radio" name="fontSize" value="xlarge"> 매우 크게</label>
   </fieldset>
  </div>
 </details>
@@ -72,5 +66,5 @@
 </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/ui-preferences.js?v=4024"></script><script src="js/customer-settings.js?v=4021"></script><script src="js/session-status.js?v=4021"></script><script src="js/pwa.js?v=4021"></script><script src="js/version-badge.js?v=4021"></script><script src="js/back-navigation.js?v=4021"></script>
+<script src="js/ui-preferences.js?v=4022"></script><script src="js/customer-settings.js?v=4022"></script><script src="js/session-status.js?v=4022"></script><script src="js/pwa.js?v=4022"></script><script src="js/version-badge.js?v=4022"></script><script src="js/back-navigation.js?v=4022"></script>
 </body></html>
