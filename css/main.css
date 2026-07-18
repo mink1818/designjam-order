@@ -793,3 +793,18 @@ html[data-theme="dark"] .live-group-total p,
 html[data-theme="dark"] .live-group-total span{color:#dbe8f8!important}
 html[data-theme="dark"] .live-group-total strong{color:#ffffff!important}
 html[data-theme="dark"] .price-text{display:inline-block;background:#152238!important;color:#ffffff!important;border:1px solid #40566f!important;border-radius:10px;padding:7px 12px}
+
+
+/* V4.0.2.6 최근 본 품번 바로가기 강조 */
+.order-row.requested-item-row {
+  outline: 3px solid #f2b705;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(242, 183, 5, 0.18);
+  animation: requestedItemPulse 1.2s ease-out 1;
+}
+
+@keyframes requestedItemPulse {
+  0% { transform: scale(0.985); }
+  55% { transform: scale(1.01); }
+  100% { transform: scale(1); }
+}

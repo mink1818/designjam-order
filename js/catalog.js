@@ -72,6 +72,40 @@ function toggleItemFavorite(event, number) {
   }
 }
 function rememberViewedGroup(group){const rows=JSON.parse(localStorage.getItem('designjam_recent_viewed')||'[]');const now=new Date().toISOString();const next=[...(group.item_numbers||[]).map(number=>({number:String(number),title:group.title||'상품',image_url:group.image_url||'',viewed_at:now})),...rows];const seen=new Set();localStorage.setItem('designjam_recent_viewed',JSON.stringify(next.filter(x=>{const k=String(x.number);if(seen.has(k))return false;seen.add(k);return true}).slice(0,50)));}
+
+function openRequestedItemFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const requestedItem = String(params.get('item') || '').trim();
+  if (!requestedItem) return false;
+
+  const targetGroup = groups.find(group =>
+    (Array.isArray(group.item_numbers) ? group.item_numbers : [])
+      .some(number => String(number).trim() === requestedItem)
+  );
+
+  if (!targetGroup) {
+    // 잘못되었거나 삭제된 품번 링크는 일반 상품 목록으로 안전하게 복귀한다.
+    history.replaceState(null, '', location.pathname);
+    return false;
+  }
+
+  openGroup(targetGroup.id, requestedItem);
+  return true;
+}
+
+function focusRequestedItem(number) {
+  const input = document.getElementById(`qty-${String(number)}`);
+  if (!input) return;
+
+  const row = input.closest('.order-row');
+  if (row) {
+    row.classList.add('requested-item-row');
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // 뒤로가기/새로고침에서 같은 품번 링크가 반복 실행되지 않도록 주소를 정리한다.
+  history.replaceState(null, '', location.pathname);
+}
 window.toggleItemFavorite=toggleItemFavorite;
 
 let frequentGroups = [];
@@ -295,6 +329,11 @@ async function loadCatalog() {
   groups = groupResponse.data || [];
 
   await loadCustomerFeatureData();
+
+  // 최근 본 상품/품번별 즐겨찾기에서 전달된 품번이 있으면
+  // 해당 품번이 포함된 상품 묶음 상세로 바로 이동한다.
+  if (openRequestedItemFromUrl()) return;
+
   renderMainCategories();
 }
 
@@ -772,7 +811,7 @@ function renderGroupCard(group) {
    3단계: 품번별 주문
 ================================ */
 
-function openGroup(groupId) {
+function openGroup(groupId, requestedItem = "") {
   const group = groups.find(
     item => Number(item.id) === Number(groupId)
   );
@@ -923,6 +962,10 @@ function openGroup(groupId) {
       </div>
     </div>
   `;
+
+  if (requestedItem) {
+    requestAnimationFrame(() => focusRequestedItem(requestedItem));
+  }
 }
 
 function returnToActiveMainCategory() {
