@@ -743,3 +743,31 @@ html[data-theme="dark"] .order-status-badge{background:#24415f!important;color:#
 html[data-theme="dark"] .favorite-item-chip{background:#594b12!important;color:#fff4b8!important;border-color:#8a7320!important}
 html[data-theme="dark"] .customer-notice-heading,html[data-theme="dark"] .customer-notice-item summary{color:#fff0b5!important}
 html[data-theme="dark"] .settings-top-actions button{color:#d9eaff!important}
+
+/* V4.0.2.1 글자크기 실제 반영 + 거래처 다크모드 자동 대비 보정 */
+.dj-auto-dark-text{color:#172033!important}
+html[data-theme="dark"] .dj-auto-dark-text{color:#172033!important}
+html[data-theme="dark"] .completed-order-card,
+html[data-theme="dark"] .completed-order-summary,
+html[data-theme="dark"] .completed-order-detail,
+html[data-theme="dark"] .active-order-row,
+html[data-theme="dark"] .order-row,
+html[data-theme="dark"] .cart-item,
+html[data-theme="dark"] .recent-viewed-list button,
+html[data-theme="dark"] .favorite-items-panel,
+html[data-theme="dark"] .frequent-card{background:#1d2b3c!important;color:#eef5ff!important;border-color:#435970!important}
+html[data-theme="dark"] .completed-order-card strong,
+html[data-theme="dark"] .completed-order-detail strong,
+html[data-theme="dark"] .active-order-row strong,
+html[data-theme="dark"] .order-row strong,
+html[data-theme="dark"] .cart-item strong,
+html[data-theme="dark"] .recent-viewed-list button b{color:#fff!important}
+html[data-theme="dark"] .completed-order-card span,
+html[data-theme="dark"] .completed-order-card small,
+html[data-theme="dark"] .active-order-row span,
+html[data-theme="dark"] .active-order-row small,
+html[data-theme="dark"] .order-row span,
+html[data-theme="dark"] .order-row small,
+html[data-theme="dark"] .cart-item span,
+html[data-theme="dark"] .cart-item small,
+html[data-theme="dark"] .recent-viewed-list button span{color:#d6e2f1!important}

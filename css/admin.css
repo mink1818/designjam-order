@@ -1437,3 +1437,24 @@ html[data-theme="dark"] button.gray-btn,html[data-theme="dark"] .text-button{col
 html[data-theme="dark"] .barcode-label-card,html[data-theme="dark"] .barcode-label-card *,html[data-theme="dark"] .print-only,html[data-theme="dark"] .print-only *{color:#000!important}
 @media(max-width:980px){.barcode-search-toolbar{grid-template-columns:1fr 1fr}.barcode-main-search-label,.barcode-search-toolbar #barcodeSearch{grid-column:1/-1}.barcode-copy-field{grid-column:1/-1}.barcode-erp-search-heading{flex-direction:column}}
 @media(max-width:620px){.barcode-search-toolbar{grid-template-columns:1fr}.barcode-main-search-label,.barcode-search-toolbar #barcodeSearch,.barcode-copy-field{grid-column:auto}.barcode-search-toolbar .cart-btn{width:100%}}
+
+/* V4.0.2.1 글자크기 실제 반영 + 다크모드 자동 대비 보정 */
+.dj-auto-dark-text{color:#172033!important}
+html[data-theme="dark"] .dj-auto-dark-text{color:#172033!important}
+html[data-theme="dark"] .barcode-label-card,
+html[data-theme="dark"] .barcode-label-card *{background:#fff!important;color:#000!important}
+html[data-theme="dark"] .barcode-result-noimage{background:#e9eef5!important;color:#475569!important}
+html[data-theme="dark"] .barcode-search-missing{background:#fff0ed!important;color:#8f241c!important}
+html[data-theme="dark"] .product-summary-card,
+html[data-theme="dark"] .product-summary-card *,
+html[data-theme="dark"] .summary-card,
+html[data-theme="dark"] .summary-card *{color:inherit}
+html[data-theme="dark"] .order-card,
+html[data-theme="dark"] .order-card .order-header,
+html[data-theme="dark"] .order-card .order-detail,
+html[data-theme="dark"] .order-card .order-item,
+html[data-theme="dark"] .order-card .order-item-row{background:#1d2b3c!important;color:#eef5ff!important;border-color:#435970!important}
+html[data-theme="dark"] .order-card .item-number,
+html[data-theme="dark"] .order-card [class*="item-number"],
+html[data-theme="dark"] .order-card [class*="sku"],
+html[data-theme="dark"] .order-card code{color:#ffffff!important;background:#30445d!important;border-color:#58708c!important}

@@ -9,7 +9,7 @@
   });
   const SIZE_STORAGE_KEY = "designjam_barcode_label_size";
   const savedSize = localStorage.getItem(SIZE_STORAGE_KEY);
-  const state = { items: [], selected: new Set(), active: "4008A", groups: [], size: LABELS[savedSize] ? savedSize : "60x35" };
+  const state = { items: [], selected: new Set(), active: "4008A", groups: [], categories: [], size: LABELS[savedSize] ? savedSize : "60x35" };
   const $ = id => document.getElementById(id);
   const elements = {
     excel: $("barcodeExcelFile"), erp: $("barcodeLoadErpButton"), search: $("barcodeSearch"), list: $("barcodeItemList"),
@@ -84,7 +84,7 @@
 
 
   function getCategory(group) {
-    return (window.__designjamBarcodeCategories || []).find(category => String(category.id) === String(group?.category_id)) || null;
+    return state.categories.find(category => String(category.id) === String(group?.category_id)) || null;
   }
 
   function makeErpIndex() {
@@ -135,12 +135,26 @@
     }
   }
 
-  function searchAndSelect({ printOnEnter = false } = {}) {
+
+  async function waitForErpSnapshot(attempts = 30) {
+    if (state.groups.length) return true;
+    if (window.__designjamProductsSnapshot) { applyProductsSnapshot(window.__designjamProductsSnapshot); if (state.groups.length) return true; }
+    for (let i = 0; i < attempts; i += 1) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (window.__designjamProductsSnapshot) applyProductsSnapshot(window.__designjamProductsSnapshot);
+      if (state.groups.length) return true;
+    }
+    return false;
+  }
+
+  async function searchAndSelect({ printOnEnter = false } = {}) {
     const raw = elements.search?.value || "";
     let requested = [];
     try { requested = parseItemPattern(raw); }
     catch (error) { elements.message.innerHTML = `<p class="auth-error">${escapeHtml(error.message)}</p>`; return; }
     if (!requested.length) { elements.message.innerHTML = '<p class="auth-error">검색할 품번을 입력해주세요.</p>'; elements.search?.focus(); return; }
+    const connected = await waitForErpSnapshot();
+    if (!connected) { elements.message.innerHTML = '<p class="auth-error">ERP 상품정보 연결이 완료되지 않았습니다. 잠시 후 다시 검색해주세요.</p>'; return; }
     const index = makeErpIndex();
     const rows = [], missing = [];
     requested.map(normalize).forEach(item => {
@@ -213,7 +227,9 @@
     return rows.map(row => row[itemHeader]).filter(value => String(value).trim());
   }
 
-  function loadErp() {
+  async function loadErp() {
+    const connected = await waitForErpSnapshot();
+    if (!connected) { elements.message.innerHTML = '<p class="auth-error">ERP 상품정보 연결이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.</p>'; return; }
     const values = [];
     state.groups.forEach(group => (Array.isArray(group.item_numbers) ? group.item_numbers : []).forEach(item => values.push(item)));
     if (!values.length) { elements.message.innerHTML = '<p class="auth-error">ERP 등록상품 품번이 없습니다. 상품을 먼저 등록해주세요.</p>'; return; }
@@ -262,7 +278,7 @@
   }
 
   elements.excel?.addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; elements.message.innerHTML = "<p>엑셀 품번을 읽는 중...</p>"; try { setItems(await readExcel(file), file.name); } catch (error) { elements.message.innerHTML = `<p class="auth-error">엑셀 읽기 실패: ${escapeHtml(error.message)}</p>`; } });
-  elements.erp?.addEventListener("click", loadErp);
+  elements.erp?.addEventListener("click", () => loadErp());
   elements.search?.addEventListener("input", renderList);
   elements.search?.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); searchAndSelect({ printOnEnter: true }); } });
   elements.searchAdd?.addEventListener("click", () => searchAndSelect());
@@ -284,7 +300,8 @@
   elements.sizeInputs.forEach(input => input.addEventListener("change", () => applyLabelSize(input.value)));
   function applyProductsSnapshot(snapshot) {
     state.groups = Array.isArray(snapshot?.groups) ? snapshot.groups : [];
-    window.__designjamBarcodeCategories = Array.isArray(snapshot?.categories) ? snapshot.categories : [];
+    state.categories = Array.isArray(snapshot?.categories) ? snapshot.categories : [];
+    window.__designjamBarcodeCategories = state.categories;
     if (elements.searchStatus) {
       const itemCount = new Set(state.groups.flatMap(group => Array.isArray(group.item_numbers) ? group.item_numbers.map(normalize).filter(Boolean) : [])).size;
       elements.searchStatus.textContent = itemCount ? `ERP 품번 ${itemCount.toLocaleString()}개 연결` : "ERP 상품 연결 대기";
@@ -294,5 +311,6 @@
 
   window.addEventListener("designjam:products-loaded", event => applyProductsSnapshot(event.detail));
   if (window.__designjamProductsSnapshot) applyProductsSnapshot(window.__designjamProductsSnapshot);
+  else waitForErpSnapshot();
   applyLabelSize(state.size, false);
 })(window, document);
