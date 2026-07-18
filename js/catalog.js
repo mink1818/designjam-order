@@ -1647,12 +1647,88 @@ async function customerLogout() {
   location.replace("login.html");
 }
 
+
+
+/* V5.2.1 실시간 통합 상품검색 */
+function normalizedLiveSearch(value){
+  return String(value||"").toLowerCase().replace(/\s+/g,"").trim();
+}
+function getGroupSearchText(group){
+  const category=categories.find(item=>Number(item.id)===Number(group.category_id));
+  const main=mainCategories.find(item=>Number(item.id)===Number(category?.main_category_id));
+  return normalizedLiveSearch([
+    group.title, group.price, ...(group.item_numbers||[]), category?.name, main?.name
+  ].filter(Boolean).join(" "));
+}
+function renderCustomerSearchResults(keyword=""){
+  const box=document.getElementById("customerSearchResults");
+  if(!box)return;
+  const query=normalizedLiveSearch(keyword);
+  if(!query){
+    box.innerHTML='<div class="customer-search-empty">브랜드 또는 품번을 입력하면 상품이 바로 표시됩니다.<br><small>예: 나이키, 6005</small></div>';
+    return;
+  }
+  const matches=groups.filter(group=>getGroupSearchText(group).includes(query)).slice(0,30);
+  if(!matches.length){box.innerHTML='<div class="customer-search-empty">검색 결과가 없습니다.</div>';return;}
+  box.innerHTML=matches.map(group=>{
+    const category=categories.find(item=>Number(item.id)===Number(group.category_id));
+    const numbers=(group.item_numbers||[]).map(String);
+    const exact=numbers.find(number=>normalizedLiveSearch(number).includes(query));
+    const target=exact||numbers[0]||'';
+    return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
+      ${group.image_url?`<img src="${escapeAttribute(group.image_url)}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
+      <span><strong>${escapeHtml(group.title||'상품')}</strong><small>${escapeHtml(category?.name||'')} · ${numbers.map(escapeHtml).join(', ')}</small></span>
+      <em>${formatWon(group.price)}</em>
+    </button>`;
+  }).join('');
+}
+function openCustomerSearch(){
+  const modal=document.getElementById("customerSearchModal");
+  const input=document.getElementById("customerLiveSearch");
+  if(!modal||!input)return;
+  modal.hidden=false;modal.setAttribute("aria-hidden","false");document.body.classList.add("search-modal-open");
+  input.value=catalogSearch?.value||"";renderCustomerSearchResults(input.value);
+  requestAnimationFrame(()=>input.focus());
+}
+function closeCustomerSearch(){
+  const modal=document.getElementById("customerSearchModal");if(!modal)return;
+  modal.hidden=true;modal.setAttribute("aria-hidden","true");document.body.classList.remove("search-modal-open");
+}
+function bindCustomerSearchModal(){
+  const modal=document.getElementById("customerSearchModal");
+  const live=document.getElementById("customerLiveSearch");
+  if(!modal||!live)return;
+  catalogSearch?.addEventListener("click",openCustomerSearch);
+  catalogSearch?.addEventListener("focus",openCustomerSearch);
+  live.addEventListener("input",()=>renderCustomerSearchResults(live.value));
+  live.addEventListener("keydown",event=>{if(event.key==='Escape')closeCustomerSearch();if(event.key==='Enter'){modal.querySelector('.customer-search-result')?.click();}});
+  modal.addEventListener("click",event=>{
+    if(event.target.closest('[data-close-search]')){closeCustomerSearch();return;}
+    const result=event.target.closest('[data-search-group]');if(!result)return;
+    const groupId=Number(result.dataset.searchGroup);const item=result.dataset.searchItem||'';
+    closeCustomerSearch();if(catalogSearch)catalogSearch.value='';openGroup(groupId,item);
+  });
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.hidden)closeCustomerSearch();});
+}
+function openCartFromNavigation(){
+  if(location.hash==='#cart'){
+    renderCart();
+    history.replaceState(null,'',location.pathname+location.search);
+    document.querySelectorAll('.customer-bottom-nav a').forEach(link=>link.classList.toggle('active',link.getAttribute('href')==='catalog.html#cart'));
+    return true;
+  }
+  return false;
+}
+window.addEventListener('hashchange',openCartFromNavigation);
+
 async function startCatalogPage() {
   const allowed = await checkCustomerAccess();
   if (!allowed) return;
 
   loadSavedCart();
   await loadCatalog();
+  bindCustomerSearchModal();
+  openCartFromNavigation();
 }
 
 /* inline onclick에서 사용 */
@@ -1677,6 +1753,8 @@ window.customerLogout = customerLogout;
 window.renderOrderHistoryPreview = renderOrderHistoryPreview;
 window.openCartImagePreview = openCartImagePreview;
 window.closeCartImagePreview = closeCartImagePreview;
+window.openCustomerSearch = openCustomerSearch;
+window.closeCustomerSearch = closeCustomerSearch;
 
 startCatalogPage();
 

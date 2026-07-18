@@ -991,3 +991,68 @@ body[data-session-page="customer"] .price-text{font-size:15px;font-weight:800;co
 html[data-theme="dark"] body[data-session-page="customer"]{background:#0d1522}
 html[data-theme="dark"] body[data-session-page="customer"] header,
 html[data-theme="dark"] .customer-bottom-nav{background:#111d2d!important;border-color:#2c3e54!important}
+
+/* =========================================================
+   V5.2.1 CUSTOMER SEARCH / CART NAV / SOLID LIVE PANEL
+   ========================================================= */
+@media (min-width:768px){
+  body[data-session-page="customer"] .search{
+    width:min(100%,520px)!important;
+    margin-left:0!important;
+    margin-right:auto!important;
+  }
+  body[data-session-page="customer"] .catalog-cart-button{
+    width:auto!important;min-width:150px!important;padding-inline:18px!important;
+  }
+}
+body[data-session-page="customer"] #catalogSearch{cursor:pointer}
+.customer-search-modal[hidden]{display:none!important}
+.customer-search-modal{position:fixed;inset:0;z-index:200;display:grid;place-items:start center;padding:clamp(70px,12vh,140px) 14px 20px}
+.customer-search-backdrop{position:absolute;inset:0;background:rgba(12,22,37,.58)}
+.customer-search-dialog{position:relative;width:min(720px,100%);max-height:min(72vh,720px);overflow:hidden;border-radius:18px;background:#fff;box-shadow:0 24px 80px rgba(0,0,0,.28);display:flex;flex-direction:column}
+.customer-search-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px}
+.customer-search-head h2{margin:0;font-size:21px;color:#173d71}
+.customer-search-close{width:40px;height:40px;min-height:40px!important;border:0;border-radius:50%;background:#eef2f7;color:#334155;font-size:27px;cursor:pointer}
+.customer-search-input-wrap{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:9px;margin:0 20px;border:2px solid #24589f;border-radius:12px;padding:0 13px;background:#fff}
+.customer-search-input-wrap input{width:100%;min-height:50px;border:0;outline:0;background:transparent;font-size:17px;color:#172033}
+.customer-search-help{margin:9px 21px 12px;color:#6b778a;font-size:12px}
+.customer-search-results{overflow:auto;padding:0 12px 16px}
+.customer-search-empty{padding:34px 12px;text-align:center;color:#7a8798}
+.customer-search-result{width:100%;display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:72px;padding:8px;border:0;border-bottom:1px solid #edf0f4;background:#fff;text-align:left;cursor:pointer}
+.customer-search-result:hover,.customer-search-result:focus{background:#f2f7ff;outline:none}
+.customer-search-result img,.customer-search-result .search-result-no-image{width:58px;height:58px;border-radius:9px;object-fit:cover;background:#f1f4f8;display:grid;place-items:center}
+.customer-search-result strong,.customer-search-result small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.customer-search-result strong{font-size:15px;color:#172033}.customer-search-result small{margin-top:4px;color:#6b778a;font-size:12px}
+.customer-search-result em{font-style:normal;font-weight:900;color:#24589f;white-space:nowrap}
+body.search-modal-open{overflow:hidden}
+
+/* 오른쪽/상세 실시간 정보는 반투명 대신 식별하기 쉬운 단색으로 복원 */
+body[data-session-page="customer"] .live-group-total{
+  background:#dcecff!important;
+  border:1px solid #9fc2ee!important;
+  box-shadow:0 5px 16px rgba(36,88,159,.12)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  color:#163e72!important;
+}
+body[data-session-page="customer"] .live-group-total p,
+body[data-session-page="customer"] .live-group-total span{color:#24496f!important}
+body[data-session-page="customer"] .live-group-total strong{color:#0e3d78!important}
+html[data-theme="dark"] body[data-session-page="customer"] .live-group-total{background:#18365c!important;border-color:#38689e!important;color:#fff!important}
+html[data-theme="dark"] body[data-session-page="customer"] .live-group-total p,
+html[data-theme="dark"] body[data-session-page="customer"] .live-group-total span,
+html[data-theme="dark"] body[data-session-page="customer"] .live-group-total strong{color:#fff!important}
+html[data-theme="dark"] .customer-search-dialog,html[data-theme="dark"] .customer-search-result{background:#111d2d;color:#fff}
+html[data-theme="dark"] .customer-search-dialog{background:#111d2d}
+html[data-theme="dark"] .customer-search-head h2,html[data-theme="dark"] .customer-search-result strong{color:#f5f8fc}
+html[data-theme="dark"] .customer-search-input-wrap{background:#0b1422;border-color:#6aa6ef}
+html[data-theme="dark"] .customer-search-input-wrap input{color:#fff}
+html[data-theme="dark"] .customer-search-result{background:#111d2d;border-color:#2b3c52}
+html[data-theme="dark"] .customer-search-result:hover{background:#19304d}
+@media(max-width:767px){
+ .customer-search-modal{padding:0;align-items:end}
+ .customer-search-dialog{width:100%;max-height:88dvh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom)}
+ .customer-search-head{padding-top:14px}
+ .customer-search-result{grid-template-columns:52px minmax(0,1fr) auto}
+ .customer-search-result img,.customer-search-result .search-result-no-image{width:52px;height:52px}
+}
