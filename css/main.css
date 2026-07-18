@@ -808,3 +808,97 @@ html[data-theme="dark"] .price-text{display:inline-block;background:#152238!impo
   55% { transform: scale(1.01); }
   100% { transform: scale(1); }
 }
+
+/* =========================================================
+   V5.0.0 RESPONSIVE FOUNDATION
+   거래처 화면: 모바일 / 태블릿 / 노트북 / 16:9 / 21:9 자동 최적화
+   ========================================================= */
+:root{
+  --customer-page-max:1600px;
+  --customer-content-gap:clamp(12px,1.4vw,24px);
+  --customer-card-radius:clamp(12px,1vw,18px);
+}
+body[data-session-page="customer"]{min-height:100dvh}
+body[data-session-page="customer"] header{padding-inline:max(16px,env(safe-area-inset-left));}
+body[data-session-page="customer"] .container{
+  width:min(calc(100% - 24px),var(--customer-page-max));
+  max-width:var(--customer-page-max);
+  margin:clamp(12px,2vw,28px) auto;
+  padding:0;
+}
+body[data-session-page="customer"] img{max-width:100%}
+body[data-session-page="customer"] button,
+body[data-session-page="customer"] input,
+body[data-session-page="customer"] select,
+body[data-session-page="customer"] textarea{min-height:44px}
+body[data-session-page="customer"] .search{position:sticky;top:8px;z-index:15;background:#fff;box-shadow:0 4px 18px rgba(16,41,72,.10)}
+html[data-theme="dark"] body[data-session-page="customer"] .search{background:#101827!important}
+
+@media (min-width:768px){
+  body[data-session-page="customer"] .customer-top-menu{grid-template-columns:repeat(auto-fit,minmax(180px,260px));justify-content:flex-end}
+  body[data-session-page="customer"] .customer-top-menu .cart-btn{width:auto;min-width:180px}
+  body[data-session-page="customer"] .main-category-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--customer-content-gap)}
+  body[data-session-page="customer"] .catalog-group-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--customer-content-gap)}
+  body[data-session-page="customer"] .category-grid,
+  body[data-session-page="customer"] .gallery-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--customer-content-gap)}
+  body[data-session-page="customer"] .product-order-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (min-width:1100px){
+  body[data-session-page="customer"] header{display:flex;align-items:center;justify-content:center;gap:16px;padding-block:18px}
+  body[data-session-page="customer"] header h1,
+  body[data-session-page="customer"] header p{margin:0}
+  body[data-session-page="customer"] .main-category-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+  body[data-session-page="customer"] .catalog-group-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body[data-session-page="customer"] .category-grid,
+  body[data-session-page="customer"] .gallery-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body[data-session-page="customer"] .catalog-category,
+  body[data-session-page="customer"] .product-card{border-radius:var(--customer-card-radius)}
+  body[data-session-page="customer"] .order-detail-img{max-height:64vh}
+  body[data-session-page="customer"] .customer-settings-shell{max-width:1180px;margin-inline:auto}
+  body[data-session-page="customer"] #orderResult{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+  body[data-session-page="customer"] #orderResult .product-card{margin:0}
+}
+
+@media (min-width:1440px){
+  body[data-session-page="customer"] .main-category-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  body[data-session-page="customer"] .catalog-group-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+  body[data-session-page="customer"] .category-grid,
+  body[data-session-page="customer"] .gallery-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+
+@media (min-width:1900px){
+  :root{--customer-page-max:1780px}
+  body[data-session-page="customer"] .catalog-group-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+
+@media (max-width:767px){
+  body[data-session-page="customer"] header{padding:16px 12px}
+  body[data-session-page="customer"] header h1{font-size:clamp(22px,7vw,30px)}
+  body[data-session-page="customer"] .container{width:min(calc(100% - 20px),720px);margin:10px auto;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  body[data-session-page="customer"] .customer-top-menu{grid-template-columns:1fr 1fr;gap:8px}
+  body[data-session-page="customer"] .cart-btn{min-height:48px;padding:13px 10px}
+  body[data-session-page="customer"] .main-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  body[data-session-page="customer"] .catalog-group-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  body[data-session-page="customer"] .category-grid,
+  body[data-session-page="customer"] .gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  body[data-session-page="customer"] .main-category-card strong{font-size:15px}
+  body[data-session-page="customer"] .catalog-group-card{padding:8px}
+  body[data-session-page="customer"] .catalog-group-card h3{font-size:15px}
+  body[data-session-page="customer"] .category-section-heading,
+  body[data-session-page="customer"] .catalog-category-top{flex-direction:column;gap:8px}
+  body[data-session-page="customer"] .category-section-price{white-space:normal}
+  body[data-session-page="customer"] .order-row{grid-template-columns:1fr;gap:4px}
+  body[data-session-page="customer"] .order-row label{font-size:18px}
+  body[data-session-page="customer"] .qty-control{grid-template-columns:52px minmax(0,1fr) 52px}
+  body[data-session-page="customer"] .cart-item{grid-template-columns:1fr auto;gap:8px}
+  body[data-session-page="customer"] .cart-item>*:nth-child(2){grid-column:1/2}
+  body[data-session-page="customer"] .filter-buttons{margin-inline:-10px;padding-inline:10px;scroll-padding-inline:10px}
+  body[data-session-page="customer"] .admin-preview-banner{flex-direction:column;align-items:stretch}
+}
+
+@media (max-width:380px){
+  body[data-session-page="customer"] .main-category-grid,
+  body[data-session-page="customer"] .catalog-group-grid{grid-template-columns:1fr}
+  body[data-session-page="customer"] .customer-top-menu{grid-template-columns:1fr}
+}

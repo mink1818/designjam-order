@@ -1506,3 +1506,104 @@ html[data-theme="dark"] .barcode-direct-search{background:#1f2b3a!important;bord
 html[data-theme="dark"] .barcode-direct-search small{color:#c7d4e7!important}
 html[data-theme="dark"] .barcode-direct-search textarea{background:#0f1a2b!important;color:#f4f7fb!important;border-color:#526983!important}
 @media(max-width:760px){.barcode-direct-search-row{grid-template-columns:1fr}}
+
+/* =========================================================
+   V5.0.0 RESPONSIVE FOUNDATION
+   관리자 화면: 모든 기능을 모바일 / 태블릿 / PC에서 동일 제공
+   ========================================================= */
+:root{
+  --admin-page-max:1760px;
+  --admin-gap:clamp(12px,1.25vw,24px);
+}
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body[data-session-page="admin"]{min-height:100dvh}
+body[data-session-page="admin"] .container{
+  width:min(calc(100% - 24px),var(--admin-page-max));
+  max-width:var(--admin-page-max);
+  margin:clamp(12px,1.8vw,28px) auto;
+  padding:0;
+}
+body[data-session-page="admin"] button,
+body[data-session-page="admin"] input,
+body[data-session-page="admin"] select,
+body[data-session-page="admin"] textarea{min-height:44px}
+body[data-session-page="admin"] img{max-width:100%}
+body[data-session-page="admin"] table{width:100%;border-collapse:collapse}
+body[data-session-page="admin"] .table-wrap,
+body[data-session-page="admin"] .admin-table-wrap,
+body[data-session-page="admin"] .stats-table-wrap,
+body[data-session-page="admin"] .order-table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+body[data-session-page="admin"] .admin-menu-grid,
+body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--admin-gap)}
+body[data-session-page="admin"] .v3-metric-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--admin-gap)}
+body[data-session-page="admin"] .product-card,
+body[data-session-page="admin"] .order-card,
+body[data-session-page="admin"] .admin-accordion{min-width:0}
+body[data-session-page="admin"] .search{max-width:100%}
+
+@media (min-width:900px){
+  body[data-session-page="admin"] header{display:flex;align-items:center;justify-content:center;gap:18px;padding-block:18px}
+  body[data-session-page="admin"] header h1,
+  body[data-session-page="admin"] header p{margin:0}
+  body[data-session-page="admin"] .dashboard{grid-template-columns:repeat(6,minmax(0,1fr))}
+  body[data-session-page="admin"] .v3-metric-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body[data-session-page="admin"] .product-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body[data-session-page="admin"] .stats-grid,
+  body[data-session-page="admin"] .summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body[data-session-page="admin"] .admin-filter{flex-wrap:wrap}
+  body[data-session-page="admin"] .admin-filter button{flex:0 1 auto;min-width:130px}
+}
+
+@media (min-width:1280px){
+  body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(4,minmax(240px,1fr))}
+  body[data-session-page="admin"] .order-card{padding:20px 24px}
+  body[data-session-page="admin"] .admin-welcome-card{display:flex;align-items:center;justify-content:space-between}
+  body[data-session-page="admin"] .admin-home-toolbar{display:grid;grid-template-columns:minmax(360px,720px) auto;justify-content:space-between}
+  body[data-session-page="admin"] .global-admin-search{max-width:720px}
+  body[data-session-page="admin"] .barcode-workspace,
+  body[data-session-page="admin"] .barcode-layout{grid-template-columns:minmax(340px,.8fr) minmax(560px,1.4fr)}
+}
+
+@media (min-width:1800px){
+  :root{--admin-page-max:1880px}
+  body[data-session-page="admin"] .v3-menu-grid{grid-template-columns:repeat(5,minmax(240px,1fr))}
+}
+
+@media (max-width:899px){
+  body[data-session-page="admin"] header{padding:16px 12px}
+  body[data-session-page="admin"] header h1{font-size:clamp(20px,6.5vw,29px)}
+  body[data-session-page="admin"] .container{width:min(calc(100% - 20px),860px);margin:10px auto;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  body[data-session-page="admin"] .dashboard,
+  body[data-session-page="admin"] .v3-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  body[data-session-page="admin"] .v3-menu-grid,
+  body[data-session-page="admin"] .admin-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  body[data-session-page="admin"] .admin-home-toolbar,
+  body[data-session-page="admin"] .order-top,
+  body[data-session-page="admin"] .v3-section-heading{align-items:stretch;flex-direction:column}
+  body[data-session-page="admin"] .global-admin-search{display:grid;grid-template-columns:minmax(0,1fr) auto;max-width:none}
+  body[data-session-page="admin"] .admin-theme-toggle{width:100%}
+  body[data-session-page="admin"] .admin-filter{overflow-x:auto;flex-wrap:nowrap;padding-bottom:6px}
+  body[data-session-page="admin"] .admin-filter button{flex:0 0 auto;min-width:110px}
+  body[data-session-page="admin"] .order-card{padding:14px;margin:10px 0}
+  body[data-session-page="admin"] .order-detail,
+  body[data-session-page="admin"] .order-item-row{overflow-wrap:anywhere}
+  body[data-session-page="admin"] .barcode-search-toolbar,
+  body[data-session-page="admin"] .barcode-direct-search-row{grid-template-columns:1fr}
+  body[data-session-page="admin"] .barcode-search-toolbar>*{grid-column:auto!important}
+  body[data-session-page="admin"] .product-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (max-width:560px){
+  body[data-session-page="admin"] .v3-menu-grid,
+  body[data-session-page="admin"] .admin-menu-grid{grid-template-columns:1fr}
+  body[data-session-page="admin"] .v3-menu-card{min-height:78px;text-align:left}
+  body[data-session-page="admin"] .dashboard strong{font-size:24px}
+  body[data-session-page="admin"] .global-admin-search{grid-template-columns:1fr}
+  body[data-session-page="admin"] .global-admin-search button{width:100%}
+  body[data-session-page="admin"] .product-summary-grid{grid-template-columns:1fr}
+  body[data-session-page="admin"] .pick-row,
+  body[data-session-page="admin"] .stock-row{align-items:flex-start;gap:8px}
+  body[data-session-page="admin"] .cart-btn{min-height:48px}
+}
