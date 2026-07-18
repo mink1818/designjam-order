@@ -4,21 +4,22 @@
   <meta property="og:description" content="디자인삭스 관리자용 주문·출고 관리 시스템">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/settings.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=390">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=402">
 <title>디자인삭스 주문관리 (관리자)</title><link rel="stylesheet" href="css/admin.css?v=391">
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=390">
-  <link rel="icon" href="icons/admin-192.png?v=390">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=390">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=402">
+  <link rel="icon" href="icons/admin-192.png?v=402">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=402">
 </head><body class="auth-pending" data-session-page="admin" data-pwa-app="admin"><header><h1>⚙️ 환경설정</h1><p>입금계좌와 운영 정보를 관리합니다.</p></header><main class="container"><button class="cart-btn gray-btn" onclick="location.href='admin-home.html'">← 관리자 대시보드</button>
 <section class="product-card account-password-card"><h2>내 비밀번호 변경</h2><p>현재 로그인한 관리자 계정의 비밀번호를 변경합니다.</p><div class="v3-account-form"><label>새 비밀번호<input id="settingsNewPassword" type="password" minlength="8" autocomplete="new-password" placeholder="8자 이상"></label><label>새 비밀번호 확인<input id="settingsNewPasswordConfirm" type="password" minlength="8" autocomplete="new-password" placeholder="한 번 더 입력"></label></div><button class="cart-btn" id="settingsPasswordBtn" type="button">비밀번호 변경</button></section>
 <section class="product-card"><h2>입금계좌 등록</h2><div class="v3-account-form"><label>계좌 별칭<input id="accountLabel" placeholder="예: 국민은행 주계좌"></label><label>은행명<input id="accountBank" placeholder="국민은행"></label><label>계좌번호<input id="accountNumber" placeholder="123-456-789"></label><label>예금주<input id="accountHolder" placeholder="디자인 삭스"></label></div><div class="v3-card-actions"><button class="cart-btn" id="addAccountBtn">계좌 추가</button><button class="cart-btn gray-btn" id="cancelAccountEditBtn" hidden>수정 취소</button></div></section>
-<section class="product-card"><div class="v3-section-heading"><h2>관리자 계정 관리</h2><span>관리자 추가·지정 비밀번호 변경·사용중지</span></div><p class="account-admin-note">관리자 추가와 다른 계정의 비밀번호 변경은 보안을 위해 Supabase Edge Function 배포 후 사용할 수 있습니다.</p><div class="admin-account-grid"><label>관리자 이름<input id="newAdminName" type="text" placeholder="예: 김철수"></label><label>관리자 이메일<input id="newAdminEmail" type="email" autocomplete="off" placeholder="admin@example.com"></label><label>초기 비밀번호<input id="newAdminPassword" type="password" minlength="8" autocomplete="new-password" placeholder="8자리 이상"></label></div><button class="cart-btn" id="createAdminBtn" type="button">관리자 추가</button><div id="adminAccountList" style="margin-top:14px"></div></section><section><div class="v3-section-heading"><h2>등록된 계좌</h2><span>기본 계좌는 새 주문에 자동 표시됩니다.</span></div><div id="accountList"></div></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/settings.js?v=390"></script><script src="js/session-status.js?v=390"></script><script src="js/pwa.js?v=390"></script>
-<script src="js/admin-page-transition.js?v=390"></script>
-<script src="js/version-badge.js?v=401"></script>
+<section class="product-card"><div class="v3-section-heading"><h2>관리자 계정 관리</h2><span>관리자 추가·지정 비밀번호 변경·사용중지</span></div><p class="account-admin-note">관리자 추가와 다른 계정의 비밀번호 변경은 보안을 위해 Supabase Edge Function 배포 후 사용할 수 있습니다.</p><div class="admin-account-grid"><label>관리자 이름<input id="newAdminName" type="text" placeholder="예: 김철수"></label><label>관리자 이메일<input id="newAdminEmail" type="email" autocomplete="off" placeholder="admin@example.com"></label><label>초기 비밀번호<input id="newAdminPassword" type="password" minlength="8" autocomplete="new-password" placeholder="8자리 이상"></label></div><button class="cart-btn" id="createAdminBtn" type="button">관리자 추가</button><div id="adminAccountList" style="margin-top:14px"></div></section><section><div class="v3-section-heading"><h2>등록된 계좌</h2><span>기본 계좌는 새 주문에 자동 표시됩니다.</span></div><div id="accountList"></div></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/settings.js?v=402"></script><script src="js/session-status.js?v=402"></script><script src="js/pwa.js?v=402"></script>
+<script src="js/admin-page-transition.js?v=402"></script>
+<script src="js/version-badge.js?v=402"></script>
 <script src="js/back-navigation.js?v=391"></script>
 <script src="js/admin-accordions.js?v=391"></script>
+<script src="js/ui-preferences.js?v=402"></script>
 </body></html>

@@ -1,1 +1,76 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>디자인삭스 거래처 환경설정</title><link rel="stylesheet" href="css/main.css?v=390"><meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=390"><link rel="icon" href="icons/customer-192.png?v=390"></head><body class="auth-pending" data-session-page="customer" data-pwa-app="customer"><header><h1>⚙️ 환경설정</h1><p>거래처 계정 설정</p></header><main class="container"><button class="cart-btn gray-btn" type="button" onclick="location.href='index.html'">← 상품 주문으로 돌아가기</button><section class="product-card account-password-card"><h2>비밀번호 변경</h2><p>현재 로그인한 거래처 계정의 비밀번호를 변경합니다.</p><label>새 비밀번호<input id="customerNewPassword" type="password" minlength="8" autocomplete="new-password" placeholder="8자 이상"></label><label>새 비밀번호 확인<input id="customerNewPasswordConfirm" type="password" minlength="8" autocomplete="new-password" placeholder="한 번 더 입력"></label><button class="cart-btn" id="customerPasswordBtn" type="button">비밀번호 변경</button><p id="customerPasswordMessage"></p></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/customer-settings.js?v=390"></script><script src="js/session-status.js?v=390"></script><script src="js/pwa.js?v=390"></script><script src="js/version-badge.js?v=401"></script><script src="js/back-navigation.js?v=390"></script></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>디자인삭스 거래처 환경설정</title>
+<link rel="stylesheet" href="css/main.css?v=402">
+<meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=402"><link rel="icon" href="icons/customer-192.png?v=402">
+</head>
+<body class="auth-pending" data-session-page="customer" data-pwa-app="customer">
+<header><h1>⚙️ 환경설정</h1><p>거래처 계정과 화면 설정</p></header>
+<main class="container customer-settings-page">
+<button class="cart-btn gray-btn" type="button" onclick="location.href='index.html'">← 상품 주문으로 돌아가기</button>
+<div class="settings-top-actions"><button id="expandAllSettings" type="button">모두 펼치기</button><button id="collapseAllSettings" type="button">모두 접기</button></div>
+
+<section class="customer-settings-summary">
+  <div><span>화면 모드</span><strong id="currentThemeLabel">라이트</strong></div>
+  <div><span>글자 크기</span><strong id="currentFontLabel">보통</strong></div>
+  <div><span>자동 로그인</span><strong id="currentAutoLoginLabel">사용</strong></div>
+</section>
+
+<div class="customer-accordion-stack">
+<details class="customer-accordion" open>
+ <summary><span>📋</span><b>주문 편의 기능</b><small>주문내역·재주문·엑셀</small><i>⌄</i></summary>
+ <div class="customer-accordion-body">
+  <div class="setting-action-grid">
+   <button type="button" onclick="location.href='order.html'"><b>내 주문내역</b><span>진행 중·출고완료 주문 확인</span></button>
+   <button type="button" onclick="location.href='order.html#recent-reorder'"><b>최근 주문 다시 담기</b><span>주문내역에서 한 번에 장바구니 복원</span></button>
+   <button type="button" onclick="location.href='order.html#download-orders'"><b>주문내역 엑셀 다운로드</b><span>주문내역 화면에서 전체 CSV 저장</span></button>
+  </div>
+ </div>
+</details>
+
+<details class="customer-accordion">
+ <summary><span>⭐</span><b>내 상품 바로가기</b><small>즐겨찾기·최근 본 상품</small><i>⌄</i></summary>
+ <div class="customer-accordion-body">
+  <div class="setting-action-grid">
+   <button type="button" onclick="location.href='catalog.html?view=favorites'"><b>즐겨찾기 상품</b><span>별표로 저장한 대분류와 상품 확인</span></button>
+   <button type="button" id="recentViewedBtn"><b>최근 본 상품</b><span id="recentViewedSummary">최근 본 품번을 확인합니다</span></button>
+  </div>
+  <div id="recentViewedList" class="recent-viewed-list" hidden></div>
+ </div>
+</details>
+
+<details class="customer-accordion">
+ <summary><span>🌓</span><b>화면 설정</b><small>라이트·다크·글자 크기</small><i>⌄</i></summary>
+ <div class="customer-accordion-body">
+  <fieldset class="setting-fieldset"><legend>화면 모드</legend>
+   <label><input type="radio" name="themeMode" value="light"> 라이트</label>
+   <label><input type="radio" name="themeMode" value="dark"> 다크</label>
+   <label><input type="radio" name="themeMode" value="system"> 기기 설정</label>
+  </fieldset>
+  <fieldset class="setting-fieldset"><legend>글자 크기</legend>
+   <label><input type="radio" name="fontSize" value="normal"> 보통</label>
+   <label><input type="radio" name="fontSize" value="large"> 크게</label>
+   <label><input type="radio" name="fontSize" value="xlarge"> 매우 크게</label>
+  </fieldset>
+ </div>
+</details>
+
+<details class="customer-accordion">
+ <summary><span>🔐</span><b>로그인 설정</b><small>자동 로그인·비밀번호</small><i>⌄</i></summary>
+ <div class="customer-accordion-body">
+  <label class="toggle-setting"><span><b>자동 로그인</b><small>다음 방문 때 로그인 상태를 유지합니다.</small></span><input id="autoLoginToggle" type="checkbox"></label>
+  <div class="password-change-box"><h3>비밀번호 변경</h3><label>새 비밀번호<input id="customerNewPassword" type="password" minlength="8" autocomplete="new-password" placeholder="8자 이상"></label><label>새 비밀번호 확인<input id="customerNewPasswordConfirm" type="password" minlength="8" autocomplete="new-password" placeholder="한 번 더 입력"></label><button class="cart-btn" id="customerPasswordBtn" type="button">비밀번호 변경</button><p id="customerPasswordMessage"></p></div>
+ </div>
+</details>
+
+<details class="customer-accordion">
+ <summary><span>ℹ️</span><b>앱 정보</b><small>버전과 이용 안내</small><i>⌄</i></summary>
+ <div class="customer-accordion-body"><div class="app-info-box"><b>디자인삭스 주문관리</b><span>거래처용 주문·조회 시스템</span><span>Version V4.0.2</span></div></div>
+</details>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/ui-preferences.js?v=402"></script><script src="js/customer-settings.js?v=402"></script><script src="js/session-status.js?v=402"></script><script src="js/pwa.js?v=402"></script><script src="js/version-badge.js?v=402"></script><script src="js/back-navigation.js?v=402"></script>
+</body></html>

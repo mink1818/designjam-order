@@ -59,3 +59,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('markAllReadBtn')?.addEventListener('click',markAllRead);
   await loadDashboard();
 });
+
+function runAdminGlobalSearch(){const q=document.getElementById('adminGlobalSearch')?.value.trim();if(!q)return;location.href=`admin.html?view=orders&search=${encodeURIComponent(q)}`;}
+document.getElementById('adminGlobalSearchBtn')?.addEventListener('click',runAdminGlobalSearch);document.getElementById('adminGlobalSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')runAdminGlobalSearch();});
+function syncAdminThemeButton(){const b=document.getElementById('adminThemeToggle');if(!b)return;const dark=document.documentElement.dataset.theme==='dark';b.textContent=dark?'☀️ 라이트':'🌙 다크';}
+document.getElementById('adminThemeToggle')?.addEventListener('click',()=>{DesignJamPreferences.setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');syncAdminThemeButton();});syncAdminThemeButton();

@@ -1,0 +1,7 @@
+(function(){
+const THEME_KEY='designjam_theme_mode',FONT_KEY='designjam_font_size';
+function resolvedTheme(mode){return mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;}
+function apply(){const mode=localStorage.getItem(THEME_KEY)||'light';const font=localStorage.getItem(FONT_KEY)||'normal';document.documentElement.dataset.theme=resolvedTheme(mode);document.documentElement.dataset.themeMode=mode;document.documentElement.dataset.fontSize=font;}
+window.DesignJamPreferences={apply,setTheme(v){localStorage.setItem(THEME_KEY,v);apply();},setFont(v){localStorage.setItem(FONT_KEY,v);apply();},getTheme(){return localStorage.getItem(THEME_KEY)||'light';},getFont(){return localStorage.getItem(FONT_KEY)||'normal';}};
+apply();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if((localStorage.getItem(THEME_KEY)||'light')==='system')apply();});
+})();

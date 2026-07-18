@@ -272,3 +272,7 @@ function copyOrderToCart(orderNumber){
 }
 
 window.toggleOrderDetail = toggleOrderDetail;
+
+function downloadOrderCsv(){if(!myOrderGroups.length){alert('저장할 주문내역이 없습니다.');return;}const rows=[['주문일','주문번호','상태','품번','수량(죽)','단가','금액','택배사','송장번호']];myOrderGroups.forEach(g=>g.items.forEach(i=>rows.push([formatDate(g.createdAt),g.orderNumber,g.status||'',i.item_number,i.qty,i.price,Number(i.price||0)*Number(i.qty||0)*10,g.courier||'',g.trackingNumber||''])));const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`디자인삭스_주문내역_${new Date().toISOString().slice(0,10)}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+document.getElementById('downloadOrdersBtn')?.addEventListener('click',downloadOrderCsv);
+window.copyOrderToCart=copyOrderToCart;
