@@ -13,21 +13,21 @@
   <meta property="og:description" content="디자인삭스 관리자용 주문·출고 관리 시스템">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/products.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=402">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4022">
 <title>디자인삭스 주문관리 (관리자)</title>
 
-  <link rel="stylesheet" href="css/admin.css?v=402">
+  <link rel="stylesheet" href="css/admin.css?v=4022">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=402">
-  <link rel="icon" href="icons/admin-192.png?v=402">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=402">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=4022">
+  <link rel="icon" href="icons/admin-192.png?v=4022">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=4022">
 </head>
 
-<body class="auth-pending" data-app-version="4.0.1" data-session-page="admin" data-pwa-app="admin">
+<body class="auth-pending" data-app-version="4.0.2" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
@@ -62,6 +62,7 @@
     <article><span>카테고리</span><strong id="categoryCount">0</strong></article>
     <article><span>상품 묶음</span><strong id="groupCount">0</strong></article>
     <article><span>표시 중</span><strong id="activeGroupCount">0</strong></article>
+    <article><span>총 품번</span><strong id="itemNumberCount">0</strong></article>
   </section>
 
   <!-- 대분류 등록·수정 영역 -->
@@ -657,9 +658,9 @@ class="order-input">
     <div class="barcode-panel-head">
       <div>
         <h2>🖨 바코드관리</h2>
-        <p class="admin-help-text">엑셀 또는 ERP 상품 품번을 자동 분리·중복 제거·오류 검사한 뒤 60×35mm Code128 라벨을 A4 3×7로 생성합니다.</p>
+        <p class="admin-help-text">엑셀 또는 ERP 상품 품번을 자동 분리·중복 제거·오류 검사한 뒤 선택한 크기의 Code128 라벨 PDF를 생성합니다.</p>
       </div>
-      <span class="barcode-spec-badge">60×35mm · Code128 · A4 3×7</span>
+      <span id="barcodeSpecBadge" class="barcode-spec-badge">60×35mm · Code128 · A4 3×7</span>
     </div>
 
     <div class="barcode-source-grid">
@@ -675,8 +676,21 @@ class="order-input">
       </div>
     </div>
 
+    <section class="barcode-size-selector" aria-label="바코드 라벨 크기 선택">
+      <div>
+        <strong>출력 크기</strong>
+        <span>선택한 크기에 맞춰 미리보기·바코드·글자·A4 배치가 자동 조정됩니다.</span>
+      </div>
+      <div class="barcode-size-options">
+        <label><input type="radio" name="barcodeLabelSize" value="60x35" checked> <b>60×35mm</b><small>A4 3×7 · 기본</small></label>
+        <label><input type="radio" name="barcodeLabelSize" value="45x25"> <b>45×25mm</b><small>A4 4×10 · 소형</small></label>
+        <label><input type="radio" name="barcodeLabelSize" value="80x50"> <b>80×50mm</b><small>A4 2×5 · 대형</small></label>
+      </div>
+    </section>
+
     <div class="barcode-toolbar">
-      <input id="barcodeSearch" class="order-input" type="search" placeholder="품번 검색 후 바로 선택">
+      <input id="barcodeSearch" class="order-input" type="search" placeholder="품번 입력 후 Enter · 여러 품번은 쉼표/줄바꿈으로 입력">
+      <button id="barcodeSearchAddButton" class="cart-btn" type="button">ERP 검색·선택</button>
       <button id="barcodeSelectVisibleButton" class="cart-btn gray-btn" type="button">검색결과 전체 선택</button>
       <button id="barcodeClearSelectionButton" class="cart-btn gray-btn" type="button">선택 해제</button>
       <label class="barcode-copy-field">출력 매수
@@ -684,7 +698,13 @@ class="order-input">
       </label>
     </div>
 
-    <div id="barcodeValidationSummary" class="barcode-validation-summary">품번을 불러오면 자동 검사 결과가 표시됩니다.</div>
+    <div class="barcode-search-options">
+      <label><input id="barcodeEnterPrintToggle" type="checkbox"> Enter 입력 시 현재 품번 바로 인쇄</label>
+      <span>ERP에 등록된 품번을 찾아 사진·묶음명·가격을 확인하고 바로 선택할 수 있습니다.</span>
+    </div>
+    <div id="barcodeQuickResult" class="barcode-quick-result" hidden></div>
+
+    <div id="barcodeValidationSummary" class="barcode-validation-summary">품번을 불러오거나 검색하면 자동 검사 결과가 표시됩니다.</div>
 
     <div class="barcode-workspace">
       <div>
@@ -692,7 +712,7 @@ class="order-input">
         <div id="barcodeItemList" class="barcode-item-list"><p>엑셀을 선택하거나 ERP 품번을 불러오세요.</p></div>
       </div>
       <div>
-        <div class="barcode-list-head"><strong>ERP/PDF 공통 라벨 미리보기</strong><span>실제 비율 60×35mm</span></div>
+        <div class="barcode-list-head"><strong>ERP/PDF 공통 라벨 미리보기</strong><span id="barcodePreviewSpec">실제 비율 60×35mm</span></div>
         <div id="barcodeLabelPreview" class="barcode-label-preview">
           <div class="barcode-label-card">
             <strong class="barcode-label-number">4008A</strong>
@@ -770,18 +790,18 @@ class="order-input">
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
-<script src="js/operations-core.js?v=402"></script>
-<script src="js/products.js?v=400"></script>
-<script src="js/barcode-manager.js?v=402"></script>
+<script src="js/operations-core.js?v=4022"></script>
+<script src="js/products.js?v=4022"></script>
+<script src="js/barcode-manager.js?v=4022"></script>
 
-<script src="js/group-manager.js?v=402"></script>
+<script src="js/group-manager.js?v=4022"></script>
 
-<script src="js/session-status.js?v=402"></script>
-<script src="js/pwa.js?v=402"></script>
-<script src="js/admin-page-transition.js?v=402"></script>
-<script src="js/version-badge.js?v=402"></script>
+<script src="js/session-status.js?v=4022"></script>
+<script src="js/pwa.js?v=4022"></script>
+<script src="js/admin-page-transition.js?v=4022"></script>
+<script src="js/version-badge.js?v=4022"></script>
 <script src="js/back-navigation.js?v=391"></script>
 <script src="js/admin-accordions.js?v=391"></script>
-<script src="js/ui-preferences.js?v=402"></script>
+<script src="js/ui-preferences.js?v=4022"></script>
 </body>
 </html>

@@ -2029,7 +2029,12 @@ function updateProductSummary() {
     mainCategoryCount: allMainCategories.length,
     categoryCount: allCategories.length,
     groupCount: allGroups.length,
-    activeGroupCount: allGroups.filter(group => group.is_active !== false).length
+    activeGroupCount: allGroups.filter(group => group.is_active !== false).length,
+    itemNumberCount: new Set(
+      allGroups.flatMap(group => Array.isArray(group.item_numbers) ? group.item_numbers : [])
+        .map(value => String(value || "").trim().toUpperCase())
+        .filter(Boolean)
+    ).size
   };
 
   Object.entries(summaryValues).forEach(([id, value]) => {

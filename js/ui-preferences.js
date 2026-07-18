@@ -1,7 +1,7 @@
 (function(){
 const THEME_KEY='designjam_theme_mode',FONT_KEY='designjam_font_size';
 function resolvedTheme(mode){return mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;}
-function apply(){const mode=localStorage.getItem(THEME_KEY)||'light';const font=localStorage.getItem(FONT_KEY)||'normal';document.documentElement.dataset.theme=resolvedTheme(mode);document.documentElement.dataset.themeMode=mode;document.documentElement.dataset.fontSize=font;}
+function apply(){const mode=localStorage.getItem(THEME_KEY)||'light';const font=localStorage.getItem(FONT_KEY)||'normal';const resolved=resolvedTheme(mode);document.documentElement.dataset.theme=resolved;document.documentElement.dataset.themeMode=mode;document.documentElement.dataset.fontSize=font;document.documentElement.style.setProperty('--dj-font-scale',font==='xlarge'?'1.22':font==='large'?'1.1':'1');document.body?.classList.toggle('theme-dark',resolved==='dark');window.dispatchEvent(new CustomEvent('designjam-preferences-changed',{detail:{theme:resolved,font}}));}
 window.DesignJamPreferences={apply,setTheme(v){localStorage.setItem(THEME_KEY,v);apply();},setFont(v){localStorage.setItem(FONT_KEY,v);apply();},getTheme(){return localStorage.getItem(THEME_KEY)||'light';},getFont(){return localStorage.getItem(FONT_KEY)||'normal';}};
-apply();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if((localStorage.getItem(THEME_KEY)||'light')==='system')apply();});
+apply();document.addEventListener('DOMContentLoaded',apply);matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if((localStorage.getItem(THEME_KEY)||'light')==='system')apply();});
 })();

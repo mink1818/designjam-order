@@ -44,6 +44,15 @@ let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
 let favoriteMainCategoryIds = new Set();
+
+const ITEM_FAVORITES_KEY='designjam_item_favorites';
+function readItemFavorites(){try{return new Set(JSON.parse(localStorage.getItem(ITEM_FAVORITES_KEY)||'[]').map(String));}catch(_){return new Set();}}
+function saveItemFavorites(set){localStorage.setItem(ITEM_FAVORITES_KEY,JSON.stringify([...set]));window.dispatchEvent(new Event('designjam-item-favorites-changed'));}
+function isItemFavorite(number){return readItemFavorites().has(String(number));}
+function toggleItemFavorite(event,number){event?.stopPropagation();const set=readItemFavorites(),key=String(number);set.has(key)?set.delete(key):set.add(key);saveItemFavorites(set);const groupId=Number(document.getElementById('currentGroupId')?.value);if(groupId)openGroup(groupId);}
+function rememberViewedGroup(group){const rows=JSON.parse(localStorage.getItem('designjam_recent_viewed')||'[]');const now=new Date().toISOString();const next=[...(group.item_numbers||[]).map(number=>({number:String(number),title:group.title||'상품',image_url:group.image_url||'',viewed_at:now})),...rows];const seen=new Set();localStorage.setItem('designjam_recent_viewed',JSON.stringify(next.filter(x=>{const k=String(x.number);if(seen.has(k))return false;seen.add(k);return true}).slice(0,50)));}
+window.toggleItemFavorite=toggleItemFavorite;
+
 let frequentGroups = [];
 let frequentProductsExpanded = false;
 let customerBankSettings = { bankName:"", account:"", holder:"" };
@@ -749,6 +758,8 @@ function openGroup(groupId) {
 
   if (!group) return;
 
+  rememberViewedGroup(group);
+
   const category = categories.find(
     item => Number(item.id) === Number(group.category_id)
   );
@@ -773,7 +784,9 @@ function openGroup(groupId) {
           isSoldout ? "soldout-order-row" : ""
         }">
           <label>
-            ${escapeHtml(numberText)}
+            <span class="favorite-item-number">${escapeHtml(numberText)}
+              <button type="button" class="item-favorite-btn ${isItemFavorite(numberText)?'active':''}" onclick="toggleItemFavorite(event,'${escapeJsString(numberText)}')" aria-label="품번 즐겨찾기">★</button>
+            </span>
             ${isSoldout ? '<span class="soldout-label">품절</span>' : ""}
           </label>
 

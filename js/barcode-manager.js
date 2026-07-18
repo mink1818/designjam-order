@@ -2,15 +2,23 @@
 (function initializeBarcodeManager(window, document) {
   "use strict";
 
-  const LABEL = Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297 });
-  const state = { items: [], selected: new Set(), active: "4008A", groups: [] };
+  const LABELS = Object.freeze({
+    "60x35": Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297, font: [25, 21, 16], textY: 7.2, barcodeX: 5, barcodeY: 12.5, barcodeW: 50, barcodeH: 17.5, jsWidth: 2.4, jsHeight: 120, label: "60×35mm · Code128 · A4 3×7" }),
+    "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 4, barcodeY: 9.2, barcodeW: 37, barcodeH: 12.2, jsWidth: 2.0, jsHeight: 96, label: "45×25mm · Code128 · A4 4×10" }),
+    "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 7, barcodeY: 18, barcodeW: 66, barcodeH: 25, jsWidth: 2.8, jsHeight: 145, label: "80×50mm · Code128 · A4 2×5" })
+  });
+  const SIZE_STORAGE_KEY = "designjam_barcode_label_size";
+  const savedSize = localStorage.getItem(SIZE_STORAGE_KEY);
+  const state = { items: [], selected: new Set(), active: "4008A", groups: [], size: LABELS[savedSize] ? savedSize : "60x35" };
   const $ = id => document.getElementById(id);
   const elements = {
     excel: $("barcodeExcelFile"), erp: $("barcodeLoadErpButton"), search: $("barcodeSearch"), list: $("barcodeItemList"),
     summary: $("barcodeValidationSummary"), selectedCount: $("barcodeSelectedCount"), preview: $("barcodeLabelPreview"),
     copies: $("barcodeCopyCount"), message: $("barcodeMessage"), selectVisible: $("barcodeSelectVisibleButton"),
     clear: $("barcodeClearSelectionButton"), pdf: $("barcodeGeneratePdfButton"), print: $("barcodePrintButton"),
-    one: $("barcodePrintOneButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button")
+    one: $("barcodePrintOneButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
+    searchAdd: $("barcodeSearchAddButton"), quickResult: $("barcodeQuickResult"), enterPrint: $("barcodeEnterPrintToggle"),
+    specBadge: $("barcodeSpecBadge"), previewSpec: $("barcodePreviewSpec"), sizeInputs: [...document.querySelectorAll('input[name="barcodeLabelSize"]')]
   };
   if (!elements.list) return;
 
@@ -74,6 +82,80 @@
     renderList(); renderPreview();
   }
 
+
+  function getCategory(group) {
+    return (window.__designjamBarcodeCategories || []).find(category => String(category.id) === String(group?.category_id)) || null;
+  }
+
+  function makeErpIndex() {
+    const map = new Map();
+    state.groups.forEach(group => {
+      (Array.isArray(group.item_numbers) ? group.item_numbers : []).forEach(raw => {
+        const item = normalize(raw);
+        if (item && !map.has(item)) map.set(item, group);
+      });
+    });
+    return map;
+  }
+
+  function groupImage(group) {
+    return group?.image_url || (Array.isArray(group?.image_urls) ? group.image_urls.find(Boolean) : "") || "";
+  }
+
+  function groupPrice(group, category) {
+    const value = Number(group?.price ?? group?.unit_price ?? category?.price ?? 0);
+    return Number.isFinite(value) && value > 0 ? `${value.toLocaleString()}원` : "가격 미등록";
+  }
+
+  function renderQuickResult(rows, missing) {
+    if (!elements.quickResult) return;
+    elements.quickResult.hidden = false;
+    const cards = rows.map(({ item, group }) => {
+      const category = getCategory(group);
+      const image = groupImage(group);
+      return `<article class="barcode-result-card" data-item="${escapeHtml(item)}">
+        ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item)} 상품사진">` : '<div class="barcode-result-noimage">사진 없음</div>'}
+        <div class="barcode-result-info">
+          <strong>${escapeHtml(item)}</strong>
+          <span>${escapeHtml(group?.title || "상품 묶음 미지정")}</span>
+          <small>${escapeHtml(category?.name || "카테고리 미지정")} · ${escapeHtml(groupPrice(group, category))}</small>
+        </div>
+        <div class="barcode-result-actions">
+          <button type="button" class="cart-btn barcode-result-select" data-item="${escapeHtml(item)}">선택</button>
+          <button type="button" class="cart-btn gray-btn barcode-result-preview" data-item="${escapeHtml(item)}">미리보기</button>
+          <button type="button" class="cart-btn gray-btn barcode-result-print" data-item="${escapeHtml(item)}">즉시 인쇄</button>
+        </div>
+      </article>`;
+    }).join("");
+    const missingHtml = missing.length ? `<p class="barcode-search-missing">ERP 미등록: ${missing.map(escapeHtml).join(", ")}</p>` : "";
+    elements.quickResult.innerHTML = `<div class="barcode-quick-head"><strong>ERP 품번 검색 결과</strong><span>${rows.length}개 확인</span></div>${cards || '<p>일치하는 ERP 품번이 없습니다.</p>'}${missingHtml}`;
+  }
+
+  function searchAndSelect({ printOnEnter = false } = {}) {
+    const raw = elements.search?.value || "";
+    let requested = [];
+    try { requested = parseItemPattern(raw); }
+    catch (error) { elements.message.innerHTML = `<p class="auth-error">${escapeHtml(error.message)}</p>`; return; }
+    if (!requested.length) { elements.message.innerHTML = '<p class="auth-error">검색할 품번을 입력해주세요.</p>'; return; }
+    const index = makeErpIndex();
+    const rows = [], missing = [];
+    requested.map(normalize).forEach(item => {
+      const group = index.get(item);
+      if (group) rows.push({ item, group }); else missing.push(item);
+    });
+    renderQuickResult(rows, missing);
+    if (rows.length) {
+      const current = new Set(state.items);
+      rows.forEach(({ item }) => { current.add(item); state.selected.add(item); });
+      state.items = [...current].sort((a,b) => a.localeCompare(b, "ko", { numeric:true }));
+      state.active = rows[0].item;
+      elements.summary.className = `barcode-validation-summary ${missing.length ? "warning" : "success"}`;
+      elements.summary.innerHTML = `<b>ERP 품번 검색</b> · 요청 ${requested.length}개 · 확인 ${rows.length}개${missing.length ? ` · 미등록 ${missing.length}개` : ""} · 현재 선택 ${state.selected.size}개`;
+      renderList(); renderPreview();
+      if (printOnEnter && elements.enterPrint?.checked && rows.length === 1) generatePdf(false, true);
+    }
+  }
+
   function visibleItems() {
     const keyword = normalize(elements.search.value);
     return state.items.filter(item => !keyword || item.includes(keyword));
@@ -86,10 +168,32 @@
     elements.list.innerHTML = visible.map(item => `<label class="barcode-item-row"><input type="checkbox" value="${escapeHtml(item)}" ${state.selected.has(item) ? "checked" : ""}><strong>${escapeHtml(item)}</strong><button class="barcode-preview-button" type="button" data-item="${escapeHtml(item)}">미리보기</button></label>`).join("");
   }
 
+  function currentLabel() {
+    return LABELS[state.size] || LABELS["60x35"];
+  }
+
+  function applyLabelSize(sizeKey, persist = true) {
+    if (!LABELS[sizeKey]) return;
+    state.size = sizeKey;
+    if (persist) localStorage.setItem(SIZE_STORAGE_KEY, sizeKey);
+    elements.sizeInputs.forEach(input => { input.checked = input.value === sizeKey; });
+    const label = currentLabel();
+    if (elements.specBadge) elements.specBadge.textContent = label.label;
+    if (elements.previewSpec) elements.previewSpec.textContent = `실제 비율 ${label.width}×${label.height}mm`;
+    if (elements.preview) {
+      elements.preview.dataset.labelSize = sizeKey;
+      elements.preview.style.setProperty("--barcode-label-ratio", `${label.width} / ${label.height}`);
+    }
+    renderPreview();
+  }
+
   function renderPreview() {
     elements.preview.innerHTML = `<div class="barcode-label-card"><strong class="barcode-label-number">${escapeHtml(state.active)}</strong><svg class="barcode-label-svg" aria-label="${escapeHtml(state.active)} 바코드"></svg></div>`;
     const svg = elements.preview.querySelector("svg");
-    try { window.JsBarcode(svg, state.active, { format: "CODE128", displayValue: false, margin: 0, width: 1.8, height: 66 }); }
+    const label = currentLabel();
+    const previewHeight = state.size === "45x25" ? 52 : state.size === "80x50" ? 82 : 66;
+    const previewWidth = state.size === "45x25" ? 1.55 : state.size === "80x50" ? 2.05 : 1.8;
+    try { window.JsBarcode(svg, state.active, { format: "CODE128", displayValue: false, margin: 0, width: previewWidth, height: previewHeight }); }
     catch (error) { elements.message.innerHTML = `<p class="auth-error">바코드 미리보기 실패: ${escapeHtml(error.message)}</p>`; }
   }
 
@@ -112,9 +216,9 @@
     setItems(values, "ERP 등록상품");
   }
 
-  function buildCanvas(item) {
+  function buildCanvas(item, label = currentLabel()) {
     const canvas = document.createElement("canvas");
-    window.JsBarcode(canvas, item, { format: "CODE128", displayValue: false, margin: 0, width: 2.4, height: 120, background: "#ffffff", lineColor: "#000000" });
+    window.JsBarcode(canvas, item, { format: "CODE128", displayValue: false, margin: 0, width: label.jsWidth, height: label.jsHeight, background: "#ffffff", lineColor: "#000000" });
     return canvas;
   }
 
@@ -128,17 +232,19 @@
     if (!items.length) throw new Error("출력할 품번을 선택해주세요.");
     const jsPDF = window.jspdf?.jsPDF; if (!jsPDF) throw new Error("PDF 라이브러리를 불러오지 못했습니다.");
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
-    const gridWidth = LABEL.width * LABEL.columns, gridHeight = LABEL.height * LABEL.rows;
-    const startX = (LABEL.pageWidth - gridWidth) / 2, startY = (LABEL.pageHeight - gridHeight) / 2;
+    const label = currentLabel();
+    const perPage = label.columns * label.rows;
+    const gridWidth = label.width * label.columns, gridHeight = label.height * label.rows;
+    const startX = (label.pageWidth - gridWidth) / 2, startY = (label.pageHeight - gridHeight) / 2;
     items.forEach((item, index) => {
-      if (index && index % 21 === 0) pdf.addPage();
-      const slot = index % 21, col = slot % 3, row = Math.floor(slot / 3), x = startX + col * LABEL.width, y = startY + row * LABEL.height;
+      if (index && index % perPage === 0) pdf.addPage();
+      const slot = index % perPage, col = slot % label.columns, row = Math.floor(slot / label.columns), x = startX + col * label.width, y = startY + row * label.height;
       pdf.setTextColor(0); pdf.setFont("helvetica", "bold");
-      let fontSize = item.length <= 6 ? 25 : item.length <= 10 ? 21 : 16; pdf.setFontSize(fontSize);
-      pdf.text(item, x + LABEL.width / 2, y + 7.2, { align: "center", baseline: "middle", maxWidth: 54 });
-      const canvas = buildCanvas(item); const image = canvas.toDataURL("image/png");
-      // 품번과 바코드가 겹치지 않도록 상단 간격을 확보하고 좌우 폭을 조금 줄인다.
-      pdf.addImage(image, "PNG", x + 5, y + 12.5, 50, 17.5, undefined, "FAST");
+      const fontSize = item.length <= 6 ? label.font[0] : item.length <= 10 ? label.font[1] : label.font[2];
+      pdf.setFontSize(fontSize);
+      pdf.text(item, x + label.width / 2, y + label.textY, { align: "center", baseline: "middle", maxWidth: label.width - 8 });
+      const canvas = buildCanvas(item, label); const image = canvas.toDataURL("image/png");
+      pdf.addImage(image, "PNG", x + label.barcodeX, y + label.barcodeY, label.barcodeW, label.barcodeH, undefined, "FAST");
     });
     return pdf;
   }
@@ -154,6 +260,15 @@
   elements.excel?.addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; elements.message.innerHTML = "<p>엑셀 품번을 읽는 중...</p>"; try { setItems(await readExcel(file), file.name); } catch (error) { elements.message.innerHTML = `<p class="auth-error">엑셀 읽기 실패: ${escapeHtml(error.message)}</p>`; } });
   elements.erp?.addEventListener("click", loadErp);
   elements.search?.addEventListener("input", renderList);
+  elements.search?.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); searchAndSelect({ printOnEnter: true }); } });
+  elements.searchAdd?.addEventListener("click", () => searchAndSelect());
+  elements.quickResult?.addEventListener("click", event => {
+    const button = event.target.closest("button[data-item]"); if (!button) return;
+    const item = normalize(button.dataset.item); if (!item) return;
+    state.active = item; state.selected.add(item); if (!state.items.includes(item)) state.items.push(item);
+    renderList(); renderPreview();
+    if (button.classList.contains("barcode-result-print")) generatePdf(false, true);
+  });
   elements.list.addEventListener("change", event => { const box = event.target.closest('input[type="checkbox"]'); if (!box) return; box.checked ? state.selected.add(box.value) : state.selected.delete(box.value); elements.selectedCount.textContent = `${state.selected.size.toLocaleString()}개 선택`; });
   elements.list.addEventListener("click", event => { const button = event.target.closest(".barcode-preview-button"); if (!button) return; event.preventDefault(); state.active = button.dataset.item; renderPreview(); });
   elements.selectVisible?.addEventListener("click", () => { visibleItems().forEach(item => state.selected.add(item)); renderList(); });
@@ -162,6 +277,10 @@
   elements.print?.addEventListener("click", () => generatePdf(false));
   elements.one?.addEventListener("click", () => generatePdf(false, true));
   [[elements.p10,10],[elements.p50,50],[elements.p100,100]].forEach(([button,count]) => button?.addEventListener("click", () => { elements.copies.value = count; state.selected = new Set([state.active]); renderList(); generatePdf(false); }));
-  window.addEventListener("designjam:products-loaded", event => { state.groups = Array.isArray(event.detail?.groups) ? event.detail.groups : []; });
-  renderPreview();
+  elements.sizeInputs.forEach(input => input.addEventListener("change", () => applyLabelSize(input.value)));
+  window.addEventListener("designjam:products-loaded", event => {
+    state.groups = Array.isArray(event.detail?.groups) ? event.detail.groups : [];
+    window.__designjamBarcodeCategories = Array.isArray(event.detail?.categories) ? event.detail.categories : [];
+  });
+  applyLabelSize(state.size, false);
 })(window, document);
