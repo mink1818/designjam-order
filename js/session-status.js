@@ -49,8 +49,8 @@
     const style = document.createElement("style");
     style.id = "designjamSessionStatusStyles";
     style.textContent = `
-      #designjamSessionStatus.session-status{position:fixed!important;top:10px!important;right:10px!important;left:auto!important;z-index:2147483647!important;display:flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;gap:8px!important;max-width:calc(100vw - 20px)!important;padding:8px 9px 8px 11px!important;border:1px solid rgba(255,255,255,.35)!important;border-radius:14px!important;background:#172b4d!important;color:#fff!important;box-shadow:0 8px 24px rgba(0,0,0,.25)!important;font-family:Arial,sans-serif!important;transform:none!important}
-      #designjamSessionStatus.session-status-customer{background:#24589f!important}
+      #designjamSessionStatus.session-status{position:fixed!important;top:10px!important;right:10px!important;left:auto!important;z-index:2147483647!important;display:flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;gap:8px!important;max-width:calc(100vw - 20px)!important;padding:8px 9px 8px 11px!important;border:1px solid rgba(255,255,255,.35)!important;border-radius:14px!important;background:rgba(23,43,77,.78)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;color:#fff!important;box-shadow:0 8px 24px rgba(0,0,0,.25)!important;font-family:Arial,sans-serif!important;transform:none!important}
+      #designjamSessionStatus.session-status-customer{background:rgba(36,88,159,.78)!important}
       #designjamSessionStatus .session-status-dot{width:9px!important;height:9px!important;flex:0 0 9px!important;border-radius:50%!important;background:#47d16c!important;box-shadow:0 0 0 4px rgba(71,209,108,.18)!important}
       #designjamSessionStatus .session-status-text{min-width:0!important;display:flex!important;flex-direction:column!important;line-height:1.2!important}
       #designjamSessionStatus .session-status-text strong{font-size:12px!important;color:#fff!important;white-space:nowrap!important}

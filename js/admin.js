@@ -529,13 +529,29 @@ function renderPaymentAccountEditor(group,index,isDone){
       <option value="__manual__" ${hasManual?"selected":""}>직접 입력</option>
     </select>
     <div id="manual-account-${index}" class="manual-account-fields ${hasManual?'show':''}">
-      <input class="manual-bank-name" value="${escapeAdminAttr(bank)}" placeholder="은행명" ${isDone?"disabled":""}>
-      <input class="manual-account-number" value="${escapeAdminAttr(number)}" placeholder="계좌번호" ${isDone?"disabled":""}>
-      <input class="manual-account-holder" value="${escapeAdminAttr(holder)}" placeholder="예금주" ${isDone?"disabled":""}>
+      <input class="manual-bank-name" value="${escapeAdminAttr(bank)}" placeholder="은행명" oninput="updatePaymentAccountPreview(${index})" ${isDone?"disabled":""}>
+      <input class="manual-account-number" value="${escapeAdminAttr(number)}" placeholder="계좌번호" oninput="updatePaymentAccountPreview(${index})" ${isDone?"disabled":""}>
+      <input class="manual-account-holder" value="${escapeAdminAttr(holder)}" placeholder="예금주" oninput="updatePaymentAccountPreview(${index})" ${isDone?"disabled":""}>
     </div>
     <div class="selected-account-preview">${number?`현재 표시: ${escapeAdminHtml(bank)} ${escapeAdminHtml(number)} / ${escapeAdminHtml(holder)}`:'표시할 계좌를 선택하세요.'}</div>
     ${isDone?'':`<button type="button" class="cart-btn account-save-btn" onclick="saveOrderPaymentAccount('${escapeAdminAttr(group.orderNumber)}',${index})">이 주문에 계좌 저장</button>`}
   </section>`;
+}
+function updatePaymentAccountPreview(index){
+  const detail=document.getElementById(`detail-${index}`);if(!detail)return;
+  const select=detail.querySelector('.payment-account-select');
+  const preview=detail.querySelector('.selected-account-preview');
+  if(!select||!preview)return;
+  let bank='',number='',holder='';
+  if(select.value==='__manual__'){
+    bank=detail.querySelector('.manual-bank-name')?.value.trim()||'';
+    number=detail.querySelector('.manual-account-number')?.value.trim()||'';
+    holder=detail.querySelector('.manual-account-holder')?.value.trim()||'';
+  }else{
+    const a=paymentAccounts.find(x=>x.id===select.value);
+    bank=a?.bank_name||''; number=a?.account_number||''; holder=a?.account_holder||'';
+  }
+  preview.textContent=number?`선택한 계좌: ${bank} ${number} / ${holder}`:'표시할 계좌를 선택하세요.';
 }
 function changePaymentAccountMode(index,value){
   const box=document.getElementById(`manual-account-${index}`);if(!box)return;
@@ -546,6 +562,7 @@ function changePaymentAccountMode(index,value){
     box.querySelector('.manual-account-number').value=a.account_number||'';
     box.querySelector('.manual-account-holder').value=a.account_holder||'';
   }
+  updatePaymentAccountPreview(index);
 }
 async function saveOrderPaymentAccount(orderNumber,index){
   const detail=document.getElementById(`detail-${index}`);if(!detail)return;
@@ -566,7 +583,7 @@ async function saveOrderPaymentAccount(orderNumber,index){
   if(error){alert('주문 계좌 저장 실패: V3-1-ORDER-ACCOUNT-SETUP.sql을 먼저 실행해주세요.\n'+error.message);return;}
   alert('이 주문에 입금계좌를 저장했습니다.');loadOrders();
 }
-window.changePaymentAccountMode=changePaymentAccountMode;window.saveOrderPaymentAccount=saveOrderPaymentAccount;
+window.changePaymentAccountMode=changePaymentAccountMode;window.updatePaymentAccountPreview=updatePaymentAccountPreview;window.saveOrderPaymentAccount=saveOrderPaymentAccount;
 
 async function saveCustomerNote(customerId,note){
   if(!customerId){alert("이전 주문이라 거래처 ID가 없습니다.");return}

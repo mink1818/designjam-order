@@ -1,5 +1,5 @@
 {
-  "version": "3.8.3",
-  "build": "hidden-item-management",
+  "version": "3.8.4",
+  "build": "account-preview-session-ui-version-navigation-fix",
   "released": "2026-07-18"
 }

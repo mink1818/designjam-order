@@ -4,14 +4,7 @@ const supabaseUrl =
 /* V2 운영 확장 공통 모듈 연결 */
 const operationsCore = window.DesignJamOperations || null;
 
-function initializeV2ProductAdmin() {
-  const versionBadge = document.getElementById("productPageVersionBadge");
-
-  if (versionBadge) {
-    versionBadge.textContent = "V3.8.3";
-    versionBadge.title = "디자인삭스 상품관리 V3.8.3";
-  }
-}
+function initializeV2ProductAdmin() { /* 버전 표시는 공통 배지에서 관리 */ }
 
 
   const coverFile =
