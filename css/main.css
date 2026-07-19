@@ -1635,3 +1635,12 @@ body[data-session-page="customer"] .cart-product-info strong{
   body[data-session-page="customer"] .cart-product-info strong{font-size:20px!important;}
 }
 html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info strong{color:#fff!important;}
+
+/* ===== V5.3.27 large back arrow / order-note save feedback ===== */
+.desktop-home-shortcut .desktop-home-arrow{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:30px;line-height:1;font-weight:1000;margin-right:4px;
+  transform:translateY(-1px);
+}
+.customer-note-input.note-save-success{outline:3px solid rgba(34,197,94,.35);background:#f0fdf4}
+@media(max-width:899px){.desktop-home-shortcut{display:none!important}}

@@ -297,7 +297,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   </div>
   <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
-  ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
+  ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
 </div>
 
 <div
@@ -311,7 +311,7 @@ class="order-detail">
         <hr>
 
         <label class="shipping-label">관리자 메모</label>
-        <input class="customer-note-input" type="text" value="${escapeAdminAttr(customerNotes[group.customerId] || "")}" placeholder="예: 전화요망, 합배송, 후불" onchange="saveCustomerNote('${group.customerId || ""}', this.value)">
+        <input class="customer-note-input" type="text" value="${escapeAdminAttr(customerNotes[group.orderNumber] || "")}" placeholder="예: 전화요망, 합배송, 후불" onchange="saveOrderNote('${escapeAdminAttr(group.orderNumber)}', this.value, this)">
 
         <label class="shipping-label">배송비</label>
         
@@ -555,12 +555,14 @@ function escapeAdminHtml(value){return String(value??"").replaceAll("&","&amp;")
 function escapeAdminAttr(value){return escapeAdminHtml(value)}
 async function loadAdminFeatureData(orderRows=[]){
   try{
-    const ids=[...new Set(orderRows.map(r=>r.customer_id).filter(Boolean))];
-    if(ids.length){
-      const {data}=await supabaseClient.from("customer_admin_notes").select("customer_id,note").in("customer_id",ids);
-      customerNotes=Object.fromEntries((data||[]).map(x=>[x.customer_id,x.note||""]));
+    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];
+    customerNotes={};
+    if(orderNumbers.length){
+      const {data,error}=await supabaseClient.from("admin_order_notes").select("order_number,note").in("order_number",orderNumbers);
+      if(error) throw error;
+      customerNotes=Object.fromEntries((data||[]).map(x=>[x.order_number,x.note||""]));
     }
-  }catch(e){console.warn("관리자 메모 불러오기 실패",e)}
+  }catch(e){console.warn("주문별 관리자 메모 불러오기 실패",e)}
   try{
     const {data,error}=await supabaseClient.from("payment_accounts").select("*").eq("is_active",true).order("is_default",{ascending:false}).order("created_at",{ascending:true});
     if(error) throw error;
@@ -664,8 +666,19 @@ async function saveOrderPaymentAccount(orderNumber,index){
 }
 window.changePaymentAccountMode=changePaymentAccountMode;window.updatePaymentAccountPreview=updatePaymentAccountPreview;window.saveOrderPaymentAccount=saveOrderPaymentAccount;
 
-async function saveCustomerNote(customerId,note){
-  if(!customerId){alert("이전 주문이라 거래처 ID가 없습니다.");return}
-  const {error}=await supabaseClient.from("customer_admin_notes").upsert({customer_id:customerId,note:String(note||"").trim(),updated_at:new Date().toISOString()});
-  if(error){alert("메모 저장 실패: V2-FEATURE-SETUP.sql을 먼저 실행해주세요.\n"+error.message);return} customerNotes[customerId]=String(note||"").trim(); loadOrders();
+async function saveOrderNote(orderNumber,note,input){
+  if(!orderNumber){alert("주문번호가 없어 메모를 저장할 수 없습니다.");return}
+  const cleanNote=String(note||"").trim();
+  const {error}=await supabaseClient.from("admin_order_notes").upsert({order_number:orderNumber,note:cleanNote,updated_at:new Date().toISOString()},{onConflict:"order_number"});
+  if(error){
+    alert("주문별 메모 저장 실패: V5.3.27-ADMIN-ORDER-NOTES.sql을 Supabase SQL Editor에서 먼저 실행해주세요.\n"+error.message);
+    return;
+  }
+  customerNotes[orderNumber]=cleanNote;
+  if(input){
+    input.classList.add("note-save-success");
+    setTimeout(()=>input.classList.remove("note-save-success"),900);
+  }
+  // 주문 목록을 다시 그리지 않아 열려 있는 상세화면과 배송 입력값을 유지합니다.
 }
+window.saveOrderNote=saveOrderNote;
