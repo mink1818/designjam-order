@@ -241,7 +241,7 @@
     link.className = 'desktop-home-shortcut';
     link.href = home;
     link.setAttribute('aria-label', isAdmin ? '관리자 홈으로 이동' : '거래처 홈으로 이동');
-    link.innerHTML = isAdmin ? '🏠 관리자 홈' : '🏠 DESIGN JAM';
+    link.innerHTML = isAdmin ? '🏠 관리자 홈' : '🏠 DESIGN SOCKS';
     document.body.appendChild(link);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

@@ -1448,7 +1448,7 @@ function renderCart() {
       type="button"
       onclick="continueShopping()"
     >
-      ← 계속 쇼핑하기
+      ← 상품 계속 보기
     </button>
 
     <div class="product-card">
