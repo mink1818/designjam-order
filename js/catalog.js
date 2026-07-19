@@ -366,42 +366,55 @@ function renderMainCategories() {
   hideLegacyFilters();
 
   catalogList.innerHTML = `
-    <section class="customer-main-menu" aria-label="상품 주문 메뉴">
-      <button class="customer-main-menu-card primary" type="button" onclick="renderAllProducts()">
-        <span class="menu-card-icon" aria-hidden="true">🧦</span>
-        <span><strong>전체상품</strong><small>모든 브랜드 상품을 한 번에 보기</small></span>
-        <b aria-hidden="true">›</b>
+    <section class="customer-main-quick-menu" aria-label="빠른 메뉴">
+      <button class="customer-quick-card primary" type="button" onclick="renderAllProducts()">
+        <span aria-hidden="true">🧦</span><strong>전체상품</strong>
       </button>
+      <button class="customer-quick-card compact" type="button" onclick="renderBrandDirectory()">
+        <span aria-hidden="true">🏷️</span><strong>전체브랜드</strong>
+      </button>
+      <button class="customer-quick-card compact" type="button" onclick="renderCart()">
+        <span aria-hidden="true">🛒</span><strong>장바구니</strong>
+      </button>
+      <button class="customer-quick-card compact" type="button" onclick="location.href='order.html'">
+        <span aria-hidden="true">📦</span><strong>주문내역</strong>
+      </button>
+    </section>
 
-      <button class="customer-main-menu-card" type="button" onclick="renderBrandDirectory()">
-        <span class="menu-card-icon" aria-hidden="true">🏷️</span>
-        <span><strong>전체브랜드</strong><small>브랜드를 선택해서 상품 보기</small></span>
-        <b aria-hidden="true">›</b>
-      </button>
-
-      <button class="customer-main-menu-card" type="button" onclick="renderCart()">
-        <span class="menu-card-icon" aria-hidden="true">🛒</span>
-        <span><strong>장바구니</strong><small>${cart.length ? `담긴 품목 ${cart.length}개` : "담은 상품 확인 및 수량 변경"}</small></span>
-        <b aria-hidden="true">›</b>
-      </button>
-
-      <button class="customer-main-menu-card" type="button" onclick="location.href='order.html'">
-        <span class="menu-card-icon" aria-hidden="true">📦</span>
-        <span><strong>주문내역</strong><small>접수·출고 상태 확인</small></span>
-        <b aria-hidden="true">›</b>
-      </button>
+    <section class="home-main-category-section" aria-label="대분류">
+      <div class="home-section-heading"><h2>대분류</h2><p>원하는 상품 종류를 선택하세요</p></div>
+      <div class="main-category-grid">
+        ${mainCategories.map(mainCategory => `
+          <button class="main-category-card" type="button" onclick="openMainCategory(${Number(mainCategory.id)})">
+            ${renderMainCategoryImage(mainCategory)}
+            <strong>${escapeHtml(mainCategory.name)}</strong>
+          </button>`).join("") || `<div class="product-card"><h2>등록된 대분류가 없습니다</h2></div>`}
+      </div>
     </section>
   `;
 }
 
 function getGroupBrandNames(group) {
   const category = resolveGroupCategory(group);
-  const mainCategory = resolveGroupMainCategory(group, category);
-  const raw = [group.brand_text, category?.brand_text, mainCategory?.name]
+  // 대분류명은 브랜드 목록과 분리합니다. 브랜드 전용 필드만 사용합니다.
+  const raw = [group.brand_text, category?.brand_text]
     .filter(Boolean)
     .join(",");
 
   return [...new Set(raw.split(/[,/·|]+/).map(value => value.trim()).filter(Boolean))];
+}
+
+function getBrandDisplayName(brand) {
+  const labels = {
+    "전체브랜드": "전체브랜드",
+    "NIKE": "나이키",
+    "ADIDAS": "아디다스",
+    "DAIWA": "다이와",
+    "DESCENTE": "데상트",
+    "UNDER ARMOUR": "언더아머",
+    "SPYDER": "스파이더"
+  };
+  return labels[brand] || brand;
 }
 
 function getCatalogBrands() {
@@ -476,13 +489,13 @@ function renderBrandDirectory(selectedBrand = "전체브랜드") {
     <div class="brand-selector" role="list" aria-label="브랜드 선택">
       ${["전체브랜드", ...brands].map(brand => `
         <button type="button" class="brand-selector-button ${brand === currentBrand ? "active" : ""}" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
-          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span>${escapeHtml(brand)}
+          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span>${escapeHtml(getBrandDisplayName(brand))}
         </button>`).join("")}
     </div>
     <div class="brand-product-sections">
       ${brandSections.map(section => `
         <section class="brand-product-section">
-          <h2>${escapeHtml(section.brand)}</h2>
+          <h2>${escapeHtml(getBrandDisplayName(section.brand))}</h2>
           ${renderProductPhotoGrid(section.items)}
         </section>`).join("") || `<div class="product-card"><h2>등록된 상품이 없습니다</h2></div>`}
     </div>
