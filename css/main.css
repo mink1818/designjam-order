@@ -1479,3 +1479,37 @@ body.theme-dark .home-brand-button-wrap .home-brand-favorite,
 
 /* ===== V5.3.17 integrated search above All Brands ===== */
 .home-brand-tools-first{margin-bottom:14px}
+
+/* V5.3.18 간소화된 품번별 주문 UI */
+.qty-control-row{
+  grid-template-columns:minmax(88px,1fr) minmax(170px,240px);
+  min-height:50px;
+  margin:0 0 6px;
+  padding:5px 8px;
+  border:1px solid #e5eaf0;
+  border-radius:10px;
+  background:#fff;
+  transition:background .15s ease,border-color .15s ease;
+}
+.qty-control-row.has-quantity{
+  border-color:#8fb8e8;
+  background:#edf6ff;
+}
+.compact-item-info{display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap}
+.compact-item-number{min-width:38px;font-size:18px;color:#162033}
+.compact-item-price{font-size:15px;font-weight:700;color:#24579c}
+.qty-control-row .qty-control{grid-template-columns:40px minmax(52px,1fr) 40px;gap:6px}
+.qty-control-row .qty-btn{width:40px;min-width:40px;min-height:38px;height:38px;border-radius:8px;font-size:23px;line-height:1}
+.qty-control-row .catalog-qty-input{min-height:38px;height:38px;margin:0;padding:4px 6px;border-radius:8px;font-size:19px;font-weight:800}
+.compact-order-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px;padding:11px 12px;font-size:16px;white-space:nowrap}
+.compact-order-summary strong{color:#174f98}
+.compact-product-order-buttons{margin-top:8px}
+.compact-product-order-buttons .cart-btn{min-height:50px}
+.desktop-home-shortcut{position:fixed;top:14px;left:14px;z-index:1100;display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border:1px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(14,52,105,.92);color:#fff;text-decoration:none;font-size:15px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.18);backdrop-filter:blur(6px)}
+.desktop-home-shortcut:hover{background:#0f3f7d}
+@media(max-width:899px){.desktop-home-shortcut{display:none}.qty-control-row{grid-template-columns:minmax(92px,1fr) minmax(158px,210px);min-height:48px;padding:4px 6px;margin-bottom:5px}.compact-item-info{gap:5px}.compact-item-number{min-width:30px;font-size:17px}.compact-item-price{font-size:14px}.qty-control-row .qty-control{grid-template-columns:38px minmax(48px,1fr) 38px;gap:5px}.qty-control-row .qty-btn{width:38px;min-width:38px;min-height:36px;height:36px;font-size:22px}.qty-control-row .catalog-qty-input{min-height:36px;height:36px;font-size:18px}.compact-order-summary{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:15px;white-space:normal}.compact-order-summary span:last-child{grid-column:1/-1;font-size:17px}}
+@media(max-width:380px){.qty-control-row{grid-template-columns:minmax(78px,1fr) minmax(150px,190px)}.compact-item-price{font-size:13px}.qty-control-row .qty-control{grid-template-columns:36px minmax(44px,1fr) 36px}.qty-control-row .qty-btn{width:36px;min-width:36px}}
+html[data-theme="dark"] .qty-control-row{background:#1d2b3c!important;border-color:#435970!important}
+html[data-theme="dark"] .qty-control-row.has-quantity{background:#173a5d!important;border-color:#71a9df!important}
+html[data-theme="dark"] .compact-item-number{color:#fff}
+html[data-theme="dark"] .compact-item-price{color:#9bc7ff}

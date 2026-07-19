@@ -225,3 +225,25 @@
   }
   window.addEventListener("pageshow", render);
 })();
+
+
+// V5.3.18: PC 화면 공통 홈 바로가기
+(function addDesktopHomeShortcut(){
+  function mount(){
+    if (document.querySelector('.desktop-home-shortcut')) return;
+    const page = document.body?.dataset?.sessionPage;
+    if (!page) return;
+    const current = location.pathname.split('/').pop() || 'index.html';
+    const isAdmin = page === 'admin';
+    const home = isAdmin ? 'admin-home.html' : 'index.html';
+    if (current === home) return;
+    const link = document.createElement('a');
+    link.className = 'desktop-home-shortcut';
+    link.href = home;
+    link.setAttribute('aria-label', isAdmin ? '관리자 홈으로 이동' : '거래처 홈으로 이동');
+    link.innerHTML = isAdmin ? '🏠 관리자 홈' : '🏠 DESIGN JAM';
+    document.body.appendChild(link);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+  else mount();
+})();

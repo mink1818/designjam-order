@@ -1111,13 +1111,12 @@ function openGroup(groupId, requestedItem = "") {
       return `
         <div class="order-row qty-control-row ${
           isSoldout ? "soldout-order-row" : ""
-        }">
-          <label>
-            <span class="favorite-item-number">${escapeHtml(numberText)}
-              <button type="button" class="item-favorite-btn ${isItemFavorite(numberText)?'active':''}" onclick="toggleItemFavorite(event,'${escapeJsString(numberText)}')" aria-label="품번 즐겨찾기" aria-pressed="${isItemFavorite(numberText)?'true':'false'}" title="${isItemFavorite(numberText)?'즐겨찾기 해제':'즐겨찾기 추가'}">★</button>
-            </span>
+        }" data-qty-row="${escapeAttribute(numberText)}">
+          <div class="compact-item-info">
+            <strong class="compact-item-number">${escapeHtml(numberText)}</strong>
+            <span class="compact-item-price">${formatWon(group.price)}</span>
             ${isSoldout ? '<span class="soldout-label">품절</span>' : ""}
-          </label>
+          </div>
 
           <div class="qty-control">
             <button
@@ -1188,45 +1187,19 @@ function openGroup(groupId, requestedItem = "") {
         value="${group.id}"
       >
 
-      <div class="live-group-total">
-        <p>
-          총수량:
-          <strong>
-            <span id="liveGroupQty">0</span>죽
-          </strong>
-        </p>
-
-        <p>
-          총금액:
-          <strong>
-            <span id="liveGroupPrice">0</span>원
-          </strong>
-        </p>
+      <div class="live-group-total compact-order-summary">
+        <span>선택상품: <strong><span id="liveGroupKinds">0</span>종류</strong></span>
+        <span>총수량: <strong><span id="liveGroupQty">0</span>죽</strong></span>
+        <span>총금액: <strong><span id="liveGroupPrice">0</span>원</strong></span>
       </div>
 
-      <div class="product-order-buttons">
+      <div class="product-order-buttons compact-product-order-buttons">
         <button
           class="cart-btn"
           type="button"
           onclick="addGroupToCart(${group.id}, 'cart')"
         >
           🛒 장바구니 담기
-        </button>
-
-        <button
-          class="cart-btn direct-order-btn"
-          type="button"
-          onclick="addGroupToCart(${group.id}, 'order')"
-        >
-          바로 주문하기
-        </button>
-
-        <button
-          class="cart-btn gray-btn"
-          type="button"
-          onclick="returnFromGroupDetail()"
-        >
-          다른 상품 계속 보기
         </button>
       </div>
     </div>
@@ -1278,18 +1251,24 @@ function recalculateGroupTotal(groupId) {
   if (!group) return;
 
   let totalQty = 0;
+  let selectedKinds = 0;
 
   document
     .querySelectorAll(".catalog-qty-input:not(:disabled)")
     .forEach(input => {
-      totalQty += Math.max(0, Number(input.value) || 0);
+      const qty = Math.max(0, Number(input.value) || 0);
+      totalQty += qty;
+      if (qty > 0) selectedKinds += 1;
+      input.closest(".qty-control-row")?.classList.toggle("has-quantity", qty > 0);
     });
 
   const totalPrice = totalQty * Number(group.price || 0) * 10;
 
+  const kindsBox = document.getElementById("liveGroupKinds");
   const qtyBox = document.getElementById("liveGroupQty");
   const priceBox = document.getElementById("liveGroupPrice");
 
+  if (kindsBox) kindsBox.textContent = selectedKinds.toLocaleString();
   if (qtyBox) qtyBox.textContent = totalQty.toLocaleString();
   if (priceBox) priceBox.textContent = totalPrice.toLocaleString();
 }
