@@ -384,15 +384,15 @@ function renderMainCategories() {
     </section>
 
     <section class="home-brand-section" aria-label="전체브랜드">
+      <div class="home-brand-tools home-brand-tools-first">
+        <label class="home-brand-search-wrap">
+          <span aria-hidden="true">🔍</span>
+          <input id="homeBrandSearch" type="search" placeholder="브랜드 · 상품명 · 품번 검색" value="${escapeHtml(homeBrandSearchKeyword)}" oninput="updateHomeBrandSearch(this.value)" />
+        </label>
+      </div>
       <div class="home-section-heading home-brand-heading">
         <div><h2>전체브랜드</h2><p>여러 브랜드를 함께 선택할 수 있습니다</p></div>
         <strong class="selected-brand-count">선택 ${selectedHomeBrands.size}개</strong>
-      </div>
-      <div class="home-brand-tools">
-        <label class="home-brand-search-wrap">
-          <span aria-hidden="true">🔍</span>
-          <input id="homeBrandSearch" type="search" placeholder="브랜드·상품명·품번 통합검색" value="${escapeHtml(homeBrandSearchKeyword)}" oninput="updateHomeBrandSearch(this.value)" />
-        </label>
       </div>
       <div class="home-brand-grid">
         ${renderHomeBrandButtons()}
