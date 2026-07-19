@@ -1874,3 +1874,112 @@ body[data-session-page="admin"] .order-summary-number {
   body[data-session-page="admin"] .order-toolbar-row { grid-template-columns: 1fr; }
   body[data-session-page="admin"] .order-refresh-btn { width: 100% !important; }
 }
+
+
+/* ===== V5.3.3 mobile order list compact UI ===== */
+.mobile-order-actions{display:none}
+@media (max-width:760px){
+  body[data-session-page="admin"] .admin-order-list{gap:6px!important}
+  body[data-session-page="admin"] .admin-order-list .order-card{border-radius:10px!important}
+  body[data-session-page="admin"] .compact-order-header{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:4px 8px!important;
+    min-height:0!important;
+    padding:9px 10px 8px!important;
+    cursor:default!important;
+  }
+  body[data-session-page="admin"] .order-primary{grid-column:1!important;grid-row:1!important}
+  body[data-session-page="admin"] .order-primary h2{
+    margin:0!important;
+    font-size:15px!important;
+    line-height:1.25!important;
+    font-weight:900!important;
+  }
+  body[data-session-page="admin"] .order-summary-number{
+    margin-top:2px!important;
+    font-size:10px!important;
+    line-height:1.15!important;
+  }
+  body[data-session-page="admin"] .order-summary-number{
+    font-size:0!important;
+  }
+  body[data-session-page="admin"] .order-summary-number::before{
+    content:attr(data-mobile-date);
+  }
+  body[data-session-page="admin"] .order-status-pill{
+    grid-column:2!important;
+    grid-row:1!important;
+    align-self:start!important;
+    min-width:62px!important;
+    padding:4px 7px!important;
+    font-size:10px!important;
+  }
+  body[data-session-page="admin"] .order-compact-stats{
+    grid-column:1 / -1!important;
+    grid-row:2!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:0!important;
+    width:100%!important;
+    padding:3px 0 2px!important;
+    font-size:12px!important;
+  }
+  body[data-session-page="admin"] .order-compact-stats span,
+  body[data-session-page="admin"] .order-compact-stats strong,
+  body[data-session-page="admin"] .order-compact-stats b{
+    width:auto!important;
+    min-width:0!important;
+    padding:0!important;
+    font-size:12px!important;
+    line-height:1.25!important;
+    text-align:left!important;
+  }
+  body[data-session-page="admin"] .order-compact-stats span::after,
+  body[data-session-page="admin"] .order-compact-stats strong::after{
+    content:" · ";
+    margin:0 3px;
+    color:#94a3b8;
+    font-weight:500;
+  }
+  body[data-session-page="admin"] .order-expand-icon,
+  body[data-session-page="admin"] .admin-note-badge{display:none!important}
+  body[data-session-page="admin"] .mobile-order-actions{
+    grid-column:1 / -1!important;
+    grid-row:3!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:6px!important;
+    padding-top:4px!important;
+  }
+  body[data-session-page="admin"] .mobile-order-actions button{
+    min-height:31px!important;
+    margin:0!important;
+    padding:5px 8px!important;
+    border-radius:7px!important;
+    font-size:11px!important;
+    font-weight:900!important;
+    cursor:pointer;
+  }
+  body[data-session-page="admin"] .mobile-order-detail-btn{
+    border:1px solid #cbd5e1!important;
+    background:#f8fafc!important;
+    color:#334155!important;
+  }
+  body[data-session-page="admin"] .mobile-order-status-btn.pending{
+    border:1px solid #1d4ed8!important;
+    background:#1d4ed8!important;
+    color:#fff!important;
+  }
+  body[data-session-page="admin"] .mobile-order-status-btn.done{
+    border:1px solid #64748b!important;
+    background:#64748b!important;
+    color:#fff!important;
+  }
+  html[data-theme="dark"] body[data-session-page="admin"] .mobile-order-detail-btn{
+    background:#223147!important;
+    border-color:#52637b!important;
+    color:#f8fafc!important;
+  }
+}

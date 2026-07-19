@@ -277,12 +277,16 @@ summaryTotal += Number(group.shipping_fee || 0);
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"}</h2>
-    <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
+    <p class="order-summary-number" data-mobile-date="${formatOrderDate(group.createdAt)}">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
   <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
+  <div class="mobile-order-actions" onclick="event.stopPropagation()">
+    <button type="button" class="mobile-order-detail-btn" onclick="toggleDetail('detail-${index}')">상세보기</button>
+    <button type="button" class="mobile-order-status-btn ${isDone ? "done" : "pending"}" onclick="toggleOrderStatus('${group.orderNumber}', '${group.status}')">${isDone ? "접수복원" : "출고완료"}</button>
+  </div>
 </div>
 
 <div
