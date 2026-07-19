@@ -385,8 +385,8 @@ function renderMainCategories() {
       <div class="home-section-heading"><h2>전체브랜드</h2><p>브랜드를 바로 선택하세요</p></div>
       <div class="home-brand-grid">
         ${["전체브랜드", ...getCatalogBrands()].map(brand => `
-          <button class="home-brand-button" type="button" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
-            ${escapeHtml(getBrandDisplayName(brand))}
+          <button class="home-brand-button ${brand === "전체브랜드" ? "all-brand" : ""}" type="button" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
+            ${renderBrandLogo(brand)}<span>${escapeHtml(getBrandDisplayName(brand))}</span>
           </button>`).join("")}
       </div>
     </section>
@@ -412,6 +412,24 @@ function getGroupBrandNames(group) {
     .join(",");
 
   return [...new Set(raw.split(/[,/·|]+/).map(value => value.trim()).filter(Boolean))];
+}
+
+function getBrandLogoPath(brand) {
+  const logos = {
+    "NIKE": "images/brands/nike.svg",
+    "ADIDAS": "images/brands/adidas.svg",
+    "DAIWA": "images/brands/daiwa.svg",
+    "DESCENTE": "images/brands/descente.svg",
+    "UNDER ARMOUR": "images/brands/under-armour.svg",
+    "SPYDER": "images/brands/spyder.svg"
+  };
+  return logos[brand] || "";
+}
+
+function renderBrandLogo(brand) {
+  if (!brand || brand === "전체브랜드") return "";
+  const src = getBrandLogoPath(brand);
+  return src ? `<img class="brand-logo" src="${src}" alt="" loading="lazy" decoding="async">` : "";
 }
 
 function getBrandDisplayName(brand) {
@@ -499,7 +517,7 @@ function renderBrandDirectory(selectedBrand = "전체브랜드") {
     <div class="brand-selector" role="list" aria-label="브랜드 선택">
       ${["전체브랜드", ...brands].map(brand => `
         <button type="button" class="brand-selector-button ${brand === currentBrand ? "active" : ""}" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
-          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span>${escapeHtml(getBrandDisplayName(brand))}
+          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span>${renderBrandLogo(brand)}<span class="brand-label">${escapeHtml(getBrandDisplayName(brand))}</span>
         </button>`).join("")}
     </div>
     <div class="brand-product-sections">

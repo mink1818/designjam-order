@@ -1108,3 +1108,15 @@ body[data-session-page="customer"] .home-brand-grid{grid-template-columns:repeat
   body[data-session-page="customer"] .home-main-category-section .main-category-no-image{width:100%;height:auto;aspect-ratio:1/1;flex-basis:auto;border-radius:10px;}
   body[data-session-page="customer"] .home-main-category-section .main-category-card strong{font-size:17px!important;line-height:1.25;text-align:center;padding:3px 1px;}
 }
+
+/* V5.3.5 individual brand logos */
+.home-brand-button:not(.all-brand){display:flex;align-items:center;justify-content:center;gap:5px;flex-direction:column}
+.brand-logo{display:block;width:58px;height:22px;object-fit:contain;flex:none}
+.home-brand-button .brand-logo{width:min(64px,90%);height:22px}
+.brand-selector-button .brand-logo{width:46px;height:20px;margin-left:1px}
+.brand-selector-button .brand-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:640px){
+  .home-brand-button .brand-logo{width:min(50px,92%);height:18px}
+  .home-brand-button:not(.all-brand){gap:3px;font-size:11px!important}
+  .brand-selector-button .brand-logo{width:34px;height:16px}
+}
