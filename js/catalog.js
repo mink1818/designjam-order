@@ -471,7 +471,7 @@ function renderAllProducts() {
     ${cartTopButton()}
     <div class="catalog-page-heading">
       <button class="simple-back-button" type="button" onclick="renderMainCategories()">‹</button>
-      <div><h2>전체상품</h2><p>모든 브랜드 상품 ${matched.length}개</p></div>
+      <div><h2>전체상품</h2><p>모든브랜드</p></div>
     </div>
     ${renderProductPhotoGrid(matched, keyword ? "검색 결과가 없습니다" : "등록된 상품이 없습니다")}
   `;
