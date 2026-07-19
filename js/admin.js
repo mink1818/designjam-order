@@ -74,17 +74,35 @@ const adminOrders = document.getElementById("adminOrders");
 const adminSearch = document.getElementById("adminSearch");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 
-let adminFilter = "전체";
+let adminFilter = "주문접수";
+let adminPage = 1;
+const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
 if (["전체", "주문접수", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let paymentAccounts = [];
 
-if (adminSearch) adminSearch.addEventListener("input", loadOrders);
+if (adminSearch) adminSearch.addEventListener("input", () => { adminPage = 1; loadOrders(); });
 
 function setAdminFilter(status) {
   adminFilter = status;
+  adminPage = 1;
+  syncAdminFilterTabs();
   loadOrders();
+}
+
+function syncAdminFilterTabs() {
+  const map = { 주문접수: "tabPending", 출고완료: "tabDone", 전체: "tabAll" };
+  document.querySelectorAll(".order-status-tab").forEach(btn => btn.classList.remove("active"));
+  document.getElementById(map[adminFilter])?.classList.add("active");
+  const toolbar = document.querySelector(".completed-toolbar");
+  if (toolbar) toolbar.hidden = adminFilter !== "출고완료" && adminFilter !== "전체";
+}
+
+function setAdminPage(page) {
+  adminPage = Math.max(1, Number(page) || 1);
+  loadOrders();
+  document.getElementById("adminOrders")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function loadOrders() {
@@ -171,7 +189,25 @@ try {
       return 0;
     });
 
-  renderOrderCards(filteredGroups);
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / ADMIN_PAGE_SIZE));
+  if (adminPage > totalPages) adminPage = totalPages;
+  const pageGroups = filteredGroups.slice((adminPage - 1) * ADMIN_PAGE_SIZE, adminPage * ADMIN_PAGE_SIZE);
+  document.getElementById("orderResultCount").textContent = `${filteredGroups.length.toLocaleString()}건`;
+  renderOrderCards(pageGroups);
+  renderAdminPagination(totalPages);
+  syncAdminFilterTabs();
+}
+
+function renderAdminPagination(totalPages) {
+  const nav = document.getElementById("orderPagination");
+  if (!nav) return;
+  if (totalPages <= 1) { nav.innerHTML = ""; return; }
+  const start = Math.max(1, adminPage - 2);
+  const end = Math.min(totalPages, start + 4);
+  let html = `<button type="button" ${adminPage === 1 ? "disabled" : ""} onclick="setAdminPage(${adminPage - 1})">이전</button>`;
+  for (let i = start; i <= end; i++) html += `<button type="button" class="${i === adminPage ? "active" : ""}" onclick="setAdminPage(${i})">${i}</button>`;
+  html += `<button type="button" ${adminPage === totalPages ? "disabled" : ""} onclick="setAdminPage(${adminPage + 1})">다음</button>`;
+  nav.innerHTML = html;
 }
 
 function isWithinCompletedPeriod(createdAt) {
@@ -238,17 +274,15 @@ summaryTotal += Number(group.shipping_fee || 0);
 
     html += `
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
-                <div class="order-header" onclick="toggleDetail('detail-${index}')">
-  <div>
+                <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
+  <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"}</h2>
-    <p class="order-summary-number">${group.orderNumber} · ${formatOrderDate(group.createdAt)}</p>
-    <p class="order-summary-money">출고수량 ${summaryQty}죽 / ${summaryTotal.toLocaleString()}원</p>
-    ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
+    <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
-
-  <span>
-    ${group.status} ▼
-  </span>
+  <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
+  <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
+  <span class="order-expand-icon" aria-hidden="true">⌄</span>
+  ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
 </div>
 
 <div

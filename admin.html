@@ -11,7 +11,7 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/admin.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4022">
 <title>디자인삭스 주문관리 (관리자)</title>
-  <link rel="stylesheet" href="css/admin.css?v=5100">
+  <link rel="stylesheet" href="css/admin.css?v=5300">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -63,18 +63,17 @@
       ← 관리자 전체 메뉴
     </button>
   </div>
-  <div class="dashboard">
-    <div><strong id="totalCount">0</strong><span>전체</span></div>
-    <div><strong id="pendingCount">0</strong><span>주문접수</span></div>
-    <div><strong id="doneCount">0</strong><span>출고완료</span></div>
-  </div>
-  <input id="adminSearch" class="search" placeholder="거래처명 / 품번 / 주문번호 검색">
-
-  <div class="admin-filter">
-    <button onclick="setAdminFilter('전체')">전체</button>
-    <button onclick="setAdminFilter('주문접수')">주문접수</button>
-    <button onclick="setAdminFilter('출고완료')">출고완료</button>
-  </div>
+  <section class="order-admin-toolbar product-card">
+    <div class="order-status-tabs" role="tablist" aria-label="주문 상태">
+      <button id="tabPending" class="order-status-tab active pending" type="button" onclick="setAdminFilter('주문접수')">주문접수 <b id="pendingCount">0</b></button>
+      <button id="tabDone" class="order-status-tab done" type="button" onclick="setAdminFilter('출고완료')">출고완료 <b id="doneCount">0</b></button>
+      <button id="tabAll" class="order-status-tab" type="button" onclick="setAdminFilter('전체')">전체 <b id="totalCount">0</b></button>
+    </div>
+    <div class="order-toolbar-row">
+      <input id="adminSearch" class="search order-admin-search" placeholder="거래처명 / 품번 / 주문번호 검색">
+      <button class="cart-btn order-refresh-btn" type="button" onclick="loadOrders()">새로고침</button>
+    </div>
+  </section>
 
   <div class="completed-toolbar">
     <label for="adminCompletedPeriod">출고완료 보관기간</label>
@@ -88,23 +87,23 @@
     <span>오래된 완료 주문은 기간을 선택해 조회합니다.</span>
   </div>
 
-  <button class="cart-btn" onclick="loadOrders()">주문 새로고침</button>
-
-  <section id="adminOrders"></section>
+  <div class="order-list-meta"><span id="orderResultCount">0건</span><span>한 페이지 최대 50건</span></div>
+  <section id="adminOrders" class="admin-order-list"></section>
+  <nav id="orderPagination" class="order-pagination" aria-label="주문 목록 페이지"></nav>
   </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/admin-config.js?v=4022"></script>
-<script src="js/admin-data.js?v=4022"></script>
-<script src="js/admin-ui.js?v=4022"></script>
-<script src="js/admin.js?v=4022"></script>
-<script src="js/session-status.js?v=4022"></script>
+<script src="js/admin-config.js?v=5300"></script>
+<script src="js/admin-data.js?v=5300"></script>
+<script src="js/admin-ui.js?v=5300"></script>
+<script src="js/admin.js?v=5300"></script>
+<script src="js/session-status.js?v=5300"></script>
 
-<script src="js/pwa.js?v=4022"></script>
-<script src="js/admin-page-transition.js?v=4022"></script>
-<script src="js/version-badge.js?v=5220"></script>
-<script src="js/back-navigation.js?v=4022"></script>
-<script src="js/ui-preferences.js?v=4022"></script>
+<script src="js/pwa.js?v=5300"></script>
+<script src="js/admin-page-transition.js?v=5300"></script>
+<script src="js/version-badge.js?v=5300"></script>
+<script src="js/back-navigation.js?v=5300"></script>
+<script src="js/ui-preferences.js?v=5300"></script>
 </body>
 </html>
