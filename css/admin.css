@@ -1876,7 +1876,7 @@ body[data-session-page="admin"] .order-summary-number {
 }
 
 
-/* ===== V5.3.4 mobile order list two-line ERP UI ===== */
+/* ===== V5.3.5 mobile order list two-line ERP UI ===== */
 .mobile-order-summary{display:none}
 .mobile-order-actions{display:none!important}
 @media (max-width:760px){

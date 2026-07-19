@@ -39,7 +39,9 @@ let categories = [];
 let groups = [];
 let cart = [];
 
-let currentScreen = "main-categories";
+let currentScreen = "home-menu";
+let currentBrand = "전체브랜드";
+let detailReturnScreen = "all-products";
 let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
@@ -167,7 +169,12 @@ if (catalogSearch) {
   const keyword =
     catalogSearch.value.trim();
 
-  /* 검색어가 있으면 대분류와 관계없이 전체 상품 검색 */
+  if (currentScreen === "all-products") {
+    renderAllProducts();
+    return;
+  }
+
+  /* 검색어가 있으면 전체 상품 검색 */
   if (keyword) {
     renderGlobalSearchResults();
     return;
@@ -351,49 +358,134 @@ function showLoadError(title, error) {
 ================================ */
 
 function renderMainCategories() {
-  currentScreen = "main-categories";
+  currentScreen = "home-menu";
   activeMainCategoryId = null;
+  currentBrand = "전체브랜드";
 
-  showSearch(true, "대분류명 검색");
+  showSearch(false);
+  hideLegacyFilters();
+
+  catalogList.innerHTML = `
+    <section class="customer-main-menu" aria-label="상품 주문 메뉴">
+      <button class="customer-main-menu-card primary" type="button" onclick="renderAllProducts()">
+        <span class="menu-card-icon" aria-hidden="true">🧦</span>
+        <span><strong>전체상품</strong><small>모든 브랜드 상품을 한 번에 보기</small></span>
+        <b aria-hidden="true">›</b>
+      </button>
+
+      <button class="customer-main-menu-card" type="button" onclick="renderBrandDirectory()">
+        <span class="menu-card-icon" aria-hidden="true">🏷️</span>
+        <span><strong>전체브랜드</strong><small>브랜드를 선택해서 상품 보기</small></span>
+        <b aria-hidden="true">›</b>
+      </button>
+
+      <button class="customer-main-menu-card" type="button" onclick="renderCart()">
+        <span class="menu-card-icon" aria-hidden="true">🛒</span>
+        <span><strong>장바구니</strong><small>${cart.length ? `담긴 품목 ${cart.length}개` : "담은 상품 확인 및 수량 변경"}</small></span>
+        <b aria-hidden="true">›</b>
+      </button>
+
+      <button class="customer-main-menu-card" type="button" onclick="location.href='order.html'">
+        <span class="menu-card-icon" aria-hidden="true">📦</span>
+        <span><strong>주문내역</strong><small>접수·출고 상태 확인</small></span>
+        <b aria-hidden="true">›</b>
+      </button>
+    </section>
+  `;
+}
+
+function getGroupBrandNames(group) {
+  const category = resolveGroupCategory(group);
+  const mainCategory = resolveGroupMainCategory(group, category);
+  const raw = [group.brand_text, category?.brand_text, mainCategory?.name]
+    .filter(Boolean)
+    .join(",");
+
+  return [...new Set(raw.split(/[,/·|]+/).map(value => value.trim()).filter(Boolean))];
+}
+
+function getCatalogBrands() {
+  const preferred = ["NIKE", "ADIDAS", "DAIWA", "DESCENTE", "UNDER ARMOUR", "SPYDER"];
+  const aliases = {
+    "나이키": "NIKE", "아디다스": "ADIDAS", "다이와": "DAIWA",
+    "데상트": "DESCENTE", "데쌍트": "DESCENTE", "언더아머": "UNDER ARMOUR", "스파이더": "SPYDER"
+  };
+  const names = new Set();
+  groups.forEach(group => getGroupBrandNames(group).forEach(name => names.add(aliases[name] || name.toUpperCase())));
+  return [...names].sort((a, b) => {
+    const ai = preferred.indexOf(a), bi = preferred.indexOf(b);
+    if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    return a.localeCompare(b, "ko");
+  });
+}
+
+function groupMatchesBrand(group, brand) {
+  if (!brand || brand === "전체브랜드") return true;
+  const normalizedBrand = normalizeSearch(brand);
+  return getGroupBrandNames(group).some(name => {
+    const n = normalizeSearch(name);
+    const aliasMap = { nike:"나이키", adidas:"아디다스", daiwa:"다이와", descente:"데상트", underarmour:"언더아머", spyder:"스파이더" };
+    return n === normalizedBrand || normalizeSearch(aliasMap[normalizedBrand] || "") === n || buildGroupSearchText(group).includes(normalizedBrand);
+  });
+}
+
+function renderProductPhotoGrid(productGroups, emptyMessage = "등록된 상품이 없습니다") {
+  if (!productGroups.length) return `<div class="product-card"><h2>${escapeHtml(emptyMessage)}</h2></div>`;
+  return `<div class="catalog-group-grid all-product-grid">${productGroups.map(group => renderGroupCard(group)).join("")}</div>`;
+}
+
+function renderAllProducts() {
+  currentScreen = "all-products";
+  currentBrand = "전체브랜드";
+  detailReturnScreen = "all-products";
+  showSearch(true, "품번 검색");
   hideLegacyFilters();
 
   const keyword = normalizeSearch(catalogSearch?.value);
-
-  const filtered = mainCategories.filter(mainCategory =>
-    normalizeSearch(mainCategory.name).includes(keyword)
-  ).sort((a,b) => Number(favoriteMainCategoryIds.has(Number(b.id))) - Number(favoriteMainCategoryIds.has(Number(a.id))));
+  const matched = keyword ? groups.filter(group => buildGroupSearchText(group).includes(keyword)) : groups;
 
   catalogList.innerHTML = `
     ${cartTopButton()}
-    ${renderFrequentProducts()}
+    <div class="catalog-page-heading">
+      <button class="simple-back-button" type="button" onclick="renderMainCategories()">‹</button>
+      <div><h2>전체상품</h2><p>모든 브랜드 상품 ${matched.length}개</p></div>
+    </div>
+    ${renderProductPhotoGrid(matched, keyword ? "검색 결과가 없습니다" : "등록된 상품이 없습니다")}
+  `;
+}
 
-    ${
-      filtered.length > 0
-        ? `
-          <div class="main-category-grid">
-            ${filtered.map(mainCategory => `
-              <div class="favorite-category-card">
-                <button class="main-category-card" type="button" onclick="openMainCategory(${mainCategory.id})">
-                  ${renderMainCategoryImage(mainCategory)}
-                  <strong>${escapeHtml(mainCategory.name)}</strong>
-                </button>
-                <button
-                  class="favorite-star ${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "active" : ""}"
-                  type="button"
-                  onclick="toggleMainCategoryFavorite(event, ${mainCategory.id})"
-                  aria-label="${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "즐겨찾기 해제" : "즐겨찾기 추가"}"
-                  title="${favoriteMainCategoryIds.has(Number(mainCategory.id)) ? "즐겨찾기 해제" : "즐겨찾기 추가"}"
-                >★</button>
-              </div>
-            `).join("")}
-          </div>
-        `
-        : `
-          <div class="product-card">
-            <h2>검색 결과가 없습니다</h2>
-          </div>
-        `
-    }
+function renderBrandDirectory(selectedBrand = "전체브랜드") {
+  currentScreen = "brands";
+  currentBrand = selectedBrand || "전체브랜드";
+  detailReturnScreen = "brands";
+  showSearch(false);
+  hideLegacyFilters();
+
+  const brands = getCatalogBrands();
+  const matched = groups.filter(group => groupMatchesBrand(group, currentBrand));
+  const brandSections = currentBrand === "전체브랜드"
+    ? brands.map(brand => ({ brand, items: groups.filter(group => groupMatchesBrand(group, brand)) })).filter(section => section.items.length)
+    : [{ brand: currentBrand, items: matched }];
+
+  catalogList.innerHTML = `
+    ${cartTopButton()}
+    <div class="catalog-page-heading">
+      <button class="simple-back-button" type="button" onclick="renderMainCategories()">‹</button>
+      <div><h2>전체브랜드</h2><p>브랜드를 선택하세요</p></div>
+    </div>
+    <div class="brand-selector" role="list" aria-label="브랜드 선택">
+      ${["전체브랜드", ...brands].map(brand => `
+        <button type="button" class="brand-selector-button ${brand === currentBrand ? "active" : ""}" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
+          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span>${escapeHtml(brand)}
+        </button>`).join("")}
+    </div>
+    <div class="brand-product-sections">
+      ${brandSections.map(section => `
+        <section class="brand-product-section">
+          <h2>${escapeHtml(section.brand)}</h2>
+          ${renderProductPhotoGrid(section.items)}
+        </section>`).join("") || `<div class="product-card"><h2>등록된 상품이 없습니다</h2></div>`}
+    </div>
   `;
 }
 
@@ -536,6 +628,8 @@ function renderGlobalSearchResults() {
                 ? `
                   <img
                     class="catalog-group-image"
+                    loading="lazy"
+                    decoding="async"
                     src="${escapeAttribute(group.image_url)}"
                     alt="${escapeAttribute(group.title)}"
                   >
@@ -750,6 +844,8 @@ function renderGroupCard(group) {
           ? `
             <img
               class="catalog-group-image"
+              loading="lazy"
+              decoding="async"
               src="${escapeAttribute(group.image_url)}"
               alt="${escapeAttribute(group.title)}"
             >
@@ -826,6 +922,7 @@ function openGroup(groupId, requestedItem = "") {
 
   if (!category) return;
 
+  if (["all-products", "brands"].includes(currentScreen)) detailReturnScreen = currentScreen;
   currentScreen = "detail";
   activeMainCategoryId = Number(category.main_category_id) || null;
 
@@ -891,7 +988,7 @@ function openGroup(groupId, requestedItem = "") {
     <button
       class="cart-btn gray-btn"
       type="button"
-      onclick="returnToActiveMainCategory()"
+      onclick="returnFromGroupDetail()"
     >
       ← 상품 사진 목록으로 돌아가기
     </button>
@@ -955,7 +1052,7 @@ function openGroup(groupId, requestedItem = "") {
         <button
           class="cart-btn gray-btn"
           type="button"
-          onclick="returnToActiveMainCategory()"
+          onclick="returnFromGroupDetail()"
         >
           다른 상품 계속 보기
         </button>
@@ -966,6 +1063,13 @@ function openGroup(groupId, requestedItem = "") {
   if (requestedItem) {
     requestAnimationFrame(() => focusRequestedItem(requestedItem));
   }
+}
+
+
+function returnFromGroupDetail() {
+  if (catalogSearch) catalogSearch.value = "";
+  if (detailReturnScreen === "brands") { renderBrandDirectory(currentBrand); return; }
+  renderAllProducts();
 }
 
 function returnToActiveMainCategory() {
@@ -1744,6 +1848,9 @@ async function startCatalogPage() {
 
 /* inline onclick에서 사용 */
 window.renderMainCategories = renderMainCategories;
+window.renderAllProducts = renderAllProducts;
+window.renderBrandDirectory = renderBrandDirectory;
+window.returnFromGroupDetail = returnFromGroupDetail;
 window.openMainCategory = openMainCategory;
 window.renderMainCategoryDetail = renderMainCategoryDetail;
 window.openGroup = openGroup;
