@@ -41,6 +41,7 @@ let cart = [];
 
 let currentScreen = "home-menu";
 let currentBrand = "전체브랜드";
+let selectedHomeBrands = new Set();
 let detailReturnScreen = "all-products";
 let activeMainCategoryId = null;
 let currentUser = null;
@@ -370,25 +371,26 @@ function renderMainCategories() {
       <button class="customer-quick-card primary" type="button" onclick="renderAllProducts()">
         <span aria-hidden="true">🧦</span><strong>전체상품</strong>
       </button>
-      <button class="customer-quick-card compact" type="button" onclick="renderBrandDirectory()">
-        <span aria-hidden="true">🏷️</span><strong>전체브랜드</strong>
-      </button>
       <button class="customer-quick-card compact" type="button" onclick="renderCart()">
         <span aria-hidden="true">🛒</span><strong>장바구니</strong>
       </button>
-      <button class="customer-quick-card compact" type="button" onclick="location.href='order.html'">
+      <button class="customer-quick-card compact" type="button" data-customer-orders-button onclick="ADMIN_PREVIEW_MODE ? renderOrderHistoryPreview() : location.href='order.html'">
         <span aria-hidden="true">📦</span><strong>주문내역</strong>
+      </button>
+      <button class="customer-quick-card compact" type="button" onclick="location.href='customer-settings.html'">
+        <span aria-hidden="true">⚙️</span><strong>환경설정</strong>
       </button>
     </section>
 
     <section class="home-brand-section" aria-label="전체브랜드">
-      <div class="home-section-heading"><h2>전체브랜드</h2><p>브랜드를 바로 선택하세요</p></div>
+      <div class="home-section-heading"><h2>전체브랜드</h2><p>여러 브랜드를 함께 선택할 수 있습니다</p></div>
       <div class="home-brand-grid">
-        ${["전체브랜드", ...getCatalogBrands()].map(brand => `
-          <button class="home-brand-button ${brand === "전체브랜드" ? "all-brand" : ""}" type="button" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
+        ${getCatalogBrands().map(brand => `
+          <button class="home-brand-button ${selectedHomeBrands.has(brand) ? "active" : ""}" aria-pressed="${selectedHomeBrands.has(brand)}" type="button" onclick="toggleHomeBrandSelection('${escapeJsString(brand)}')">
             <span>${escapeHtml(getBrandDisplayName(brand))}</span>
           </button>`).join("")}
       </div>
+      ${renderSelectedHomeBrandProducts()}
     </section>
 
     <section class="home-main-category-section" aria-label="대분류">
@@ -402,6 +404,30 @@ function renderMainCategories() {
       </div>
     </section>
   `;
+}
+
+
+function toggleHomeBrandSelection(brand) {
+  if (selectedHomeBrands.has(brand)) selectedHomeBrands.delete(brand);
+  else selectedHomeBrands.add(brand);
+  renderMainCategories();
+}
+
+function renderSelectedHomeBrandProducts() {
+  if (!selectedHomeBrands.size) return "";
+
+  const selected = [...selectedHomeBrands];
+  const matched = groups.filter(group => selected.some(brand => groupMatchesBrand(group, brand)));
+  const unique = [...new Map(matched.map(group => [String(group.id ?? group.group_id ?? group.title), group])).values()];
+
+  return `
+    <section class="home-selected-brand-products" aria-label="선택 브랜드 상품">
+      <div class="selected-brand-summary">
+        <strong>${selected.map(getBrandDisplayName).map(escapeHtml).join(" · ")}</strong>
+        <button type="button" onclick="selectedHomeBrands.clear(); renderMainCategories();">선택 해제</button>
+      </div>
+      ${renderProductPhotoGrid(unique, "선택한 브랜드의 등록 상품이 없습니다")}
+    </section>`;
 }
 
 function getGroupBrandNames(group) {

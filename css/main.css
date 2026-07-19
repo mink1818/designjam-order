@@ -1289,3 +1289,76 @@ body.theme-dark .brand-check,
     font-size:12px!important;
   }
 }
+
+/* ===== V5.3.8 compact customer home + multi-brand selection ===== */
+.customer-main-quick-menu{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin:8px 0 16px!important;
+}
+.customer-main-quick-menu .customer-quick-card,
+.customer-main-quick-menu .customer-quick-card.primary{
+  grid-column:auto!important;
+  min-height:58px!important;
+  padding:8px 5px!important;
+  flex-direction:column!important;
+  gap:3px!important;
+  font-size:13px!important;
+  border-radius:12px!important;
+}
+.customer-main-quick-menu .customer-quick-card span{font-size:20px!important;line-height:1}
+.customer-main-quick-menu .customer-quick-card strong{white-space:nowrap;font-size:inherit!important}
+
+.home-brand-button.active{
+  background:#24589f!important;
+  border-color:#24589f!important;
+  color:#fff!important;
+  box-shadow:0 0 0 2px rgba(36,88,159,.16);
+}
+.home-brand-button.active span{color:#fff!important}
+.home-selected-brand-products{margin-top:14px;padding-top:14px;border-top:1px solid #dce5ef}
+.selected-brand-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.selected-brand-summary strong{font-size:14px;color:#183b67}
+.selected-brand-summary button{border:1px solid #bdcad9;border-radius:9px;background:#fff;color:#294867;padding:7px 10px;font-weight:800;cursor:pointer}
+html[data-theme="dark"] .home-brand-button.active,
+body[data-theme="dark"] .home-brand-button.active,
+body.theme-dark .home-brand-button.active,
+.dark-mode .home-brand-button.active{background:#326fb5!important;border-color:#9bc5f7!important;color:#fff!important}
+html[data-theme="dark"] .home-selected-brand-products{border-color:#40536b}
+html[data-theme="dark"] .selected-brand-summary strong{color:#fff!important}
+html[data-theme="dark"] .selected-brand-summary button{background:#1d2a3d;color:#fff;border-color:#536984}
+
+/* PC: reduce main-category card footprint */
+@media(min-width:641px){
+  body[data-session-page="customer"] .home-main-category-section .main-category-grid{
+    gap:10px!important;
+  }
+  body[data-session-page="customer"] .home-main-category-section .main-category-card{
+    padding:7px!important;
+    gap:5px!important;
+    border-radius:11px!important;
+  }
+  body[data-session-page="customer"] .home-main-category-section .main-category-card img,
+  body[data-session-page="customer"] .home-main-category-section .main-category-no-image{
+    max-height:150px!important;
+    object-fit:cover;
+  }
+  body[data-session-page="customer"] .home-main-category-section .main-category-card strong{
+    font-size:19px!important;
+    line-height:1.2!important;
+    padding:2px!important;
+  }
+}
+
+@media(max-width:640px){
+  .customer-main-quick-menu{gap:5px!important;margin:6px 0 12px!important}
+  .customer-main-quick-menu .customer-quick-card,
+  .customer-main-quick-menu .customer-quick-card.primary{
+    min-height:50px!important;
+    padding:5px 2px!important;
+    font-size:10.5px!important;
+    border-radius:9px!important;
+  }
+  .customer-main-quick-menu .customer-quick-card span{font-size:17px!important}
+  .home-brand-section{margin-top:2px!important}
+}
