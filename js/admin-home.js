@@ -18,7 +18,15 @@ async function guardAdminHome(){
   const {data:profile}=await supabaseClient.from("customers").select("is_admin,blocked").eq("id",user.id).maybeSingle();
   if(!isAdminEmail(user.email) && !(profile?.is_admin===true && profile?.blocked!==true)){ await supabaseClient.auth.signOut(); location.replace("admin.html"); return false; }
   sessionStorage.setItem(ADMIN_SESSION_KEY,user.id); localStorage.setItem(ADMIN_SESSION_KEY,user.id);
-  currentAdmin=user; document.body.classList.add("auth-ready"); return true;
+  currentAdmin=user;
+  document.body.classList.add("auth-ready");
+  requestAnimationFrame(()=>{
+    document.body.classList.remove("auth-pending");
+    document.querySelectorAll('.v3-metric-grid,.v3-metric-card').forEach(el=>{
+      el.style.visibility='visible'; el.style.opacity='1';
+    });
+  });
+  return true;
 }
 
 async function loadDashboard(){
@@ -64,3 +72,11 @@ function runAdminGlobalSearch(){const q=document.getElementById('adminGlobalSear
 document.getElementById('adminGlobalSearchBtn')?.addEventListener('click',runAdminGlobalSearch);document.getElementById('adminGlobalSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')runAdminGlobalSearch();});
 function syncAdminThemeButton(){const b=document.getElementById('adminThemeToggle');if(!b)return;const dark=document.documentElement.dataset.theme==='dark';b.textContent=dark?'☀️ 라이트':'🌙 다크';}
 document.getElementById('adminThemeToggle')?.addEventListener('click',()=>{DesignJamPreferences.setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');syncAdminThemeButton();});syncAdminThemeButton();
+
+
+window.addEventListener('pageshow',()=>{
+  if(document.body.classList.contains('auth-ready')){
+    document.body.classList.remove('auth-pending','admin-page-leaving');
+    document.querySelectorAll('.v3-metric-grid,.v3-metric-card').forEach(el=>{el.style.visibility='visible';el.style.opacity='1';});
+  }
+});
