@@ -254,7 +254,7 @@ function renderStatement(items) {
 
     ${renderStatementBankBox(first)}
 
-    <section class="delivery-info">
+    <section class="delivery-info shipping-info">
       <p>
         <strong>택배사:</strong>
         ${escapeHtml(first.courier || "-")}
@@ -279,6 +279,23 @@ function renderStatementBankBox(first){
   const holder=first.payment_account_holder||statementDefaultAccount?.account_holder||"";
   if(!account)return "";
   return `<section class="delivery-info bank-transfer-box"><p><strong>입금 계좌:</strong> ${escapeHtml(bankName)} ${escapeHtml(account)}</p><p><strong>예금주:</strong> ${escapeHtml(holder)}</p></section>`;
+}
+
+
+function printStatement() {
+  const originalTitle = document.title;
+  document.title = " ";
+  document.body.classList.add("statement-printing");
+
+  const restore = () => {
+    document.title = originalTitle;
+    document.body.classList.remove("statement-printing");
+    window.removeEventListener("afterprint", restore);
+  };
+
+  window.addEventListener("afterprint", restore);
+  window.print();
+  setTimeout(restore, 1500);
 }
 
 function closeStatement() {

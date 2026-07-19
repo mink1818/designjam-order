@@ -387,3 +387,112 @@ body {
   }
 }
 .bank-transfer-box{margin:14px 0;padding:12px;border:2px solid #24579f;background:#f3f7ff;border-radius:8px}.bank-transfer-box p{margin:4px 0}
+
+
+/* V5.3.28: 거래명세서 계좌/택배 정보 간소화 */
+.bank-transfer-box,
+.delivery-info {
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.bank-transfer-box p,
+.delivery-info p {
+  margin: 2px 0;
+}
+.statement-footer {
+  margin-top: 24px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.statement-footer h2 {
+  margin-top: 12px;
+  font-size: 18px;
+}
+
+/* V5.3.28: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 210mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body > *:not(#statementArea) {
+    display: none !important;
+  }
+
+  #statementArea.statement-sheet {
+    display: block !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 10mm 11mm 9mm !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  #designjamSessionStatus,
+  #appVersionBadge,
+  .desktop-home-shortcut,
+  .admin-mobile-nav,
+  .screen-menu {
+    display: none !important;
+  }
+
+  .bank-transfer-box,
+  .delivery-info {
+    margin-top: 9px !important;
+    padding: 7px 9px !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .bank-transfer-box p,
+  .delivery-info p {
+    margin: 1px 0 !important;
+  }
+
+  .statement-summary {
+    margin-top: 16px !important;
+  }
+
+  .statement-summary > div {
+    padding: 7px 4px !important;
+  }
+
+  .statement-summary .final-row {
+    padding: 10px 4px !important;
+  }
+
+  .statement-footer {
+    margin-top: 15px !important;
+    padding-bottom: 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .statement-footer p {
+    margin: 0 !important;
+    font-size: 11px !important;
+  }
+
+  .statement-footer h2 {
+    margin: 7px 0 0 !important;
+    font-size: 16px !important;
+  }
+}
