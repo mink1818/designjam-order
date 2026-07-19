@@ -2098,7 +2098,7 @@ html[data-theme="dark"] #categoryMessage {color:#eef5ff!important}
 }
 
 
-/* ===== V5.3.24 unified PC DESIGN SOCKS shortcut / 3-per-row dashboard metrics ===== */
+/* ===== V5.3.25 unified PC DESIGN SOCKS shortcut / 3-per-row dashboard metrics ===== */
 /* 거래처 화면과 위치·형태를 완전히 동일하게 사용 */
 .desktop-home-shortcut{
   position:fixed;
@@ -2155,7 +2155,7 @@ body[data-session-page="admin"] .v3-metric-grid{
   }
 }
 
-/* ===== V5.3.24 desktop members wide layout / product summary single row ===== */
+/* ===== V5.3.25 desktop members wide layout / product summary single row ===== */
 @media (min-width:900px){
   body[data-session-page="admin"] .container:has(#customerList){
     width:min(calc(100% - 48px),1600px)!important;

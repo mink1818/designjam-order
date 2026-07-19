@@ -633,6 +633,16 @@ async function saveOrderPaymentAccount(orderNumber,index){
     if(a) payload={payment_account_id:a.id,payment_account_label:a.label||'',payment_bank_name:a.bank_name||'',payment_account_number:a.account_number||'',payment_account_holder:a.account_holder||''};
   }
   if(!payload.payment_bank_name||!payload.payment_account_number||!payload.payment_account_holder){alert('은행명, 계좌번호, 예금주를 모두 입력하거나 저장 계좌를 선택하세요.');return;}
+  // 계좌 저장 시 같은 주문 화면에서 작성 중인 배송정보도 함께 저장합니다.
+  // 이전에는 저장 후 주문목록을 다시 그리면서 상세화면이 닫히고,
+  // 아직 출고완료 전인 배송비·택배사·송장번호 입력값이 사라졌습니다.
+  const shippingInput=detail.querySelector('.shipping-input');
+  const courierSelect=detail.querySelector('.courier-select');
+  const trackingInput=detail.querySelector('.tracking-input');
+  payload.shipping_fee=Number(shippingInput?.value)||0;
+  payload.courier=courierSelect?.value||'로젠택배';
+  payload.tracking_number=trackingInput?.value.trim()||'';
+
   const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
   if(error){alert('주문 계좌 저장 실패: V3-1-ORDER-ACCOUNT-SETUP.sql을 먼저 실행해주세요.\n'+error.message);return;}
   const preview=detail.querySelector('.selected-account-preview');
@@ -642,8 +652,15 @@ async function saveOrderPaymentAccount(orderNumber,index){
   }
   const section=detail.querySelector('.order-payment-account');
   if(section){section.dataset.savedAccount=payload.payment_account_id||'manual';}
-  alert('이 주문에 입금계좌를 저장했습니다.');
-  await loadOrders();
+  const saveButton=detail.querySelector('.account-save-btn');
+  if(saveButton){
+    const originalText=saveButton.textContent;
+    saveButton.textContent='저장 완료';
+    saveButton.disabled=true;
+    setTimeout(()=>{saveButton.textContent=originalText;saveButton.disabled=false;},1200);
+  }
+  alert('입금계좌와 현재 배송정보를 저장했습니다.');
+  // 화면을 다시 불러오지 않아 상세 주문 화면과 입력값을 그대로 유지합니다.
 }
 window.changePaymentAccountMode=changePaymentAccountMode;window.updatePaymentAccountPreview=updatePaymentAccountPreview;window.saveOrderPaymentAccount=saveOrderPaymentAccount;
 
