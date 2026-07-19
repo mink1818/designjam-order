@@ -389,7 +389,7 @@ body {
 .bank-transfer-box{margin:14px 0;padding:12px;border:2px solid #24579f;background:#f3f7ff;border-radius:8px}.bank-transfer-box p{margin:4px 0}
 
 
-/* V5.3.30: 거래명세서 계좌/택배 정보 간소화 */
+/* V5.3.31: 거래명세서 계좌/택배 정보 간소화 */
 .bank-transfer-box,
 .delivery-info {
   margin-top: 14px;
@@ -411,7 +411,7 @@ body {
   font-size: 18px;
 }
 
-/* V5.3.30: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
+/* V5.3.31: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
 @media print {
   @page {
     size: A4;
@@ -498,7 +498,7 @@ body {
 }
 
 
-/* V5.3.30: 계좌·택배 정보 좌측 / 금액 요약 우측 배치 */
+/* V5.3.31: 계좌·택배 정보 좌측 / 금액 요약 우측 배치 */
 .statement-bottom-grid{
   display:grid;
   grid-template-columns:minmax(0,1fr) 380px;
@@ -552,5 +552,39 @@ body {
     padding:2mm 2.5mm!important;
     font-size:10px!important;
     line-height:1.2!important;
+  }
+}
+
+/* ===== V5.3.31 인쇄 페이지 구분 여백 ===== */
+@media print {
+  @page {
+    size: A4;
+    /* 여러 장 출력 시 각 페이지 위·아래에 충분한 기본 여백 확보 */
+    margin: 12mm 10mm 14mm;
+  }
+
+  html,
+  body {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  #statementArea.statement-sheet {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 표가 다음 장으로 넘어갈 때 반복 제목과 상단 공간을 자연스럽게 유지 */
+  .statement-table thead {
+    display: table-header-group;
+  }
+
+  .statement-table tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

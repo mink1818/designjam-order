@@ -2170,7 +2170,7 @@ body[data-session-page="admin"] .v3-metric-grid{
   }
 }
 
-/* ===== V5.3.30 large back arrow / order-note save feedback ===== */
+/* ===== V5.3.31 large back arrow / order-note save feedback ===== */
 .desktop-home-shortcut .desktop-home-arrow{
   display:inline-flex;align-items:center;justify-content:center;
   font-size:30px;line-height:1;font-weight:1000;margin-right:4px;
@@ -2180,7 +2180,7 @@ body[data-session-page="admin"] .v3-metric-grid{
 @media(max-width:899px){.desktop-home-shortcut{display:none!important}}
 
 
-/* V5.3.30: PC DESIGN SOCKS 굵은 뒤로가기 화살표를 버튼 왼쪽에 고정 */
+/* V5.3.31: PC DESIGN SOCKS 굵은 뒤로가기 화살표를 버튼 왼쪽에 고정 */
 @media(min-width:900px){
   .desktop-home-shortcut{
     position:fixed!important;
@@ -2221,7 +2221,7 @@ body[data-session-page="admin"] .v3-metric-grid{
   }
 }
 
-/* ===== V5.3.30 simple triangle DESIGN SOCKS shortcut ===== */
+/* ===== V5.3.31 simple triangle DESIGN SOCKS shortcut ===== */
 @media (min-width:900px){
   .desktop-home-shortcut{
     display:inline-flex!important;
@@ -2248,3 +2248,23 @@ body[data-session-page="admin"] .v3-metric-grid{
   }
 }
 @media(max-width:899px){.desktop-home-shortcut{display:none!important}}
+
+/* ===== V5.3.31 PC 왼쪽 바로가기 영역 축소 ===== */
+@media (min-width:900px){
+  body[data-session-page="admin"] .container{
+    width:calc(100% - 198px)!important;
+    max-width:none!important;
+    margin-left:178px!important;
+    margin-right:20px!important;
+  }
+  .desktop-home-shortcut{
+    left:10px!important;
+    top:10px!important;
+    padding:7px 11px!important;
+    gap:6px!important;
+    font-size:13px!important;
+  }
+  .desktop-home-shortcut .desktop-home-arrow{
+    font-size:16px!important;
+  }
+}
