@@ -2096,3 +2096,61 @@ html[data-theme="dark"] #categoryMessage {color:#eef5ff!important}
     white-space:nowrap!important;
   }
 }
+
+
+/* ===== V5.3.23 unified PC DESIGN SOCKS shortcut / 3-per-row dashboard metrics ===== */
+/* 거래처 화면과 위치·형태를 완전히 동일하게 사용 */
+.desktop-home-shortcut{
+  position:fixed;
+  top:14px;
+  left:14px;
+  z-index:1100;
+  display:inline-flex!important;
+  align-items:center;
+  gap:6px;
+  padding:10px 14px;
+  border:1px solid rgba(255,255,255,.45);
+  border-radius:999px;
+  background:rgba(14,52,105,.92);
+  color:#fff;
+  text-decoration:none;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.2;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+.desktop-home-shortcut:hover{background:#0f3f7d;color:#fff}
+
+/* 관리자 홈 운영 현황: 한 줄에 3개씩, 총 2줄 */
+body[data-session-page="admin"] .v3-metric-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+
+@media(max-width:899px){
+  /* 모바일에서는 PC용 DESIGN SOCKS 바로가기 완전히 숨김 */
+  .desktop-home-shortcut{display:none!important}
+  body[data-session-page="admin"] .v3-metric-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:7px!important;
+  }
+  body[data-session-page="admin"] .v3-metric-card{
+    min-width:0;
+    padding:11px 6px!important;
+    text-align:center;
+  }
+  body[data-session-page="admin"] .v3-metric-card span{
+    font-size:11px;
+    white-space:nowrap;
+  }
+  body[data-session-page="admin"] .v3-metric-card strong{
+    display:inline-block;
+    margin-top:5px;
+    font-size:22px!important;
+  }
+  body[data-session-page="admin"] .v3-metric-card small{
+    margin-left:2px;
+    font-size:10px;
+  }
+}
