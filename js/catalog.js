@@ -381,6 +381,16 @@ function renderMainCategories() {
       </button>
     </section>
 
+    <section class="home-brand-section" aria-label="전체브랜드">
+      <div class="home-section-heading"><h2>전체브랜드</h2><p>브랜드를 바로 선택하세요</p></div>
+      <div class="home-brand-grid">
+        ${["전체브랜드", ...getCatalogBrands()].map(brand => `
+          <button class="home-brand-button" type="button" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
+            ${escapeHtml(getBrandDisplayName(brand))}
+          </button>`).join("")}
+      </div>
+    </section>
+
     <section class="home-main-category-section" aria-label="대분류">
       <div class="home-section-heading"><h2>대분류</h2><p>원하는 상품 종류를 선택하세요</p></div>
       <div class="main-category-grid">
