@@ -1636,7 +1636,7 @@ body[data-session-page="customer"] .cart-product-info strong{
 }
 html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info strong{color:#fff!important;}
 
-/* ===== V5.3.29 large back arrow / order-note save feedback ===== */
+/* ===== V5.3.30 large back arrow / order-note save feedback ===== */
 .desktop-home-shortcut .desktop-home-arrow{
   display:inline-flex;align-items:center;justify-content:center;
   font-size:30px;line-height:1;font-weight:1000;margin-right:4px;
@@ -1646,7 +1646,7 @@ html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info st
 @media(max-width:899px){.desktop-home-shortcut{display:none!important}}
 
 
-/* V5.3.29: PC DESIGN SOCKS 굵은 뒤로가기 화살표를 버튼 왼쪽에 고정 */
+/* V5.3.30: PC DESIGN SOCKS 굵은 뒤로가기 화살표를 버튼 왼쪽에 고정 */
 @media(min-width:900px){
   .desktop-home-shortcut{
     position:fixed!important;
@@ -1686,3 +1686,31 @@ html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info st
     border-radius:2px;
   }
 }
+
+/* ===== V5.3.30 simple triangle DESIGN SOCKS shortcut ===== */
+@media (min-width:900px){
+  .desktop-home-shortcut{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:8px!important;
+  }
+  .desktop-home-shortcut .desktop-home-arrow{
+    position:static!important;
+    display:inline-block!important;
+    width:auto!important;
+    height:auto!important;
+    flex:0 0 auto!important;
+    font-size:18px!important;
+    line-height:1!important;
+    font-weight:900!important;
+    transform:none!important;
+    margin:0!important;
+  }
+  .desktop-home-shortcut .desktop-home-arrow::before,
+  .desktop-home-shortcut .desktop-home-arrow::after{
+    content:none!important;
+    display:none!important;
+  }
+}
+@media(max-width:899px){.desktop-home-shortcut{display:none!important}}

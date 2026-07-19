@@ -389,7 +389,7 @@ body {
 .bank-transfer-box{margin:14px 0;padding:12px;border:2px solid #24579f;background:#f3f7ff;border-radius:8px}.bank-transfer-box p{margin:4px 0}
 
 
-/* V5.3.29: 거래명세서 계좌/택배 정보 간소화 */
+/* V5.3.30: 거래명세서 계좌/택배 정보 간소화 */
 .bank-transfer-box,
 .delivery-info {
   margin-top: 14px;
@@ -411,7 +411,7 @@ body {
   font-size: 18px;
 }
 
-/* V5.3.29: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
+/* V5.3.30: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
 @media print {
   @page {
     size: A4;
@@ -498,7 +498,7 @@ body {
 }
 
 
-/* V5.3.29: 계좌·택배 정보 좌측 / 금액 요약 우측 배치 */
+/* V5.3.30: 계좌·택배 정보 좌측 / 금액 요약 우측 배치 */
 .statement-bottom-grid{
   display:grid;
   grid-template-columns:minmax(0,1fr) 380px;
