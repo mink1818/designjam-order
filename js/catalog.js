@@ -386,7 +386,7 @@ function renderMainCategories() {
       <div class="home-brand-grid">
         ${["전체브랜드", ...getCatalogBrands()].map(brand => `
           <button class="home-brand-button ${brand === "전체브랜드" ? "all-brand" : ""}" type="button" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
-            ${renderBrandLogo(brand)}<span>${escapeHtml(getBrandDisplayName(brand))}</span>
+            <span>${escapeHtml(getBrandDisplayName(brand))}</span>
           </button>`).join("")}
       </div>
     </section>
@@ -412,21 +412,6 @@ function getGroupBrandNames(group) {
     .join(",");
 
   return [...new Set(raw.split(/[,/·|]+/).map(value => value.trim()).filter(Boolean))];
-}
-
-function renderBrandLogo(brand) {
-  if (!brand || brand === "전체브랜드") return "";
-
-  const logos = {
-    "NIKE": `<svg class="brand-logo" viewBox="0 0 120 48" aria-hidden="true"><path d="M8 29c16 8 34 9 52 2l52-21-42 29c-21 12-43 8-62-10z"/></svg>`,
-    "ADIDAS": `<svg class="brand-logo" viewBox="0 0 120 48" aria-hidden="true"><path d="M12 34 31 12l13 8-14 14zM38 34 55 19l14 8-9 7zM68 34 81 26l15 8z"/></svg>`,
-    "DAIWA": `<svg class="brand-logo" viewBox="0 0 120 48" aria-hidden="true"><path d="M8 9h22c20 0 31 9 31 15S50 39 30 39H8l13-15zm22 9-10 12h10c10 0 17-3 17-6s-7-6-17-6z"/><text x="66" y="31" font-size="20" font-weight="900">D</text></svg>`,
-    "DESCENTE": `<svg class="brand-logo" viewBox="0 0 120 48" aria-hidden="true"><path d="m24 8 16 14H8zm0 13 18 16H6zm0 13 12 10H12z"/><text x="51" y="31" font-size="15" font-weight="800">DESCENTE</text></svg>`,
-    "UNDER ARMOUR": `<svg class="brand-logo" viewBox="0 0 120 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="7"><path d="M18 11c10 0 16 6 22 13-6 7-12 13-22 13"/><path d="M62 11c-10 0-16 6-22 13 6 7 12 13 22 13"/></g><text x="72" y="30" font-size="14" font-weight="900">UA</text></svg>`,
-    "SPYDER": `<svg class="brand-logo" viewBox="0 0 120 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3"><ellipse cx="25" cy="24" rx="7" ry="11" fill="currentColor"/><path d="M18 18 7 10M18 23 4 21M18 29 7 38M32 18 43 10M32 23 46 21M32 29 43 38"/></g><text x="52" y="31" font-size="18" font-weight="900">SPYDER</text></svg>`
-  };
-
-  return logos[brand] || "";
 }
 
 function getBrandDisplayName(brand) {
@@ -514,7 +499,7 @@ function renderBrandDirectory(selectedBrand = "전체브랜드") {
     <div class="brand-selector" role="list" aria-label="브랜드 선택">
       ${["전체브랜드", ...brands].map(brand => `
         <button type="button" class="brand-selector-button ${brand === currentBrand ? "active" : ""}" onclick="renderBrandDirectory('${escapeJsString(brand)}')">
-          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span>${renderBrandLogo(brand)}<span class="brand-label">${escapeHtml(getBrandDisplayName(brand))}</span>
+          <span class="brand-check" aria-hidden="true">${brand === currentBrand ? "✓" : ""}</span><span class="brand-label">${escapeHtml(getBrandDisplayName(brand))}</span>
         </button>`).join("")}
     </div>
     <div class="brand-product-sections">

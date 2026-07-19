@@ -1181,3 +1181,111 @@ html[data-theme="dark"] .home-brand-button.all-brand,
   }
   .home-brand-button span{font-size:11px!important;}
 }
+
+
+/* V5.3.7 logo removal, compact mobile brands, larger PC categories, full dark-mode contrast */
+.home-brand-button,
+.brand-selector-button{
+  color:#142f52;
+  opacity:1;
+}
+.home-brand-button span,
+.brand-selector-button .brand-label{
+  color:inherit;
+  opacity:1;
+  font-weight:900;
+}
+.home-brand-button:not(.all-brand){
+  display:flex;
+  flex-direction:row!important;
+  align-items:center;
+  justify-content:center;
+  gap:0!important;
+}
+.brand-selector-button{
+  justify-content:flex-start;
+}
+
+/* PC main-category label readability */
+@media(min-width:641px){
+  body[data-session-page="customer"] .home-main-category-section .main-category-card strong{
+    font-size:24px!important;
+    line-height:1.25;
+    font-weight:900;
+    text-align:center;
+  }
+}
+
+/* Dark mode: both home brand grid and full brand selector */
+html[data-theme="dark"] .home-brand-button,
+html[data-theme="dark"] .brand-selector-button,
+body[data-theme="dark"] .home-brand-button,
+body[data-theme="dark"] .brand-selector-button,
+body.theme-dark .home-brand-button,
+body.theme-dark .brand-selector-button,
+.dark-mode .home-brand-button,
+.dark-mode .brand-selector-button{
+  background:#1d2a3d!important;
+  border-color:#536984!important;
+  color:#ffffff!important;
+  opacity:1!important;
+}
+html[data-theme="dark"] .home-brand-button span,
+html[data-theme="dark"] .brand-selector-button .brand-label,
+body[data-theme="dark"] .home-brand-button span,
+body[data-theme="dark"] .brand-selector-button .brand-label,
+body.theme-dark .home-brand-button span,
+body.theme-dark .brand-selector-button .brand-label,
+.dark-mode .home-brand-button span,
+.dark-mode .brand-selector-button .brand-label{
+  color:#ffffff!important;
+  opacity:1!important;
+  text-shadow:none!important;
+}
+html[data-theme="dark"] .home-brand-button.all-brand,
+html[data-theme="dark"] .brand-selector-button.active,
+body[data-theme="dark"] .home-brand-button.all-brand,
+body[data-theme="dark"] .brand-selector-button.active,
+body.theme-dark .home-brand-button.all-brand,
+body.theme-dark .brand-selector-button.active,
+.dark-mode .home-brand-button.all-brand,
+.dark-mode .brand-selector-button.active{
+  background:#28517e!important;
+  border-color:#8ab8f0!important;
+  color:#ffffff!important;
+}
+html[data-theme="dark"] .brand-check,
+body[data-theme="dark"] .brand-check,
+body.theme-dark .brand-check,
+.dark-mode .brand-check{
+  border-color:#a9bad0!important;
+  color:#ffffff!important;
+}
+
+/* Mobile: keep four columns but reduce vertical button size */
+@media(max-width:640px){
+  body[data-session-page="customer"] .home-brand-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  body[data-session-page="customer"] .home-brand-button,
+  body[data-session-page="customer"] .home-brand-button:not(.all-brand){
+    min-height:34px!important;
+    height:34px;
+    padding:3px 3px!important;
+    border-radius:9px;
+    font-size:11px!important;
+    line-height:1.1;
+    gap:0!important;
+  }
+  body[data-session-page="customer"] .home-brand-button span{
+    font-size:11px!important;
+    line-height:1.1;
+    white-space:nowrap;
+  }
+  body[data-session-page="customer"] .brand-selector-button{
+    min-height:40px!important;
+    padding:6px 7px!important;
+    font-size:12px!important;
+  }
+}
