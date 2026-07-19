@@ -1454,3 +1454,25 @@ body.theme-dark .home-brand-button-wrap .home-brand-favorite,
 .dark-mode .home-brand-button-wrap .home-brand-favorite{
   border-color:#4b6079;
 }
+
+
+/* ===== V5.3.13 remove home brand favorites, restore full-width brand labels ===== */
+.home-brand-grid > .home-brand-button{
+  width:100%;
+  min-width:0;
+  padding-left:8px!important;
+  padding-right:8px!important;
+}
+.home-brand-grid > .home-brand-button span{
+  display:block;
+  width:100%;
+  min-width:0;
+  overflow:visible;
+  text-overflow:clip;
+  white-space:nowrap;
+}
+.home-brand-button-wrap,.home-brand-favorite{display:none!important}
+@media(max-width:640px){
+  .home-brand-grid > .home-brand-button{padding:8px 3px!important;font-size:12px!important}
+  .home-brand-grid > .home-brand-button span{overflow:visible;text-overflow:clip;white-space:nowrap}
+}

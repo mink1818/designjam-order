@@ -42,21 +42,7 @@ let cart = [];
 let currentScreen = "home-menu";
 let currentBrand = "전체브랜드";
 let selectedHomeBrands = new Set();
-const HOME_BRAND_FAVORITES_KEY = "designjam_home_brand_favorites";
-let favoriteHomeBrands = readFavoriteHomeBrands();
 let homeBrandSearchKeyword = "";
-
-function readFavoriteHomeBrands() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(HOME_BRAND_FAVORITES_KEY) || "[]").map(String));
-  } catch (_) {
-    return new Set();
-  }
-}
-
-function saveFavoriteHomeBrands() {
-  localStorage.setItem(HOME_BRAND_FAVORITES_KEY, JSON.stringify([...favoriteHomeBrands]));
-}
 let detailReturnScreen = "all-products";
 let activeMainCategoryId = null;
 let currentUser = null;
@@ -433,12 +419,7 @@ function renderHomeBrandButtons() {
   const catalogBrands = getCatalogBrands();
   const keyword = normalizeSearch(homeBrandSearchKeyword);
   const visibleBrands = catalogBrands
-    .filter(brand => !keyword || normalizeSearch(`${brand} ${getBrandDisplayName(brand)}`).includes(keyword))
-    .sort((a, b) => {
-      const af = favoriteHomeBrands.has(a) ? 0 : 1;
-      const bf = favoriteHomeBrands.has(b) ? 0 : 1;
-      return af - bf || catalogBrands.indexOf(a) - catalogBrands.indexOf(b);
-    });
+    .filter(brand => !keyword || normalizeSearch(`${brand} ${getBrandDisplayName(brand)}`).includes(keyword));
   const allSelected = catalogBrands.length > 0 && catalogBrands.every(brand => selectedHomeBrands.has(brand));
 
   return `
@@ -446,27 +427,14 @@ function renderHomeBrandButtons() {
       <span>전체브랜드</span>
     </button>
     ${visibleBrands.map(brand => `
-      <div class="home-brand-button-wrap ${favoriteHomeBrands.has(brand) ? "favorite" : ""}">
-        <button class="home-brand-button ${selectedHomeBrands.has(brand) ? "active" : ""}" aria-pressed="${selectedHomeBrands.has(brand)}" type="button" onclick="toggleHomeBrandSelection('${escapeJsString(brand)}')">
-          <span>${escapeHtml(getBrandDisplayName(brand))}</span>
-        </button>
-        <button class="home-brand-favorite ${favoriteHomeBrands.has(brand) ? "active" : ""}" type="button" aria-pressed="${favoriteHomeBrands.has(brand)}" title="${favoriteHomeBrands.has(brand) ? "즐겨찾기 해제" : "즐겨찾기 추가"}" onclick="toggleHomeBrandFavorite(event, '${escapeJsString(brand)}')">★</button>
-      </div>`).join("") || `<p class="home-brand-empty">검색된 브랜드가 없습니다.</p>`}
+      <button class="home-brand-button ${selectedHomeBrands.has(brand) ? "active" : ""}" aria-pressed="${selectedHomeBrands.has(brand)}" type="button" onclick="toggleHomeBrandSelection('${escapeJsString(brand)}')">
+        <span>${escapeHtml(getBrandDisplayName(brand))}</span>
+      </button>`).join("") || `<p class="home-brand-empty">검색된 브랜드가 없습니다.</p>`}
   `;
 }
 
 function updateHomeBrandSearch(value) {
   homeBrandSearchKeyword = String(value || "");
-  const grid = document.querySelector(".home-brand-grid");
-  if (grid) grid.innerHTML = renderHomeBrandButtons();
-}
-
-function toggleHomeBrandFavorite(event, brand) {
-  event?.preventDefault();
-  event?.stopPropagation();
-  if (favoriteHomeBrands.has(brand)) favoriteHomeBrands.delete(brand);
-  else favoriteHomeBrands.add(brand);
-  saveFavoriteHomeBrands();
   const grid = document.querySelector(".home-brand-grid");
   if (grid) grid.innerHTML = renderHomeBrandButtons();
 }
