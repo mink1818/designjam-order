@@ -10,6 +10,9 @@
   }
 
   function addAdminMobileNav() {
+    const page = location.pathname.split('/').pop() || 'admin-home.html';
+    // 거래명세서는 인쇄 전용 화면이므로 하단 빠른 이동 바를 만들지 않는다.
+    if (page === 'statement.html') return;
     if (document.getElementById('adminMobileBottomNav')) return;
     const active = currentKey();
     const items = [

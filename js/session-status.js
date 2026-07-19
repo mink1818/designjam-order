@@ -234,6 +234,8 @@
     const page = document.body?.dataset?.sessionPage;
     if (!page) return;
     const current = location.pathname.split('/').pop() || 'index.html';
+    // 거래명세서는 인쇄 전용 화면이므로 공통 바로가기를 표시하지 않는다.
+    if (current === 'statement.html') return;
     const isAdmin = page === 'admin';
     const home = isAdmin ? 'admin-home.html' : 'index.html';
     const link = document.createElement('a');
