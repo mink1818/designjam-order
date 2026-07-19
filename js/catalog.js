@@ -468,14 +468,26 @@ function getCatalogBrands() {
   });
 }
 
+function normalizeBrandKey(value) {
+  const key = normalizeSearch(value);
+  const aliases = {
+    nike: "nike", 나이키: "nike",
+    adidas: "adidas", 아디다스: "adidas",
+    daiwa: "daiwa", 다이와: "daiwa",
+    descente: "descente", 데상트: "descente", 데쌍트: "descente",
+    underarmour: "underarmour", 언더아머: "underarmour",
+    spyder: "spyder", 스파이더: "spyder"
+  };
+  return aliases[key] || key;
+}
+
 function groupMatchesBrand(group, brand) {
   if (!brand || brand === "전체브랜드") return true;
-  const normalizedBrand = normalizeSearch(brand);
-  return getGroupBrandNames(group).some(name => {
-    const n = normalizeSearch(name);
-    const aliasMap = { nike:"나이키", adidas:"아디다스", daiwa:"다이와", descente:"데상트", underarmour:"언더아머", spyder:"스파이더" };
-    return n === normalizedBrand || normalizeSearch(aliasMap[normalizedBrand] || "") === n || buildGroupSearchText(group).includes(normalizedBrand);
-  });
+  const selectedKey = normalizeBrandKey(brand);
+
+  // 상품 설명·묶음명·품번의 부분 문자열은 검색하지 않습니다.
+  // 브랜드 전용 필드에 분리 등록된 브랜드명 중 정확히 포함된 항목만 일치시킵니다.
+  return getGroupBrandNames(group).some(name => normalizeBrandKey(name) === selectedKey);
 }
 
 function renderProductPhotoGrid(productGroups, emptyMessage = "등록된 상품이 없습니다") {

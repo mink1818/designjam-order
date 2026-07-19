@@ -1952,3 +1952,74 @@ body[data-session-page="admin"] .order-summary-number {
   html[data-theme="dark"] body[data-session-page="admin"] .mobile-order-total{color:#f8fafc!important}
 }
 
+
+/* ===== V5.3.9 다크모드 업로드 결과 가독성 ===== */
+html[data-theme="dark"] .bulk-product-uploader,
+html[data-theme="dark"] .bulk-upload-step {
+  background:#172235!important;
+  border-color:#40536b!important;
+  color:#e7eef8!important;
+}
+html[data-theme="dark"] .bulk-upload-step>strong,
+html[data-theme="dark"] .bulk-upload-step h2,
+html[data-theme="dark"] .bulk-upload-step h3 {
+  color:#f4f8ff!important;
+}
+html[data-theme="dark"] .bulk-upload-step p,
+html[data-theme="dark"] .bulk-upload-step small,
+html[data-theme="dark"] .excel-mode-help {
+  color:#c9d6e7!important;
+}
+html[data-theme="dark"] .image-library-summary,
+html[data-theme="dark"] .product-success,
+html[data-theme="dark"] .excel-result-summary,
+html[data-theme="dark"] .bulk-result-grid span {
+  background:#223247!important;
+  border-color:#4a617d!important;
+  color:#eef5ff!important;
+}
+html[data-theme="dark"] .product-success h3,
+html[data-theme="dark"] .product-success strong,
+html[data-theme="dark"] .excel-result-summary strong,
+html[data-theme="dark"] .bulk-result-grid strong,
+html[data-theme="dark"] .image-library-summary strong {
+  color:#9dccff!important;
+}
+html[data-theme="dark"] .excel-preview-wrap,
+html[data-theme="dark"] .excel-preview-table,
+html[data-theme="dark"] .bulk-preview-table {
+  background:#172235!important;
+  color:#e7eef8!important;
+}
+html[data-theme="dark"] .excel-preview-table th,
+html[data-theme="dark"] .bulk-preview-table th {
+  background:#263a52!important;
+  color:#fff!important;
+  border-color:#526983!important;
+}
+html[data-theme="dark"] .excel-preview-table td,
+html[data-theme="dark"] .bulk-preview-table td {
+  background:#1c2a3d!important;
+  color:#e7eef8!important;
+  border-color:#40536b!important;
+}
+html[data-theme="dark"] .excel-preview-table tbody tr:nth-child(even) td,
+html[data-theme="dark"] .bulk-preview-table tbody tr:nth-child(even) td {
+  background:#223247!important;
+}
+html[data-theme="dark"] .excel-error-list {
+  background:#3a2026!important;
+  border-color:#8e4a58!important;
+  color:#ffd9df!important;
+}
+html[data-theme="dark"] .excel-skip-list {
+  background:#3b321d!important;
+  border-color:#8c7438!important;
+  color:#ffe8a8!important;
+}
+html[data-theme="dark"] .image-match-badge.matched {background:#184f38!important;color:#c9ffe0!important}
+html[data-theme="dark"] .image-match-badge.direct {background:#214c78!important;color:#d8ebff!important}
+html[data-theme="dark"] .image-match-badge.unmatched {background:#6a2830!important;color:#ffd9df!important}
+html[data-theme="dark"] #bulkImageMessage,
+html[data-theme="dark"] #excelMessage,
+html[data-theme="dark"] #categoryMessage {color:#eef5ff!important}
