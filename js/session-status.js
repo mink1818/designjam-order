@@ -236,7 +236,6 @@
     const current = location.pathname.split('/').pop() || 'index.html';
     const isAdmin = page === 'admin';
     const home = isAdmin ? 'admin-home.html' : 'index.html';
-    if (current === home) return;
     const link = document.createElement('a');
     link.className = 'desktop-home-shortcut';
     link.href = home;

@@ -2052,3 +2052,47 @@ html[data-theme="dark"] #categoryMessage {color:#eef5ff!important}
   html[data-theme="dark"] .admin-mobile-bottom-nav a{color:#b7c5d7}
   html[data-theme="dark"] .admin-mobile-bottom-nav a.active{background:#29466c;color:#fff}
 }
+
+
+/* ===== V5.3.21 compact admin mobile summaries / remove duplicate middle home ===== */
+@media(max-width:899px){
+  body[data-session-page="admin"] .mobile-hide-admin-home{display:none!important}
+  body[data-session-page="admin"] .product-summary-grid{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+  body[data-session-page="admin"] .product-summary-grid article{
+    min-width:0!important;
+    padding:8px 3px!important;
+    text-align:center!important;
+  }
+  body[data-session-page="admin"] .product-summary-grid article span{
+    display:block!important;
+    font-size:10px!important;
+    line-height:1.15!important;
+    white-space:nowrap!important;
+  }
+  body[data-session-page="admin"] .product-summary-grid article strong{
+    display:block!important;
+    margin-top:3px!important;
+    font-size:18px!important;
+    line-height:1!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .dashboard{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .dashboard div{
+    min-width:0!important;
+    padding:9px 3px!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .dashboard strong{
+    font-size:20px!important;
+    line-height:1!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .dashboard span{
+    font-size:10px!important;
+    line-height:1.15!important;
+    white-space:nowrap!important;
+  }
+}
