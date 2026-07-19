@@ -1120,3 +1120,64 @@ body[data-session-page="customer"] .home-brand-grid{grid-template-columns:repeat
   .home-brand-button:not(.all-brand){gap:3px;font-size:11px!important}
   .brand-selector-button .brand-logo{width:34px;height:16px}
 }
+
+/* V5.3.6 brand logo reliability + horizontal alignment + dark-mode contrast */
+.home-brand-button:not(.all-brand){
+  flex-direction:row!important;
+  justify-content:center;
+  align-items:center;
+  gap:8px!important;
+  min-height:50px;
+  padding:8px 10px;
+}
+.home-brand-button .brand-logo{
+  width:42px!important;
+  height:22px!important;
+  flex:0 0 42px;
+  fill:currentColor;
+  color:currentColor;
+  overflow:visible;
+}
+.home-brand-button span{
+  color:#132d4f;
+  font-weight:900;
+  opacity:1;
+  white-space:nowrap;
+}
+body.theme-dark .home-brand-button,
+body[data-theme="dark"] .home-brand-button,
+html[data-theme="dark"] .home-brand-button,
+.dark-mode .home-brand-button{
+  background:#172235!important;
+  border-color:#43536d!important;
+  color:#ffffff!important;
+}
+body.theme-dark .home-brand-button span,
+body[data-theme="dark"] .home-brand-button span,
+html[data-theme="dark"] .home-brand-button span,
+.dark-mode .home-brand-button span{
+  color:#ffffff!important;
+  opacity:1!important;
+}
+body.theme-dark .home-brand-button.all-brand,
+body[data-theme="dark"] .home-brand-button.all-brand,
+html[data-theme="dark"] .home-brand-button.all-brand,
+.dark-mode .home-brand-button.all-brand{
+  background:#23466f!important;
+  border-color:#78a9e8!important;
+  color:#ffffff!important;
+}
+@media(max-width:640px){
+  .home-brand-button:not(.all-brand){
+    min-height:48px;
+    padding:7px 5px;
+    gap:5px!important;
+    font-size:11px!important;
+  }
+  .home-brand-button .brand-logo{
+    width:28px!important;
+    height:17px!important;
+    flex-basis:28px;
+  }
+  .home-brand-button span{font-size:11px!important;}
+}
