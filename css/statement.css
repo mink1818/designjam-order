@@ -389,7 +389,7 @@ body {
 .bank-transfer-box{margin:14px 0;padding:12px;border:2px solid #24579f;background:#f3f7ff;border-radius:8px}.bank-transfer-box p{margin:4px 0}
 
 
-/* V5.3.28: 거래명세서 계좌/택배 정보 간소화 */
+/* V5.3.29: 거래명세서 계좌/택배 정보 간소화 */
 .bank-transfer-box,
 .delivery-info {
   margin-top: 14px;
@@ -411,7 +411,7 @@ body {
   font-size: 18px;
 }
 
-/* V5.3.28: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
+/* V5.3.29: PDF/인쇄 시 앱 UI와 브라우저 인쇄 여백 영역 제거 */
 @media print {
   @page {
     size: A4;
@@ -494,5 +494,63 @@ body {
   .statement-footer h2 {
     margin: 7px 0 0 !important;
     font-size: 16px !important;
+  }
+}
+
+
+/* V5.3.29: 계좌·택배 정보 좌측 / 금액 요약 우측 배치 */
+.statement-bottom-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 380px;
+  gap:20px;
+  align-items:start;
+  margin-top:28px;
+}
+.statement-logistics-column{min-width:0}
+.statement-bottom-grid .statement-summary{
+  width:100%;
+  margin:0;
+}
+.statement-bottom-grid .bank-transfer-box,
+.statement-bottom-grid .delivery-info{
+  width:100%;
+  margin:0 0 10px;
+  padding:9px 11px;
+  font-size:12px;
+  line-height:1.3;
+}
+.statement-bottom-grid .shipping-info{margin-bottom:0}
+
+@media(max-width:680px){
+  .statement-bottom-grid{
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:22px;
+  }
+  .statement-bottom-grid .statement-summary{order:1}
+  .statement-logistics-column{order:2}
+}
+
+@media print{
+  .statement-bottom-grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 78mm!important;
+    gap:6mm!important;
+    align-items:start!important;
+    margin-top:4mm!important;
+    break-inside:avoid!important;
+    page-break-inside:avoid!important;
+  }
+  .statement-bottom-grid .statement-summary{
+    width:100%!important;
+    margin:0!important;
+  }
+  .statement-bottom-grid .bank-transfer-box,
+  .statement-bottom-grid .delivery-info{
+    width:100%!important;
+    margin:0 0 2.5mm!important;
+    padding:2mm 2.5mm!important;
+    font-size:10px!important;
+    line-height:1.2!important;
   }
 }

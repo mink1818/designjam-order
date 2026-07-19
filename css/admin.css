@@ -2170,7 +2170,7 @@ body[data-session-page="admin"] .v3-metric-grid{
   }
 }
 
-/* ===== V5.3.28 large back arrow / order-note save feedback ===== */
+/* ===== V5.3.29 large back arrow / order-note save feedback ===== */
 .desktop-home-shortcut .desktop-home-arrow{
   display:inline-flex;align-items:center;justify-content:center;
   font-size:30px;line-height:1;font-weight:1000;margin-right:4px;
@@ -2178,3 +2178,45 @@ body[data-session-page="admin"] .v3-metric-grid{
 }
 .customer-note-input.note-save-success{outline:3px solid rgba(34,197,94,.35);background:#f0fdf4}
 @media(max-width:899px){.desktop-home-shortcut{display:none!important}}
+
+
+/* V5.3.29: PC DESIGN SOCKS 굵은 뒤로가기 화살표를 버튼 왼쪽에 고정 */
+@media(min-width:900px){
+  .desktop-home-shortcut{
+    position:fixed!important;
+    padding-left:50px!important;
+    gap:0!important;
+  }
+  .desktop-home-shortcut .desktop-home-arrow{
+    position:absolute!important;
+    left:13px!important;
+    top:50%!important;
+    width:30px!important;
+    height:30px!important;
+    margin:0!important;
+    transform:translateY(-50%)!important;
+    font-size:0!important;
+  }
+  .desktop-home-shortcut .desktop-home-arrow::before{
+    content:"";
+    position:absolute;
+    left:2px;
+    top:13px;
+    width:25px;
+    height:5px;
+    border-radius:5px;
+    background:currentColor;
+  }
+  .desktop-home-shortcut .desktop-home-arrow::after{
+    content:"";
+    position:absolute;
+    left:2px;
+    top:7px;
+    width:14px;
+    height:14px;
+    border-left:5px solid currentColor;
+    border-bottom:5px solid currentColor;
+    transform:rotate(45deg);
+    border-radius:2px;
+  }
+}

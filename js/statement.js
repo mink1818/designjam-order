@@ -230,40 +230,44 @@ function renderStatement(items) {
       </tbody>
     </table>
 
-    <section class="statement-summary">
-      <div>
-        <span>출고수량</span>
-        <strong>${totalQty.toLocaleString()}죽</strong>
+    <section class="statement-bottom-grid">
+      <div class="statement-logistics-column">
+        ${renderStatementBankBox(first)}
+
+        <section class="delivery-info shipping-info">
+          <p>
+            <strong>택배사:</strong>
+            ${escapeHtml(first.courier || "-")}
+          </p>
+
+          <p>
+            <strong>송장번호:</strong>
+            ${escapeHtml(first.tracking_number || "-")}
+          </p>
+        </section>
       </div>
 
-      <div>
-        <span>상품금액</span>
-        <strong>${productTotal.toLocaleString()}원</strong>
-      </div>
+      <section class="statement-summary">
+        <div>
+          <span>출고수량</span>
+          <strong>${totalQty.toLocaleString()}죽</strong>
+        </div>
 
-      <div>
-        <span>배송비</span>
-        <strong>${shippingFee.toLocaleString()}원</strong>
-      </div>
+        <div>
+          <span>상품금액</span>
+          <strong>${productTotal.toLocaleString()}원</strong>
+        </div>
 
-      <div class="final-row">
-        <span>최종금액</span>
-        <strong>${finalTotal.toLocaleString()}원</strong>
-      </div>
-    </section>
+        <div>
+          <span>배송비</span>
+          <strong>${shippingFee.toLocaleString()}원</strong>
+        </div>
 
-    ${renderStatementBankBox(first)}
-
-    <section class="delivery-info shipping-info">
-      <p>
-        <strong>택배사:</strong>
-        ${escapeHtml(first.courier || "-")}
-      </p>
-
-      <p>
-        <strong>송장번호:</strong>
-        ${escapeHtml(first.tracking_number || "-")}
-      </p>
+        <div class="final-row">
+          <span>최종금액</span>
+          <strong>${finalTotal.toLocaleString()}원</strong>
+        </div>
+      </section>
     </section>
 
     <footer class="statement-footer">
