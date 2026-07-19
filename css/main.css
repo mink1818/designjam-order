@@ -1515,7 +1515,7 @@ html[data-theme="dark"] .compact-item-number{color:#fff}
 html[data-theme="dark"] .compact-item-price{color:#9bc7ff}
 
 
-/* ===== V5.3.21 mobile 3-column order / one-row cart / working desktop home ===== */
+/* ===== V5.3.22 mobile 3-column order / one-row cart / working desktop home ===== */
 .mobile-order-column-head{display:grid;grid-template-columns:minmax(58px,.7fr) minmax(72px,.9fr) minmax(154px,1.45fr);gap:6px;align-items:center;margin:0 0 5px;padding:7px 8px;border-radius:9px;background:#edf2f7;color:#4b5563;font-size:13px;font-weight:800;text-align:center}
 .qty-control-row{grid-template-columns:minmax(58px,.7fr) minmax(72px,.9fr) minmax(154px,1.45fr);gap:6px}
 .compact-item-number,.compact-item-price{text-align:center;min-width:0}
@@ -1554,7 +1554,7 @@ html[data-theme="dark"] .compact-item-price{color:#9bc7ff}
 html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7f5}
 
 
-/* ===== V5.3.21 mobile true single-row ordering / unified cart return ===== */
+/* ===== V5.3.22 mobile true single-row ordering / unified cart return ===== */
 @media (max-width:899px){
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
@@ -1622,3 +1622,16 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
     min-width:32px!important;
   }
 }
+
+
+/* ===== V5.3.22 unified PC shortcut / larger cart item number ===== */
+body[data-session-page="customer"] .cart-product-info strong{
+  font-size:22px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  color:#14233d!important;
+}
+@media(max-width:899px){
+  body[data-session-page="customer"] .cart-product-info strong{font-size:20px!important;}
+}
+html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info strong{color:#fff!important;}

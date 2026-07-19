@@ -2054,7 +2054,7 @@ html[data-theme="dark"] #categoryMessage {color:#eef5ff!important}
 }
 
 
-/* ===== V5.3.21 compact admin mobile summaries / remove duplicate middle home ===== */
+/* ===== V5.3.22 compact admin mobile summaries / remove duplicate middle home ===== */
 @media(max-width:899px){
   body[data-session-page="admin"] .mobile-hide-admin-home{display:none!important}
   body[data-session-page="admin"] .product-summary-grid{
