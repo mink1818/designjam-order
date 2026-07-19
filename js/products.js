@@ -4,6 +4,32 @@ const supabaseUrl =
 /* V2 운영 확장 공통 모듈 연결 */
 const operationsCore = window.DesignJamOperations || null;
 
+
+/* 브랜드명 한글/영문 통합 저장 규칙 */
+const PRODUCT_BRAND_DISPLAY = {
+  "NIKE":"나이키", "ADIDAS":"아디다스", "DAIWA":"다이와", "DESCENTE":"데상트",
+  "UNDER ARMOUR":"언더아머", "SPYDER":"스파이더", "STUSSY":"스투시",
+  "NEW BALANCE":"뉴발란스", "LULULEMON":"룰루레몬", "HUMAN MADE":"휴먼메이드",
+  "COMME DES GARCONS":"꼼데가르송", "TITLEIST":"타이틀리스트", "MIU MIU":"미우미우", "PXG":"PXG"
+};
+const PRODUCT_BRAND_ALIASES = {
+  nike:"NIKE", 나이키:"NIKE", adidas:"ADIDAS", 아디다스:"ADIDAS", daiwa:"DAIWA", 다이와:"DAIWA",
+  descente:"DESCENTE", 데상트:"DESCENTE", 데쌍트:"DESCENTE", underarmour:"UNDER ARMOUR", 언더아머:"UNDER ARMOUR",
+  spyder:"SPYDER", 스파이더:"SPYDER", stussy:"STUSSY", 스투시:"STUSSY", newbalance:"NEW BALANCE", 뉴발란스:"NEW BALANCE",
+  lululemon:"LULULEMON", 룰루레몬:"LULULEMON", humanmade:"HUMAN MADE", 휴먼메이드:"HUMAN MADE",
+  commedesgarcons:"COMME DES GARCONS", 꼼데가르송:"COMME DES GARCONS", titleist:"TITLEIST", 타이틀리스트:"TITLEIST",
+  miumiu:"MIU MIU", 미우미우:"MIU MIU", pxg:"PXG"
+};
+function canonicalProductBrand(value) {
+  const raw=String(value||"").trim();
+  const compact=raw.normalize("NFKC").toLowerCase().replace(/[^a-z0-9가-힣]/g, "");
+  const key=PRODUCT_BRAND_ALIASES[compact];
+  return key ? PRODUCT_BRAND_DISPLAY[key] : raw;
+}
+function normalizeProductBrandText(value) {
+  const names=String(value||"").split(/[,/·|]+/).map(canonicalProductBrand).filter(Boolean);
+  return [...new Set(names)].join(", ");
+}
 function initializeV2ProductAdmin() { /* 버전 표시는 공통 배지에서 관리 */ }
 
 
@@ -1651,11 +1677,9 @@ async function saveGroup() {
       .value
       .trim(),
 
-  brand_text:
-    document
-      .getElementById("groupBrand")
-      .value
-      .trim(),
+  brand_text: normalizeProductBrandText(
+    document.getElementById("groupBrand").value
+  ),
 
   image_url: imageUrl,
   image_urls: uploadedGroupImageUrls,
@@ -3070,7 +3094,7 @@ async function registerExcelProducts() {
       try {
         const mainCategoryName = String(row["대분류"] || "").trim();
         const categoryName = String(row["카테고리"] || "").trim();
-        const brandText = String(row["포함브랜드"] || "").trim();
+        const brandText = normalizeProductBrandText(row["포함브랜드"] || "");
         const groupTitle = String(row["묶음명"] || "").trim();
         const itemPatternText = String(row["품번"] || "").trim();
         const descriptionText = String(row["설명"] || "").trim();

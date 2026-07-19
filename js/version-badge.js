@@ -1,5 +1,5 @@
 (()=>{
-  const VERSION='V5.3.14';
+  const VERSION='V5.3.15';
   function addBadge(){
     if(document.getElementById('appVersionBadge')) return;
     const b=document.createElement('div');

@@ -419,7 +419,7 @@ function renderHomeBrandButtons() {
   const catalogBrands = getCatalogBrands();
   const keyword = normalizeSearch(homeBrandSearchKeyword);
   const visibleBrands = catalogBrands
-    .filter(brand => !keyword || normalizeSearch(`${brand} ${getBrandDisplayName(brand)}`).includes(keyword));
+    .filter(brand => !keyword || normalizeSearch(getBrandSearchText(brand)).includes(keyword));
   const allSelected = catalogBrands.length > 0 && catalogBrands.every(brand => selectedHomeBrands.has(brand));
 
   return `
@@ -482,31 +482,65 @@ function getGroupBrandNames(group) {
   return [...new Set(raw.split(/[,/·|]+/).map(value => value.trim()).filter(Boolean))];
 }
 
+const BRAND_DISPLAY_LABELS = {
+  "NIKE": "나이키",
+  "ADIDAS": "아디다스",
+  "DAIWA": "다이와",
+  "DESCENTE": "데상트",
+  "UNDER ARMOUR": "언더아머",
+  "SPYDER": "스파이더",
+  "STUSSY": "스투시",
+  "NEW BALANCE": "뉴발란스",
+  "LULULEMON": "룰루레몬",
+  "HUMAN MADE": "휴먼메이드",
+  "COMME DES GARCONS": "꼼데가르송",
+  "TITLEIST": "타이틀리스트",
+  "MIU MIU": "미우미우",
+  "PXG": "PXG"
+};
+
+const BRAND_ALIAS_KEYS = {
+  nike: "NIKE", 나이키: "NIKE",
+  adidas: "ADIDAS", 아디다스: "ADIDAS",
+  daiwa: "DAIWA", 다이와: "DAIWA",
+  descente: "DESCENTE", 데상트: "DESCENTE", 데쌍트: "DESCENTE",
+  underarmour: "UNDER ARMOUR", 언더아머: "UNDER ARMOUR",
+  spyder: "SPYDER", 스파이더: "SPYDER",
+  stussy: "STUSSY", 스투시: "STUSSY",
+  newbalance: "NEW BALANCE", 뉴발란스: "NEW BALANCE", 뉴발란스: "NEW BALANCE",
+  lululemon: "LULULEMON", 룰루레몬: "LULULEMON",
+  humanmade: "HUMAN MADE", 휴먼메이드: "HUMAN MADE", 휴먼메이드: "HUMAN MADE",
+  commedesgarcons: "COMME DES GARCONS", 꼼데가르송: "COMME DES GARCONS", 꼼데가르송: "COMME DES GARCONS",
+  titleist: "TITLEIST", 타이틀리스트: "TITLEIST",
+  miumiu: "MIU MIU", 미우미우: "MIU MIU",
+  pxg: "PXG"
+};
+
+function normalizeBrandKey(value) {
+  const compact = normalizeSearch(value).replace(/[^a-z0-9가-힣]/g, "");
+  return BRAND_ALIAS_KEYS[compact] || String(value || "").trim().toUpperCase();
+}
+
 function getBrandDisplayName(brand) {
-  const labels = {
-    "전체브랜드": "전체브랜드",
-    "NIKE": "나이키",
-    "ADIDAS": "아디다스",
-    "DAIWA": "다이와",
-    "DESCENTE": "데상트",
-    "UNDER ARMOUR": "언더아머",
-    "SPYDER": "스파이더"
-  };
-  return labels[brand] || brand;
+  if (brand === "전체브랜드") return "전체브랜드";
+  const key = normalizeBrandKey(brand);
+  return BRAND_DISPLAY_LABELS[key] || String(brand || "").trim();
+}
+
+function getBrandSearchText(brand) {
+  const key = normalizeBrandKey(brand);
+  const aliases = Object.entries(BRAND_ALIAS_KEYS)
+    .filter(([, canonical]) => canonical === key)
+    .map(([alias]) => alias);
+  return [brand, key, getBrandDisplayName(key), ...aliases].join(" ");
 }
 
 function getCatalogBrands() {
-  // 등록된 상품 종류가 많은 브랜드를 먼저 배치합니다.
-  // 상품 수가 같을 때만 거래처에서 익숙한 인기 브랜드 순서를 우선합니다.
+  // 실제 등록 상품 종류가 많은 브랜드부터 자동 배치합니다.
   const preferred = ["NIKE", "ADIDAS", "DAIWA", "DESCENTE", "UNDER ARMOUR", "SPYDER", "PXG", "STUSSY"];
-  const aliases = {
-    "나이키": "NIKE", "아디다스": "ADIDAS", "다이와": "DAIWA",
-    "데상트": "DESCENTE", "데쌍트": "DESCENTE", "언더아머": "UNDER ARMOUR", "스파이더": "SPYDER",
-    "스투시": "STUSSY"
-  };
   const counts = new Map();
   groups.forEach(group => {
-    const uniqueBrands = new Set(getGroupBrandNames(group).map(name => aliases[name] || name.toUpperCase()));
+    const uniqueBrands = new Set(getGroupBrandNames(group).map(normalizeBrandKey).filter(Boolean));
     uniqueBrands.forEach(name => counts.set(name, (counts.get(name) || 0) + 1));
   });
   return [...counts.keys()].sort((a, b) => {
@@ -516,19 +550,6 @@ function getCatalogBrands() {
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     return getBrandDisplayName(a).localeCompare(getBrandDisplayName(b), "ko");
   });
-}
-
-function normalizeBrandKey(value) {
-  const key = normalizeSearch(value);
-  const aliases = {
-    nike: "nike", 나이키: "nike",
-    adidas: "adidas", 아디다스: "adidas",
-    daiwa: "daiwa", 다이와: "daiwa",
-    descente: "descente", 데상트: "descente", 데쌍트: "descente",
-    underarmour: "underarmour", 언더아머: "underarmour",
-    spyder: "spyder", 스파이더: "spyder"
-  };
-  return aliases[key] || key;
 }
 
 function groupMatchesBrand(group, brand) {
