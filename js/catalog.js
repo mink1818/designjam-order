@@ -391,11 +391,14 @@ function renderMainCategories() {
       <div class="home-brand-tools">
         <label class="home-brand-search-wrap">
           <span aria-hidden="true">🔍</span>
-          <input id="homeBrandSearch" type="search" placeholder="브랜드 검색" value="${escapeHtml(homeBrandSearchKeyword)}" oninput="updateHomeBrandSearch(this.value)" />
+          <input id="homeBrandSearch" type="search" placeholder="브랜드·상품명·품번 통합검색" value="${escapeHtml(homeBrandSearchKeyword)}" oninput="updateHomeBrandSearch(this.value)" />
         </label>
       </div>
       <div class="home-brand-grid">
         ${renderHomeBrandButtons()}
+      </div>
+      <div id="homeIntegratedSearchResults">
+        ${renderHomeIntegratedSearchResults()}
       </div>
       ${renderSelectedHomeBrandProducts()}
     </section>
@@ -433,10 +436,47 @@ function renderHomeBrandButtons() {
   `;
 }
 
+function buildHomeIntegratedSearchText(group) {
+  const brandAliases = getGroupBrandNames(group)
+    .map(getBrandSearchText)
+    .join(" ");
+
+  return normalizeSearch([
+    buildGroupSearchText(group),
+    brandAliases
+  ].join(" "));
+}
+
+function renderHomeIntegratedSearchResults() {
+  const rawKeyword = String(homeBrandSearchKeyword || "").trim();
+  const keyword = normalizeSearch(rawKeyword);
+  if (!keyword) return "";
+
+  const matchedGroups = groups.filter(group =>
+    buildHomeIntegratedSearchText(group).includes(keyword)
+  );
+
+  return `
+    <section class="home-integrated-search-results" aria-label="통합 검색 결과">
+      <div class="home-section-heading home-search-result-heading">
+        <div>
+          <h2>통합 검색 결과</h2>
+          <p>브랜드·상품명·카테고리·품번을 함께 검색합니다</p>
+        </div>
+        <strong>${matchedGroups.length}개</strong>
+      </div>
+      ${renderProductPhotoGrid(matchedGroups, `“${rawKeyword}” 검색 결과가 없습니다`)}
+    </section>
+  `;
+}
+
 function updateHomeBrandSearch(value) {
   homeBrandSearchKeyword = String(value || "");
   const grid = document.querySelector(".home-brand-grid");
   if (grid) grid.innerHTML = renderHomeBrandButtons();
+
+  const results = document.getElementById("homeIntegratedSearchResults");
+  if (results) results.innerHTML = renderHomeIntegratedSearchResults();
 }
 
 function toggleHomeBrandSelection(brand) {
