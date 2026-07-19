@@ -231,6 +231,16 @@ function formatOrderDate(value) {
   });
 }
 
+function formatMobileOrderDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${month}-${day} ${hour}:${minute}`;
+}
+
 function renderOrderCards(groups) {
   if (groups.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>검색 결과가 없습니다</h2></div>";
@@ -277,16 +287,17 @@ summaryTotal += Number(group.shipping_fee || 0);
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"}</h2>
-    <p class="order-summary-number" data-mobile-date="${formatOrderDate(group.createdAt)}">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
+    <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
+  <div class="mobile-order-summary" aria-label="주문 요약">
+    <span class="mobile-order-date">${formatMobileOrderDate(group.createdAt)}</span>
+    <strong class="mobile-order-qty">${summaryQty}죽</strong>
+    <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
+  </div>
   <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.customerId] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.customerId])}</span>` : ""}
-  <div class="mobile-order-actions" onclick="event.stopPropagation()">
-    <button type="button" class="mobile-order-detail-btn" onclick="toggleDetail('detail-${index}')">상세보기</button>
-    <button type="button" class="mobile-order-status-btn ${isDone ? "done" : "pending"}" onclick="toggleOrderStatus('${group.orderNumber}', '${group.status}')">${isDone ? "접수복원" : "출고완료"}</button>
-  </div>
 </div>
 
 <div
