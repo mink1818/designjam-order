@@ -1112,11 +1112,8 @@ function openGroup(groupId, requestedItem = "") {
         <div class="order-row qty-control-row ${
           isSoldout ? "soldout-order-row" : ""
         }" data-qty-row="${escapeAttribute(numberText)}">
-          <div class="compact-item-info">
-            <strong class="compact-item-number">${escapeHtml(numberText)}</strong>
-            <span class="compact-item-price">${formatWon(group.price)}</span>
-            ${isSoldout ? '<span class="soldout-label">품절</span>' : ""}
-          </div>
+          <strong class="compact-item-number">${escapeHtml(numberText)}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}</strong>
+          <span class="compact-item-price">${formatWon(group.price)}</span>
 
           <div class="qty-control">
             <button
@@ -1177,6 +1174,10 @@ function openGroup(groupId, requestedItem = "") {
 
       <div class="section-label">
         품번별 주문수량
+      </div>
+
+      <div class="mobile-order-column-head" aria-hidden="true">
+        <span>품번</span><span>가격</span><span>수량</span>
       </div>
 
       ${quantityRows}

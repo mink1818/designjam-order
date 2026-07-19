@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>디자인삭스 거래처 환경설정</title>
-<link rel="stylesheet" href="css/main.css?v=5318">
+<link rel="stylesheet" href="css/main.css?v=5319">
 <meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=4022"><link rel="icon" href="icons/customer-192.png?v=4022">
 </head>
 <body class="auth-pending" data-session-page="customer" data-pwa-app="customer">
+<a class="desktop-home-shortcut" href="index.html" aria-label="홈으로 이동">🏠 DESIGN JAM</a>
 <header><h1>⚙️ 환경설정</h1><p>거래처 계정과 화면 설정</p></header>
 <main class="container customer-settings-page">
 <button class="cart-btn gray-btn" type="button" onclick="location.href='index.html'">← 상품 주문으로 돌아가기</button>
@@ -30,10 +31,9 @@
 </details>
 
 <details class="customer-accordion">
- <summary><span>⭐</span><b>내 상품 바로가기</b><small>즐겨찾기·최근 본 상품</small><i>⌄</i></summary>
+ <summary><span>🕘</span><b>최근 본 상품</b><small>최근 확인한 상품</small><i>⌄</i></summary>
  <div class="customer-accordion-body">
   <div class="setting-action-grid">
-   <button type="button" onclick="location.href='catalog.html?view=favorites'"><b>즐겨찾기 상품</b><span>별표로 저장한 대분류와 상품 확인</span></button>
    <button type="button" id="recentViewedBtn"><b>최근 본 상품</b><span id="recentViewedSummary">최근 본 품번을 확인합니다</span></button>
   </div>
   <div id="recentViewedList" class="recent-viewed-list" hidden></div>
@@ -63,7 +63,7 @@
 </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/ui-preferences.js?v=4022"></script><script src="js/customer-settings.js?v=4026"></script><script src="js/session-status.js?v=5318"></script><script src="js/pwa.js?v=4022"></script><script src="js/version-badge.js?v=5318"></script><script src="js/back-navigation.js?v=4022"></script>
+<script src="js/ui-preferences.js?v=4022"></script><script src="js/customer-settings.js?v=4026"></script><script src="js/session-status.js?v=5319"></script><script src="js/pwa.js?v=4022"></script><script src="js/version-badge.js?v=5319"></script><script src="js/back-navigation.js?v=4022"></script>
 
 <nav class="customer-bottom-nav" aria-label="거래처 빠른 메뉴">
   <a href="index.html"><span>🏠</span>홈</a>

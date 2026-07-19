@@ -14,16 +14,17 @@
   <link rel="icon" href="icons/admin-192.png?v=4022">
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=4022">
 </head>
-<body class="auth-pending" data-session-page="admin" data-pwa-app="admin"><header><h1>🏢 거래처관리</h1><p>승인·등급·할인·외상·관리자 메모</p></header>
+<body class="auth-pending" data-session-page="admin" data-pwa-app="admin">
+<a class="desktop-home-shortcut" href="admin-home.html" aria-label="홈으로 이동">🏠 관리자 홈</a><header><h1>🏢 거래처관리</h1><p>승인·등급·할인·외상·관리자 메모</p></header>
 <main class="container">
 <button class="cart-btn gray-btn" onclick="location.href='admin-home.html'">← 관리자 대시보드</button>
 <div class="dashboard"><div><strong id="waitingCount">0</strong><span>승인대기</span></div><div><strong id="approvedCount">0</strong><span>승인완료</span></div><div><strong id="blockedCount">0</strong><span>차단</span></div><div><strong id="creditCount">0</strong><span>외상허용</span></div></div>
 <div class="v3-toolbar"><input id="memberSearch" class="search" type="text" placeholder="상호·대표자·전화번호·이메일 검색"><select id="memberSort"><option value="new">최근 가입순</option><option value="order">최근 주문순</option><option value="sales">누적금액순</option><option value="name">거래처명순</option></select></div>
 <div class="admin-filter"><button data-filter="전체" onclick="setMemberFilter('전체')">전체</button><button data-filter="승인대기" onclick="setMemberFilter('승인대기')">승인대기</button><button data-filter="승인완료" onclick="setMemberFilter('승인완료')">승인완료</button><button data-filter="차단" onclick="setMemberFilter('차단')">차단</button></div>
 <div class="customer-list-guide">거래처를 누르면 상세정보·지정 비밀번호 변경 기능이 펼쳐집니다. 한 번에 30곳씩 표시합니다.</div><button class="cart-btn compact-refresh-btn" onclick="loadCustomers()">거래처 새로고침</button><div id="customerList"></div>
-</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/members.js?v=4022"></script><script src="js/session-status.js?v=5318"></script><script src="js/pwa.js?v=4022"></script>
+</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/members.js?v=4022"></script><script src="js/session-status.js?v=5319"></script><script src="js/pwa.js?v=4022"></script>
 <script src="js/admin-page-transition.js?v=4022"></script>
-<script src="js/version-badge.js?v=5318"></script>
+<script src="js/version-badge.js?v=5319"></script>
 <script src="js/back-navigation.js?v=4022"></script>
 <script src="js/ui-preferences.js?v=4022"></script>
 <script src="js/admin-mobile-nav.js?v=5360"></script>
