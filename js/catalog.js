@@ -42,6 +42,21 @@ let cart = [];
 let currentScreen = "home-menu";
 let currentBrand = "전체브랜드";
 let selectedHomeBrands = new Set();
+const HOME_BRAND_FAVORITES_KEY = "designjam_home_brand_favorites";
+let favoriteHomeBrands = readFavoriteHomeBrands();
+let homeBrandSearchKeyword = "";
+
+function readFavoriteHomeBrands() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(HOME_BRAND_FAVORITES_KEY) || "[]").map(String));
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function saveFavoriteHomeBrands() {
+  localStorage.setItem(HOME_BRAND_FAVORITES_KEY, JSON.stringify([...favoriteHomeBrands]));
+}
 let detailReturnScreen = "all-products";
 let activeMainCategoryId = null;
 let currentUser = null;
@@ -383,12 +398,18 @@ function renderMainCategories() {
     </section>
 
     <section class="home-brand-section" aria-label="전체브랜드">
-      <div class="home-section-heading"><h2>전체브랜드</h2><p>여러 브랜드를 함께 선택할 수 있습니다</p></div>
+      <div class="home-section-heading home-brand-heading">
+        <div><h2>전체브랜드</h2><p>여러 브랜드를 함께 선택할 수 있습니다</p></div>
+        <strong class="selected-brand-count">선택 ${selectedHomeBrands.size}개</strong>
+      </div>
+      <div class="home-brand-tools">
+        <label class="home-brand-search-wrap">
+          <span aria-hidden="true">🔍</span>
+          <input id="homeBrandSearch" type="search" placeholder="브랜드 검색" value="${escapeHtml(homeBrandSearchKeyword)}" oninput="updateHomeBrandSearch(this.value)" />
+        </label>
+      </div>
       <div class="home-brand-grid">
-        ${getCatalogBrands().map(brand => `
-          <button class="home-brand-button ${selectedHomeBrands.has(brand) ? "active" : ""}" aria-pressed="${selectedHomeBrands.has(brand)}" type="button" onclick="toggleHomeBrandSelection('${escapeJsString(brand)}')">
-            <span>${escapeHtml(getBrandDisplayName(brand))}</span>
-          </button>`).join("")}
+        ${renderHomeBrandButtons()}
       </div>
       ${renderSelectedHomeBrandProducts()}
     </section>
@@ -407,9 +428,62 @@ function renderMainCategories() {
 }
 
 
+
+function renderHomeBrandButtons() {
+  const catalogBrands = getCatalogBrands();
+  const keyword = normalizeSearch(homeBrandSearchKeyword);
+  const visibleBrands = catalogBrands
+    .filter(brand => !keyword || normalizeSearch(`${brand} ${getBrandDisplayName(brand)}`).includes(keyword))
+    .sort((a, b) => {
+      const af = favoriteHomeBrands.has(a) ? 0 : 1;
+      const bf = favoriteHomeBrands.has(b) ? 0 : 1;
+      return af - bf || catalogBrands.indexOf(a) - catalogBrands.indexOf(b);
+    });
+  const allSelected = catalogBrands.length > 0 && catalogBrands.every(brand => selectedHomeBrands.has(brand));
+
+  return `
+    <button class="home-brand-button all-brand ${allSelected ? "active" : ""}" aria-pressed="${allSelected}" type="button" onclick="toggleAllHomeBrands()">
+      <span>전체브랜드</span>
+    </button>
+    ${visibleBrands.map(brand => `
+      <div class="home-brand-button-wrap ${favoriteHomeBrands.has(brand) ? "favorite" : ""}">
+        <button class="home-brand-button ${selectedHomeBrands.has(brand) ? "active" : ""}" aria-pressed="${selectedHomeBrands.has(brand)}" type="button" onclick="toggleHomeBrandSelection('${escapeJsString(brand)}')">
+          <span>${escapeHtml(getBrandDisplayName(brand))}</span>
+        </button>
+        <button class="home-brand-favorite ${favoriteHomeBrands.has(brand) ? "active" : ""}" type="button" aria-pressed="${favoriteHomeBrands.has(brand)}" title="${favoriteHomeBrands.has(brand) ? "즐겨찾기 해제" : "즐겨찾기 추가"}" onclick="toggleHomeBrandFavorite(event, '${escapeJsString(brand)}')">★</button>
+      </div>`).join("") || `<p class="home-brand-empty">검색된 브랜드가 없습니다.</p>`}
+  `;
+}
+
+function updateHomeBrandSearch(value) {
+  homeBrandSearchKeyword = String(value || "");
+  const grid = document.querySelector(".home-brand-grid");
+  if (grid) grid.innerHTML = renderHomeBrandButtons();
+}
+
+function toggleHomeBrandFavorite(event, brand) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  if (favoriteHomeBrands.has(brand)) favoriteHomeBrands.delete(brand);
+  else favoriteHomeBrands.add(brand);
+  saveFavoriteHomeBrands();
+  const grid = document.querySelector(".home-brand-grid");
+  if (grid) grid.innerHTML = renderHomeBrandButtons();
+}
+
 function toggleHomeBrandSelection(brand) {
   if (selectedHomeBrands.has(brand)) selectedHomeBrands.delete(brand);
   else selectedHomeBrands.add(brand);
+  renderMainCategories();
+}
+
+function toggleAllHomeBrands() {
+  const catalogBrands = getCatalogBrands();
+  const allSelected = catalogBrands.length > 0 && catalogBrands.every(brand => selectedHomeBrands.has(brand));
+
+  if (allSelected) selectedHomeBrands.clear();
+  else selectedHomeBrands = new Set(catalogBrands);
+
   renderMainCategories();
 }
 
@@ -423,7 +497,7 @@ function renderSelectedHomeBrandProducts() {
   return `
     <section class="home-selected-brand-products" aria-label="선택 브랜드 상품">
       <div class="selected-brand-summary">
-        <strong>${selected.map(getBrandDisplayName).map(escapeHtml).join(" · ")}</strong>
+        <strong>선택 ${selected.length}개 · ${selected.map(getBrandDisplayName).map(escapeHtml).join(" · ")}</strong>
         <button type="button" onclick="selectedHomeBrands.clear(); renderMainCategories();">선택 해제</button>
       </div>
       ${renderProductPhotoGrid(unique, "선택한 브랜드의 등록 상품이 없습니다")}
