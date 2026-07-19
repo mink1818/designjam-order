@@ -1410,3 +1410,47 @@ html[data-theme="dark"] .home-brand-search-wrap input,body[data-theme="dark"] .h
 html[data-theme="dark"] .home-brand-favorite,body[data-theme="dark"] .home-brand-favorite,body.theme-dark .home-brand-favorite,.dark-mode .home-brand-favorite{background:#26364b;color:#8fa0b5}
 html[data-theme="dark"] .home-brand-favorite.active,body[data-theme="dark"] .home-brand-favorite.active,body.theme-dark .home-brand-favorite.active,.dark-mode .home-brand-favorite.active{background:#584817;color:#ffd45d}
 @media(max-width:640px){.home-brand-heading{flex-direction:row!important;align-items:center!important}.selected-brand-count{font-size:12px;padding:6px 8px}.home-brand-search-wrap{min-height:40px}.home-brand-favorite{top:3px;right:3px;width:21px;height:21px;font-size:14px}.home-brand-button-wrap .home-brand-button{padding-right:23px!important}}
+
+/* ===== V5.3.12 mobile brand favorite placement ===== */
+@media(max-width:640px){
+  .home-brand-button-wrap{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 27px;
+    align-items:stretch;
+    gap:4px;
+  }
+  .home-brand-button-wrap .home-brand-button{
+    min-width:0;
+    width:100%;
+    padding:8px 4px!important;
+  }
+  .home-brand-button-wrap .home-brand-button span{
+    display:block;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .home-brand-button-wrap .home-brand-favorite{
+    position:static;
+    width:27px;
+    height:auto;
+    min-width:27px;
+    min-height:100%;
+    border:1px solid #cdd9e7;
+    border-radius:10px;
+    background:#fff;
+    font-size:16px;
+    box-shadow:none;
+  }
+  .home-brand-button-wrap .home-brand-favorite.active{
+    border-color:#edc45a;
+    background:#fff6d8;
+  }
+}
+html[data-theme="dark"] .home-brand-button-wrap .home-brand-favorite,
+body[data-theme="dark"] .home-brand-button-wrap .home-brand-favorite,
+body.theme-dark .home-brand-button-wrap .home-brand-favorite,
+.dark-mode .home-brand-button-wrap .home-brand-favorite{
+  border-color:#4b6079;
+}
