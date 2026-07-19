@@ -496,17 +496,25 @@ function getBrandDisplayName(brand) {
 }
 
 function getCatalogBrands() {
-  const preferred = ["NIKE", "ADIDAS", "DAIWA", "DESCENTE", "UNDER ARMOUR", "SPYDER"];
+  // 등록된 상품 종류가 많은 브랜드를 먼저 배치합니다.
+  // 상품 수가 같을 때만 거래처에서 익숙한 인기 브랜드 순서를 우선합니다.
+  const preferred = ["NIKE", "ADIDAS", "DAIWA", "DESCENTE", "UNDER ARMOUR", "SPYDER", "PXG", "STUSSY"];
   const aliases = {
     "나이키": "NIKE", "아디다스": "ADIDAS", "다이와": "DAIWA",
-    "데상트": "DESCENTE", "데쌍트": "DESCENTE", "언더아머": "UNDER ARMOUR", "스파이더": "SPYDER"
+    "데상트": "DESCENTE", "데쌍트": "DESCENTE", "언더아머": "UNDER ARMOUR", "스파이더": "SPYDER",
+    "스투시": "STUSSY"
   };
-  const names = new Set();
-  groups.forEach(group => getGroupBrandNames(group).forEach(name => names.add(aliases[name] || name.toUpperCase())));
-  return [...names].sort((a, b) => {
+  const counts = new Map();
+  groups.forEach(group => {
+    const uniqueBrands = new Set(getGroupBrandNames(group).map(name => aliases[name] || name.toUpperCase()));
+    uniqueBrands.forEach(name => counts.set(name, (counts.get(name) || 0) + 1));
+  });
+  return [...counts.keys()].sort((a, b) => {
+    const countDiff = (counts.get(b) || 0) - (counts.get(a) || 0);
+    if (countDiff) return countDiff;
     const ai = preferred.indexOf(a), bi = preferred.indexOf(b);
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    return a.localeCompare(b, "ko");
+    return getBrandDisplayName(a).localeCompare(getBrandDisplayName(b), "ko");
   });
 }
 
