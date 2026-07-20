@@ -35,10 +35,17 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function formatDate(value) {
+function formatDate(value, dateOnly = false) {
   if (!value) return "-";
-
-  return new Date(value).toLocaleString("ko-KR");
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  if (dateOnly) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}. ${m}. ${d}.`;
+  }
+  return date.toLocaleString("ko-KR");
 }
 
 async function checkAdminAccess() {
@@ -183,7 +190,7 @@ function renderStatement(items) {
 
       <div class="statement-date">
         작성일<br>
-        ${formatDate(new Date())}
+        ${formatDate(new Date(), true)}
       </div>
     </header>
 

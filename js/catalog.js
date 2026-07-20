@@ -44,6 +44,7 @@ let currentBrand = "전체브랜드";
 let selectedHomeBrands = new Set();
 let homeBrandSearchKeyword = "";
 let detailReturnScreen = "all-products";
+let detailReturnState = null;
 let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
@@ -1009,6 +1010,7 @@ function renderGroupCard(group) {
     <button
       class="catalog-group-card catalog-click-card"
       type="button"
+      data-group-id="${escapeAttribute(group.id)}"
       onclick="openGroup(${group.id})"
     >
       ${
@@ -1094,7 +1096,23 @@ function openGroup(groupId, requestedItem = "") {
 
   if (!category) return;
 
-  if (["all-products", "brands"].includes(currentScreen)) detailReturnScreen = currentScreen;
+  // 상세 진입 전 보던 화면과 스크롤 위치를 저장한다.
+  if (currentScreen !== "detail") {
+    detailReturnScreen = currentScreen;
+    detailReturnState = {
+      screen: currentScreen,
+      brand: currentBrand,
+      mainCategoryId: activeMainCategoryId || Number(category.main_category_id) || null,
+      scrollY: window.scrollY || document.documentElement.scrollTop || 0,
+      groupId: Number(group.id)
+    };
+
+    // 같은 페이지 안에서 열리는 상세도 브라우저/휴대폰 뒤로가기로 닫히도록 기록한다.
+    if (!requestedItem && !history.state?.designjamCatalogDetail) {
+      history.pushState({ designjamCatalogDetail: true, groupId: Number(group.id) }, "", location.href);
+    }
+  }
+
   currentScreen = "detail";
   activeMainCategoryId = Number(category.main_category_id) || null;
 
@@ -1212,11 +1230,48 @@ function openGroup(groupId, requestedItem = "") {
 }
 
 
-function returnFromGroupDetail() {
-  if (catalogSearch) catalogSearch.value = "";
-  if (detailReturnScreen === "brands") { renderBrandDirectory(currentBrand); return; }
-  renderAllProducts();
+function restoreCatalogScroll(state) {
+  if (!state) return;
+  const y = Number(state.scrollY) || 0;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      const card = document.querySelector(`[data-group-id="${CSS.escape(String(state.groupId || ""))}"]`);
+      if (card && Math.abs((window.scrollY || 0) - y) > 120) {
+        card.scrollIntoView({ block: "center", behavior: "auto" });
+      }
+    });
+  });
 }
+
+function renderDetailReturnScreen(state) {
+  const target = state || detailReturnState || { screen: detailReturnScreen };
+  if (catalogSearch) catalogSearch.value = "";
+
+  if (target.screen === "brands") {
+    renderBrandDirectory(target.brand || currentBrand);
+  } else if (target.screen === "main-category-detail" && target.mainCategoryId) {
+    renderMainCategoryDetail(target.mainCategoryId);
+  } else if (target.screen === "home-menu") {
+    renderMainCategories();
+  } else {
+    renderAllProducts();
+  }
+  restoreCatalogScroll(target);
+}
+
+function returnFromGroupDetail(fromHistory = false) {
+  if (!fromHistory && history.state?.designjamCatalogDetail) {
+    history.back();
+    return;
+  }
+  renderDetailReturnScreen(detailReturnState);
+}
+
+window.addEventListener("popstate", () => {
+  if (currentScreen !== "detail") return;
+  renderDetailReturnScreen(detailReturnState);
+});
 
 function returnToActiveMainCategory() {
   if (activeMainCategoryId) {

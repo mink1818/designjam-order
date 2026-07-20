@@ -671,7 +671,7 @@ async function saveOrderNote(orderNumber,note,input){
   const cleanNote=String(note||"").trim();
   const {error}=await supabaseClient.from("admin_order_notes").upsert({order_number:orderNumber,note:cleanNote,updated_at:new Date().toISOString()},{onConflict:"order_number"});
   if(error){
-    alert("주문별 메모 저장 실패: V5.3.31-ADMIN-ORDER-NOTES.sql을 Supabase SQL Editor에서 먼저 실행해주세요.\n"+error.message);
+    alert("주문별 메모 저장 실패: V5.3.32-ADMIN-ORDER-NOTES.sql을 Supabase SQL Editor에서 먼저 실행해주세요.\n"+error.message);
     return;
   }
   customerNotes[orderNumber]=cleanNote;
