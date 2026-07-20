@@ -3,9 +3,9 @@
   "use strict";
 
   const LABELS = Object.freeze({
-    "60x35": Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297, font: [25, 21, 16], textY: 7.2, barcodeX: 2.5, barcodeY: 12.5, barcodeW: 55, barcodeH: 17.5, jsWidth: 2.8, jsHeight: 120, label: "60×35mm · Code128 · A4 3×7" }),
-    "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 2.25, barcodeY: 9.2, barcodeW: 40.5, barcodeH: 12.2, jsWidth: 2.35, jsHeight: 96, label: "45×25mm · Code128 · A4 4×10" }),
-    "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 4, barcodeY: 18, barcodeW: 72, barcodeH: 25, jsWidth: 3.25, jsHeight: 145, label: "80×50mm · Code128 · A4 2×5" })
+    "60x35": Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297, font: [25, 21, 16], textY: 7.2, barcodeX: 5, barcodeY: 12.5, barcodeW: 50, barcodeH: 17.5, jsWidth: 2.45, jsHeight: 120, borderInset: 0.65, label: "60×35mm · Code128 · A4 3×7" }),
+    "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 4, barcodeY: 9.2, barcodeW: 37, barcodeH: 12.2, jsWidth: 2.05, jsHeight: 96, borderInset: 0.55, label: "45×25mm · Code128 · A4 4×10" }),
+    "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 7, barcodeY: 18, barcodeW: 66, barcodeH: 25, jsWidth: 2.85, jsHeight: 145, borderInset: 0.8, label: "80×50mm · Code128 · A4 2×5" })
   });
   const SIZE_STORAGE_KEY = "designjam_barcode_label_size";
   const savedSize = localStorage.getItem(SIZE_STORAGE_KEY);
@@ -118,7 +118,7 @@
     const svg = elements.preview.querySelector("svg");
     const label = currentLabel();
     const previewHeight = state.size === "45x25" ? 52 : state.size === "80x50" ? 82 : 66;
-    const previewWidth = state.size === "45x25" ? 1.9 : state.size === "80x50" ? 2.5 : 2.2;
+    const previewWidth = state.size === "45x25" ? 1.7 : state.size === "80x50" ? 2.15 : 1.95;
     try { window.JsBarcode(svg, state.active, { format: "CODE128", displayValue: false, margin: 0, width: previewWidth, height: previewHeight }); }
     catch (error) { elements.message.innerHTML = `<p class="auth-error">바코드 미리보기 실패: ${escapeHtml(error.message)}</p>`; }
   }
@@ -192,6 +192,12 @@
     items.forEach((item, index) => {
       if (index && index % perPage === 0) pdf.addPage();
       const slot = index % perPage, col = slot % label.columns, row = Math.floor(slot / label.columns), x = startX + col * label.width, y = startY + row * label.height;
+      const borderInset = label.borderInset || 0.6;
+      pdf.setDrawColor(178, 185, 195);
+      pdf.setLineWidth(0.22);
+      pdf.setLineDashPattern([1.2, 0.9], 0);
+      pdf.rect(x + borderInset, y + borderInset, label.width - borderInset * 2, label.height - borderInset * 2);
+      pdf.setLineDashPattern([], 0);
       pdf.setTextColor(0); pdf.setFont("helvetica", "bold");
       const fontSize = item.length <= 6 ? label.font[0] : item.length <= 10 ? label.font[1] : label.font[2];
       pdf.setFontSize(fontSize);

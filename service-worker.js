@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v5-3-35';
+const CACHE_NAME='design-socks-v5-3-36';
 const APP_SHELL=[
   '/offline.html?v=5335',
   '/css/main.css?v=5335',

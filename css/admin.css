@@ -2275,3 +2275,11 @@ body[data-session-page="admin"] .v3-metric-grid{
 /* V5.3.33 revised: wider standard barcode proportions */
 .barcode-label-card{padding-left:8px;padding-right:8px}
 .barcode-label-svg{width:97%!important;max-width:none}
+
+/* V5.3.36 바코드 3개 규격 출력 최적화 */
+.barcode-label-card{border:1px dashed #aeb8c5;border-radius:8px;box-shadow:0 4px 18px rgba(19,38,61,.12)}
+.barcode-label-preview[data-label-size="60x35"] .barcode-label-svg{width:88%}
+.barcode-label-preview[data-label-size="45x25"] .barcode-label-svg{width:84%}
+.barcode-label-preview[data-label-size="80x50"] .barcode-label-svg{width:86%}
+.barcode-label-preview::after{content:"PDF·인쇄 시 각 칸의 위·아래·좌·우에 연한 절단 구분선이 표시됩니다.";display:block;margin-top:12px;color:#5f6f82;font-size:12px;font-weight:800;text-align:center}
+html[data-theme="dark"] .barcode-label-preview::after{color:#d7e2f0!important}
