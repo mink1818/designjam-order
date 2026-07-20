@@ -1,8 +1,19 @@
 (function(){"use strict";
 const ADMIN_SESSION_KEY="designjam_admin_session";const ADMIN_EMAILS=new Set(["900smk@naver.com","sm0727sm@hanmail.net","p1028p@naver.com"]);
 let mode="IN",step=1,items=[],movements=[],recent=[];
-const KO_TO_EN={"ㅂ":"Q","ㅈ":"W","ㄷ":"E","ㄱ":"R","ㅅ":"T","ㅛ":"Y","ㅕ":"U","ㅑ":"I","ㅐ":"O","ㅔ":"P","ㅁ":"A","ㄴ":"S","ㅇ":"D","ㄹ":"F","ㅎ":"G","ㅗ":"H","ㅓ":"J","ㅏ":"K","ㅣ":"L","ㅋ":"Z","ㅌ":"X","ㅊ":"C","ㅍ":"V","ㅠ":"B","ㅜ":"N","ㅡ":"M","ㅃ":"Q","ㅉ":"W","ㄸ":"E","ㄲ":"R","ㅆ":"T","ㅒ":"O","ㅖ":"P"};
-function normalizeScanCode(value){return String(value??"").normalize("NFKC").replace(/[\u0000-\u001F\u007F-\u009F]/g,"").replace(/\s+/g,"").split("").map(ch=>KO_TO_EN[ch]||ch).join("").toUpperCase();}
+const KO_TO_EN={
+"ㅂ":"Q","ㅈ":"W","ㄷ":"E","ㄱ":"R","ㅅ":"T","ㅛ":"Y","ㅕ":"U","ㅑ":"I","ㅐ":"O","ㅔ":"P","ㅁ":"A","ㄴ":"S","ㅇ":"D","ㄹ":"F","ㅎ":"G","ㅗ":"H","ㅓ":"J","ㅏ":"K","ㅣ":"L","ㅋ":"Z","ㅌ":"X","ㅊ":"C","ㅍ":"V","ㅠ":"B","ㅜ":"N","ㅡ":"M",
+"ᄇ":"Q","ᄌ":"W","ᄃ":"E","ᄀ":"R","ᄉ":"T","ᅭ":"Y","ᅧ":"U","ᅣ":"I","ᅢ":"O","ᅦ":"P","ᄆ":"A","ᄂ":"S","ᄋ":"D","ᄅ":"F","ᄒ":"G","ᅩ":"H","ᅥ":"J","ᅡ":"K","ᅵ":"L","ᄏ":"Z","ᄐ":"X","ᄎ":"C","ᄑ":"V","ᅲ":"B","ᅮ":"N","ᅳ":"M",
+"ᆸ":"Q","ᆽ":"W","ᆮ":"E","ᆨ":"R","ᆺ":"T","ᆷ":"A","ᆫ":"S","ᆼ":"D","ᆯ":"F","ᇂ":"G","ᆿ":"Z","ᇀ":"X","ᆾ":"C","ᇁ":"V"
+};
+function normalizeScanCode(value){
+  const raw=String(value??"").normalize("NFD");
+  return raw.replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g,"")
+    .replace(/\s+/g,"")
+    .split("").map(ch=>KO_TO_EN[ch]||ch).join("")
+    .normalize("NFKC").toUpperCase()
+    .replace(/[^A-Z0-9_\-~]/g,"");
+}
 const $=id=>document.getElementById(id);const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function splitCodes(value){const raw=String(value??"").trim();if(!raw)return[];if(raw==="699810")return["699","810"];return raw.split(/[,，]/).flatMap(p=>{p=p.trim();const m=p.match(/^(\d+)([A-Za-z]*)~(\d+)([A-Za-z]*)$/);if(!m)return[p];if(m[2]!==m[4])return[p];const a=+m[1],b=+m[3];if(b<a||b-a>500)return[p];return Array.from({length:b-a+1},(_,i)=>`${a+i}${m[2]}`);});}
 async function guard(){const {data:{user}}=await supabaseClient.auth.getUser();const stored=sessionStorage.getItem(ADMIN_SESSION_KEY)||localStorage.getItem(ADMIN_SESSION_KEY);if(!user||(stored&&stored!==user.id)){location.replace("admin.html");return false;}const {data:p}=await supabaseClient.from("customers").select("is_admin,blocked").eq("id",user.id).maybeSingle();if(!ADMIN_EMAILS.has((user.email||"").toLowerCase())&&!(p?.is_admin===true&&p?.blocked!==true)){location.replace("admin.html");return false;}document.body.classList.add("auth-ready");document.body.classList.remove("auth-pending");return true;}

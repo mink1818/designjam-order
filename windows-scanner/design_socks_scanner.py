@@ -4,6 +4,8 @@ import queue
 import threading
 import time
 import tkinter as tk
+import re
+import unicodedata
 from tkinter import messagebox, ttk
 
 import keyboard
@@ -17,18 +19,27 @@ SUPABASE_KEY = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87"
 KO_TO_EN = {
     "ㅂ":"Q","ㅈ":"W","ㄷ":"E","ㄱ":"R","ㅅ":"T","ㅛ":"Y","ㅕ":"U","ㅑ":"I","ㅐ":"O","ㅔ":"P",
     "ㅁ":"A","ㄴ":"S","ㅇ":"D","ㄹ":"F","ㅎ":"G","ㅗ":"H","ㅓ":"J","ㅏ":"K","ㅣ":"L",
-    "ㅋ":"Z","ㅌ":"X","ㅊ":"C","ㅍ":"V","ㅠ":"B","ㅜ":"N","ㅡ":"M"
+    "ㅋ":"Z","ㅌ":"X","ㅊ":"C","ㅍ":"V","ㅠ":"B","ㅜ":"N","ㅡ":"M",
+    "ᄇ":"Q","ᄌ":"W","ᄃ":"E","ᄀ":"R","ᄉ":"T","ᅭ":"Y","ᅧ":"U","ᅣ":"I","ᅢ":"O","ᅦ":"P",
+    "ᄆ":"A","ᄂ":"S","ᄋ":"D","ᄅ":"F","ᄒ":"G","ᅩ":"H","ᅥ":"J","ᅡ":"K","ᅵ":"L",
+    "ᄏ":"Z","ᄐ":"X","ᄎ":"C","ᄑ":"V","ᅲ":"B","ᅮ":"N","ᅳ":"M",
+    "ᆸ":"Q","ᆽ":"W","ᆮ":"E","ᆨ":"R","ᆺ":"T","ᆷ":"A","ᆫ":"S","ᆼ":"D","ᆯ":"F","ᇂ":"G",
+    "ᆿ":"Z","ᇀ":"X","ᆾ":"C","ᇁ":"V"
 }
 
 
 def normalize_code(value: str) -> str:
-    return "".join(KO_TO_EN.get(ch, ch) for ch in value.strip()).replace(" ", "").upper()
+    raw = unicodedata.normalize("NFD", str(value or ""))
+    converted = "".join(KO_TO_EN.get(ch, ch) for ch in raw)
+    converted = unicodedata.normalize("NFKC", converted).upper()
+    return re.sub(r"[^A-Z0-9_\-~]", "", converted)
+
 
 
 class ScannerApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("DESIGN SOCKS 백그라운드 스캐너 V1.0")
+        self.root.title("DESIGN SOCKS 백그라운드 스캐너 V6.0.2")
         self.root.geometry("520x570")
         self.root.minsize(500, 540)
         self.token = ""
