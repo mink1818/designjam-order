@@ -1,4 +1,4 @@
-DESIGN SOCKS V6.0.2
+DESIGN SOCKS V6.0.3
 
 - 한글 입력 상태 바코드 자동 보정
   예: 4107ㅁ → 4107A
