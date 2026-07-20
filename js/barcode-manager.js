@@ -3,9 +3,9 @@
   "use strict";
 
   const LABELS = Object.freeze({
-    "60x35": Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297, font: [25, 21, 16], textY: 7.2, barcodeX: 5, barcodeY: 12.5, barcodeW: 50, barcodeH: 17.5, jsWidth: 2.4, jsHeight: 120, label: "60×35mm · Code128 · A4 3×7" }),
-    "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 4, barcodeY: 9.2, barcodeW: 37, barcodeH: 12.2, jsWidth: 2.0, jsHeight: 96, label: "45×25mm · Code128 · A4 4×10" }),
-    "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 7, barcodeY: 18, barcodeW: 66, barcodeH: 25, jsWidth: 2.8, jsHeight: 145, label: "80×50mm · Code128 · A4 2×5" })
+    "60x35": Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297, font: [25, 21, 16], textY: 7.2, barcodeX: 2.5, barcodeY: 12.5, barcodeW: 55, barcodeH: 17.5, jsWidth: 2.8, jsHeight: 120, label: "60×35mm · Code128 · A4 3×7" }),
+    "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 2.25, barcodeY: 9.2, barcodeW: 40.5, barcodeH: 12.2, jsWidth: 2.35, jsHeight: 96, label: "45×25mm · Code128 · A4 4×10" }),
+    "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 4, barcodeY: 18, barcodeW: 72, barcodeH: 25, jsWidth: 3.25, jsHeight: 145, label: "80×50mm · Code128 · A4 2×5" })
   });
   const SIZE_STORAGE_KEY = "designjam_barcode_label_size";
   const savedSize = localStorage.getItem(SIZE_STORAGE_KEY);
@@ -15,7 +15,7 @@
     excel: $("barcodeExcelFile"), erp: $("barcodeLoadErpButton"), list: $("barcodeItemList"),
     summary: $("barcodeValidationSummary"), selectedCount: $("barcodeSelectedCount"), preview: $("barcodeLabelPreview"),
     copies: $("barcodeCopyCount"), message: $("barcodeMessage"), selectVisible: $("barcodeSelectVisibleButton"),
-    clear: $("barcodeClearSelectionButton"), pdf: $("barcodeGeneratePdfButton"), print: $("barcodePrintButton"),
+    clear: $("barcodeClearSelectionButton"), selectAll: $("barcodeSelectAllButton"), deselectAll: $("barcodeDeselectAllButton"), deleteSelected: $("barcodeDeleteSelectedButton"), deleteAll: $("barcodeDeleteAllButton"), pdf: $("barcodeGeneratePdfButton"), print: $("barcodePrintButton"),
     one: $("barcodePrintOneButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
     specBadge: $("barcodeSpecBadge"), previewSpec: $("barcodePreviewSpec"),
     searchInput: $("barcodeSearchInput"), searchButton: $("barcodeSearchButton"),
@@ -118,7 +118,7 @@
     const svg = elements.preview.querySelector("svg");
     const label = currentLabel();
     const previewHeight = state.size === "45x25" ? 52 : state.size === "80x50" ? 82 : 66;
-    const previewWidth = state.size === "45x25" ? 1.55 : state.size === "80x50" ? 2.05 : 1.8;
+    const previewWidth = state.size === "45x25" ? 1.9 : state.size === "80x50" ? 2.5 : 2.2;
     try { window.JsBarcode(svg, state.active, { format: "CODE128", displayValue: false, margin: 0, width: previewWidth, height: previewHeight }); }
     catch (error) { elements.message.innerHTML = `<p class="auth-error">바코드 미리보기 실패: ${escapeHtml(error.message)}</p>`; }
   }
@@ -133,6 +133,31 @@
     const itemHeader = preferred.find(name => headers.some(h => normalize(h) === normalize(name))) || headers.find(h => /품번|상품번호|ITEM|SKU/i.test(h));
     if (!itemHeader) throw new Error("품번 열을 찾지 못했습니다. 열 이름을 '품번'으로 입력해주세요.");
     return rows.map(row => row[itemHeader]).filter(value => String(value).trim());
+  }
+
+
+  async function waitForErpSnapshot(timeoutMs = 7000) {
+    if (window.__designjamProductsSnapshot) {
+      applyProductsSnapshot(window.__designjamProductsSnapshot);
+      return true;
+    }
+    return await new Promise(resolve => {
+      let finished = false;
+      const done = value => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        window.removeEventListener("designjam:products-loaded", onLoaded);
+        resolve(value);
+      };
+      const onLoaded = event => {
+        applyProductsSnapshot(event.detail);
+        done(true);
+      };
+      const timer = setTimeout(() => done(Boolean(state.groups.length)), timeoutMs);
+      window.addEventListener("designjam:products-loaded", onLoaded, { once: true });
+      window.dispatchEvent(new CustomEvent("designjam:request-products-snapshot"));
+    });
   }
 
   async function loadErp() {
@@ -212,6 +237,26 @@
   elements.list.addEventListener("click", event => { const button = event.target.closest(".barcode-preview-button"); if (!button) return; event.preventDefault(); state.active = button.dataset.item; renderPreview(); });
   elements.selectVisible?.addEventListener("click", () => { visibleItems().forEach(item => state.selected.add(item)); renderList(); });
   elements.clear?.addEventListener("click", () => { state.selected.clear(); renderList(); });
+
+  elements.selectAll?.addEventListener("click", () => { state.selected = new Set(state.items); renderList(); });
+  elements.deselectAll?.addEventListener("click", () => { state.selected.clear(); renderList(); });
+  elements.deleteSelected?.addEventListener("click", () => {
+    if (!state.selected.size) { elements.message.innerHTML = '<p class="auth-error">지울 품번을 먼저 선택해주세요.</p>'; return; }
+    if (!window.confirm(`선택한 ${state.selected.size.toLocaleString()}개 품번을 목록에서 지울까요?`)) return;
+    state.items = state.items.filter(item => !state.selected.has(item));
+    state.selected.clear();
+    state.active = state.items[0] || "4008A";
+    renderList(); renderPreview();
+  });
+  elements.deleteAll?.addEventListener("click", () => {
+    if (!state.items.length) return;
+    if (!window.confirm("품번 목록을 모두 지울까요?")) return;
+    state.items = []; state.selected.clear(); state.active = "4008A";
+    elements.summary.className = "barcode-validation-summary";
+    elements.summary.textContent = "품번 목록을 모두 지웠습니다.";
+    renderList(); renderPreview();
+  });
+
   elements.pdf?.addEventListener("click", () => generatePdf(true));
   elements.print?.addEventListener("click", () => generatePdf(false));
   elements.one?.addEventListener("click", () => generatePdf(false, true));

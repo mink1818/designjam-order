@@ -16,7 +16,7 @@
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4023">
 <title>디자인삭스 주문관리 (관리자)</title>
 
-  <link rel="stylesheet" href="css/admin.css?v=5332">
+  <link rel="stylesheet" href="css/admin.css?v=5333">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -692,6 +692,12 @@ class="order-input">
     <div class="barcode-workspace">
       <div>
         <div class="barcode-list-head"><strong>품번 목록</strong><span id="barcodeSelectedCount">0개 선택</span></div>
+        <div class="barcode-list-actions">
+          <button id="barcodeSelectAllButton" type="button">전체 선택</button>
+          <button id="barcodeDeselectAllButton" type="button">전체 해제</button>
+          <button id="barcodeDeleteSelectedButton" type="button">선택 지우기</button>
+          <button id="barcodeDeleteAllButton" type="button">전체 지우기</button>
+        </div>
         <div id="barcodeItemList" class="barcode-item-list"><p>엑셀을 선택하거나 ERP 품번을 불러오세요.</p></div>
       </div>
       <div>
@@ -788,10 +794,10 @@ class="order-input">
 <script src="js/session-status.js?v=4023"></script>
 <script src="js/pwa.js?v=4023"></script>
 <script src="js/admin-page-transition.js?v=4023"></script>
-<script src="js/version-badge.js?v=5332"></script>
-<script src="js/back-navigation.js?v=5332"></script>
-<script src="js/admin-accordions.js?v=5332"></script>
+<script src="js/version-badge.js?v=5333"></script>
+<script src="js/back-navigation.js?v=5333"></script>
+<script src="js/admin-accordions.js?v=5333"></script>
 <script src="js/ui-preferences.js?v=4023"></script>
-<script src="js/admin-mobile-nav.js?v=5332"></script>
+<script src="js/admin-mobile-nav.js?v=5333"></script>
 </body>
 </html>

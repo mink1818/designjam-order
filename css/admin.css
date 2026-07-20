@@ -1338,7 +1338,7 @@ body.auth-pending.auth-ready::after { display: none; }
 .barcode-label-preview{display:grid;place-items:center;min-height:240px;padding:18px;border:1px dashed #b7c6d8;border-radius:14px;background:#eef2f6;overflow:auto}
 .barcode-label-card{box-sizing:border-box;width:360px;aspect-ratio:60/35;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px 18px 8px;background:#fff;color:#000;box-shadow:0 4px 18px rgba(19,38,61,.14)}
 .barcode-label-number{display:block;width:100%;height:31%;overflow:hidden;text-align:center;font:900 clamp(28px,5vw,46px)/1 Arial,sans-serif;letter-spacing:-1px;white-space:nowrap}
-.barcode-label-svg{display:block;width:92%;height:58%;margin-top:3%;overflow:visible}
+.barcode-label-svg{display:block;width:97%;height:58%;margin-top:3%;overflow:visible}
 .barcode-actions{display:flex;flex-wrap:wrap;gap:8px}
 @media(max-width:760px){.barcode-source-grid,.barcode-workspace{grid-template-columns:1fr}.barcode-toolbar{grid-template-columns:1fr 1fr}.barcode-panel-head{align-items:flex-start;flex-direction:column}.barcode-label-card{width:min(360px,100%)}}
 @media print{.barcode-management-panel{display:none!important}}
@@ -2268,3 +2268,10 @@ body[data-session-page="admin"] .v3-metric-grid{
     font-size:16px!important;
   }
 }
+
+/* V5.3.33 */
+.customer-profile-main{margin:14px 0 10px;padding:18px;border:1px solid #dce4ee;border-radius:16px;background:var(--card-bg,#fff)}.customer-profile-main h2{margin:0 0 5px;font-size:22px}.customer-profile-main p{margin:0;color:#68758a}.barcode-list-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:8px 0 10px}.barcode-list-actions button{border:1px solid #cfd8e4;border-radius:9px;background:#f5f7fa;padding:8px 6px;font-weight:800;cursor:pointer}.barcode-list-actions button:nth-child(3),.barcode-list-actions button:nth-child(4){color:#b42318;background:#fff5f4;border-color:#f0b7b2}@media(max-width:640px){.barcode-list-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V5.3.33 revised: wider standard barcode proportions */
+.barcode-label-card{padding-left:8px;padding-right:8px}
+.barcode-label-svg{width:97%!important;max-width:none}

@@ -19,7 +19,7 @@
     s.textContent=`
       #dsPwaInstall{position:fixed;left:12px;bottom:12px;z-index:2147483000;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:10px 12px;border:1px solid #d7e0eb;border-radius:16px;background:#fff;color:#102b52;box-shadow:0 12px 35px rgba(0,0,0,.2);font-family:Arial,sans-serif}#dsPwaInstall[hidden]{display:none!important}#dsPwaInstall img{width:42px;height:42px;border-radius:10px}#dsPwaInstall .ds-copy{min-width:0;flex:1}#dsPwaInstall strong{display:block;font-size:13px}#dsPwaInstall small{display:block;color:#607086;font-size:11px;margin-top:2px}#dsPwaInstall button{border:0;border-radius:9px;padding:8px 10px;font-weight:800;cursor:pointer}#dsPwaInstall .install{background:#24589f;color:#fff}#dsPwaInstall .close{background:#eef2f7;color:#55606d}
       #dsSplash{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:${app==='admin'?'#112437':'#fff'};transition:opacity .3s ease}#dsSplash.hide{opacity:0;pointer-events:none}#dsSplash .inner{text-align:center;color:${app==='admin'?'#fff':'#102b52'};font-family:Arial,sans-serif}#dsSplash img{width:118px;height:118px;border-radius:26px;box-shadow:0 14px 35px rgba(0,0,0,.15)}#dsSplash h1{margin:18px 0 5px;font-size:27px}#dsSplash p{margin:0;opacity:.75;font-weight:700}
-      #dsInstallGuide{position:fixed;inset:0;z-index:2147483647;background:rgba(3,12,25,.72);display:grid;place-items:center;padding:18px;font-family:Arial,sans-serif}#dsInstallGuide[hidden]{display:none!important}.ds-guide-card{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);color:#17243a}.ds-guide-head{display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid #e7ebf0}.ds-guide-head img{width:54px;height:54px;border-radius:13px}.ds-guide-head h2{margin:0;font-size:20px}.ds-guide-head p{margin:3px 0 0;color:#657188;font-size:13px}.ds-guide-close{margin-left:auto;border:0;background:#eef2f7;border-radius:50%;width:36px;height:36px;font-size:22px;cursor:pointer}.ds-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px 0}.ds-tabs button{border:1px solid #dbe3ee;background:#f6f8fb;padding:11px;border-radius:11px;font-weight:800}.ds-tabs button.active{background:#24589f;color:white;border-color:#24589f}.ds-guide-body{padding:18px}.ds-device-guide{display:none}.ds-device-guide.active{display:block}.ds-warning{background:#fff6dd;border:1px solid #f1cf68;border-radius:12px;padding:12px;margin-bottom:14px;font-size:13px;line-height:1.55}.ds-step{display:grid;grid-template-columns:34px 1fr;gap:10px;margin:12px 0;align-items:start}.ds-step-num{width:30px;height:30px;border-radius:50%;background:#24589f;color:#fff;display:grid;place-items:center;font-weight:900}.ds-step b{display:block;margin-bottom:3px}.ds-step p{margin:0;color:#536176;font-size:14px;line-height:1.55}.ds-guide-actions{padding:0 18px 18px;display:grid;gap:9px}.ds-guide-actions button{border:0;border-radius:12px;padding:13px;font-weight:900;cursor:pointer}.ds-guide-primary{background:#24589f;color:#fff}.ds-guide-secondary{background:#edf2f8;color:#27364d}.ds-mini-note{font-size:12px;color:#6d788a;text-align:center;line-height:1.45;margin-top:8px}
+      #dsInstallGuide{position:fixed;inset:0;z-index:2147483647;background:rgba(3,12,25,.72);display:grid;place-items:center;padding:18px;font-family:Arial,sans-serif}#dsInstallGuide[hidden]{display:none!important}.ds-guide-card{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);color:#17243a}.ds-guide-head{display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid #e7ebf0}.ds-guide-head img{width:54px;height:54px;border-radius:13px}.ds-guide-head h2{margin:0;font-size:20px}.ds-guide-head p{margin:3px 0 0;color:#657188;font-size:13px}.ds-guide-close{margin-left:auto;border:0;background:#eef2f7;border-radius:50%;width:36px;height:36px;font-size:22px;cursor:pointer}.ds-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px 0}.ds-tabs button{border:1px solid #dbe3ee;background:#f6f8fb;padding:11px;border-radius:11px;font-weight:800}.ds-tabs button.active{background:#24589f;color:white;border-color:#24589f}.ds-guide-body{padding:18px}.ds-device-guide{display:none}.ds-device-guide.active{display:block}.ds-warning{background:#fff6dd;border:1px solid #f1cf68;border-radius:12px;padding:12px;margin-bottom:14px;font-size:13px;line-height:1.55}.ds-step{display:grid;grid-template-columns:34px 1fr;gap:10px;margin:12px 0;align-items:start}.ds-step-num{width:30px;height:30px;border-radius:50%;background:#24589f;color:#fff;display:grid;place-items:center;font-weight:900}.ds-step b{display:block;margin-bottom:3px}.ds-step p{margin:0;color:#536176;font-size:14px;line-height:1.55}.ds-guide-actions{padding:0 18px 18px;display:grid;gap:9px}.ds-guide-actions button{border:0;border-radius:12px;padding:13px;font-weight:900;cursor:pointer}.ds-guide-primary{background:#24589f;color:#fff}.ds-guide-secondary{background:#edf2f8;color:#27364d}.ds-mini-note{font-size:12px;color:#6d788a;text-align:center;line-height:1.45;margin-top:8px}.ds-visual-guide{display:grid;gap:14px}.ds-visual-step{border:1px solid #dfe5ec;border-radius:14px;overflow:hidden;background:#fff}.ds-visual-step img{display:block;width:100%;height:auto;cursor:zoom-in}.ds-visual-caption{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;font-size:15px;line-height:1.45;font-weight:800}.ds-visual-caption span{flex:0 0 30px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#d62828;color:#fff;font-size:17px}.ds-image-viewer{position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.9);display:grid;place-items:center;padding:12px}.ds-image-viewer[hidden]{display:none!important}.ds-image-viewer img{max-width:100%;max-height:92vh;object-fit:contain}.ds-image-viewer button{position:absolute;top:12px;right:12px;width:44px;height:44px;border:0;border-radius:50%;font-size:28px;background:#fff;cursor:pointer}
       @media(max-width:520px){#dsPwaInstall{right:8px;left:8px;bottom:8px}.ds-guide-card{max-height:92vh}.ds-guide-head{padding:15px}.ds-guide-body{padding:15px}.ds-tabs{padding:12px 15px 0}.ds-guide-actions{padding:0 15px 15px}}
       #dsBackToTop{position:fixed;right:18px;bottom:22px;z-index:2147482500;width:48px;height:48px;border:0;border-radius:50%;background:#24589f;color:#fff;font-size:24px;font-weight:900;line-height:1;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.24);cursor:pointer;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .2s ease,transform .2s ease,visibility .2s}#dsBackToTop.show{opacity:1;visibility:visible;transform:translateY(0)}#dsBackToTop:focus-visible{outline:3px solid #8fc1ff;outline-offset:3px}@media(max-width:520px){#dsBackToTop{right:14px;bottom:78px;width:46px;height:46px}}
     `;
@@ -52,12 +52,18 @@
         <div class="ds-tabs"><button type="button" data-tab="android">안드로이드</button><button type="button" data-tab="ios">아이폰</button></div>
         <div class="ds-guide-body">
           <div class="ds-device-guide" data-guide="android">
-            ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>카카오톡 안에서는 바로 설치되지 않습니다. 먼저 외부 브라우저로 열어주세요.</div>':''}
-            <div class="ds-step"><span class="ds-step-num">1</span><div><b>카카오톡 메뉴 열기</b><p>화면 오른쪽 아래의 <b>⋮ 메뉴</b> 또는 위쪽의 <b>▼ 버튼</b>을 누르세요.</p></div></div>
-            <div class="ds-step"><span class="ds-step-num">2</span><div><b>다른 브라우저로 열기</b><p><b>다른 브라우저로 열기</b>를 선택한 뒤 Chrome 또는 Samsung Internet으로 여세요.</p></div></div>
-            <div class="ds-step"><span class="ds-step-num">3</span><div><b>홈 화면에 추가</b><p>Chrome: 오른쪽 위 <b>⋮ → 앱 설치/홈 화면에 추가</b><br>Samsung Internet: 오른쪽 아래 <b>☰ → 현재 페이지 추가 → 홈 화면</b></p></div></div>
-            <div class="ds-step"><span class="ds-step-num">4</span><div><b>추가 확인</b><p>이름이 <b>${name}</b>인지 확인한 뒤 <b>추가</b>를 누르세요.</p></div></div>
-            <div class="ds-warning"><b>Google Play 프로텍트 경고가 보이면</b><br>설치를 계속하지 말고 취소한 뒤, 브라우저 메뉴의 <b>홈 화면에 추가</b> 방식으로 등록하세요. 이 프로그램은 별도 APK 설치가 필요 없는 웹앱입니다.</div>
+            ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>아래 사진 순서대로 눌러 삼성 인터넷으로 연 뒤 홈 화면에 추가하세요.</div>':''}
+            <div class="ds-visual-guide">
+              ${[
+                ['오른쪽 아래 점 3개를 누르세요.','1'],
+                ['다른 브라우저로 열기를 누르세요.','2'],
+                ['삼성 인터넷에서 다시 오른쪽 아래 점 3개를 누르세요.','3'],
+                ['현재 페이지 추가를 누르세요.','4'],
+                ['홈 화면을 누르세요.','5'],
+                ['마지막으로 추가를 누르면 설치가 끝납니다.','6']
+              ].map(([text,no])=>`<div class="ds-visual-step"><img src="/images/install-guide/android-step-${no}.png?v=5333" alt="홈 화면 추가 ${no}단계" data-guide-image><div class="ds-visual-caption"><span>${no}</span><div>${text}</div></div></div>`).join('')}
+            </div>
+            <div class="ds-warning" style="margin-top:14px"><b>사진을 누르면 크게 볼 수 있습니다.</b><br>설치가 끝나면 휴대폰 바탕화면에 <b>디자인삭스 거래처</b> 아이콘이 생깁니다.</div>
           </div>
           <div class="ds-device-guide" data-guide="ios">
             ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>먼저 카카오톡 메뉴에서 <b>Safari로 열기</b>를 선택하세요.</div>':''}
@@ -94,6 +100,22 @@
       nativeBtn.hidden=true;
       el.hidden=true;
     };
+    el.querySelectorAll('[data-guide-image]').forEach(img=>img.addEventListener('click',()=>{
+      let viewer=document.getElementById('dsGuideImageViewer');
+      if(!viewer){
+        viewer=document.createElement('div');
+        viewer.id='dsGuideImageViewer';
+        viewer.className='ds-image-viewer';
+        viewer.hidden=true;
+        viewer.innerHTML='<button type="button" aria-label="닫기">×</button><img alt="설치 안내 확대 이미지">';
+        document.body.appendChild(viewer);
+        const hide=()=>{viewer.hidden=true};
+        viewer.querySelector('button').onclick=hide;
+        viewer.addEventListener('click',e=>{if(e.target===viewer)hide()});
+      }
+      viewer.querySelector('img').src=img.src;
+      viewer.hidden=false;
+    }));
     return el;
   }
 
@@ -165,7 +187,7 @@
     ensureBackToTop();
     document.querySelectorAll('[data-install-app]').forEach(b=>b.addEventListener('click',installApp));
     if('serviceWorker'in navigator){
-      navigator.serviceWorker.register('/service-worker.js?v=3524').then(reg=>reg.update()).catch(console.warn);
+      navigator.serviceWorker.register('/service-worker.js?v=5333').then(reg=>reg.update()).catch(console.warn);
     }
   });
 })();

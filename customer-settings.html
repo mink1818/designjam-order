@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>디자인삭스 거래처 환경설정</title>
-<link rel="stylesheet" href="css/main.css?v=5332">
-<meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=5332"><link rel="icon" href="icons/customer-192.png?v=5332">
+<link rel="stylesheet" href="css/main.css?v=5333">
+<meta name="theme-color" content="#24589f"><link rel="manifest" href="manifest-customer.webmanifest?v=5333"><link rel="icon" href="icons/customer-192.png?v=5333">
 </head>
 <body class="auth-pending" data-session-page="customer" data-pwa-app="customer">
 <header><h1>⚙️ 환경설정</h1><p>거래처 계정과 화면 설정</p></header>
@@ -12,13 +12,15 @@
 <button class="cart-btn gray-btn" type="button" onclick="location.href='index.html'">← 상품 주문으로 돌아가기</button>
 <div class="settings-top-actions"><button id="expandAllSettings" type="button">모두 펼치기</button><button id="collapseAllSettings" type="button">모두 접기</button></div>
 
+<section class="customer-profile-main"><h2>👤 내정보</h2><p>내 계정과 주문 설정을 확인할 수 있습니다.</p></section>
+
 <section class="customer-settings-summary">
   <div><span>화면 모드</span><strong id="currentThemeLabel">라이트</strong></div>
   <div><span>자동 로그인</span><strong id="currentAutoLoginLabel">사용</strong></div>
 </section>
 
 <div class="customer-accordion-stack">
-<details class="customer-accordion" open>
+<details class="customer-accordion">
  <summary><span>📋</span><b>주문 편의 기능</b><small>주문내역·재주문·엑셀</small><i>⌄</i></summary>
  <div class="customer-accordion-body">
   <div class="setting-action-grid">
@@ -63,7 +65,7 @@
 </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/ui-preferences.js?v=5332"></script><script src="js/customer-settings.js?v=5332"></script><script src="js/session-status.js?v=5332"></script><script src="js/pwa.js?v=5332"></script><script src="js/version-badge.js?v=5332"></script><script src="js/back-navigation.js?v=5332"></script>
+<script src="js/ui-preferences.js?v=5333"></script><script src="js/customer-settings.js?v=5333"></script><script src="js/session-status.js?v=5333"></script><script src="js/pwa.js?v=5333"></script><script src="js/version-badge.js?v=5333"></script><script src="js/back-navigation.js?v=5333"></script>
 
 <nav class="customer-bottom-nav" aria-label="거래처 빠른 메뉴">
   <a href="index.html"><span>🏠</span>홈</a>
