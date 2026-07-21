@@ -1,4 +1,4 @@
--- DESIGN SOCKS V6.1.0 ERP 재고관리 개선
+-- DESIGN SOCKS V6.1.1 ERP 재고관리 개선
 -- V6.0.0 SQL 실행 후 Supabase SQL Editor에서 전체 실행
 
 alter table public.inventory_items

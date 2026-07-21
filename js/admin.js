@@ -365,6 +365,8 @@ class="order-detail">
           ${group.status === "출고완료" ? "주문접수로 되돌리기" : "출고완료"}
         </button>
 
+        <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">작업지시서·피킹검증</button>
+
         <button
   class="cart-btn statement-btn"
   type="button"
