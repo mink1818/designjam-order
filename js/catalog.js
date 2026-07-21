@@ -40,6 +40,7 @@ let groups = [];
 let cart = [];
 
 let currentScreen = "home-menu";
+let cartReturnState = null;
 let currentBrand = "전체브랜드";
 let currentProductSort = "default";
 let catalogHistoryReady = false;
@@ -1520,7 +1521,13 @@ function addGroupToCart(groupId, nextAction = "cart") {
   renderCart();
 }
 
+function rememberCartReturnState() {
+  if (["cart","order"].includes(currentScreen)) return;
+  cartReturnState = { screen: currentScreen, mainCategoryId: activeMainCategoryId, detail: detailReturnState ? {...detailReturnState} : null };
+}
+
 function renderCart() {
+  rememberCartReturnState();
   currentScreen = "cart";
   showSearch(false);
   hideLegacyFilters();
@@ -1628,11 +1635,15 @@ function renderCart() {
 }
 
 function continueShopping() {
-  if (activeMainCategoryId) {
-    renderMainCategoryDetail(activeMainCategoryId);
+  const target = cartReturnState;
+  if (target?.screen === "detail" && target.detail?.groupId) {
+    openGroup(target.detail.groupId);
     return;
   }
-
+  if (target?.screen === "all-products") { renderAllProducts(); return; }
+  if (target?.screen === "main-category-detail" && target.mainCategoryId) { renderMainCategoryDetail(target.mainCategoryId); return; }
+  if (target?.screen === "global-search") { renderGlobalSearch(); return; }
+  if (activeMainCategoryId) { renderMainCategoryDetail(activeMainCategoryId); return; }
   renderMainCategories();
 }
 

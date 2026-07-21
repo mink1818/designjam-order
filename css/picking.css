@@ -48,3 +48,21 @@
  .pick-table-head,.pick-item-row{grid-template-columns:1.2fr .55fr .55fr 1.5fr!important;min-width:0!important}
  .pick-row-actions button{display:none!important}.picking-state{display:inline-flex!important;border:0!important;background:none!important;color:#000!important;padding:0!important}
 }
+
+/* V6.1.3 Final-3 최종검증 정렬·모바일 헤더·인쇄 보정 */
+.pick-toolbar select{padding:11px 12px;border:1px solid #bcc9d6;border-radius:10px;background:#fff;font-weight:850;color:#112437}
+.pick-table-head>span,.pick-item-row>strong,.pick-item-row>b,.pick-row-actions{display:flex;align-items:center;justify-content:center;text-align:center;min-height:34px}
+.pick-table-head>span:first-child,.pick-item-row>strong{justify-content:flex-start;text-align:left}
+.pick-row-actions{justify-content:center}
+@media(max-width:700px){
+ .pick-table-head{display:grid!important;grid-template-columns:minmax(82px,1fr) 42px 42px minmax(188px,auto);min-width:0!important;gap:4px;padding:7px 6px;border-radius:8px;font-size:11px;position:sticky;top:0;z-index:3}
+ .pick-table-head>span{display:flex!important;justify-content:center;min-height:26px;white-space:normal;line-height:1.1}
+ .pick-table-head>span:first-child{justify-content:flex-start}
+ .pick-toolbar select{flex:1;min-width:145px;font-size:12px;padding:9px}
+}
+@media print{
+ .pick-progress{display:none!important;width:0!important;height:0!important;min-width:0!important;min-height:0!important;overflow:hidden!important;background:transparent!important}
+ .work-header{justify-content:flex-start!important}
+ .work-header>div:last-child{display:none!important}
+ .work-header,.work-area,.picking-shell,.pick-layout{background:#fff!important;background-image:none!important}
+}
