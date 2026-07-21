@@ -152,6 +152,7 @@ async function loginCustomer() {
       return;
     }
 
+    await supabaseClient.rpc("record_customer_login");
     sessionStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
     localStorage.setItem(CUSTOMER_SESSION_KEY, data.user.id);
     sessionStorage.removeItem(ADMIN_SESSION_KEY);

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 DESIGN SOCKS V6.1.1
+=======
+DESIGN SOCKS V6.1.2
+>>>>>>> 27583f3 (release v6.1.2 mobile picking soldout presence manual outbound)
 - Supabase 기본 1000행 제한을 페이지 조회로 수정하여 실제 1175개 이상 품번 모두 집계
 - 출고 이력에 거래처명과 주문번호 표시
 - 수동 출고 시 거래처명 입력 지원

@@ -1,0 +1,1 @@
+document.addEventListener('DOMContentLoaded',async()=>{try{const {data:{user}}=await supabaseClient.auth.getUser();if(!user)return;const touch=()=>supabaseClient.rpc('touch_customer_presence');touch();setInterval(touch,60000);}catch(e){}});

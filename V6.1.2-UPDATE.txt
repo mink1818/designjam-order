@@ -1,0 +1,7 @@
+V6.1.2 적용 순서
+1. SQL/V6.1.2-MOBILE-SOLDOUT-PRESENCE-MANUAL-OUT.sql 실행
+2. 전체 파일 덮어쓰기
+3. git add . / commit / push
+4. Ctrl+Shift+R
+
+주요 기능: 모바일 최적화, 초과피킹 차단, 부분품절 출고, 로그인 현황, 인쇄 잘림 개선, 관리자 수동출고.

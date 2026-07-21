@@ -2283,3 +2283,5 @@ body[data-session-page="admin"] .v3-metric-grid{
 .barcode-label-preview[data-label-size="80x50"] .barcode-label-svg{width:86%}
 .barcode-label-preview::after{content:"PDF·인쇄 시 각 칸의 위·아래·좌·우에 연한 절단 구분선이 표시됩니다.";display:block;margin-top:12px;color:#5f6f82;font-size:12px;font-weight:800;text-align:center}
 html[data-theme="dark"] .barcode-label-preview::after{color:#d7e2f0!important}
+
+.presence-dashboard{margin-bottom:10px}.presence-text{display:block;font-size:11px;color:#64748b;margin-top:3px}@media(max-width:700px){.dashboard{grid-template-columns:1fr 1fr!important}.presence-dashboard{grid-template-columns:repeat(3,1fr)!important}.presence-dashboard div{padding:10px 5px!important}.presence-dashboard strong{font-size:20px!important}}
