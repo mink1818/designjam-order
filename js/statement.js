@@ -125,15 +125,12 @@ async function loadStatement() {
 function renderStatement(items) {
   const first = items[0];
 
-  const availableItems = items.filter(
-    item => !item.is_soldout
-  );
-
-  const productTotal = availableItems.reduce(
-    (sum, item) =>
-      sum + Number(item.price) * Number(item.qty) * 10,
-    0
-  );
+  const productTotal = items.reduce((sum, item) => {
+    const orderedQty = Number(item.qty || 0);
+    const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
+    const shippedQty = Math.max(0, orderedQty - soldoutQty);
+    return sum + Number(item.price || 0) * shippedQty * 10;
+  }, 0);
 
   const shippingFee =
     Number(first.shipping_fee || 0);
@@ -141,42 +138,31 @@ function renderStatement(items) {
   const finalTotal =
     productTotal + shippingFee;
 
-  const totalQty = availableItems.reduce(
-    (sum, item) => sum + Number(item.qty),
-    0
-  );
+  const totalQty = items.reduce((sum, item) => {
+    const orderedQty = Number(item.qty || 0);
+    const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
+    return sum + Math.max(0, orderedQty - soldoutQty);
+  }, 0);
 
   const itemRows = items.map((item, index) => {
-    const soldout = Boolean(item.is_soldout);
-
-    const rowTotal = soldout
-      ? 0
-      : Number(item.price) * Number(item.qty) * 10;
+    const orderedQty = Number(item.qty || 0);
+    const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
+    const shippedQty = Math.max(0, orderedQty - soldoutQty);
+    const soldout = soldoutQty > 0;
+    const rowTotal = Number(item.price || 0) * shippedQty * 10;
+    const qtyText = soldoutQty >= orderedQty
+      ? `${orderedQty.toLocaleString()}죽 (품절)`
+      : soldoutQty > 0
+        ? `${shippedQty.toLocaleString()}죽 출고 / ${soldoutQty.toLocaleString()}죽 품절`
+        : `${orderedQty.toLocaleString()}죽`;
 
     return `
       <tr class="${soldout ? "soldout-row" : ""}">
         <td>${index + 1}</td>
-
-        <td>
-          ${escapeHtml(item.item_number)}
-          ${soldout ? " (품절)" : ""}
-        </td>
-
-        <td>
-          ${Number(item.qty).toLocaleString()}죽
-        </td>
-
-        <td>
-          ${Number(item.price).toLocaleString()}원
-        </td>
-
-        <td>
-          ${
-            soldout
-              ? "-"
-              : rowTotal.toLocaleString() + "원"
-          }
-        </td>
+        <td>${escapeHtml(item.item_number)}${soldout ? ' <strong class="soldout-mark">품절</strong>' : ''}</td>
+        <td>${qtyText}</td>
+        <td>${Number(item.price).toLocaleString()}원</td>
+        <td>${shippedQty > 0 ? rowTotal.toLocaleString() + "원" : "-"}</td>
       </tr>
     `;
   }).join("");
