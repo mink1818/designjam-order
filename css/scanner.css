@@ -14,3 +14,27 @@
  .inventory-live-list{max-height:58vh;overflow:auto;padding-right:2px}
 }
 @media(max-width:520px){.scanner-shell{padding:8px}.scanner-control-card{padding:10px}.scan-status{padding:14px;font-size:16px}.scanner-summary-grid{margin:10px 0}.scanner-summary-grid article{padding:10px}.scanner-summary-grid strong{font-size:20px}.scanner-panel{border-radius:13px}}
+
+/* V6.1.3-1 재고검색 가로 스크롤 제거 및 모바일 초간소화 */
+.inventory-table-head,.inventory-live-row{grid-template-columns:minmax(72px,.72fr) minmax(110px,1.35fr) minmax(90px,1fr) 74px 78px 112px;gap:6px}
+.inventory-live-row{min-width:0;padding:8px 9px}
+.inventory-live-list{overflow-x:hidden}
+.safety-input{width:58px;padding:6px 5px}
+.row-actions{gap:4px;min-width:0}
+.row-actions button{min-width:0;padding:7px 8px;line-height:1;white-space:nowrap;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+@media(max-width:900px){
+ .inventory-live-row{grid-template-columns:minmax(64px,.72fr) minmax(74px,1fr) 58px 54px 76px;gap:3px;padding:6px 5px;margin:5px 0;font-size:12px;white-space:nowrap}
+ .inventory-live-row .category-name{display:none}
+ .inventory-live-row .item-name{grid-column:auto;min-width:0}
+ .inventory-item-number{font-size:13px}
+ .qty-cell{font-size:12px;text-align:center}
+ .safety-input{width:48px;padding:5px 3px;font-size:12px}
+ .row-actions{gap:2px;justify-content:stretch}
+ .row-actions button{padding:6px 5px;font-size:11px;flex:1}
+ .inventory-live-list{max-height:310px;overflow-y:auto;overflow-x:hidden}
+}
+@media(max-width:520px){
+ .inventory-live-row{grid-template-columns:58px minmax(62px,1fr) 46px 43px 68px}
+ .inventory-live-row .item-name{font-size:11px}
+ .inventory-item-number{font-size:12px}
+}

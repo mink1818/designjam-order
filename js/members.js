@@ -55,10 +55,12 @@ function renderFilteredCustomers(){
   return status&&text.includes(q);
  });
  const mode=sort.value;
- rows.sort((a,b)=>mode==='sales'?b.total_sales-a.total_sales:mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
+ rows.sort((a,b)=>mode==='sales'?b.total_sales-a.total_sales:mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='seen'?new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
  currentRows=rows;renderCustomers();
 }
 function customerState(c){return c.blocked?{text:'차단',cls:'blocked'}:c.approved?{text:'승인',cls:'done'}:{text:'대기',cls:'pending'};}
+function isOnline(c){return !!c.last_seen_at&&(Date.now()-new Date(c.last_seen_at).getTime())<=3*60*1000;}
+function lastSeenText(c){if(!c.last_seen_at)return '접속 기록 없음';if(isOnline(c))return '실시간 접속중';return '최근 '+new Date(c.last_seen_at).toLocaleString('ko-KR');}
 function renderCustomers(){
  if(!currentRows.length){list.innerHTML='<div class="product-card"><h2>검색 결과가 없습니다</h2></div>';return;}
  const shown=currentRows.slice(0,visibleCount);
@@ -72,7 +74,7 @@ function renderCustomerRow(c){
  return `<article class="compact-customer-card" data-id="${c.id}">
   <button type="button" class="compact-customer-summary-row" onclick="toggleCustomerDetail('${c.id}')" aria-expanded="false">
    <span class="customer-main-info"><strong>${esc(c.business_name||'거래처명 미입력')}</strong><small>${esc(owner)} · ${esc(phone(c.phone))}</small></span>
-   <span class="customer-meta-info"><span class="status-badge ${state.cls}">${state.text}</span><span class="grade-chip">${esc(grade)}</span><small>최근 ${date(c.last_order_at)}</small></span>
+   <span class="customer-meta-info"><span class="presence-chip ${isOnline(c)?'online':'offline'}">${isOnline(c)?'● 접속중':'○ 오프라인'}</span><span class="status-badge ${state.cls}">${state.text}</span><span class="grade-chip">${esc(grade)}</span><small>${esc(lastSeenText(c))}</small></span>
    <span class="customer-chevron">›</span>
   </button>
   <div class="compact-customer-detail" id="detail-${c.id}" hidden>
@@ -85,7 +87,7 @@ function renderCustomerRow(c){
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>
-   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn proxy-order-btn" onclick="openProxyOrder('${c.id}')">대신 주문</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${esc(c.business_name||'')}')">주문내역</button></div>
+   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${esc(c.business_name||'')}')">주문내역</button></div>
   </div>
  </article>`;
 }

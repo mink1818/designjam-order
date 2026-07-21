@@ -41,6 +41,8 @@ let cart = [];
 
 let currentScreen = "home-menu";
 let currentBrand = "전체브랜드";
+let currentProductSort = "default";
+let catalogHistoryReady = false;
 let selectedHomeBrands = new Set();
 let homeBrandSearchKeyword = "";
 let detailReturnScreen = "all-products";
@@ -356,14 +358,82 @@ function showLoadError(title, error) {
   `;
 }
 
+/* 같은 catalog.html 안의 화면 이동을 휴대폰 시스템 뒤로가기와 연결 */
+function getCatalogHistoryState(screen = currentScreen, extra = {}) {
+  return { designjamCatalogScreen: screen, ...extra };
+}
+
+function replaceCatalogHistory(screen, extra = {}) {
+  history.replaceState(getCatalogHistoryState(screen, extra), "", location.href);
+  catalogHistoryReady = true;
+}
+
+function pushCatalogHistory(screen, extra = {}) {
+  const state = history.state || {};
+  const sameScreen = state.designjamCatalogScreen === screen
+    && String(state.mainCategoryId || "") === String(extra.mainCategoryId || "");
+  if (!sameScreen) history.pushState(getCatalogHistoryState(screen, extra), "", location.href);
+  catalogHistoryReady = true;
+}
+
+function getGroupFirstItemNumber(group) {
+  const numbers = Array.isArray(group?.item_numbers) ? group.item_numbers : [];
+  return numbers.length ? String(numbers[0]) : "";
+}
+
+function compareNatural(a, b) {
+  return String(a ?? "").localeCompare(String(b ?? ""), "ko", { numeric: true, sensitivity: "base" });
+}
+
+function sortProductGroups(list) {
+  const rows = [...list];
+  if (currentProductSort === "item-asc") {
+    return rows.sort((a, b) => compareNatural(getGroupFirstItemNumber(a), getGroupFirstItemNumber(b)));
+  }
+  if (currentProductSort === "item-desc") {
+    return rows.sort((a, b) => compareNatural(getGroupFirstItemNumber(b), getGroupFirstItemNumber(a)));
+  }
+  if (currentProductSort === "name-asc") {
+    return rows.sort((a, b) => compareNatural(a.title, b.title));
+  }
+  if (currentProductSort === "name-desc") {
+    return rows.sort((a, b) => compareNatural(b.title, a.title));
+  }
+  return rows;
+}
+
+function renderProductSortControl() {
+  return `
+    <label class="catalog-sort-control">
+      <span>상품 정렬</span>
+      <select onchange="changeProductSort(this.value)">
+        <option value="default" ${currentProductSort === "default" ? "selected" : ""}>기본순</option>
+        <option value="item-asc" ${currentProductSort === "item-asc" ? "selected" : ""}>품번 낮은순</option>
+        <option value="item-desc" ${currentProductSort === "item-desc" ? "selected" : ""}>품번 높은순</option>
+        <option value="name-asc" ${currentProductSort === "name-asc" ? "selected" : ""}>상품명 가나다순</option>
+        <option value="name-desc" ${currentProductSort === "name-desc" ? "selected" : ""}>상품명 역순</option>
+      </select>
+    </label>`;
+}
+
+function changeProductSort(value) {
+  currentProductSort = value || "default";
+  if (currentScreen === "all-products") renderAllProducts(false);
+  else if (currentScreen === "main-category-detail" && activeMainCategoryId) renderMainCategoryDetail(activeMainCategoryId, false);
+}
+window.changeProductSort = changeProductSort;
+
 /* ================================
    1단계: 대분류 목록
 ================================ */
 
-function renderMainCategories() {
+function renderMainCategories(pushHistory = true) {
   currentScreen = "home-menu";
   activeMainCategoryId = null;
   currentBrand = "전체브랜드";
+
+  if (!catalogHistoryReady) replaceCatalogHistory("home-menu");
+  else if (pushHistory) pushCatalogHistory("home-menu");
 
   showSearch(false);
   hideLegacyFilters();
@@ -607,22 +677,24 @@ function renderProductPhotoGrid(productGroups, emptyMessage = "등록된 상품�
   return `<div class="catalog-group-grid all-product-grid">${productGroups.map(group => renderGroupCard(group)).join("")}</div>`;
 }
 
-function renderAllProducts() {
+function renderAllProducts(pushHistory = true) {
   currentScreen = "all-products";
   currentBrand = "전체브랜드";
   detailReturnScreen = "all-products";
+  if (pushHistory) pushCatalogHistory("all-products");
   showSearch(true, "품번 검색");
   hideLegacyFilters();
 
   const keyword = normalizeSearch(catalogSearch?.value);
-  const matched = keyword ? groups.filter(group => buildGroupSearchText(group).includes(keyword)) : groups;
+  const matched = sortProductGroups(keyword ? groups.filter(group => buildGroupSearchText(group).includes(keyword)) : groups);
 
   catalogList.innerHTML = `
     ${cartTopButton()}
     <div class="catalog-page-heading">
-      <button class="simple-back-button" type="button" onclick="renderMainCategories()">‹</button>
+      <button class="simple-back-button" type="button" onclick="history.length > 1 ? history.back() : renderMainCategories(false)">‹</button>
       <div><h2>전체상품</h2><p>모든브랜드</p></div>
     </div>
+    ${renderProductSortControl()}
     ${renderProductPhotoGrid(matched, keyword ? "검색 결과가 없습니다" : "등록된 상품이 없습니다")}
   `;
 }
@@ -643,7 +715,7 @@ function renderBrandDirectory(selectedBrand = "전체브랜드") {
   catalogList.innerHTML = `
     ${cartTopButton()}
     <div class="catalog-page-heading">
-      <button class="simple-back-button" type="button" onclick="renderMainCategories()">‹</button>
+      <button class="simple-back-button" type="button" onclick="history.length > 1 ? history.back() : renderMainCategories(false)">‹</button>
       <div><h2>전체브랜드</h2><p>브랜드를 선택하세요</p></div>
     </div>
     <div class="brand-selector" role="list" aria-label="브랜드 선택">
@@ -872,14 +944,14 @@ function openMainCategory(mainCategoryId) {
     catalogSearch.value = "";
   }
 
-  renderMainCategoryDetail(activeMainCategoryId);
+  renderMainCategoryDetail(activeMainCategoryId, true);
 }
 
 /* ================================
    2단계: 세부 카테고리 + 상품묶음
 ================================ */
 
-function renderMainCategoryDetail(mainCategoryId) {
+function renderMainCategoryDetail(mainCategoryId, pushHistory = true) {
   const numericMainCategoryId = Number(mainCategoryId);
 
   const mainCategory = mainCategories.find(
@@ -893,6 +965,7 @@ function renderMainCategoryDetail(mainCategoryId) {
 
   activeMainCategoryId = numericMainCategoryId;
   currentScreen = "main-category-detail";
+  if (pushHistory) pushCatalogHistory("main-category-detail", { mainCategoryId: numericMainCategoryId });
 
   showSearch(true, "카테고리명 또는 품번 검색");
   hideLegacyFilters();
@@ -905,9 +978,9 @@ function renderMainCategoryDetail(mainCategoryId) {
     )
     .map(category => ({
       ...category,
-      categoryGroups: groups.filter(group =>
+      categoryGroups: sortProductGroups(groups.filter(group =>
         Number(group.category_id) === Number(category.id)
-      )
+      ))
     }))
     .filter(category => {
       if (!keyword) return true;
@@ -938,7 +1011,7 @@ function renderMainCategoryDetail(mainCategoryId) {
     <button
       class="cart-btn gray-btn"
       type="button"
-      onclick="renderMainCategories()"
+      onclick="history.length > 1 ? history.back() : renderMainCategories(false)"
     >
       ← 대분류 목록으로 돌아가기
     </button>
@@ -946,6 +1019,7 @@ function renderMainCategoryDetail(mainCategoryId) {
     <section class="product-card main-category-title-card">
       <h2>${escapeHtml(mainCategory.name)}</h2>
     </section>
+    ${renderProductSortControl()}
 
     ${
       childCategories.length > 0
@@ -1109,7 +1183,7 @@ function openGroup(groupId, requestedItem = "") {
 
     // 같은 페이지 안에서 열리는 상세도 브라우저/휴대폰 뒤로가기로 닫히도록 기록한다.
     if (!requestedItem && !history.state?.designjamCatalogDetail) {
-      history.pushState({ designjamCatalogDetail: true, groupId: Number(group.id) }, "", location.href);
+      history.pushState({ designjamCatalogDetail: true, designjamCatalogScreen: "detail", groupId: Number(group.id) }, "", location.href);
     }
   }
 
@@ -1268,9 +1342,32 @@ function returnFromGroupDetail(fromHistory = false) {
   renderDetailReturnScreen(detailReturnState);
 }
 
-window.addEventListener("popstate", () => {
-  if (currentScreen !== "detail") return;
-  renderDetailReturnScreen(detailReturnState);
+window.addEventListener("popstate", event => {
+  const state = event.state || {};
+
+  if (currentScreen === "detail") {
+    renderDetailReturnScreen(detailReturnState);
+    return;
+  }
+
+  if (state.designjamCatalogScreen === "main-category-detail" && state.mainCategoryId) {
+    renderMainCategoryDetail(state.mainCategoryId, false);
+    return;
+  }
+
+  if (state.designjamCatalogScreen === "all-products") {
+    renderAllProducts(false);
+    return;
+  }
+
+  if (state.designjamCatalogScreen === "home-menu") {
+    renderMainCategories(false);
+    return;
+  }
+
+  // 앱에서 catalog 하위 화면을 연 뒤 이전 기록이 없는 경우에도 종료하지 않고 메인으로 복귀한다.
+  renderMainCategories(false);
+  replaceCatalogHistory("home-menu");
 });
 
 function returnToActiveMainCategory() {

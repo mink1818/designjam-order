@@ -1731,3 +1731,8 @@ html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info st
 
 /* V5.3.33 */
 .customer-profile-main{margin:14px 0 10px;padding:18px;border:1px solid #dce4ee;border-radius:16px;background:var(--card-bg,#fff)}.customer-profile-main h2{margin:0 0 5px;font-size:22px}.customer-profile-main p{margin:0;color:#68758a}.barcode-list-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:8px 0 10px}.barcode-list-actions button{border:1px solid #cfd8e4;border-radius:9px;background:#f5f7fa;padding:8px 6px;font-weight:800;cursor:pointer}.barcode-list-actions button:nth-child(3),.barcode-list-actions button:nth-child(4){color:#b42318;background:#fff5f4;border-color:#f0b7b2}@media(max-width:640px){.barcode-list-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V6.1.3 거래처 상품 정렬기 */
+.catalog-sort-control{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:10px 0 14px;font-size:13px;font-weight:800;color:#42566b}
+.catalog-sort-control select{min-width:150px;height:38px;padding:0 32px 0 12px;border:1px solid #cbd6e2;border-radius:10px;background:#fff;font:inherit;color:#1f354b}
+@media(max-width:640px){.catalog-sort-control{justify-content:space-between;margin:8px 0 10px}.catalog-sort-control select{height:34px;min-width:138px;font-size:12px;padding-left:9px}.catalog-group-grid{gap:7px}.catalog-group-card{padding:6px}.catalog-item-numbers{font-size:11px;line-height:1.25}}
