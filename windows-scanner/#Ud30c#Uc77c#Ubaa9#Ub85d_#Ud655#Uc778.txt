@@ -1,0 +1,15 @@
+V6.0.3 Windows Scanner 포함 파일
+
+필수 파일 6개:
+1. design_socks_scanner.py
+2. 1_설치.bat
+3. 2_실행.bat
+4. 3_EXE만들기.bat
+5. requirements.txt
+6. 사용방법.txt
+
+Windows에서 한글 파일명이 보이지 않는 경우 사용할 영문 복사본:
+- 1_INSTALL.bat
+- 2_RUN.bat
+- 3_BUILD_EXE.bat
+- README_WINDOWS_SCANNER.txt

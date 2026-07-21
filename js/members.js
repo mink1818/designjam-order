@@ -21,18 +21,23 @@ async function checkAdminAccess(){
  sessionStorage.setItem(ADMIN_SESSION_KEY,user.id);localStorage.setItem(ADMIN_SESSION_KEY,user.id);document.body.classList.add('auth-ready');return true;
 }
 
+async function withTimeout(promise,ms=15000){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인한 뒤 새로고침해 주세요.')),ms)})]);}finally{clearTimeout(timer)}}
 async function loadCustomers(){
  list.innerHTML='<p class="customer-loading">거래처 정보를 불러오는 중...</p>';
- const {data,error}=await supabaseClient.from('customers').select('*').order('created_at',{ascending:false});
- if(error){list.innerHTML=`<div class="product-card"><h2>불러오기 실패</h2><p>${esc(error.message)}</p><p>V3-1-SETUP.sql을 먼저 실행해 주세요.</p></div>`;return;}
+ try{
+ const {data,error}=await withTimeout(supabaseClient.from('customers').select('*').order('created_at',{ascending:false}),15000);
+ if(error)throw error;
  const customers=(data||[]).filter(c=>!c.is_admin);
- const ids=customers.map(c=>c.id);
  let orders=[];
- if(ids.length){const result=await supabaseClient.from('orders').select('customer_id,total,qty,created_at,order_number').in('customer_id',ids);orders=result.data||[];}
+ try{
+   const result=await withTimeout(supabaseClient.from('orders').select('customer_id,total,qty,created_at,order_number').order('created_at',{ascending:false}).limit(10000),18000);
+   if(!result.error)orders=(result.data||[]).filter(o=>customers.some(c=>c.id===o.customer_id));
+ }catch(statsError){console.warn('거래처 주문통계 생략:',statsError);}
  const stats={};
  orders.forEach(o=>{const s=stats[o.customer_id]||(stats[o.customer_id]={total:0,last:null,orders:new Set()});s.total+=Number(o.total||0);s.orders.add(o.order_number);if(!s.last||new Date(o.created_at)>new Date(s.last))s.last=o.created_at;});
  allCustomers=customers.map(c=>({...c,total_sales:stats[c.id]?.total||0,order_count:stats[c.id]?.orders.size||0,last_order_at:stats[c.id]?.last||c.last_order_at||null}));
  visibleCount=PAGE_SIZE;updateCounts();renderFilteredCustomers();
+ }catch(error){list.innerHTML=`<div class="product-card"><h2>거래처 불러오기 실패</h2><p>${esc(error.message||'알 수 없는 오류')}</p><button class="cart-btn" type="button" onclick="loadCustomers()">다시 불러오기</button></div>`;}
 }
 function updateCounts(){
  document.getElementById('waitingCount').textContent=allCustomers.filter(c=>!c.approved&&!c.blocked).length;
@@ -80,7 +85,7 @@ function renderCustomerRow(c){
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>
-   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${esc(c.business_name||'')}')">주문내역</button></div>
+   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn proxy-order-btn" onclick="openProxyOrder('${c.id}')">대신 주문</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${esc(c.business_name||'')}')">주문내역</button></div>
   </div>
  </article>`;
 }
@@ -91,6 +96,7 @@ function toggleCustomerDetail(id){
 }
 function showMoreCustomers(){visibleCount+=PAGE_SIZE;renderCustomers();}
 function openCustomerOrders(name){location.href=`admin.html?search=${encodeURIComponent(name)}`;}
+function openProxyOrder(id){location.href=`proxy-order.html?customer=${encodeURIComponent(id)}`;}
 async function saveCustomer(id){
  const card=list.querySelector(`[data-id="${id}"]`);const payload={};
  card.querySelectorAll('[data-field]').forEach(el=>payload[el.dataset.field]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value||0):el.value.trim());
@@ -117,7 +123,8 @@ async function setCustomerPassword(id,button){
  catch(error){alert('비밀번호 변경 실패: '+error.message+'\n\nEdge Function 배포 여부를 확인하세요.');}
  finally{button.disabled=false;button.textContent='비밀번호 변경';}
 }
-window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.openCustomerOrders=openCustomerOrders;window.setCustomerPassword=setCustomerPassword;
+window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.openCustomerOrders=openCustomerOrders;window.openProxyOrder=openProxyOrder;window.setCustomerPassword=setCustomerPassword;
 search.addEventListener('input',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});sort.addEventListener('change',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});
 document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){document.querySelector('[data-filter="전체"]')?.classList.add('active');const f=new URLSearchParams(location.search).get('filter');if(f==='waiting'){memberFilter='승인대기';document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='승인대기'));}loadCustomers();loadLoginStats();setInterval(loadLoginStats,60000);}});
-\nasync function loadLoginStats(){const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()),yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);const [online,tod,yes]=await Promise.all([supabaseClient.from('customers').select('id',{count:'exact',head:true}).eq('is_admin',false).gte('last_seen_at',new Date(Date.now()-3*60*1000).toISOString()),supabaseClient.from('customer_login_events').select('id',{count:'exact',head:true}).gte('logged_in_at',today.toISOString()),supabaseClient.from('customer_login_events').select('id',{count:'exact',head:true}).gte('logged_in_at',yesterday.toISOString()).lt('logged_in_at',today.toISOString())]);document.getElementById('onlineCount').textContent=online.count||0;document.getElementById('todayLoginCount').textContent=tod.count||0;document.getElementById('yesterdayLoginCount').textContent=yes.count||0;}\n
+
+async function loadLoginStats(){const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()),yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);const [online,tod,yes]=await Promise.all([supabaseClient.from('customers').select('id',{count:'exact',head:true}).eq('is_admin',false).gte('last_seen_at',new Date(Date.now()-3*60*1000).toISOString()),supabaseClient.from('customer_login_events').select('id',{count:'exact',head:true}).gte('logged_in_at',today.toISOString()),supabaseClient.from('customer_login_events').select('id',{count:'exact',head:true}).gte('logged_in_at',yesterday.toISOString()).lt('logged_in_at',today.toISOString())]);document.getElementById('onlineCount').textContent=online.count||0;document.getElementById('todayLoginCount').textContent=tod.count||0;document.getElementById('yesterdayLoginCount').textContent=yes.count||0;}
