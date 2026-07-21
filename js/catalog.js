@@ -1954,6 +1954,9 @@ function moveProductSlider(groupId, direction) {
 ================================ */
 
 function getSoldoutItems(group) {
+  // 거래처 화면의 품절 표시는 상품관리에서 관리자가 직접 지정한
+  // product_groups.soldout_items 값만 사용합니다. ERP inventory_items의
+  // 재고수량이 0이어도 거래처 화면에는 자동 품절로 표시하지 않습니다.
   return Array.isArray(group.soldout_items)
     ? group.soldout_items.map(String)
     : [];
