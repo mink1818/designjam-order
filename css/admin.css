@@ -2371,12 +2371,12 @@ body[data-session-page="admin"] .order-expand-icon{align-self:center}
   body[data-session-page="admin"] .order-expand-icon{display:none!important}
 }
 
-/* V6.2.3 관리자 통합검색 */
+/* V6.2.4 관리자 통합검색 */
 .global-admin-search{position:relative;flex:1;max-width:760px}.global-admin-search input{width:100%;box-sizing:border-box;padding-right:110px}.global-admin-search>button{position:absolute;right:4px;top:4px;bottom:4px}.admin-global-search-results{position:absolute;z-index:3000;left:0;right:0;top:calc(100% + 8px);max-height:520px;overflow:auto;background:#fff;border:1px solid #ccd7e2;border-radius:14px;padding:10px;box-shadow:0 18px 50px rgba(17,36,55,.2)}.admin-global-search-results[hidden]{display:none}.admin-global-search-results h4{margin:10px 8px 5px;color:#5b6b7b}.admin-global-search-results p{padding:14px;margin:0}.admin-search-result{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #edf1f5;background:#fff;padding:11px;border-radius:8px;cursor:pointer}.admin-search-result:hover{background:#eef5fb}.admin-search-result b,.admin-search-result small{display:block}.admin-search-result small{margin-top:3px;color:#667789}
 
 .stats-group-title{margin:24px 2px 10px}.stats-group-title h2{font-size:18px;margin:0}.stats-group-title span{color:#6b7b8c;font-size:13px}
 
-/* V6.2.3 dark mode full visibility pass */
+/* V6.2.4 dark mode full visibility pass */
 html[data-theme="dark"] body,html[data-theme="dark"] main{background:#0b1622!important;color:#e9f1f8!important}
 html[data-theme="dark"] .product-card,html[data-theme="dark"] .stats-panel,html[data-theme="dark"] .admin-global-search-results,html[data-theme="dark"] .admin-search-result,html[data-theme="dark"] .order-detail,html[data-theme="dark"] .admin-account-card{background:#132536!important;color:#edf5fb!important;border-color:#385067!important}
 html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#0d1d2b!important;color:#f4f8fb!important;border-color:#4d657a!important}
@@ -2386,3 +2386,8 @@ html[data-theme="dark"] .admin-search-result:hover{background:#1e3a50!important}
 .field-saving{opacity:.72}.field-save-success{outline:2px solid #22c55e!important}.field-save-error{outline:2px solid #ef4444!important}.stats-unclassified-note{margin-top:12px;color:#b45309;font-weight:800}
 html[data-theme="dark"] .stats-unclassified-note{color:#fbbf24!important}
 .admin-account-actions select{min-width:120px}
+
+/* V6.2.4 배송비·택배사 입력 개선 */
+.shipping-fee-control,.courier-control{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.shipping-fee-control .shipping-input{flex:1;min-width:140px}.shipping-step-btn{min-height:40px;padding:0 14px;border:1px solid #b8c6d8;border-radius:10px;background:#eef3f9;font-weight:800;cursor:pointer}.courier-control .courier-select{flex:1;min-width:180px}.courier-custom-input{flex:1;min-width:180px}.courier-custom-input[hidden]{display:none!important}
+html[data-theme="dark"] .shipping-step-btn,body.dark-mode .shipping-step-btn{background:#263241;color:#f4f7fb;border-color:#52657b}
+@media(max-width:700px){.shipping-fee-control,.courier-control{display:grid;grid-template-columns:auto 1fr auto}.courier-control{grid-template-columns:1fr}.shipping-step-btn{padding:0 10px}}

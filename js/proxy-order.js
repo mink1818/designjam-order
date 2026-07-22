@@ -48,8 +48,16 @@ async function submit(){
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
   const directInfo=mode==='direct'?[`대표자: ${($('proxyDirectOwner').value||'').trim()}`,`전화: ${($('proxyDirectPhone').value||'').trim()}`,`주소: ${($('proxyDirectAddress').value||'').trim()}`].filter(x=>!x.endsWith(': ')).join(' / '):'';
   const finalMemo=['[관리자 대신주문]',memo,directInfo].filter(Boolean).join(' | ');
-  const rows=lines.map(x=>({order_number:order,customer_id:mode==='direct'?currentAdminId:customer.id,customer_name:customerName,memo:finalMemo,item_number:x.item_number,qty:x.qty,price:x.price,total:x.qty*x.price*10,status:'주문접수',shipping_fee:0,is_soldout:false}));
-  const {error}=await supabaseClient.from('orders').insert(rows);if(error)throw error;
+  const rows=lines.map(x=>({item_number:x.item_number,qty:x.qty,price:x.price,total:x.qty*x.price*10}));
+  const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{
+    p_order_number:order,
+    p_customer_id:mode==='direct'?null:customer.id,
+    p_customer_name:customerName,
+    p_memo:finalMemo,
+    p_items:rows
+  });
+  if(error)throw error;
+  if(data?.ok===false)throw new Error(data.error||'대신주문 저장에 실패했습니다.');
   alert(`관리자 대신주문이 접수되었습니다.\n거래처: ${customerName}\n총 ${lines.length}품번\n주문번호: ${order}\n피킹 화면에서 최종검증하세요.`);location.href=`picking.html?order=${encodeURIComponent(order)}`;
  }catch(e){showError('대신 주문 저장 실패: '+(e?.message||e));btn.disabled=false;btn.textContent='대신 주문 접수'}
 }

@@ -319,32 +319,34 @@ class="order-detail">
         <input class="customer-note-input" type="text" value="${escapeAdminAttr(customerNotes[group.orderNumber] || "")}" placeholder="예: 전화요망, 합배송, 후불" onchange="saveOrderNote('${escapeAdminAttr(group.orderNumber)}', this.value, this)">
 
         <label class="shipping-label">배송비</label>
-        
-<input
-  class="shipping-input"
-  type="number"
-  value="${group.shipping_fee || 0}"
-  min="0"
-  data-order="${group.orderNumber}"
-  oninput="recalcOrderCard('order-${index}'); queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
-  ${group.status === "출고완료" ? "disabled" : ""}
->
+<div class="shipping-fee-control">
+  <button type="button" class="shipping-step-btn" onclick="adjustShippingFee(this,-500)" ${isDone ? "disabled" : ""}>-500원</button>
+  <input
+    class="shipping-input"
+    type="number"
+    step="500"
+    value="${group.shipping_fee || 0}"
+    min="0"
+    data-order="${group.orderNumber}"
+    oninput="recalcOrderCard('order-${index}'); queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
+    ${group.status === "출고완료" ? "disabled" : ""}
+  >
+  <button type="button" class="shipping-step-btn" onclick="adjustShippingFee(this,500)" ${isDone ? "disabled" : ""}>+500원</button>
+</div>
 
 <label class="shipping-label">택배사</label>
-
+<div class="courier-control">
 <select 
   class="courier-select" 
   data-order="${group.orderNumber}"
-  onchange="queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
+  onchange="handleCourierChange(this)"
   ${isDone ? "disabled" : ""}
 >
-  <option value="로젠택배" ${group.courier==="로젠택배"?"selected":""}>로젠택배</option>
-  <option value="CJ대한통운" ${group.courier==="CJ대한통운"?"selected":""}>CJ대한통운</option>
-  <option value="한진택배" ${group.courier==="한진택배"?"selected":""}>한진택배</option>
-  <option value="우체국택배" ${group.courier==="우체국택배"?"selected":""}>우체국택배</option>
-  <option value="롯데택배" ${group.courier==="롯데택배"?"selected":""}>롯데택배</option>
-  <option value="경동택배" ${group.courier==="경동택배"?"selected":""}>경동택배</option>
+  ${['로젠택배','CJ대한통운','한진택배','우체국택배','롯데택배','경동택배'].map(name=>`<option value="${name}" ${group.courier===name?'selected':''}>${name}</option>`).join('')}
+  <option value="__custom__" ${group.courier && !['로젠택배','CJ대한통운','한진택배','우체국택배','롯데택배','경동택배'].includes(group.courier)?'selected':''}>직접 입력</option>
 </select>
+<input class="courier-custom-input" type="text" maxlength="50" placeholder="택배사명 직접 입력" value="${group.courier && !['로젠택배','CJ대한통운','한진택배','우체국택배','롯데택배','경동택배'].includes(group.courier)?escapeAdminAttr(group.courier):''}" ${group.courier && !['로젠택배','CJ대한통운','한진택배','우체국택배','롯데택배','경동택배'].includes(group.courier)?'':'hidden'} oninput="queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))" ${isDone ? "disabled" : ""}>
+</div>
 
 <label class="shipping-label">송장번호</label>
 
@@ -412,7 +414,7 @@ async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대�
 
   const rawShippingFee = String(shippingInput?.value ?? "").trim();
   const shippingFee = Number(rawShippingFee) || 0;
-  const courier = courierSelect?.value || "로젠택배";
+  const courier = getCourierValue(courierSelect?.closest('.order-detail')) || "로젠택배";
   const trackingNumber = String(trackingInput?.value || "").trim();
 
   if (currentStatus !== "출고완료") {
@@ -466,6 +468,30 @@ function recalcOrderCard(cardId) {
   card.querySelector(".calc-final-total").textContent = finalTotal.toLocaleString();
 }
 
+
+function getCourierValue(detail){
+  if(!detail)return '';
+  const select=detail.querySelector('.courier-select');
+  if(!select)return '';
+  if(select.value==='__custom__')return (detail.querySelector('.courier-custom-input')?.value||'').trim();
+  return select.value||'';
+}
+function handleCourierChange(select){
+  const detail=select.closest('.order-detail');
+  const input=detail?.querySelector('.courier-custom-input');
+  if(input){input.hidden=select.value!=='__custom__';if(!input.hidden)input.focus();}
+  queueShippingSave(select.dataset.order,detail);
+}
+function adjustShippingFee(button,delta){
+  const detail=button.closest('.order-detail');
+  const input=detail?.querySelector('.shipping-input');
+  if(!input||input.disabled)return;
+  input.value=Math.max(0,(Number(input.value)||0)+Number(delta||0));
+  const card=button.closest('.order-card');if(card)recalcOrderCard(card.id);
+  queueShippingSave(input.dataset.order,detail);
+}
+window.handleCourierChange=handleCourierChange;window.adjustShippingFee=adjustShippingFee;
+
 const orderShippingSaveTimers=new Map();
 function queueShippingSave(orderNumber,detail){
   if(!orderNumber||!detail)return;
@@ -476,10 +502,10 @@ function queueShippingSave(orderNumber,detail){
 async function persistShippingFields(orderNumber,detail){
   const payload={
     shipping_fee:Number(detail.querySelector('.shipping-input')?.value)||0,
-    courier:detail.querySelector('.courier-select')?.value||'로젠택배',
+    courier:getCourierValue(detail)||'로젠택배',
     tracking_number:detail.querySelector('.tracking-input')?.value.trim()||''
   };
-  const fields=detail.querySelectorAll('.shipping-input,.courier-select,.tracking-input');
+  const fields=detail.querySelectorAll('.shipping-input,.courier-select,.courier-custom-input,.tracking-input');
   fields.forEach(el=>el.classList.add('field-saving'));
   const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
   fields.forEach(el=>el.classList.remove('field-saving'));
@@ -783,7 +809,7 @@ async function saveOrderPaymentAccount(orderNumber,index){
   const courierSelect=detail.querySelector('.courier-select');
   const trackingInput=detail.querySelector('.tracking-input');
   payload.shipping_fee=Number(shippingInput?.value)||0;
-  payload.courier=courierSelect?.value||'로젠택배';
+  payload.courier=getCourierValue(detail)||'로젠택배';
   payload.tracking_number=trackingInput?.value.trim()||'';
 
   const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
@@ -824,5 +850,5 @@ async function saveOrderNote(orderNumber,note,input){
 }
 window.saveOrderNote=saveOrderNote;
 
-// V6.2.3 주문관리 무깜빡임 실시간 상태 갱신
+// V6.2.4 주문관리 무깜빡임 실시간 상태 갱신
 document.addEventListener("DOMContentLoaded", startAdminRealtimeRefresh);

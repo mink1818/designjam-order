@@ -1,4 +1,4 @@
-DESIGN SOCKS Windows 백그라운드 스캐너 V6.2.3
+DESIGN SOCKS Windows 백그라운드 스캐너 V6.2.4
 
 가장 쉬운 사용법
 1. 처음 한 번만 0_처음사용_한번에설치및EXE생성.bat 실행
