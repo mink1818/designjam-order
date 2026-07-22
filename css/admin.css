@@ -2292,3 +2292,6 @@ html[data-theme="dark"] .barcode-label-preview::after{color:#d7e2f0!important}
 .presence-chip.online{background:#dcfce7;color:#087443;box-shadow:0 0 0 1px #86efac inset}
 .presence-chip.offline{background:#eef2f6;color:#64748b}
 @media(max-width:700px){.member-page-actions>*{flex:1}.presence-chip{font-size:10px;padding:3px 6px}}
+
+/* V6.1.4 관리자 대신주문·품절 구분 */
+.proxy-order-badge,.soldout-order-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:900;vertical-align:middle}.proxy-order-badge{background:#ccfbf1;color:#115e59}.soldout-order-badge{background:#fee2e2;color:#991b1b}.order-primary h2 small{margin-left:5px}

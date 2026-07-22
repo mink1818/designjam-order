@@ -143,6 +143,7 @@ try {
         paymentBankName: order.payment_bank_name || "",
         paymentAccountNumber: order.payment_account_number || "",
         paymentAccountHolder: order.payment_account_holder || "",
+        isProxy: String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]'),
         items: []
       };
     }
@@ -254,12 +255,10 @@ function renderOrderCards(groups) {
     let itemHtml = "";
     let summaryQty = 0;
 let summaryTotal = 0;
+let soldoutQty=0;
 
 group.items.forEach(item => {
-  if (!item.is_soldout) {
-    summaryQty += item.qty;
-    summaryTotal += item.price * item.qty * 10;
-  }
+  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0)*10;
 });
 
 summaryTotal += Number(group.shipping_fee || 0);
@@ -275,7 +274,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   ${group.status === "출고완료" ? "disabled" : ""}
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
-          <strong>${item.item_number}</strong>
+          <strong>${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}</strong>
           <span>× ${item.qty}죽</span>
           <em>${rowTotal.toLocaleString()}원</em>
         </label>
@@ -286,7 +285,7 @@ summaryTotal += Number(group.shipping_fee || 0);
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''}</h2>
     <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>

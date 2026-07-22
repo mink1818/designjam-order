@@ -43,7 +43,6 @@ function updateCounts(){
  document.getElementById('waitingCount').textContent=allCustomers.filter(c=>!c.approved&&!c.blocked).length;
  document.getElementById('approvedCount').textContent=allCustomers.filter(c=>c.approved&&!c.blocked).length;
  document.getElementById('blockedCount').textContent=allCustomers.filter(c=>c.blocked).length;
- document.getElementById('creditCount').textContent=allCustomers.filter(c=>c.credit_allowed).length;
 }
 function setMemberFilter(v){memberFilter=v;visibleCount=PAGE_SIZE;document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter===v));renderFilteredCustomers();}
 window.setMemberFilter=setMemberFilter;
@@ -83,7 +82,6 @@ function renderCustomerRow(c){
    <div class="v3-customer-form">
     <label>등급<select data-field="customer_grade"><option ${grade==='일반'?'selected':''}>일반</option><option ${grade==='우수'?'selected':''}>우수</option><option ${grade==='VIP'?'selected':''}>VIP</option></select></label>
     <label>할인율(%)<input data-field="discount_rate" type="number" min="0" max="100" step="0.1" value="${Number(c.discount_rate||0)}"></label>
-    <label class="check-label"><input data-field="credit_allowed" type="checkbox" ${c.credit_allowed?'checked':''}> 외상거래 허용</label>
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>

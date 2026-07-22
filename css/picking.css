@@ -73,3 +73,6 @@
 .soldout-check input{width:16px;height:16px;margin:0;accent-color:#d97706}
 @media(max-width:700px){.soldout-check{min-height:29px;padding:4px 6px;font-size:11px}.soldout-check input{width:14px;height:14px}}
 @media print{html,body,body.auth-ready,body.auth-pending{background:#fff!important;background-image:none!important}.admin-mobile-nav,.mobile-quick-nav,.session-status,.session-widget,#versionBadge,.version-badge{display:none!important}.soldout-check{display:none!important}}
+
+/* V6.1.4 대신주문/상단요약 */
+.pick-order-summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.pick-order-summary span,.pick-order-summary strong{padding:5px 9px;border-radius:999px;background:#eef5fb;font-size:13px}.proxy-order-badge{display:inline-flex;background:#ccfbf1;color:#115e59;border-radius:999px;padding:3px 8px;font-size:12px;font-style:normal}.picking-state.soldout{background:#fee2e2;color:#991b1b;padding:4px 7px;border-radius:999px}
