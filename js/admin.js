@@ -326,7 +326,7 @@ class="order-detail">
   value="${group.shipping_fee || 0}"
   min="0"
   data-order="${group.orderNumber}"
-  oninput="recalcOrderCard('order-${index}')"
+  oninput="recalcOrderCard('order-${index}'); queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
   ${group.status === "출고완료" ? "disabled" : ""}
 >
 
@@ -335,6 +335,7 @@ class="order-detail">
 <select 
   class="courier-select" 
   data-order="${group.orderNumber}"
+  onchange="queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
   ${isDone ? "disabled" : ""}
 >
   <option value="로젠택배" ${group.courier==="로젠택배"?"selected":""}>로젠택배</option>
@@ -353,6 +354,7 @@ class="order-detail">
   type="text"
   value="${group.tracking_number || ""}"
   placeholder="송장번호 입력"
+  oninput="queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
   ${isDone ? "disabled" : ""}
 >
 
@@ -463,6 +465,29 @@ function recalcOrderCard(cardId) {
   card.querySelector(".calc-shipping-fee").textContent = shipping.toLocaleString();
   card.querySelector(".calc-final-total").textContent = finalTotal.toLocaleString();
 }
+
+const orderShippingSaveTimers=new Map();
+function queueShippingSave(orderNumber,detail){
+  if(!orderNumber||!detail)return;
+  clearTimeout(orderShippingSaveTimers.get(orderNumber));
+  const timer=setTimeout(()=>persistShippingFields(orderNumber,detail),450);
+  orderShippingSaveTimers.set(orderNumber,timer);
+}
+async function persistShippingFields(orderNumber,detail){
+  const payload={
+    shipping_fee:Number(detail.querySelector('.shipping-input')?.value)||0,
+    courier:detail.querySelector('.courier-select')?.value||'로젠택배',
+    tracking_number:detail.querySelector('.tracking-input')?.value.trim()||''
+  };
+  const fields=detail.querySelectorAll('.shipping-input,.courier-select,.tracking-input');
+  fields.forEach(el=>el.classList.add('field-saving'));
+  const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
+  fields.forEach(el=>el.classList.remove('field-saving'));
+  if(error){fields.forEach(el=>el.classList.add('field-save-error'));console.warn('배송정보 자동저장 실패',error);return;}
+  fields.forEach(el=>{el.classList.remove('field-save-error');el.classList.add('field-save-success');setTimeout(()=>el.classList.remove('field-save-success'),900);});
+}
+window.queueShippingSave=queueShippingSave;
+
 async function saveShipping(orderNumber, fee){
 
     await supabaseClient
@@ -799,5 +824,5 @@ async function saveOrderNote(orderNumber,note,input){
 }
 window.saveOrderNote=saveOrderNote;
 
-// V6.2.0 주문관리 무깜빡임 실시간 상태 갱신
+// V6.2.1 주문관리 무깜빡임 실시간 상태 갱신
 document.addEventListener("DOMContentLoaded", startAdminRealtimeRefresh);

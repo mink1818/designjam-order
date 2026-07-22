@@ -1,16 +1,16 @@
-const CACHE_NAME='design-socks-v6-2-0';
+const CACHE_NAME='design-socks-v6-2-1';
 const APP_SHELL=[
-  '/offline.html?v=6200',
-  '/css/main.css?v=6200',
-  '/css/admin.css?v=6200',
-  '/css/statement.css?v=6200',
-  '/js/pwa.js?v=6200',
-  '/js/version-badge.js?v=6200',
-  '/js/back-navigation.js?v=6200',
-  '/icons/customer-192.png?v=6200',
-  '/icons/customer-512.png?v=6200',
-  '/icons/admin-192.png?v=6200',
-  '/icons/admin-512.png?v=6200'
+  '/offline.html?v=6210',
+  '/css/main.css?v=6210',
+  '/css/admin.css?v=6210',
+  '/css/statement.css?v=6210',
+  '/js/pwa.js?v=6210',
+  '/js/version-badge.js?v=6210',
+  '/js/back-navigation.js?v=6210',
+  '/icons/customer-192.png?v=6210',
+  '/icons/customer-512.png?v=6210',
+  '/icons/admin-192.png?v=6210',
+  '/icons/admin-512.png?v=6210'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
@@ -30,7 +30,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=6200');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=6210');
       throw new Error('offline');
     })
   );

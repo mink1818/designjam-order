@@ -6,6 +6,8 @@ const ADMIN_EMAILS=new Set(['900smk@naver.com','sm0727sm@hanmail.net','p1028p@na
 const ADMIN_SESSION_KEY='designjam_admin_session';
 let rawOrders=[];
 let productGroupMap=new Map();
+let categoryNameMap=new Map();
+let mainCategoryNameMap=new Map();
 let currentRange='month';
 let currentStats=null;
 
@@ -44,12 +46,16 @@ function setDefaultDates(){
 
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
-  const [ordersResult,groupsResult]=await Promise.all([
+  const [ordersResult,groupsResult,categoriesResult,mainsResult]=await Promise.all([
     supabaseClient.from('orders').select('*').order('created_at',{ascending:true}),
-    supabaseClient.from('product_groups').select('*')
+    supabaseClient.from('product_groups').select('*'),
+    supabaseClient.from('product_categories').select('id,name,main_category_id'),
+    supabaseClient.from('product_main_categories').select('id,name')
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
+  categoryNameMap=new Map((categoriesResult.data||[]).map(x=>[String(x.id),x]));
+  mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
   (groupsResult.data||[]).forEach(g=>{
     const nums=String(g.item_numbers||g.items||g.product_numbers||'').split(/[,\s/]+/).map(x=>x.trim()).filter(Boolean);
@@ -84,7 +90,7 @@ function calculateStats(){
       orderQty+=q;productAmount+=amount;
       const num=String(item.item_number||'품번 미입력');
       const p=products.get(num)||{name:num,qty:0,amount:0};p.qty+=q;p.amount+=amount;products.set(num,p);
-      const group=productGroupMap.get(num);const category=String(group?.main_category_name||group?.main_category||group?.category_name||group?.category||'미분류');
+      const group=productGroupMap.get(num);const child=categoryNameMap.get(String(group?.category_id||''));const category=String(mainCategoryNameMap.get(String(child?.main_category_id||''))||child?.name||group?.main_category_name||group?.main_category||group?.category_name||group?.category||'미분류');
       const c=categories.get(category)||{name:category,qty:0,amount:0};c.qty+=q;c.amount+=amount;categories.set(category,c);
     });
     const orderAmount=productAmount+Number(order.shippingFee||0);totalAmount+=orderAmount;totalQty+=orderQty;
@@ -118,8 +124,8 @@ function renderRanking(targetId,rows,type){
 }
 
 function renderCategoryShare(rows){
-  const box=$('categoryShareList');if(!rows.length){box.innerHTML='<p class="empty-copy">대분류 정보가 없거나 판매 데이터가 없습니다.</p>';return;}
-  const total=rows.reduce((s,x)=>s+x.qty,0)||1;box.innerHTML=rows.slice(0,12).map(x=>{const percent=Math.round(x.qty/total*100);return `<div class="stats-share-row"><span>${esc(x.name)}</span><div><i style="width:${percent}%"></i></div><strong>${qty(x.qty)}죽 · ${percent}%</strong></div>`;}).join('');
+  const box=$('categoryShareList');const classified=rows.filter(x=>x.name&&x.name!=='미분류');const unclassified=rows.find(x=>x.name==='미분류');rows=classified;if(!rows.length){box.innerHTML='<p class="empty-copy">대분류 정보가 없거나 판매 데이터가 없습니다.</p>';return;}
+  const total=rows.reduce((s,x)=>s+x.qty,0)||1;box.innerHTML=rows.slice(0,12).map(x=>{const percent=Math.round(x.qty/total*100);return `<div class="stats-share-row"><span>${esc(x.name)}</span><div><i style="width:${percent}%"></i></div><strong>${qty(x.qty)}죽 · ${percent}%</strong></div>`;}).join('')+(unclassified?`<p class="stats-unclassified-note">대분류 연결이 필요한 판매수량: ${qty(unclassified.qty)}죽</p>`:'');
 }
 
 function renderAll(){
