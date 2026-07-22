@@ -297,8 +297,10 @@ summaryTotal += Number(group.shipping_fee || 0);
     <strong class="mobile-order-qty">${summaryQty}죽</strong>
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
   </div>
-  <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
-  ${!isDone?`<span class="order-status-pill ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+  <div class="order-status-stack">
+    <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
+    ${!isDone?`<span class="order-status-pill picking ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+  </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
 </div>
@@ -405,9 +407,20 @@ async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대�
     `.tracking-input[data-order="${orderNumber}"]`
   );
 
-  const shippingFee = Number(shippingInput?.value) || 0;
+  const rawShippingFee = String(shippingInput?.value ?? "").trim();
+  const shippingFee = Number(rawShippingFee) || 0;
   const courier = courierSelect?.value || "로젠택배";
-  const trackingNumber = trackingInput?.value || "";
+  const trackingNumber = String(trackingInput?.value || "").trim();
+
+  if (currentStatus !== "출고완료") {
+    const missing = [];
+    if (!rawShippingFee || shippingFee <= 0) missing.push("배송비");
+    if (!trackingNumber) missing.push("송장번호");
+    if (missing.length) {
+      const proceed = confirm(`${missing.join("와 ")}가 입력되지 않았습니다.\n그래도 출고완료 처리할까요?`);
+      if (!proceed) return;
+    }
+  }
 
   try {
     await updateOrderStatus(orderNumber, currentStatus, shippingFee, courier, trackingNumber);
@@ -482,6 +495,22 @@ function openWorkSheet(orderNumber) {
   window.open(url, '_blank');
 }
 window.openWorkSheet = openWorkSheet;
+
+let adminRealtimeTimer = null;
+function startAdminRealtimeRefresh() {
+  if (!adminOrders || adminRealtimeTimer) return;
+  adminRealtimeTimer = window.setInterval(() => {
+    if (document.visibilityState === "visible" && !document.querySelector(".order-detail input:focus, .order-detail select:focus, .order-detail textarea:focus")) {
+      loadOrders();
+    }
+  }, 5000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") loadOrders();
+  });
+  window.addEventListener("storage", event => {
+    if (event.key === "designjam_picking_verified") loadOrders();
+  });
+}
 
 function openStatement(orderNumber) {
   const url =
@@ -696,3 +725,6 @@ async function saveOrderNote(orderNumber,note,input){
   // 주문 목록을 다시 그리지 않아 열려 있는 상세화면과 배송 입력값을 유지합니다.
 }
 window.saveOrderNote=saveOrderNote;
+
+// V6.1.7 주문관리 실시간 상태 갱신
+document.addEventListener("DOMContentLoaded", startAdminRealtimeRefresh);
