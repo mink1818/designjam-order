@@ -799,5 +799,5 @@ async function saveOrderNote(orderNumber,note,input){
 }
 window.saveOrderNote=saveOrderNote;
 
-// V6.1.9 주문관리 무깜빡임 실시간 상태 갱신
+// V6.2.0 주문관리 무깜빡임 실시간 상태 갱신
 document.addEventListener("DOMContentLoaded", startAdminRealtimeRefresh);
