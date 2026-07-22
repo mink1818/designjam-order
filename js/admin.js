@@ -144,11 +144,14 @@ try {
         paymentAccountNumber: order.payment_account_number || "",
         paymentAccountHolder: order.payment_account_holder || "",
         isProxy: String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]'),
+        pickingStatus: order.picking_status || '대기',
         items: []
       };
     }
 
     grouped[order.order_number].items.push(order);
+    if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[order.order_number].pickingStatus = order.picking_status;
+    else if (order.picking_status === '피킹중' && !String(grouped[order.order_number].pickingStatus).includes('검증완료')) grouped[order.order_number].pickingStatus = '피킹중';
   });
 
   const groups = Object.values(grouped);
@@ -295,6 +298,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
   </div>
   <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
+  ${!isDone?`<span class="order-status-pill ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
 </div>
@@ -359,12 +363,14 @@ class="order-detail">
 
         <button
           class="cart-btn ${group.status === "출고완료" ? "undo-btn" : ""}"
-          onclick="toggleOrderStatus('${group.orderNumber}', '${group.status}')"
+          onclick="toggleOrderStatus('${group.orderNumber}', '${group.status}', '${escapeAdminAttr(group.pickingStatus || '대기')}')"
+          ${group.status !== "출고완료" && !String(group.pickingStatus || '').includes('검증완료') ? 'disabled title="피킹 최종검증 후 출고완료할 수 있습니다"' : ''}
         >
-          ${group.status === "출고완료" ? "주문접수로 되돌리기" : "출고완료"}
+          ${group.status === "출고완료" ? "주문접수로 되돌리기" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
         </button>
 
-        <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">작업지시서·피킹검증</button>
+        <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
+        <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">작업지시서 출력</button>
 
         <button
   class="cart-btn statement-btn"
@@ -385,7 +391,8 @@ class="order-detail">
   });
 }
 
-async function toggleOrderStatus(orderNumber, currentStatus) {
+async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
+  if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
   const shippingInput = document.querySelector(
     `.shipping-input[data-order="${orderNumber}"]`
   );
@@ -469,6 +476,12 @@ function toggleDetail(id) {
 
   box.style.display = isHidden ? "block" : "none";
 }
+
+function openWorkSheet(orderNumber) {
+  const url = `picking.html?order=${encodeURIComponent(orderNumber)}&print=1`;
+  window.open(url, '_blank');
+}
+window.openWorkSheet = openWorkSheet;
 
 function openStatement(orderNumber) {
   const url =

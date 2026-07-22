@@ -64,7 +64,7 @@ async function init(){
   for(const g of groups||[])for(const n of asItemNumbers(g.item_numbers)){const key=normalizeItem(n);if(key&&!items.some(x=>normalizeItem(x.item_number)===key))items.push({item_number:String(n).trim(),price:Number(g.price||0)})}
   items.sort((a,b)=>String(a.item_number).localeCompare(String(b.item_number),'ko',{numeric:true}));
   $('proxyCustomer').innerHTML='<option value="">거래처 선택</option>'+customers.map(c=>`<option value="${c.id}">${esc(c.business_name||c.owner_name||c.email)}</option>`).join('');
-  $('proxyItemList').innerHTML=items.map(x=>`<option value="${esc(x.item_number)}" label="단가 ${Number(x.price||0).toLocaleString()}원"></option>`).join('');
+  $('proxyItemList').innerHTML=items.map(x=>`<option value="${esc(x.item_number)}"></option>`).join('');
   const preset=new URLSearchParams(location.search).get('customer');if(preset)$('proxyCustomer').value=preset;addLine();calc();
  }catch(e){showError('대신 주문 화면 불러오기 실패: '+(e?.message||e))}
 }
