@@ -1,0 +1,6 @@
+DESIGN SOCKS V6.2.3
+
+- 관리자 계정 목록 조회에서 존재하지 않는 customers.representative 컬럼 제거
+- DB 버전 차이를 견디도록 관리자 목록 조회 컬럼 단계별 폴백 적용
+- 관리자 생성 Edge Function에서 representative 저장 제거
+- 버전 및 캐시 갱신

@@ -1,4 +1,4 @@
-DESIGN SOCKS V6.2.2
+DESIGN SOCKS V6.2.3
 
 - 관리자 계정 목록 customers.representative 컬럼 오류 수정
 - 구형 DB 컬럼 구성에서도 관리자 목록 조회 fallback 적용

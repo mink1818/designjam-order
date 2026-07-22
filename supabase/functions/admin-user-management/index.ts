@@ -84,7 +84,6 @@ Deno.serve(async (req) => {
         email,
         business_name: name,
         owner_name: name,
-        representative: name,
         is_admin: true,
         approved: true,
         blocked: false,
