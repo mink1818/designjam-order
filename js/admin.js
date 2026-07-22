@@ -285,7 +285,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     });
 
     html += `
-      <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}">
+      <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''}</h2>
@@ -298,8 +298,8 @@ summaryTotal += Number(group.shipping_fee || 0);
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
   </div>
   <div class="order-status-stack">
-    <span class="order-status-pill ${isDone ? "done" : "pending"}">${group.status}</span>
-    ${!isDone?`<span class="order-status-pill picking ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+    <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.status}</span>
+    ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
@@ -364,7 +364,8 @@ class="order-detail">
         <h2 class="final-total">최종금액: <span class="calc-final-total">0</span>원</h2>
 
         <button
-          class="cart-btn ${group.status === "출고완료" ? "undo-btn" : ""}"
+          class="cart-btn order-shipping-btn ${group.status === "출고완료" ? "undo-btn" : ""}"
+          data-current-status="${group.status}" data-picking-status="${escapeAdminAttr(group.pickingStatus || '대기')}"
           onclick="toggleOrderStatus('${group.orderNumber}', '${group.status}', '${escapeAdminAttr(group.pickingStatus || '대기')}')"
           ${group.status !== "출고완료" && !String(group.pickingStatus || '').includes('검증완료') ? 'disabled title="피킹 최종검증 후 출고완료할 수 있습니다"' : ''}
         >
@@ -497,18 +498,90 @@ function openWorkSheet(orderNumber) {
 window.openWorkSheet = openWorkSheet;
 
 let adminRealtimeTimer = null;
+let adminRealtimeBusy = false;
+
+function updateAdminOrderCardStatus(orderNumber, status, pickingStatus) {
+  const card = Array.from(document.querySelectorAll('.order-card[data-order-number]'))
+    .find(el => el.dataset.orderNumber === String(orderNumber));
+  if (!card) return;
+
+  const isDone = status === '출고완료';
+  const isVerified = String(pickingStatus || '').includes('검증완료');
+  card.classList.toggle('done', isDone);
+
+  const mainPill = card.querySelector('.order-main-status');
+  if (mainPill) {
+    mainPill.textContent = status || '주문접수';
+    mainPill.classList.toggle('done', isDone);
+    mainPill.classList.toggle('pending', !isDone);
+  }
+
+  let pickingPill = card.querySelector('.order-picking-status');
+  const statusStack = card.querySelector('.order-status-stack');
+  if (isDone) {
+    pickingPill?.remove();
+  } else {
+    if (!pickingPill && statusStack) {
+      pickingPill = document.createElement('span');
+      pickingPill.className = 'order-status-pill picking order-picking-status';
+      statusStack.appendChild(pickingPill);
+    }
+    if (pickingPill) {
+      pickingPill.textContent = isVerified ? '출고대기' : pickingStatus === '피킹중' ? '피킹중' : '피킹대기';
+      pickingPill.classList.toggle('done', isVerified);
+      pickingPill.classList.toggle('pending', !isVerified);
+    }
+  }
+
+  const shippingBtn = card.querySelector('.order-shipping-btn');
+  if (shippingBtn) {
+    shippingBtn.dataset.currentStatus = status || '주문접수';
+    shippingBtn.dataset.pickingStatus = pickingStatus || '대기';
+    shippingBtn.disabled = !isDone && !isVerified;
+    shippingBtn.title = shippingBtn.disabled ? '피킹 최종검증 후 출고완료할 수 있습니다' : '';
+    shippingBtn.textContent = isDone ? '주문접수로 되돌리기' : isVerified ? '출고완료' : '피킹검증 후 출고가능';
+    shippingBtn.classList.toggle('undo-btn', isDone);
+    shippingBtn.onclick = () => toggleOrderStatus(orderNumber, status || '주문접수', pickingStatus || '대기');
+  }
+}
+
+async function refreshAdminOrderStatuses() {
+  if (adminRealtimeBusy || document.visibilityState !== 'visible') return;
+  const orderNumbers = Array.from(document.querySelectorAll('.order-card[data-order-number]'))
+    .map(el => el.dataset.orderNumber).filter(Boolean);
+  if (!orderNumbers.length) return;
+  adminRealtimeBusy = true;
+  try {
+    const { data, error } = await supabaseClient
+      .from('orders')
+      .select('order_number,status,picking_status')
+      .in('order_number', orderNumbers);
+    if (error) throw error;
+    const latest = new Map();
+    (data || []).forEach(row => {
+      const current = latest.get(row.order_number) || { status: row.status || '주문접수', pickingStatus: '대기' };
+      current.status = row.status || current.status;
+      if (String(row.picking_status || '').includes('검증완료')) current.pickingStatus = row.picking_status;
+      else if (row.picking_status === '피킹중' && !String(current.pickingStatus).includes('검증완료')) current.pickingStatus = '피킹중';
+      latest.set(row.order_number, current);
+    });
+    latest.forEach((value, key) => updateAdminOrderCardStatus(key, value.status, value.pickingStatus));
+  } catch (error) {
+    console.warn('주문 상태 자동 확인 실패:', error);
+  } finally {
+    adminRealtimeBusy = false;
+  }
+}
+
 function startAdminRealtimeRefresh() {
   if (!adminOrders || adminRealtimeTimer) return;
-  adminRealtimeTimer = window.setInterval(() => {
-    if (document.visibilityState === "visible" && !document.querySelector(".order-detail input:focus, .order-detail select:focus, .order-detail textarea:focus")) {
-      loadOrders();
-    }
-  }, 5000);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") loadOrders();
+  // 전체 목록을 다시 그리지 않고 상태와 버튼만 갱신하여 화면 깜빡임과 상세 닫힘을 방지합니다.
+  adminRealtimeTimer = window.setInterval(refreshAdminOrderStatuses, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshAdminOrderStatuses();
   });
-  window.addEventListener("storage", event => {
-    if (event.key === "designjam_picking_verified") loadOrders();
+  window.addEventListener('storage', event => {
+    if (event.key === 'designjam_picking_verified') refreshAdminOrderStatuses();
   });
 }
 
@@ -726,5 +799,5 @@ async function saveOrderNote(orderNumber,note,input){
 }
 window.saveOrderNote=saveOrderNote;
 
-// V6.1.7 주문관리 실시간 상태 갱신
+// V6.1.8 주문관리 무깜빡임 실시간 상태 갱신
 document.addEventListener("DOMContentLoaded", startAdminRealtimeRefresh);
