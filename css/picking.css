@@ -76,3 +76,25 @@
 
 /* V6.1.4 대신주문/상단요약 */
 .pick-order-summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.pick-order-summary span,.pick-order-summary strong{padding:5px 9px;border-radius:999px;background:#eef5fb;font-size:13px}.proxy-order-badge{display:inline-flex;background:#ccfbf1;color:#115e59;border-radius:999px;padding:3px 8px;font-size:12px;font-style:normal}.picking-state.soldout{background:#fee2e2;color:#991b1b;padding:4px 7px;border-radius:999px}
+
+
+/* V6.2.2 피킹검증 다크모드 시인성 보강 */
+html[data-theme="dark"] .pick-toolbar,
+html[data-theme="dark"] .pick-layout aside,
+html[data-theme="dark"] .work-area,
+html[data-theme="dark"] .order-pick-card{background:#172234!important;border-color:#40536b!important;color:#eef5ff!important}
+html[data-theme="dark"] .order-pick-card.active{background:#203a59!important;border-color:#79b7ff!important}
+html[data-theme="dark"] .pick-toolbar input,
+html[data-theme="dark"] .pick-toolbar select{background:#0f1726!important;color:#fff!important;border-color:#5b708a!important}
+html[data-theme="dark"] .pick-status{background:#20344d!important;color:#eaf3ff!important}
+html[data-theme="dark"] .pick-status.ok{background:#123d2b!important;color:#9ff0c4!important}
+html[data-theme="dark"] .pick-status.error{background:#4a1f25!important;color:#ffb4bd!important}
+html[data-theme="dark"] .pick-item-row{background:#182638!important;border-color:#40536b!important;color:#eef5ff!important}
+html[data-theme="dark"] .pick-item-row.complete{background:#123d2b!important}
+html[data-theme="dark"] .pick-item-row.incomplete{background:#442329!important;border-left-color:#ff6b78!important}
+html[data-theme="dark"] .picking-state.done{background:#174d36!important;color:#b8f4d0!important;border-color:#3e9f6c!important}
+html[data-theme="dark"] .picking-state.not-done{background:#56242b!important;color:#ffc0c7!important;border-color:#b85b66!important}
+html[data-theme="dark"] .picking-complete-text{color:#7de4aa!important}
+html[data-theme="dark"] .picking-incomplete-text{color:#ff9ca7!important}
+html[data-theme="dark"] .pick-controls{background:transparent!important}
+@media(max-width:900px){html[data-theme="dark"] .pick-controls{background:#172234!important}}
