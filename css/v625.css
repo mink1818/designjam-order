@@ -1,0 +1,29 @@
+.picking-waiting-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px}
+.picking-waiting-heading h2{margin:0}
+.picking-waiting-summary{text-align:right}
+.picking-waiting-summary b,.picking-waiting-summary span{display:block}
+.picking-waiting-summary b{color:#174ea6;font-size:20px}
+.picking-waiting-summary span{margin-top:2px;color:#64748b;font-size:11px;white-space:nowrap}
+.admin-account-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.admin-presence{display:inline-flex!important;align-items:center;gap:5px;margin:0!important;padding:4px 8px;border-radius:999px;font-weight:800}
+.admin-presence i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.admin-presence.online{background:#dcfce7;color:#16723b}
+.admin-presence.away{background:#fff3cd;color:#8a5a00}
+.admin-presence.offline{background:#e9edf3;color:#5f6b7a}
+.admin-presence.blocked{background:#fee2e2;color:#a61b1b}
+.inventory-bulk-tools{display:grid;grid-template-columns:minmax(120px,.6fr) repeat(3,auto);gap:8px;align-items:end;margin:12px 0;padding:12px;border:1px solid #cbd7e5;border-radius:12px;background:#f5f8fc}
+.inventory-bulk-tools label{display:grid;gap:5px;font-size:12px;font-weight:800}
+.inventory-bulk-tools input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #b9c6d5;border-radius:9px}
+.inventory-bulk-tools button{padding:10px 12px;border:0;border-radius:9px;background:#174ea6;color:#fff;font-weight:900;cursor:pointer}
+.inventory-bulk-tools button:last-of-type{background:#9c2b2b}
+.inventory-selection-count{grid-column:1/-1;color:#566579;font-size:12px}
+.inventory-select,.inventory-select-all{width:18px;height:18px;margin:auto}
+.inventory-table-head,.inventory-live-row{grid-template-columns:42px minmax(110px,.9fr) minmax(130px,1fr) minmax(90px,.65fr) minmax(95px,.7fr) 128px!important}
+html[data-theme="dark"] .picking-waiting-summary span{color:#aebdd0}
+html[data-theme="dark"] .picking-waiting-summary b{color:#7fb3ff}
+html[data-theme="dark"] .inventory-bulk-tools{border-color:#42566d;background:#253449}
+html[data-theme="dark"] .inventory-bulk-tools input{border-color:#52677f;background:#162233;color:#f4f7fb}
+html[data-theme="dark"] .inventory-selection-count{color:#b8c5d5}
+@media(max-width:900px){.inventory-bulk-tools{grid-template-columns:1fr 1fr}.inventory-bulk-tools label,.inventory-bulk-tools button:last-of-type{grid-column:1/-1}.inventory-live-row{grid-template-columns:36px minmax(76px,1fr) 62px 70px 94px!important}.inventory-live-row .category-name{display:none!important}}
+@media(max-width:560px){.picking-waiting-heading{align-items:center}.inventory-bulk-tools{grid-template-columns:1fr}.inventory-bulk-tools>*{grid-column:1!important;width:100%}.inventory-live-row{grid-template-columns:30px minmax(68px,1fr) 54px 62px 88px!important}}
+@media print{.picking-waiting-summary{display:none!important}}

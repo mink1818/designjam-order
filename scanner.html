@@ -1,18 +1,60 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DESIGN SOCKS ERP 재고센터</title><link rel="stylesheet" href="css/admin.css?v=6240"><link rel="stylesheet" href="css/scanner.css?v=6240">
-</head><body class="auth-pending" data-session-page="admin"><header><h1>📦 ERP 재고센터</h1><p>입고·출고 스캔, 재고 직접수정, 안전재고, 날짜별 작업이력을 여러 PC에서 함께 사용합니다.</p></header>
-<main class="scanner-shell">
-<section class="scanner-control-card">
- <div class="scanner-mode-row"><button id="modeIn" class="scanner-mode active" data-mode="IN">입고</button><button id="modeOut" class="scanner-mode" data-mode="OUT">출고</button></div>
- <div id="outCustomerWrap" class="out-customer-wrap" hidden><label>출고 거래처(스캔 출고 기록용) <input id="outCustomerName" type="text" maxlength="100" placeholder="예: 디자인삭스"></label><small>입력한 거래처명은 출고 작업이력과 엑셀에 기록됩니다.</small><a href="picking.html">작업지시서·피킹검증으로 이동</a></div><div class="scanner-step-row"><span>스캔 1회 적용수량</span><button class="step-btn active" data-step="1">+1</button><button class="step-btn" data-step="5">+5</button><button class="step-btn" data-step="10">+10</button><button class="step-btn" data-step="20">+20</button></div>
- <input id="scanInput" class="scanner-hidden-input" autocomplete="off" inputmode="none" aria-label="바코드 입력">
- <div id="scanStatus" class="scan-status ready"><strong>스캔 대기</strong><span>이 화면이 활성화되어 있으면 입력칸을 클릭하지 않아도 바로 스캔됩니다.</span></div>
- <div class="scanner-meta"><label>PC 이름 <input id="deviceName" type="text" maxlength="30" placeholder="예: 창고PC-1"></label><button id="syncProducts" type="button">상품 품번 동기화</button><button id="auditInventory" type="button">수량 점검</button><button id="exportInventory" type="button">재고 CSV</button><button id="exportMovements" type="button">기간별 이력 엑셀</button></div>
-</section>
-<section class="scanner-summary-grid"><article><span>총 품번</span><strong id="totalSku">0</strong></article><article><span>총 재고</span><strong id="totalQty">0</strong></article><article><span>안전재고 이하</span><strong id="lowQty">0</strong></article><article><span>품절</span><strong id="outQty">0</strong></article></section>
-<section class="scanner-grid"><div class="scanner-panel"><h2>최근 스캔</h2><div id="recentScans" class="scan-list"></div></div><div class="scanner-panel inventory-panel"><div class="inventory-heading"><h2>실시간 재고 검색</h2><span>한 줄 표시 · 수량/안전재고 직접 수정</span></div><div class="inventory-search-tools"><input id="inventorySearch" type="search" placeholder="품번·대분류 검색"><select id="inventorySort" aria-label="재고 정렬"><option value="item-asc">품번 낮은순</option><option value="item-desc">품번 높은순</option><option value="qty-desc">재고 많은순</option><option value="qty-asc">재고 적은순</option><option value="updated-desc">최근 수정순</option></select></div><div class="inventory-table-head"><span>품번</span><span>대분류</span><span>현재재고</span><span>안전재고</span><span>관리</span></div><div id="inventoryList" class="inventory-live-list"></div></div></section>
-<section class="scanner-panel manual-out-panel"><div class="movement-title-row"><h2 id="manualModeTitle">관리자 수동 입고</h2><span id="manualModeHelp">품번과 수량을 입력해 관리자 입고 처리합니다.</span></div><div class="manual-out-form"><input id="manualOutItem" list="manualItemList" placeholder="품번 입력/선택"><datalist id="manualItemList"></datalist><input id="manualOutQty" type="number" min="1" value="1" placeholder="수량"><input id="manualOutCustomer" placeholder="입고처·메모(선택)"><input id="manualOutOrder" placeholder="입고번호(선택)"><button id="manualOutSubmit" type="button">수동 입고 처리</button></div></section><section class="scanner-panel movement-panel"><div class="movement-title-row"><div><h2>입출고 작업이력</h2><span>필요한 글자를 마우스로 드래그한 뒤 Ctrl+C로 복사할 수 있습니다.</span></div></div><div class="movement-quick-filters"><button data-days="0" class="date-quick active">오늘</button><button data-days="1" class="date-quick">어제</button><button data-days="7" class="date-quick">7일</button><button data-days="30" class="date-quick">30일</button><button data-days="all" class="date-quick">전체</button></div><div class="movement-filters"><input id="movementSearch" type="search" placeholder="품번·PC·거래처·사유·주문번호 검색"><select id="movementType"><option value="">전체 구분</option><option value="IN">입고</option><option value="OUT">출고</option><option value="ADJUST">직접수정</option></select><label>시작 <input id="movementStart" type="date"></label><label>종료 <input id="movementEnd" type="date"></label></div><div id="movementList" class="movement-list"></div></section>
-</main>
-<div id="adjustModal" class="adjust-modal" hidden><div class="adjust-dialog" role="dialog" aria-modal="true" aria-labelledby="adjustTitle"><button id="adjustClose" class="adjust-close" aria-label="닫기">×</button><h2 id="adjustTitle">재고 직접 수정</h2><p id="adjustItemInfo"></p><div class="adjust-fields"><label>현재재고<input id="adjustCurrent" type="number" disabled></label><label>수정 후 재고<input id="adjustQuantity" type="number" min="0" step="1"></label><label>안전재고<input id="adjustSafety" type="number" min="0" step="1"></label></div><div class="adjust-shortcuts"><button data-delta="-10">-10</button><button data-delta="-5">-5</button><button data-delta="-1">-1</button><button data-delta="1">+1</button><button data-delta="5">+5</button><button data-delta="10">+10</button></div><label class="adjust-note">수정 사유<input id="adjustNote" type="text" maxlength="200" placeholder="예: 재고실사, 파손, 입력오류 (필수)"></label><button id="adjustSave" class="adjust-save">저장</button></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/ui-preferences.js?v=6240"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="js/admin-config.js?v=6240"></script><script src="js/scanner.js?v=6240"></script><script src="js/session-status.js?v=6240"></script><script src="js/version-badge.js?v=6240"></script><script src="js/admin-mobile-nav.js?v=6240"></script>
-</body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DESIGN SOCKS ERP 재고센터</title>
+  <link rel="stylesheet" href="css/admin.css?v=6250">
+  <link rel="stylesheet" href="css/scanner.css?v=6250">
+  <link rel="stylesheet" href="css/v625.css?v=6250">
+</head>
+<body class="auth-pending" data-session-page="admin">
+  <header><h1>📦 ERP 재고센터</h1><p>입고·출고 스캔, 재고 직접수정, 안전재고, 날짜별 작업이력을 여러 PC에서 함께 사용합니다.</p></header>
+  <main class="scanner-shell">
+    <section class="scanner-control-card">
+      <div class="scanner-mode-row"><button id="modeIn" class="scanner-mode active" data-mode="IN">입고</button><button id="modeOut" class="scanner-mode" data-mode="OUT">출고</button></div>
+      <div id="outCustomerWrap" class="out-customer-wrap" hidden><label>출고 거래처(스캔 출고 기록용) <input id="outCustomerName" type="text" maxlength="100" placeholder="예: 디자인삭스"></label><small>입력한 거래처명은 출고 작업이력과 엑셀에 기록됩니다.</small><a href="picking.html">작업지시서·피킹검증으로 이동</a></div>
+      <div class="scanner-step-row"><span>스캔 1회 적용수량</span><button class="step-btn active" data-step="1">+1</button><button class="step-btn" data-step="5">+5</button><button class="step-btn" data-step="10">+10</button><button class="step-btn" data-step="20">+20</button></div>
+      <input id="scanInput" class="scanner-hidden-input" autocomplete="off" inputmode="none" aria-label="바코드 입력">
+      <div id="scanStatus" class="scan-status ready"><strong>스캔 대기</strong><span>이 화면이 활성화되어 있으면 입력칸을 클릭하지 않아도 바로 스캔됩니다.</span></div>
+      <div class="scanner-meta"><label>PC 이름 <input id="deviceName" type="text" maxlength="30" placeholder="예: 창고PC-1"></label><button id="syncProducts" type="button">상품 품번 동기화</button><button id="auditInventory" type="button">수량 점검</button><button id="exportInventory" type="button">재고 CSV</button><button id="exportMovements" type="button">기간별 이력 엑셀</button></div>
+    </section>
+    <section class="scanner-summary-grid"><article><span>총 품번</span><strong id="totalSku">0</strong></article><article><span>총 재고</span><strong id="totalQty">0</strong></article><article><span>안전재고 이하</span><strong id="lowQty">0</strong></article><article><span>품절</span><strong id="outQty">0</strong></article></section>
+    <section class="scanner-grid">
+      <div class="scanner-panel"><h2>최근 스캔</h2><div id="recentScans" class="scan-list"></div></div>
+      <div class="scanner-panel inventory-panel">
+        <div class="inventory-heading"><h2>실시간 재고 검색</h2><span>수량·안전재고 개별/일괄 수정</span></div>
+        <div class="inventory-search-tools"><input id="inventorySearch" type="search" placeholder="품번·대분류 검색"><select id="inventorySort" aria-label="재고 정렬"><option value="item-asc">품번 낮은순</option><option value="item-desc">품번 높은순</option><option value="qty-desc">재고 많은순</option><option value="qty-asc">재고 적은순</option><option value="updated-desc">최근 수정순</option></select></div>
+        <div class="inventory-bulk-tools">
+          <label>일괄 안전재고<input id="bulkSafetyValue" type="number" min="0" step="1" value="10"></label>
+          <button id="bulkSafetySelected" type="button">선택 품번 적용</button>
+          <button id="bulkSafetySearch" type="button">검색결과 적용</button>
+          <button id="bulkSafetyAll" type="button">전체 품번 적용</button>
+          <span id="inventorySelectionCount" class="inventory-selection-count">선택 0개</span>
+        </div>
+        <div class="inventory-table-head"><label title="현재 화면 전체 선택"><input id="inventorySelectAll" class="inventory-select-all" type="checkbox" aria-label="현재 화면 전체 선택"></label><span>품번</span><span>대분류</span><span>현재재고</span><span>안전재고</span><span>관리</span></div>
+        <div id="inventoryList" class="inventory-live-list"></div>
+      </div>
+    </section>
+    <section class="scanner-panel manual-out-panel">
+      <div class="movement-title-row"><h2 id="manualModeTitle">관리자 수동 입고</h2><span id="manualModeHelp">품번과 수량을 입력해 관리자 입고 처리합니다.</span></div>
+      <div class="manual-out-form"><input id="manualOutItem" list="manualItemList" placeholder="품번 입력/선택"><datalist id="manualItemList"></datalist><input id="manualOutQty" type="number" min="1" value="1" placeholder="수량"><input id="manualOutCustomer" placeholder="입고처·메모(선택)"><input id="manualOutOrder" placeholder="입고번호(선택)"><button id="manualOutSubmit" type="button">수동 입고 처리</button></div>
+    </section>
+    <section class="scanner-panel movement-panel">
+      <div class="movement-title-row"><div><h2>입출고 작업이력</h2><span>필요한 글자를 마우스로 드래그한 뒤 Ctrl+C로 복사할 수 있습니다.</span></div></div>
+      <div class="movement-quick-filters"><button data-days="0" class="date-quick active">오늘</button><button data-days="1" class="date-quick">어제</button><button data-days="7" class="date-quick">7일</button><button data-days="30" class="date-quick">30일</button><button data-days="all" class="date-quick">전체</button></div>
+      <div class="movement-filters"><input id="movementSearch" type="search" placeholder="품번·PC·거래처·사유·주문번호 검색"><select id="movementType"><option value="">전체 구분</option><option value="IN">입고</option><option value="OUT">출고</option><option value="ADJUST">직접수정</option></select><label>시작 <input id="movementStart" type="date"></label><label>종료 <input id="movementEnd" type="date"></label></div>
+      <div id="movementList" class="movement-list"></div>
+    </section>
+  </main>
+  <div id="adjustModal" class="adjust-modal" hidden><div class="adjust-dialog" role="dialog" aria-modal="true" aria-labelledby="adjustTitle"><button id="adjustClose" class="adjust-close" aria-label="닫기">×</button><h2 id="adjustTitle">재고 직접 수정</h2><p id="adjustItemInfo"></p><div class="adjust-fields"><label>현재재고<input id="adjustCurrent" type="number" disabled></label><label>수정 후 재고<input id="adjustQuantity" type="number" min="0" step="1"></label><label>안전재고<input id="adjustSafety" type="number" min="0" step="1"></label></div><div class="adjust-shortcuts"><button data-delta="-10">-10</button><button data-delta="-5">-5</button><button data-delta="-1">-1</button><button data-delta="1">+1</button><button data-delta="5">+5</button><button data-delta="10">+10</button></div><label class="adjust-note">수정 사유<input id="adjustNote" type="text" maxlength="200" placeholder="예: 재고실사, 파손, 입력오류 (필수)"></label><button id="adjustSave" class="adjust-save">저장</button></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/ui-preferences.js?v=6250"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/admin-config.js?v=6250"></script>
+  <script src="js/scanner.js?v=6250"></script>
+  <script src="js/session-status.js?v=6250"></script>
+  <script src="js/version-badge.js?v=6250"></script>
+  <script src="js/admin-mobile-nav.js?v=6250"></script>
+</body>
+</html>
