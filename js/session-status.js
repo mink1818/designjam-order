@@ -11,9 +11,6 @@
   let client = null;
   let notificationChannel = null;
   let notificationUserId = null;
-  let adminPresenceTimer = null;
-  let adminPresenceBound = false;
-  let lastAdminActivityAt = Date.now();
 
   function getClient() {
     if (client) return client;
@@ -167,42 +164,9 @@
 
     if(notificationChannel&&sb){try{await sb.removeChannel(notificationChannel);}catch(_){}}
     notificationChannel=null;notificationUserId=null;
-    if(adminPresenceTimer) clearInterval(adminPresenceTimer);
-    adminPresenceTimer=null;
     [ADMIN_SESSION_KEY, CUSTOMER_SESSION_KEY, ADMIN_PROFILE_KEY, CUSTOMER_PROFILE_KEY]
       .forEach(key => { sessionStorage.removeItem(key); localStorage.removeItem(key); });
     location.replace(role === "admin" ? "admin.html" : "login.html");
-  }
-
-  function startAdminPresence() {
-    const sb = getClient();
-    if (!sb) return;
-    const markActivity = () => { lastAdminActivityAt = Date.now(); };
-
-    if (!adminPresenceBound) {
-      ["pointerdown", "keydown", "touchstart", "scroll"].forEach(type => {
-        document.addEventListener(type, markActivity, { passive: true });
-      });
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) {
-          markActivity();
-          sb.rpc("touch_admin_presence").then(({ error }) => {
-            if (error) console.warn("관리자 접속 상태 갱신 실패:", error.message);
-          });
-        }
-      });
-      adminPresenceBound = true;
-    }
-
-    const touch = async () => {
-      if (document.hidden || Date.now() - lastAdminActivityAt > 5 * 60 * 1000) return;
-      const { error } = await sb.rpc("touch_admin_presence");
-      if (error) console.warn("관리자 접속 상태 갱신 실패:", error.message);
-    };
-
-    touch();
-    if (adminPresenceTimer) clearInterval(adminPresenceTimer);
-    adminPresenceTimer = setInterval(touch, 45 * 1000);
   }
 
   async function render() {
@@ -230,11 +194,10 @@
         title: role === "admin" ? "관리자 로그인 중" : "거래처 로그인 중",
         detail: cached.name || cached.businessName || cached.email || user.email || (role === "admin" ? "관리자" : "거래처")
       });
-      if (role === "admin") startAdminPresence();
 
       const { data: customer, error } = await sb
         .from("customers")
-        .select("*")
+        .select("business_name, representative, phone, is_admin, approved, blocked")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -242,7 +205,7 @@
       if (role === "admin" && !customer.is_admin) return;
       if (role === "customer" && (!customer.approved || customer.is_admin)) return;
 
-      const name = customer.business_name || customer.owner_name || customer.representative || user.email || (role === "admin" ? "관리자" : "거래처");
+      const name = customer.business_name || customer.representative || user.email || (role === "admin" ? "관리자" : "거래처");
       saveProfile(role, { name, email: user.email || "", userId: user.id });
       createStatusBar({
         role,

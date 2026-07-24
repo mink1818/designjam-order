@@ -39,9 +39,9 @@ def normalize_code(value: str) -> str:
 class ScannerApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("DESIGN SOCKS 백그라운드 스캐너 V6.0.2")
-        self.root.geometry("520x570")
-        self.root.minsize(500, 540)
+        self.root.title("DESIGN SOCKS 백그라운드 스캐너 V6.2.5")
+        self.root.geometry("540x630")
+        self.root.minsize(520, 600)
         self.token = ""
         self.buffer = []
         self.last_key_time = 0.0
@@ -57,7 +57,7 @@ class ScannerApp:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
-            return {"email":"", "device_name":"창고PC-1", "mode":"IN", "increment":1}
+            return {"email":"", "device_name":"창고PC-1", "mode":"IN", "increment":1, "customer_name":""}
 
     def save_config(self):
         data = {
@@ -65,6 +65,7 @@ class ScannerApp:
             "device_name": self.device_var.get().strip(),
             "mode": self.mode_var.get(),
             "increment": int(self.increment_var.get()),
+            "customer_name": self.customer_var.get().strip(),
         }
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -89,6 +90,7 @@ class ScannerApp:
         self.device_var = tk.StringVar(value=self.config.get("device_name", "창고PC-1"))
         self.mode_var = tk.StringVar(value=self.config.get("mode", "IN"))
         self.increment_var = tk.StringVar(value=str(self.config.get("increment", 1)))
+        self.customer_var = tk.StringVar(value=self.config.get("customer_name", ""))
         ttk.Label(settings, text="PC 이름").grid(row=0, column=0, sticky="w", padx=10, pady=8)
         ttk.Entry(settings, textvariable=self.device_var, width=25).grid(row=0, column=1, sticky="w", padx=10, pady=8)
         ttk.Label(settings, text="작업 모드").grid(row=1, column=0, sticky="w", padx=10, pady=8)
@@ -96,6 +98,8 @@ class ScannerApp:
         ttk.Radiobutton(settings, text="출고", variable=self.mode_var, value="OUT").grid(row=1, column=1, padx=(90,0), sticky="w")
         ttk.Label(settings, text="스캔 1회 수량").grid(row=2, column=0, sticky="w", padx=10, pady=8)
         ttk.Combobox(settings, textvariable=self.increment_var, values=["1","5","10","20"], width=8, state="readonly").grid(row=2, column=1, sticky="w", padx=10, pady=8)
+        ttk.Label(settings, text="출고 거래처").grid(row=3, column=0, sticky="w", padx=10, pady=8)
+        ttk.Entry(settings, textvariable=self.customer_var, width=25).grid(row=3, column=1, sticky="w", padx=10, pady=8)
 
         self.capture_btn = ttk.Button(self.root, text="로그인 후 스캔 시작", command=self.toggle_capture, state="disabled")
         self.capture_btn.pack(fill="x", padx=18, pady=10, ipady=10)
@@ -173,6 +177,8 @@ class ScannerApp:
     def send_scan(self, code):
         self.events.put(("status", f"처리 중: {code}"))
         try:
+            if self.mode_var.get() == "OUT" and not self.customer_var.get().strip():
+                raise RuntimeError("출고 모드에서는 출고 거래처를 입력하세요.")
             r = requests.post(
                 f"{SUPABASE_URL}/rest/v1/rpc/apply_inventory_scan",
                 headers={
@@ -186,6 +192,7 @@ class ScannerApp:
                     "p_increment": int(self.increment_var.get()),
                     "p_device_name": self.device_var.get().strip(),
                     "p_order_number": None,
+                    "p_customer_name": self.customer_var.get().strip(),
                 }, timeout=15
             )
             if r.status_code >= 400:

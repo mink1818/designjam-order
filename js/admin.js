@@ -39,7 +39,7 @@ async function adminLogin() {
   const { data: customer, error: customerError } =
     await supabaseClient
       .from("customers")
-      .select("*")
+      .select("business_name, representative, is_admin, blocked")
       .eq("id", data.user.id)
       .single();
 
@@ -57,17 +57,11 @@ async function adminLogin() {
     return;
   }
 
-  const { error: loginRecordError } =
-    await supabaseClient.rpc("record_admin_login");
-  if (loginRecordError) {
-    console.warn("관리자 로그인 기록 저장 실패:", loginRecordError.message);
-  }
-
   sessionStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
   localStorage.setItem(ADMIN_SESSION_KEY, data.user.id);
   sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
   localStorage.removeItem(CUSTOMER_SESSION_KEY);
-  const adminName = customer?.business_name || customer?.owner_name || data.user.email || "관리자";
+  const adminName = customer?.business_name || customer?.representative || data.user.email || "관리자";
   const adminProfile = JSON.stringify({ name: adminName, email: data.user.email || "", userId: data.user.id });
   sessionStorage.setItem("designjam_admin_profile", adminProfile);
   localStorage.setItem("designjam_admin_profile", adminProfile);
