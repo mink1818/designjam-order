@@ -78,7 +78,7 @@ let adminFilter = "주문접수";
 let adminPage = 1;
 const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
-if (["전체", "주문접수", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
+if (["전체", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let paymentAccounts = [];
 
@@ -92,7 +92,7 @@ function setAdminFilter(status) {
 }
 
 function syncAdminFilterTabs() {
-  const map = { 주문접수: "tabPending", 출고완료: "tabDone", 전체: "tabAll" };
+  const map = { 주문접수: "tabPending", 출고대기: "tabReady", 출고완료: "tabDone", 전체: "tabAll" };
   document.querySelectorAll(".order-status-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(map[adminFilter])?.classList.add("active");
   const toolbar = document.querySelector(".completed-toolbar");
@@ -158,7 +158,9 @@ try {
 
   document.getElementById("totalCount").textContent = groups.length;
   document.getElementById("pendingCount").textContent =
-    groups.filter(g => g.status === "주문접수").length;
+    groups.filter(g => g.status === "주문접수" && !String(g.pickingStatus || "").includes("검증완료")).length;
+  document.getElementById("readyCount").textContent =
+    groups.filter(g => g.status === "주문접수" && String(g.pickingStatus || "").includes("검증완료")).length;
   document.getElementById("doneCount").textContent =
     groups.filter(g => g.status === "출고완료").length;
 
@@ -166,7 +168,10 @@ try {
 
   const filteredGroups = groups
     .filter(group => {
-      if (adminFilter !== "전체" && group.status !== adminFilter) return false;
+      const pickingVerified = String(group.pickingStatus || "").includes("검증완료");
+      if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified)) return false;
+      if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified)) return false;
+      if (!["전체","주문접수","출고대기"].includes(adminFilter) && group.status !== adminFilter) return false;
 
       if (group.status === "출고완료" && !isWithinCompletedPeriod(group.createdAt)) {
         return false;

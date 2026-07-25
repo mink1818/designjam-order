@@ -2400,7 +2400,21 @@ html[data-theme="dark"] .shipping-step-btn,body.dark-mode .shipping-step-btn{bac
 }
 .member-status-dashboard div{min-width:0}
 
+.order-status-tab.ready.active{
+  background:#d97706!important;
+  border-color:#d97706!important;
+  color:#fff!important;
+}
+html[data-theme="dark"] .order-status-tab.ready.active{
+  background:#f59e0b!important;
+  border-color:#f59e0b!important;
+  color:#111827!important;
+}
+
 @media(max-width:700px){
+  body[data-session-page="admin"] .order-status-tabs{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
   body[data-session-page="admin"] .global-admin-search{
     display:grid!important;
     grid-template-columns:minmax(0,1fr)!important;
