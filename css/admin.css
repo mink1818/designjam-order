@@ -2391,3 +2391,61 @@ html[data-theme="dark"] .stats-unclassified-note{color:#fbbf24!important}
 .shipping-fee-control,.courier-control{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.shipping-fee-control .shipping-input{flex:1;min-width:140px}.shipping-step-btn{min-height:40px;padding:0 14px;border:1px solid #b8c6d8;border-radius:10px;background:#eef3f9;font-weight:800;cursor:pointer}.courier-control .courier-select{flex:1;min-width:180px}.courier-custom-input{flex:1;min-width:180px}.courier-custom-input[hidden]{display:none!important}
 html[data-theme="dark"] .shipping-step-btn,body.dark-mode .shipping-step-btn{background:#263241;color:#f4f7fb;border-color:#52657b}
 @media(max-width:700px){.shipping-fee-control,.courier-control{display:grid;grid-template-columns:auto 1fr auto}.courier-control{grid-template-columns:1fr}.shipping-step-btn{padding:0 10px}}
+
+/* V6.3.0 mobile global search and member status layout */
+.member-status-dashboard{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin-bottom:12px;
+}
+.member-status-dashboard div{min-width:0}
+
+@media(max-width:700px){
+  body[data-session-page="admin"] .global-admin-search{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    width:100%!important;
+    max-width:none!important;
+    position:relative!important;
+  }
+  body[data-session-page="admin"] .global-admin-search input{
+    grid-column:1!important;
+    width:100%!important;
+    min-width:0!important;
+    padding:12px 14px!important;
+    border-radius:10px!important;
+  }
+  body[data-session-page="admin"] .global-admin-search>button{
+    position:static!important;
+    grid-column:1!important;
+    width:100%!important;
+    min-height:44px!important;
+    border-radius:10px!important;
+  }
+  body[data-session-page="admin"] .admin-global-search-results{
+    top:calc(100% + 8px)!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .member-status-dashboard{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .member-status-dashboard div{
+    padding:11px 3px!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .member-status-dashboard strong{
+    font-size:21px!important;
+  }
+  body[data-session-page="admin"]:has(#customerList) .member-status-dashboard span{
+    display:block;
+    margin-top:4px;
+    font-size:10px!important;
+    white-space:nowrap!important;
+  }
+}
+
+@media(max-width:350px){
+  body[data-session-page="admin"]:has(#customerList) .member-status-dashboard{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
