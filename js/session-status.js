@@ -11,6 +11,8 @@
   let client = null;
   let notificationChannel = null;
   let notificationUserId = null;
+  let adminPresenceTimer = null;
+  let adminPresenceUserId = null;
 
   function getClient() {
     if (client) return client;
@@ -160,6 +162,12 @@
   async function logout() {
     const role = document.body.dataset.sessionPage;
     const sb = getClient();
+    if (role === "admin" && sb) {
+      try { await sb.rpc("record_admin_logout"); } catch (error) { console.warn("관리자 로그아웃 기록 오류:", error); }
+    }
+    if (adminPresenceTimer) clearInterval(adminPresenceTimer);
+    adminPresenceTimer = null;
+    adminPresenceUserId = null;
     try { if (sb) await sb.auth.signOut(); } catch (error) { console.warn("로그아웃 오류:", error); }
 
     if(notificationChannel&&sb){try{await sb.removeChannel(notificationChannel);}catch(_){}}
@@ -167,6 +175,31 @@
     [ADMIN_SESSION_KEY, CUSTOMER_SESSION_KEY, ADMIN_PROFILE_KEY, CUSTOMER_PROFILE_KEY]
       .forEach(key => { sessionStorage.removeItem(key); localStorage.removeItem(key); });
     location.replace(role === "admin" ? "admin.html" : "login.html");
+  }
+
+  function adminDeviceInfo() {
+    return `${navigator.platform || "PC"} · ${window.innerWidth <= 768 ? "모바일" : "PC 웹"}`;
+  }
+
+  function startAdminPresence(userId) {
+    const sb = getClient();
+    if (!sb || adminPresenceUserId === userId) return;
+    if (adminPresenceTimer) clearInterval(adminPresenceTimer);
+    adminPresenceUserId = userId;
+    const touch = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        await sb.rpc("touch_admin_presence", { p_device_info: adminDeviceInfo() });
+      } catch (_) {}
+    };
+    touch();
+    adminPresenceTimer = setInterval(touch, 60000);
+    ["pointerdown", "keydown", "touchstart"].forEach(eventName => {
+      document.addEventListener(eventName, touch, { passive: true });
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") touch();
+    });
   }
 
   async function render() {
@@ -188,6 +221,7 @@
 
       // DB 조회가 늦거나 RLS로 실패하더라도 로그인 정보창부터 즉시 표시
       startNotificationRealtime(user.id);
+      if (role === "admin") startAdminPresence(user.id);
       const cached = readProfile(role) || {};
       createStatusBar({
         role,

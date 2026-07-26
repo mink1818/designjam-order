@@ -101,21 +101,45 @@ async function loadAdminAccounts(){
   box.innerHTML='<p>관리자 계정을 불러오는 중...</p>';
   const {data:{user}}=await supabaseClient.auth.getUser();
   let data=null,error=null;
+  const presenceResult=await supabaseClient.rpc('get_admin_presence');
+  if(!presenceResult.error){
+    data=presenceResult.data;
+  }
   const adminQueries=[
+    'id,email,business_name,owner_name,blocked,created_at,admin_role,last_login_at,admin_last_seen_at,admin_logged_out_at,admin_device',
     'id,email,business_name,owner_name,blocked,created_at,admin_role,last_login_at',
     'id,email,business_name,owner_name,blocked,created_at,admin_role',
     'id,email,business_name,owner_name,blocked,created_at',
     'id,email,business_name,blocked,created_at',
     'id,email,is_admin'
   ];
-  for(const columns of adminQueries){
-    const result=await supabaseClient.from('customers').select(columns).eq('is_admin',true).order('created_at',{ascending:true});
-    if(!result.error){data=result.data;error=null;break;}
-    error=result.error;
+  if(!data){
+    for(const columns of adminQueries){
+      const result=await supabaseClient.from('customers').select(columns).eq('is_admin',true).order('created_at',{ascending:true});
+      if(!result.error){data=result.data;error=null;break;}
+      error=result.error;
+    }
   }
   if(error){box.innerHTML=`<p>관리자 목록을 불러오지 못했습니다: ${esc(error.message)}</p>`;return;}
   const rows=data||[];
-  box.innerHTML=rows.length?rows.map(a=>{const name=a.business_name||a.owner_name||'관리자';const self=a.id===user?.id;const role=a.admin_role==='developer_admin'?'개발관리자':'관리자';return `<article class="admin-account-card"><div><strong>${esc(name)} ${self?'<small>(현재 로그인)</small>':''}</strong><span>${esc(a.email||'-')} · <b>${role}</b> · ${a.blocked?'사용중지':'사용중'} · 최근 로그인 ${a.last_login_at?new Date(a.last_login_at).toLocaleString('ko-KR'):'기록 없음'}</span></div><div class="admin-account-actions"><input type="password" minlength="8" data-admin-password="${a.id}" placeholder="새 비밀번호 8자리 이상"><button type="button" onclick="changeAdminPassword('${a.id}',this)">비밀번호 변경</button><select data-admin-role="${a.id}" onchange="changeAdminRole('${a.id}',this.value,this)"><option value="admin" ${a.admin_role!=='developer_admin'?'selected':''}>관리자</option><option value="developer_admin" ${a.admin_role==='developer_admin'?'selected':''}>개발관리자</option></select>${self?'':`<button type="button" class="${a.blocked?'safe':'danger'}" onclick="setAdminBlocked('${a.id}',${!a.blocked},this)">${a.blocked?'사용 재개':'사용중지'}</button>`}</div></article>`}).join(''):'<p>등록된 관리자 계정이 없습니다.</p>';
+  const now=Date.now();
+  const statusOf=a=>{
+    const seen=a.admin_last_seen_at?new Date(a.admin_last_seen_at).getTime():0;
+    const loggedOut=a.admin_logged_out_at?new Date(a.admin_logged_out_at).getTime():0;
+    if(!seen||loggedOut>=seen)return {key:'offline',label:'오프라인'};
+    const minutes=(now-seen)/60000;
+    if(minutes<=2)return {key:'online',label:'접속 중'};
+    if(minutes<=10)return {key:'away',label:'자리 비움'};
+    return {key:'offline',label:'오프라인'};
+  };
+  const dateText=value=>value?new Date(value).toLocaleString('ko-KR'):'기록 없음';
+  box.innerHTML=rows.length?rows.map(a=>{
+    const name=a.business_name||a.owner_name||'관리자';
+    const self=a.id===user?.id;
+    const role=a.admin_role==='developer_admin'?'개발관리자':'관리자';
+    const presence=statusOf(a);
+    return `<article class="admin-account-card" data-admin-id="${a.id}"><div><div class="admin-account-title"><strong>${esc(name)} ${self?'<small>(현재 로그인)</small>':''}</strong><span class="admin-presence ${presence.key}">● ${presence.label}</span></div><span>${esc(a.email||'-')} · <b>${role}</b> · ${a.blocked?'사용중지':'사용중'}</span><div class="admin-login-details"><span>최근 로그인: ${dateText(a.last_login_at)}</span><span>마지막 활동: ${dateText(a.admin_last_seen_at)}</span><span>접속 기기: ${esc(a.admin_device||'기록 없음')}</span><span>오늘 로그인: ${Number(a.today_login_count||0)}회</span></div></div><div class="admin-account-actions"><input type="password" minlength="8" data-admin-password="${a.id}" placeholder="새 비밀번호 8자리 이상"><button type="button" onclick="changeAdminPassword('${a.id}',this)">비밀번호 변경</button><select data-admin-role="${a.id}" onchange="changeAdminRole('${a.id}',this.value,this)"><option value="admin" ${a.admin_role!=='developer_admin'?'selected':''}>관리자</option><option value="developer_admin" ${a.admin_role==='developer_admin'?'selected':''}>개발관리자</option></select>${self?'':`<button type="button" class="${a.blocked?'safe':'danger'}" onclick="setAdminBlocked('${a.id}',${!a.blocked},this)">${a.blocked?'사용 재개':'사용중지'}</button>`}</div></article>`;
+  }).join(''):'<p>등록된 관리자 계정이 없습니다.</p>';
 }
 
 async function createAdminAccount(){
@@ -157,4 +181,4 @@ async function changeAdminRole(id,role,select){
 window.changeAdminRole=changeAdminRole;
 
 window.changeAdminPassword=changeAdminPassword;window.setAdminBlocked=setAdminBlocked;
-document.addEventListener('DOMContentLoaded',()=>{document.getElementById('createAdminBtn')?.addEventListener('click',createAdminAccount);setTimeout(loadAdminAccounts,300);});
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('createAdminBtn')?.addEventListener('click',createAdminAccount);setTimeout(loadAdminAccounts,300);setInterval(loadAdminAccounts,30000);});
