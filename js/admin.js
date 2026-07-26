@@ -378,7 +378,7 @@ class="order-detail">
           onclick="toggleOrderStatus('${group.orderNumber}', '${group.status}', '${escapeAdminAttr(group.pickingStatus || '대기')}')"
           ${group.status !== "출고완료" && !String(group.pickingStatus || '').includes('검증완료') ? 'disabled title="피킹 최종검증 후 출고완료할 수 있습니다"' : ''}
         >
-          ${group.status === "출고완료" ? "주문접수로 되돌리기" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
+          ${group.status === "출고완료" ? "출고취소·재고복원" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
         </button>
 
         <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
@@ -405,6 +405,23 @@ class="order-detail">
 
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
   if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
+
+  if (currentStatus === "출고완료") {
+    const proceed = confirm(
+      "출고완료를 취소하면 ERP 재고가 복원되고 피킹수량이 초기화됩니다.\n" +
+      "기존 출고이력은 보존되며 출고취소 이력이 새로 추가됩니다.\n\n계속할까요?"
+    );
+    if (!proceed) return;
+    try {
+      const result = await undoCompletedOrder(orderNumber);
+      alert(`출고취소 완료\n복원 품목: ${Number(result?.restored_items || 0)}종\n복원 수량: ${Number(result?.restored_quantity || 0)}개`);
+      loadOrders();
+    } catch (error) {
+      alert("출고취소 실패: " + error.message);
+    }
+    return;
+  }
+
   const shippingInput = document.querySelector(
     `.shipping-input[data-order="${orderNumber}"]`
   );
@@ -595,7 +612,7 @@ function updateAdminOrderCardStatus(orderNumber, status, pickingStatus) {
     shippingBtn.dataset.pickingStatus = pickingStatus || '대기';
     shippingBtn.disabled = !isDone && !isVerified;
     shippingBtn.title = shippingBtn.disabled ? '피킹 최종검증 후 출고완료할 수 있습니다' : '';
-    shippingBtn.textContent = isDone ? '주문접수로 되돌리기' : isVerified ? '출고완료' : '피킹검증 후 출고가능';
+    shippingBtn.textContent = isDone ? '출고취소·재고복원' : isVerified ? '출고완료' : '피킹검증 후 출고가능';
     shippingBtn.classList.toggle('undo-btn', isDone);
     shippingBtn.onclick = () => toggleOrderStatus(orderNumber, status || '주문접수', pickingStatus || '대기');
   }
