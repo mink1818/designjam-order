@@ -107,6 +107,33 @@
     return d.toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
   }
 
+  function resolveNotificationLink(rawLink) {
+    const raw = String(rawLink || "").trim();
+    if (!raw) return "";
+    const role = document.body.dataset.sessionPage;
+    if (role !== "admin") return raw;
+    try {
+      const url = new URL(raw, location.href);
+      if (url.origin !== location.origin) return raw;
+      const page = url.pathname.split("/").pop().toLowerCase();
+      const customerPages = new Set([
+        "login.html", "index.html", "catalog.html", "order.html",
+        "cart.html", "customer-settings.html", "customer-signup.html"
+      ]);
+      if (page === "order.html") {
+        const orderNumber = url.searchParams.get("order") || url.searchParams.get("order_number") || url.searchParams.get("search") || "";
+        return `admin.html?view=orders${orderNumber ? `&search=${encodeURIComponent(orderNumber)}` : ""}`;
+      }
+      if (customerPages.has(page)) return "admin-home.html";
+      return `${page || "admin-home.html"}${url.search}${url.hash}`;
+    } catch (_) {
+      if (/^(order|login|index|catalog|cart)\.html/i.test(raw)) {
+        return raw.toLowerCase().startsWith("order.html") ? "admin.html?view=orders" : "admin-home.html";
+      }
+      return raw;
+    }
+  }
+
   async function loadNotifications(){
     const sb=getClient();if(!sb||!notificationUserId)return;
     const panel=ensureNotificationPanel(),list=panel.querySelector(".np-list");
@@ -114,7 +141,7 @@
     if(error){list.innerHTML='<div class="np-empty">알림 설치 SQL 실행 후 표시됩니다.</div>';updateNotificationCount(0);return;}
     const rows=data||[];updateNotificationCount(rows.filter(x=>!x.is_read).length);
     list.innerHTML=rows.length?rows.map(n=>`<button type="button" class="np-item ${n.is_read?'':'unread'}" data-id="${escapeHtml(n.id)}" data-link="${escapeHtml(n.link_url||'')}"><b>${n.is_read?'':'● '}${escapeHtml(n.title)}</b><span>${escapeHtml(n.message||'')}</span><small>${notificationTime(n.created_at)}</small></button>`).join(''):'<div class="np-empty">새 알림이 없습니다.</div>';
-    list.querySelectorAll(".np-item").forEach(btn=>btn.onclick=async()=>{await sb.from("app_notifications").update({is_read:true}).eq("id",btn.dataset.id);if(btn.dataset.link)location.href=btn.dataset.link;else loadNotifications();});
+    list.querySelectorAll(".np-item").forEach(btn=>btn.onclick=async()=>{await sb.from("app_notifications").update({is_read:true}).eq("id",btn.dataset.id);const target=resolveNotificationLink(btn.dataset.link);if(target)location.href=target;else loadNotifications();});
   }
 
   function updateNotificationCount(count){
