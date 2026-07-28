@@ -8,6 +8,23 @@ async function fetchOrders() {
   return data || [];
 }
 
+async function fetchInventorySnapshot() {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabaseClient
+      .from("inventory_items")
+      .select("item_number,barcode,quantity")
+      .range(from, from + 999);
+    if (error) {
+      console.warn("ERP 재고 조회 실패:", error.message);
+      return null;
+    }
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  return rows;
+}
+
 async function updateOrderStatus(orderNumber, currentStatus, shippingFee, courier, trackingNumber) {
   if (currentStatus === "출고완료") {
     throw new Error("출고완료 취소는 재고복원 기능을 사용해야 합니다.");

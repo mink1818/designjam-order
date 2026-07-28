@@ -91,6 +91,37 @@ const requestedAdminStatus = new URLSearchParams(location.search).get("status");
 if (["전체", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let paymentAccounts = [];
+let adminInventoryMap = new Map();
+let adminInventoryAvailable = false;
+
+function inventoryKey(value) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function setAdminInventorySnapshot(rows) {
+  adminInventoryMap = new Map();
+  adminInventoryAvailable = Array.isArray(rows);
+  if (!rows) return;
+  (rows || []).forEach(row => {
+    const stock = Number(row.quantity || 0);
+    const itemKey = inventoryKey(row.item_number);
+    const barcodeKey = inventoryKey(row.barcode);
+    if (itemKey) adminInventoryMap.set(itemKey, stock);
+    if (barcodeKey) adminInventoryMap.set(barcodeKey, stock);
+  });
+}
+
+function getAdminStockStatus(item) {
+  if (!adminInventoryAvailable) return { warning: false, kind: "unknown", stock: null, text: "재고조회 불가" };
+  const key = inventoryKey(item?.item_number);
+  const registered = adminInventoryMap.has(key);
+  const stock = registered ? Number(adminInventoryMap.get(key) || 0) : null;
+  const ordered = Number(item?.qty || 0);
+  if (!registered) return { warning: true, kind: "unregistered", stock: null, text: "ERP 재고 미등록" };
+  if (stock <= 0) return { warning: true, kind: "empty", stock, text: "재고 없음" };
+  if (stock < ordered) return { warning: true, kind: "short", stock, text: `재고 부족 ${stock}죽` };
+  return { warning: false, kind: "enough", stock, text: `재고 ${stock}죽` };
+}
 
 if (adminSearch) adminSearch.addEventListener("input", () => { adminPage = 1; loadOrders(); });
 
@@ -121,7 +152,12 @@ async function loadOrders() {
   let data = [];
 
 try {
-  data = await fetchOrders();
+  const [orderRows, inventoryRows] = await Promise.all([
+    fetchOrders(),
+    fetchInventorySnapshot()
+  ]);
+  data = orderRows;
+  setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
   adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
   return;
@@ -283,16 +319,17 @@ summaryTotal += Number(group.shipping_fee || 0);
 
     group.items.forEach(item => {
       const rowTotal = item.price * item.qty * 10;
+      const stockStatus = getAdminStockStatus(item);
 
       itemHtml += `
-        <label class="pick-row stock-row">
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}">
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
   ${group.status === "출고완료" ? "disabled" : ""}
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
-          <strong>${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}</strong>
+          <strong>${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
           <span>× ${item.qty}죽</span>
           <em>${rowTotal.toLocaleString()}원</em>
         </label>
@@ -303,7 +340,7 @@ summaryTotal += Number(group.shipping_fee || 0);
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
     <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
