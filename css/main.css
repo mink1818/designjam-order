@@ -1559,7 +1559,7 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
     display:grid!important;
-    grid-template-columns:56px 96px minmax(110px,1fr)!important;
+    grid-template-columns:minmax(86px,1fr) 96px 92px!important;
     column-gap:5px!important;
     align-items:center!important;
     width:100%!important;
@@ -1579,8 +1579,11 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
     margin:0!important;
   }
   body[data-session-page="customer"] .compact-item-number{
-    font-size:17px!important;
+    font-size:16px!important;
     text-align:center!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
   }
   body[data-session-page="customer"] .compact-item-price{
     display:flex!important;
@@ -1605,8 +1608,9 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
   }
   body[data-session-page="customer"] .qty-control-row .qty-control{
     display:grid!important;
-    grid-template-columns:30px minmax(40px,1fr) 30px!important;
-    gap:3px!important;
+    grid-template-columns:30px 24px 30px!important;
+    gap:2px!important;
+    justify-content:end!important;
     width:100%!important;
     min-width:0!important;
   }
@@ -1617,26 +1621,33 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
     min-height:34px!important;
   }
   body[data-session-page="customer"] .qty-control-row .catalog-qty-input{
-    width:100%!important;
+    width:24px!important;
     min-width:0!important;
     height:34px!important;
     min-height:34px!important;
+    padding:0!important;
+    text-align:center!important;
+    appearance:textfield!important;
+    -moz-appearance:textfield!important;
   }
+  body[data-session-page="customer"] .qty-control-row .catalog-qty-input::-webkit-inner-spin-button,
+  body[data-session-page="customer"] .qty-control-row .catalog-qty-input::-webkit-outer-spin-button{margin:0!important;-webkit-appearance:none!important}
 }
 @media (max-width:380px){
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
-    grid-template-columns:50px 92px minmax(104px,1fr)!important;
+    grid-template-columns:minmax(78px,1fr) 92px 86px!important;
     column-gap:4px!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-control{
-    grid-template-columns:28px minmax(38px,1fr) 28px!important;
+    grid-template-columns:28px 22px 28px!important;
     gap:3px!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-btn{
     width:28px!important;
     min-width:28px!important;
   }
+  body[data-session-page="customer"] .qty-control-row .catalog-qty-input{width:22px!important}
 }
 
 
