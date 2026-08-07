@@ -2476,3 +2476,69 @@ html[data-theme="dark"] .order-status-tab.ready.active{
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+/* V6.4.1 주문관리 가로폭 및 1죽 단가 표시 최종 보정 */
+body[data-session-page="admin"] #adminContent,
+body[data-session-page="admin"] .order-admin-toolbar,
+body[data-session-page="admin"] .completed-toolbar,
+body[data-session-page="admin"] .order-list-meta,
+body[data-session-page="admin"] .admin-order-list,
+body[data-session-page="admin"] .order-pagination {
+  width: min(100%, 1180px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+body[data-session-page="admin"] .pick-row.stock-row {
+  display: grid !important;
+  grid-template-columns: 28px minmax(130px, 1fr) minmax(150px, auto) minmax(120px, auto) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  font-size: 15px !important;
+}
+body[data-session-page="admin"] .admin-item-pricing {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+  line-height: 1.25;
+}
+body[data-session-page="admin"] .admin-item-pricing b { font-size: 15px; }
+body[data-session-page="admin"] .admin-item-pricing small {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+body[data-session-page="admin"] .pick-row.stock-row em {
+  text-align: right;
+  white-space: nowrap;
+  font-size: 14px;
+}
+@media(max-width:760px){
+  body[data-session-page="admin"] #adminContent,
+  body[data-session-page="admin"] .order-admin-toolbar,
+  body[data-session-page="admin"] .completed-toolbar,
+  body[data-session-page="admin"] .order-list-meta,
+  body[data-session-page="admin"] .admin-order-list,
+  body[data-session-page="admin"] .order-pagination { width: 100% !important; }
+  body[data-session-page="admin"] .pick-row.stock-row {
+    grid-template-columns: 24px minmax(0,1fr) auto !important;
+    gap: 6px !important;
+    padding: 9px 4px !important;
+  }
+  body[data-session-page="admin"] .pick-row.stock-row > strong { grid-column: 2; }
+  body[data-session-page="admin"] .admin-item-pricing {
+    grid-column: 2;
+    align-items: flex-start;
+  }
+  body[data-session-page="admin"] .pick-row.stock-row > em {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+    font-size: 12px;
+  }
+  body[data-session-page="admin"] .admin-item-pricing small {
+    font-size: 11px;
+    white-space: normal;
+  }
+}

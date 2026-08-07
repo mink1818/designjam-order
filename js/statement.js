@@ -134,7 +134,7 @@ function renderStatement(items, productGroups = []) {
     const orderedQty = Number(item.qty || 0);
     const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
     const shippedQty = Math.max(0, orderedQty - soldoutQty);
-    return sum + Number(item.price || 0) * shippedQty;
+    return sum + Number(item.price || 0) * 10 * shippedQty;
   }, 0);
 
   const shippingFee =
@@ -163,7 +163,7 @@ function renderStatement(items, productGroups = []) {
     const row = compactRows.get(key);
     row.shippedQty += shippedQty;
     row.soldoutQty += soldoutQty;
-    row.rowTotal += price * shippedQty;
+    row.rowTotal += price * 10 * shippedQty;
     const displayNumber = item.warehouse_code ? `${String(item.warehouse_code).toUpperCase()}-${item.item_number}` : item.item_number;
     row.itemNumbers.push(`${displayNumber}${orderedQty !== 1 ? `(${orderedQty})` : ""}${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
@@ -174,7 +174,7 @@ function renderStatement(items, productGroups = []) {
         <td><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
         <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
-        <td>${row.price.toLocaleString()}원 / 1죽</td>
+        <td>${(row.price * 10).toLocaleString()}원 / 1죽</td>
         <td>${row.shippedQty > 0 ? row.rowTotal.toLocaleString() + "원" : "-"}</td>
       </tr>
     `;

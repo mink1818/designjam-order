@@ -317,17 +317,18 @@ let summaryTotal = 0;
 let soldoutQty=0;
 
 group.items.forEach(item => {
-  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0);
+  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0)*10;
 });
 
 summaryTotal += Number(group.shipping_fee || 0);
 
     group.items.forEach(item => {
-      const rowTotal = item.price * item.qty;
+      const oneJukPrice = Number(item.price || 0) * 10;
+      const rowTotal = oneJukPrice * Number(item.qty || 0);
       const stockStatus = getAdminStockStatus(item);
 
       itemHtml += `
-        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}">
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-row-total="${rowTotal}">
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
@@ -335,7 +336,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
           <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
-          <span>${item.qty}죽 · 단가 ${Number(item.price || 0).toLocaleString()}원 / 1죽</span>
+          <span class="admin-item-pricing"><b>${item.qty}죽</b><small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
           <em>금액 ${rowTotal.toLocaleString()}원</em>
         </label>
       `;
@@ -521,12 +522,8 @@ function recalcOrderCard(cardId) {
 
   rows.forEach(row => {
     const checkbox = row.querySelector("input[type='checkbox']");
-    const qtyText = row.querySelector("span")?.textContent || "";
-    const priceText = row.querySelector("em")?.textContent || "";
-
-    // 화면 표시는 "3죽"이지만 계산에는 숫자만 사용합니다.
-    const qty = Number(qtyText.replace(/[^0-9.-]/g, "")) || 0;
-    const rowTotal = Number(priceText.replace(/[^0-9.-]/g, "")) || 0;
+    const qty = Number(row.dataset.qty || 0);
+    const rowTotal = Number(row.dataset.rowTotal || 0);
 
     if (!checkbox.checked) {
       qtyTotal += qty;
