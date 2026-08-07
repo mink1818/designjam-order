@@ -52,6 +52,9 @@ let activeMainCategoryId = null;
 let currentUser = null;
 let currentCustomer = null;
 let favoriteMainCategoryIds = new Set();
+let customerItemPriceMap = new Map();
+function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(String(itemNumber)) ?? group?.price ?? 0); }
+function displayWarehouseItem(group, itemNumber) { const code=String(group?.warehouse_code||'').trim().toUpperCase(); return code?`${code}-${itemNumber}`:String(itemNumber); }
 
 const ITEM_FAVORITES_KEY='designjam_item_favorites';
 function readItemFavorites(){try{return new Set(JSON.parse(localStorage.getItem(ITEM_FAVORITES_KEY)||'[]').map(String));}catch(_){return new Set();}}
@@ -340,6 +343,12 @@ async function loadCatalog() {
   mainCategories = mainCategoryResponse.data || [];
   categories = categoryResponse.data || [];
   groups = groupResponse.data || [];
+
+  customerItemPriceMap = new Map();
+  if (currentUser && !ADMIN_PREVIEW_MODE) {
+    const priceResult = await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id", currentUser.id);
+    if (!priceResult.error) (priceResult.data || []).forEach(row => customerItemPriceMap.set(String(row.item_number), Number(row.price)));
+  }
 
   await loadCustomerFeatureData();
 
@@ -1205,8 +1214,8 @@ function openGroup(groupId, requestedItem = "") {
         <div class="order-row qty-control-row ${
           isSoldout ? "soldout-order-row" : ""
         }" data-qty-row="${escapeAttribute(numberText)}">
-          <strong class="compact-item-number">${escapeHtml(numberText)}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}</strong>
-          <span class="compact-item-price">${formatWon(group.price)}</span>
+          <strong class="compact-item-number">${escapeHtml(displayWarehouseItem(group,numberText))}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}</strong>
+          <span class="compact-item-price">${formatWon(effectiveItemPrice(group,numberText))}</span>
 
           <div class="qty-control">
             <button
@@ -1405,6 +1414,7 @@ function recalculateGroupTotal(groupId) {
   if (!group) return;
 
   let totalQty = 0;
+  let totalPrice = 0;
   let selectedKinds = 0;
 
   document
@@ -1412,11 +1422,10 @@ function recalculateGroupTotal(groupId) {
     .forEach(input => {
       const qty = Math.max(0, Number(input.value) || 0);
       totalQty += qty;
+      totalPrice += qty * effectiveItemPrice(group,input.dataset.number) * 10;
       if (qty > 0) selectedKinds += 1;
       input.closest(".qty-control-row")?.classList.toggle("has-quantity", qty > 0);
     });
-
-  const totalPrice = totalQty * Number(group.price || 0) * 10;
 
   const kindsBox = document.getElementById("liveGroupKinds");
   const qtyBox = document.getElementById("liveGroupQty");
@@ -1497,7 +1506,8 @@ function addGroupToCart(groupId, nextAction = "cart") {
           title: group.title,
           number,
           qty,
-          price: Number(group.price),
+          price: effectiveItemPrice(group,number),
+          warehouseCode: String(group.warehouse_code||''),
           imageUrl: group.image_url || ""
         });
       }
@@ -1758,6 +1768,7 @@ async function submitOrder() {
     customer_name: currentCustomer.business_name,
     memo,
     item_number: item.number,
+    warehouse_code: item.warehouseCode || null,
     qty: Number(item.qty),
     price: Number(item.price),
     total: Number(item.qty) * Number(item.price) * 10,

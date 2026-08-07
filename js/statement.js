@@ -119,10 +119,15 @@ async function loadStatement() {
   }
 
   try { const {data}=await supabaseClient.from("payment_accounts").select("*").eq("is_default",true).eq("is_active",true).maybeSingle(); statementDefaultAccount=data||null; } catch(e) { console.warn(e); }
-  renderStatement(data);
+  let productGroups = [];
+  try {
+    const result = await supabaseClient.from("product_groups").select("title,item_numbers");
+    if (!result.error) productGroups = result.data || [];
+  } catch (_) {}
+  renderStatement(data, productGroups);
 }
 
-function renderStatement(items) {
+function renderStatement(items, productGroups = []) {
   const first = items[0];
 
   const productTotal = items.reduce((sum, item) => {
@@ -144,25 +149,33 @@ function renderStatement(items) {
     return sum + Math.max(0, orderedQty - soldoutQty);
   }, 0);
 
-  const itemRows = items.map((item, index) => {
+  const groupByItem = new Map();
+  productGroups.forEach(group => (group.item_numbers || []).forEach(number => groupByItem.set(String(number).trim(), group.title || "개별품번")));
+  const compactRows = new Map();
+  items.forEach(item => {
     const orderedQty = Number(item.qty || 0);
     const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
     const shippedQty = Math.max(0, orderedQty - soldoutQty);
-    const soldout = soldoutQty > 0;
-    const rowTotal = Number(item.price || 0) * shippedQty * 10;
-    const qtyText = soldoutQty >= orderedQty
-      ? `${orderedQty.toLocaleString()}죽 (품절)`
-      : soldoutQty > 0
-        ? `${shippedQty.toLocaleString()}죽 출고 / ${soldoutQty.toLocaleString()}죽 품절`
-        : `${orderedQty.toLocaleString()}죽`;
-
+    const category = groupByItem.get(String(item.item_number).trim()) || "개별품번";
+    const price = Number(item.price || 0);
+    const key = `${category}\u0000${price}`;
+    if (!compactRows.has(key)) compactRows.set(key, { category, price, shippedQty: 0, soldoutQty: 0, itemNumbers: [], rowTotal: 0 });
+    const row = compactRows.get(key);
+    row.shippedQty += shippedQty;
+    row.soldoutQty += soldoutQty;
+    row.rowTotal += price * shippedQty * 10;
+    const displayNumber = item.warehouse_code ? `${String(item.warehouse_code).toUpperCase()}-${item.item_number}` : item.item_number;
+    row.itemNumbers.push(`${displayNumber}${orderedQty !== 1 ? `(${orderedQty})` : ""}${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
+  });
+  const itemRows = [...compactRows.values()].map((row, index) => {
     return `
-      <tr class="${soldout ? "soldout-row" : ""}">
+      <tr class="${row.shippedQty === 0 ? "soldout-row" : ""}">
         <td>${index + 1}</td>
-        <td>${escapeHtml(item.item_number)}${soldout ? ' <strong class="soldout-mark">품절</strong>' : ''}</td>
-        <td>${qtyText}</td>
-        <td>${Number(item.price).toLocaleString()}원</td>
-        <td>${shippedQty > 0 ? rowTotal.toLocaleString() + "원" : "-"}</td>
+        <td><strong>${escapeHtml(row.category)}</strong></td>
+        <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
+        <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
+        <td>${row.price.toLocaleString()}원</td>
+        <td>${row.shippedQty > 0 ? row.rowTotal.toLocaleString() + "원" : "-"}</td>
       </tr>
     `;
   }).join("");
@@ -211,7 +224,8 @@ function renderStatement(items) {
       <thead>
         <tr>
           <th>번호</th>
-          <th>품번</th>
+          <th>카테고리</th>
+          <th>해당 품번</th>
           <th>수량(죽)</th>
           <th>단가</th>
           <th>금액</th>

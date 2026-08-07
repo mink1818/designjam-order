@@ -125,6 +125,10 @@ body {
   text-align: left;
 }
 
+.statement-table th:nth-child(3),
+.statement-table td:nth-child(3) { text-align: left; }
+.statement-item-list { font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+
 .soldout-row {
   color: #888;
   background: #fff1f1;
@@ -223,24 +227,33 @@ body {
 
 .statement-table th:nth-child(1),
 .statement-table td:nth-child(1) {
-  width: 9%;
+  width: 6%;
 }
 
 .statement-table th:nth-child(2),
 .statement-table td:nth-child(2) {
-  width: 28%;
+  width: 17%;
 }
 
 .statement-table th:nth-child(3),
 .statement-table td:nth-child(3) {
-  width: 13%;
+  width: 37%;
 }
 
 .statement-table th:nth-child(4),
-.statement-table td:nth-child(4),
+.statement-table td:nth-child(4) { width: 14%; }
 .statement-table th:nth-child(5),
-.statement-table td:nth-child(5) {
-  width: 25%;
+.statement-table td:nth-child(5) { width: 12%; }
+.statement-table th:nth-child(6),
+.statement-table td:nth-child(6) { width: 14%; }
+
+@media print {
+  .statement-table th,.statement-table td { padding: 5px 4px; font-size: 10px; }
+  .statement-item-list { font-size: 9px; line-height: 1.25; }
+  .statement-header { padding-bottom: 10px; }
+  .customer-info { margin-top: 12px; }
+  .customer-info strong,.customer-info span { padding: 6px; font-size: 11px; }
+  .statement-table { margin-top: 12px; }
 }
 
 @media (max-width: 680px) {

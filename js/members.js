@@ -85,7 +85,7 @@ function renderCustomerRow(c){
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>
-   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${esc(c.business_name||'')}')">주문내역</button></div>
+   <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${c.id}','${esc(c.business_name||'')}')">주문내역</button></div>
   </div>
  </article>`;
 }
@@ -95,7 +95,7 @@ function toggleCustomerDetail(id){
  if(open){detail.removeAttribute('hidden');card.classList.add('open');btn.setAttribute('aria-expanded','true');}else{detail.setAttribute('hidden','');card.classList.remove('open');btn.setAttribute('aria-expanded','false');}
 }
 function showMoreCustomers(){visibleCount+=PAGE_SIZE;renderCustomers();}
-function openCustomerOrders(name){location.href=`admin.html?search=${encodeURIComponent(name)}`;}
+function openCustomerOrders(id,name){location.href=`admin.html?status=${encodeURIComponent('전체')}&period=all&customer=${encodeURIComponent(id)}&search=${encodeURIComponent(name)}`;}
 function openProxyOrder(id){location.href=`proxy-order.html?customer=${encodeURIComponent(id)}`;}
 async function saveCustomer(id){
  const card=list.querySelector(`[data-id="${id}"]`);const payload={};

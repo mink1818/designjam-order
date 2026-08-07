@@ -82,7 +82,11 @@ async function adminLogin() {
 
 const adminOrders = document.getElementById("adminOrders");
 const adminSearch = document.getElementById("adminSearch");
+const adminUrlParams = new URLSearchParams(location.search);
+const requestedCustomerId = adminUrlParams.get("customer") || "";
+if (adminSearch && adminUrlParams.get("search")) adminSearch.value = adminUrlParams.get("search");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
+if (adminCompletedPeriod && adminUrlParams.get("period")) adminCompletedPeriod.value = adminUrlParams.get("period");
 
 let adminFilter = "주문접수";
 let adminPage = 1;
@@ -214,6 +218,7 @@ try {
 
   const filteredGroups = groups
     .filter(group => {
+      if (requestedCustomerId && String(group.customerId || "") !== requestedCustomerId) return false;
       const pickingVerified = String(group.pickingStatus || "").includes("검증완료");
       if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified)) return false;
       if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified)) return false;
@@ -326,10 +331,10 @@ summaryTotal += Number(group.shipping_fee || 0);
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
-  ${group.status === "출고완료" ? "disabled" : ""}
+  ${group.status === "출고완료" || String(group.pickingStatus || '').includes('검증완료') ? "disabled" : ""}
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
-          <strong>${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
+          <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
           <span>× ${item.qty}죽</span>
           <em>${rowTotal.toLocaleString()}원</em>
         </label>
@@ -429,6 +434,7 @@ class="order-detail">
         </button>
 
         <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
+        ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
         <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">작업지시서 출력</button>
 
         <button
@@ -601,6 +607,12 @@ async function toggleSoldout(id, isChecked) {
     alert("품절 저장 실패: " + error.message);
   }
 }
+
+function editVerifiedPicking(orderNumber) {
+  if (!confirm('검증된 피킹을 초기화하면 차감된 ERP 재고가 먼저 복원됩니다.\n그 후 일부품절·피킹수량을 다시 입력하고 최종검증해야 합니다.\n\n계속할까요?')) return;
+  location.href = `picking.html?order=${encodeURIComponent(orderNumber)}&edit=1`;
+}
+window.editVerifiedPicking = editVerifiedPicking;
 
 function toggleDetail(id) {
   const box = document.getElementById(id);

@@ -2,7 +2,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const ADMIN_SESSION_KEY='designjam_admin_session';
-let customers=[],items=[],currentAdminId=null;
+let customers=[],items=[],currentAdminId=null,customerPrices=new Map();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalizeItem=v=>String(v||'').trim().normalize('NFKC').toUpperCase();
 function showError(message=''){const box=$('proxyError');if(!box)return;box.textContent=message;box.classList.toggle('show',Boolean(message));}
@@ -20,13 +20,15 @@ async function fetchAll(table,select,order='created_at'){
 function asItemNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function rawPrice(item){return Number(item?.price??item?.sale_price??item?.unit_price??item?.product_price??0)||0}
 function findItem(value){const key=normalizeItem(value);return items.find(x=>normalizeItem(x.item_number)===key)}
+function selectedCustomerId(){return String($('proxyCustomer')?.value||'')}
+function effectiveProxyPrice(itemNumber,basePrice=0){return Number(customerPrices.get(`${selectedCustomerId()}::${normalizeItem(itemNumber)}`)??basePrice??0)}
 function currentCustomerName(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';if(mode==='direct')return ($('proxyDirectName')?.value||'').trim();const c=customers.find(x=>String(x.id)===String($('proxyCustomer')?.value||''));return c?(c.business_name||c.owner_name||c.email||'등록 거래처'):''}
 function addLine(value={}){
  const row=document.createElement('div');row.className='proxy-line';
  row.innerHTML=`<input class="proxy-item" list="proxyItemList" autocomplete="off" placeholder="품번" value="${esc(value.item_number||'')}"><input class="proxy-qty" type="number" min="1" step="1" value="${Number(value.qty||1)}" placeholder="수량(죽)"><input class="proxy-price" type="number" min="0" step="1" value="${Number(value.price||0)}" placeholder="단가"><strong class="proxy-line-total">0원</strong><button class="remove-line" type="button">삭제</button>`;
- const syncPrice=()=>{const input=row.querySelector('.proxy-item');const found=findItem(input.value);if(found){input.value=found.item_number;row.querySelector('.proxy-price').value=Number(found.price||0)}calc()};
+ const syncPrice=()=>{const input=row.querySelector('.proxy-item');const found=findItem(input.value);if(found){input.value=found.item_number;row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)}calc()};
  row.querySelector('.remove-line').onclick=()=>{row.remove();if(!document.querySelector('.proxy-line'))addLine();calc()};
- row.querySelector('.proxy-item').addEventListener('input',()=>{const found=findItem(row.querySelector('.proxy-item').value);if(found){row.querySelector('.proxy-price').value=Number(found.price||0)}calc()});
+ row.querySelector('.proxy-item').addEventListener('input',()=>{const found=findItem(row.querySelector('.proxy-item').value);if(found){row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)}calc()});
  row.querySelector('.proxy-item').addEventListener('change',syncPrice);row.querySelector('.proxy-item').addEventListener('blur',syncPrice);
  row.querySelectorAll('.proxy-qty,.proxy-price').forEach(x=>x.addEventListener('input',calc));$('proxyLines').appendChild(row);syncPrice();
 }
@@ -64,8 +66,9 @@ async function submit(){
 async function init(){
  if(!await guard())return;
  try{
-  const [customerRows,inventoryRows,groups]=await Promise.all([fetchAll('customers','id,business_name,owner_name,email,approved,blocked,is_admin','created_at'),fetchAll('inventory_items','*','item_number'),fetchAll('product_groups','*','sort_order')]);
+  const [customerRows,inventoryRows,groups,priceRows]=await Promise.all([fetchAll('customers','id,business_name,owner_name,email,approved,blocked,is_admin','created_at'),fetchAll('inventory_items','*','item_number'),fetchAll('product_groups','*','sort_order'),fetchAll('customer_item_prices','customer_id,item_number,price','item_number').catch(()=>[])]);
   customers=customerRows.filter(x=>!x.is_admin&&!x.blocked);
+  customerPrices=new Map((priceRows||[]).map(row=>[`${row.customer_id}::${normalizeItem(row.item_number)}`,Number(row.price)]));
   const priceMap=new Map();(groups||[]).forEach(g=>asItemNumbers(g.item_numbers).forEach(n=>priceMap.set(normalizeItem(n),Number(g.price||0))));
   items=(inventoryRows||[]).map(x=>({...x,price:rawPrice(x)||priceMap.get(normalizeItem(x.item_number))||0}));
   // product_groups에만 있고 inventory_items에는 아직 없는 품번도 대신주문 검색에 노출
@@ -77,5 +80,5 @@ async function init(){
  }catch(e){showError('대신 주문 화면 불러오기 실패: '+(e?.message||e))}
 }
 function updateCustomerMode(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';$('proxySelectWrap').hidden=mode!=='select';$('proxyDirectWrap').hidden=mode!=='direct';calc()}
-$('addProxyLine').onclick=()=>addLine();$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',updateCustomerMode));$('proxyCustomer').addEventListener('change',calc);$('proxyDirectName').addEventListener('input',calc);document.addEventListener('DOMContentLoaded',()=>{updateCustomerMode();init()});
+$('addProxyLine').onclick=()=>addLine();$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',updateCustomerMode));$('proxyCustomer').addEventListener('change',()=>{document.querySelectorAll('.proxy-line').forEach(row=>{const found=findItem(row.querySelector('.proxy-item').value);if(found)row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)});calc()});$('proxyDirectName').addEventListener('input',calc);document.addEventListener('DOMContentLoaded',()=>{updateCustomerMode();init()});
 })();

@@ -2629,6 +2629,10 @@ async function uploadExcelProducts() {
       workbook.Sheets[firstSheetName],
       { defval: "", raw: false }
     );
+    const priceSheetName = workbook.SheetNames.find(name => String(name).trim() === "거래처별단가");
+    window.pendingCustomerPriceGrid = priceSheetName
+      ? XLSX.utils.sheet_to_json(workbook.Sheets[priceSheetName], { header: 1, defval: "", raw: false })
+      : [];
 
     if (rows.length === 0) throw new Error("엑셀에 등록할 내용이 없습니다.");
 
@@ -2657,6 +2661,34 @@ async function uploadExcelProducts() {
 }
 
 window.uploadExcelProducts = uploadExcelProducts;
+
+async function importCustomerItemPricesFromGrid() {
+  const grid = Array.isArray(window.pendingCustomerPriceGrid) ? window.pendingCustomerPriceGrid : [];
+  if (!grid.length) return { saved: 0, unmatched: [] };
+  const headerIndex = grid.findIndex(row => row.some(cell => String(cell).trim() === "품번(원본)"));
+  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 '품번(원본)' 제목을 찾지 못했습니다."] };
+  const headers = grid[headerIndex].map(value => String(value).trim());
+  const itemColumn = headers.indexOf("품번(원본)");
+  const baseColumns = new Set(["묶음명","카테고리","품번(원본)","기본단가"]);
+  const customerColumns = headers.map((name,index)=>({name,index})).filter(entry=>entry.name&&!baseColumns.has(entry.name));
+  const { data: customers, error: customerError } = await supabaseClient.from("customers").select("id,business_name").eq("is_admin",false);
+  if (customerError) throw customerError;
+  const customerByName = new Map((customers||[]).map(c=>[String(c.business_name||"").trim(),c.id]));
+  const unmatched = customerColumns.filter(c=>!customerByName.has(c.name)).map(c=>c.name);
+  const payload = [];
+  grid.slice(headerIndex+1).forEach(row=>{
+    let itemNumbers=[];
+    try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
+    customerColumns.forEach(column=>{
+      const customerId=customerByName.get(column.name);if(!customerId)return;
+      const price=Number(String(row[column.index]??"").replace(/[^0-9.-]/g,""));
+      if(!Number.isFinite(price)||price<0||price%50!==0)return;
+      itemNumbers.forEach(itemNumber=>payload.push({customer_id:customerId,item_number:String(itemNumber),price,updated_at:new Date().toISOString()}));
+    });
+  });
+  for(let i=0;i<payload.length;i+=500){const {error}=await supabaseClient.from("customer_item_prices").upsert(payload.slice(i,i+500),{onConflict:"customer_id,item_number"});if(error)throw error;}
+  return { saved: payload.length, unmatched };
+}
 
 function parseItemPattern(value) {
   const parts = String(value || "")
@@ -3201,6 +3233,7 @@ async function registerExcelProducts() {
           image_urls: parseImageUrlList(row["추가사진URL"]),
           item_numbers: itemNumbers,
           price,
+          warehouse_code: String(row["출고지"] || "").trim().toUpperCase() || null,
           sort_order: sortOrder,
           is_active: true
         };
@@ -3298,6 +3331,7 @@ async function registerExcelProducts() {
       hiddenDuplicateCount = await hideProductGroups([...duplicateIdsToHide]);
     }
 
+    const customerPriceResult = await importCustomerItemPricesFromGrid();
     await loadMainCategories();
     await loadProductData();
 
@@ -3313,8 +3347,10 @@ async function registerExcelProducts() {
           <span>카테고리 중복 정리 <strong>${structureCleanup.removedCategoryCount}개</strong></span>
           <span>숨김 처리 <strong>${hiddenDuplicateCount + hiddenMissingCount}개</strong></span>
           <span>실패 <strong>${errorCount}개</strong></span>
+          <span>거래처별 단가 <strong>${customerPriceResult.saved}개</strong></span>
         </div>
         <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
+        ${customerPriceResult.unmatched.length?`<p class="auth-error">등록 거래처명과 일치하지 않아 단가를 건너뜀: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}
       </div>
       ${skippedMessages.length ? `<div class="excel-error-list excel-skip-list"><h3>중복으로 건너뛴 행</h3>${skippedMessages.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}
       ${errorMessages.length ? `<div class="excel-error-list"><h3>실패한 행</h3>${errorMessages.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}`;
