@@ -1,16 +1,16 @@
-const CACHE_NAME='design-socks-v6-4-3-barcode-label-sheet-b1';
+const CACHE_NAME='design-socks-v6-4-4-barcode-top-margin-b1';
 const APP_SHELL=[
-  '/offline.html?v=6430',
-  '/css/main.css?v=6430',
-  '/css/admin.css?v=6430',
-  '/css/statement.css?v=6430',
-  '/js/pwa.js?v=6430',
-  '/js/version-badge.js?v=6430',
-  '/js/back-navigation.js?v=6430',
-  '/icons/customer-192.png?v=6430',
-  '/icons/customer-512.png?v=6430',
-  '/icons/admin-192.png?v=6430',
-  '/icons/admin-512.png?v=6430'
+  '/offline.html?v=6440',
+  '/css/main.css?v=6440',
+  '/css/admin.css?v=6440',
+  '/css/statement.css?v=6440',
+  '/js/pwa.js?v=6440',
+  '/js/version-badge.js?v=6440',
+  '/js/back-navigation.js?v=6440',
+  '/icons/customer-192.png?v=6440',
+  '/icons/customer-512.png?v=6440',
+  '/icons/admin-192.png?v=6440',
+  '/icons/admin-512.png?v=6440'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
@@ -30,7 +30,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=6430');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=6440');
       throw new Error('offline');
     })
   );
