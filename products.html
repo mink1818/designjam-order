@@ -16,7 +16,7 @@
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4023">
 <title>디자인 잠 주문관리 (관리자)</title>
 
-  <link rel="stylesheet" href="css/admin.css?v=6421">
+  <link rel="stylesheet" href="css/admin.css?v=6430">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,7 +27,7 @@
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=4023">
 </head>
 
-<body class="auth-pending" data-app-version="6.4.2" data-session-page="admin" data-pwa-app="admin">
+<body class="auth-pending" data-app-version="6.4.3" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
@@ -650,7 +650,7 @@ class="order-input">
         <h2>🖨 바코드관리</h2>
         <p class="admin-help-text">엑셀 또는 ERP 상품 품번을 자동 분리·중복 제거·오류 검사한 뒤 선택한 크기의 Code128 라벨 PDF를 생성합니다.</p>
       </div>
-      <span id="barcodeSpecBadge" class="barcode-spec-badge">60×35mm · Code128 · A4 3×7</span>
+      <span id="barcodeSpecBadge" class="barcode-spec-badge">스티커용지 · A4 3×7 · 좌우 0.7mm · 간격 0.3mm · 상16/하14mm</span>
     </div>
 
     <div class="barcode-source-grid">
@@ -681,7 +681,7 @@ class="order-input">
         <span>선택한 크기에 맞춰 미리보기·바코드·글자·A4 배치가 자동 조정되며, 일반 A4 절단용 구분선도 함께 출력됩니다.</span>
       </div>
       <div class="barcode-size-options">
-        <label><input type="radio" name="barcodeLabelSize" value="60x35" checked> <b>60×35mm</b><small>A4 3×7 · 기본/스티커</small></label>
+        <label><input type="radio" name="barcodeLabelSize" value="60x35" checked> <b>맞춤 스티커용지</b><small>A4 3×7 · 좌우 0.7mm · 간격 0.3mm · 위16mm · 아래14mm</small></label>
         <label><input type="radio" name="barcodeLabelSize" value="45x25"> <b>45×25mm</b><small>A4 4×10 · 소형</small></label>
         <label><input type="radio" name="barcodeLabelSize" value="80x50"> <b>80×50mm</b><small>A4 2×5 · 대형</small></label>
       </div>
@@ -701,7 +701,7 @@ class="order-input">
         <div id="barcodeItemList" class="barcode-item-list"><p>엑셀을 선택하거나 ERP 품번을 불러오세요.</p></div>
       </div>
       <div>
-        <div class="barcode-list-head"><strong>ERP/PDF 공통 라벨 미리보기</strong><span id="barcodePreviewSpec">실제 비율 60×35mm</span></div>
+        <div class="barcode-list-head"><strong>ERP/PDF 공통 라벨 미리보기</strong><span id="barcodePreviewSpec">실제 칸 약 69.33×38.14mm</span></div>
         <div id="barcodeLabelPreview" class="barcode-label-preview">
           <div class="barcode-label-card">
             <strong class="barcode-label-number">4008A</strong>
@@ -787,17 +787,17 @@ class="order-input">
 
 <script src="js/operations-core.js?v=4023"></script>
 <script src="js/products.js?v=4023"></script>
-<script src="js/barcode-manager.js?v=4024"></script>
+<script src="js/barcode-manager.js?v=6430"></script>
 
 <script src="js/group-manager.js?v=4023"></script>
 
-<script src="js/session-status.js?v=6421"></script>
+<script src="js/session-status.js?v=6430"></script>
 <script src="js/pwa.js?v=4023"></script>
 <script src="js/admin-page-transition.js?v=4023"></script>
-<script src="js/version-badge.js?v=6421"></script>
-<script src="js/back-navigation.js?v=6421"></script>
-<script src="js/admin-accordions.js?v=6421"></script>
+<script src="js/version-badge.js?v=6430"></script>
+<script src="js/back-navigation.js?v=6430"></script>
+<script src="js/admin-accordions.js?v=6430"></script>
 <script src="js/ui-preferences.js?v=4023"></script>
-<script src="js/admin-mobile-nav.js?v=6421"></script>
+<script src="js/admin-mobile-nav.js?v=6430"></script>
 </body>
 </html>

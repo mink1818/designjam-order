@@ -1,0 +1,21 @@
+DESIGN SOCKS V6.4.3 배포 방법
+
+적용 내용
+- 바코드 A4 3열×7행 맞춤 스티커용지 적용
+- 좌우 여백: 각각 0.7mm
+- 가운데 가로 간격: 0.3mm
+- 위 여백: 16mm
+- 아래 여백: 14mm
+- 계산된 라벨 한 칸: 약 69.33×38.14mm
+- PDF 저장과 바로 인쇄에 동일한 좌표 적용
+
+터미널
+git add .
+git commit -m "release v6.4.3 barcode sticker margins"
+git push
+
+SQL 실행: 불필요
+Supabase Functions 재배포: 불필요
+
+배포 후 브라우저에서 Ctrl + F5를 한 번 눌러주세요.
+인쇄 설정에서는 용지 A4, 배율 100%, 브라우저 여백 없음으로 출력하세요.

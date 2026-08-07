@@ -3,7 +3,30 @@
   "use strict";
 
   const LABELS = Object.freeze({
-    "60x35": Object.freeze({ width: 60, height: 35, columns: 3, rows: 7, pageWidth: 210, pageHeight: 297, font: [25, 21, 16], textY: 7.2, barcodeX: 5, barcodeY: 12.5, barcodeW: 50, barcodeH: 17.5, jsWidth: 2.45, jsHeight: 120, borderInset: 0.65, label: "60×35mm · Code128 · A4 3×7" }),
+    "60x35": Object.freeze({
+      width: 69.333333,
+      height: 38.142857,
+      columns: 3,
+      rows: 7,
+      pageWidth: 210,
+      pageHeight: 297,
+      marginLeft: 0.7,
+      marginRight: 0.7,
+      marginTop: 16,
+      marginBottom: 14,
+      columnGap: 0.3,
+      rowGap: 0,
+      font: [25, 21, 16],
+      textY: 8.6,
+      barcodeX: 9.666667,
+      barcodeY: 14,
+      barcodeW: 50,
+      barcodeH: 17.5,
+      jsWidth: 2.45,
+      jsHeight: 120,
+      borderInset: 0,
+      label: "스티커용지 · A4 3×7 · 좌우 0.7mm · 간격 0.3mm · 상16/하14mm"
+    }),
     "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 4, barcodeY: 9.2, barcodeW: 37, barcodeH: 12.2, jsWidth: 2.05, jsHeight: 96, borderInset: 0.55, label: "45×25mm · Code128 · A4 4×10" }),
     "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 7, barcodeY: 18, barcodeW: 66, barcodeH: 25, jsWidth: 2.85, jsHeight: 145, borderInset: 0.8, label: "80×50mm · Code128 · A4 2×5" })
   });
@@ -187,12 +210,16 @@
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
     const label = currentLabel();
     const perPage = label.columns * label.rows;
-    const gridWidth = label.width * label.columns, gridHeight = label.height * label.rows;
-    const startX = (label.pageWidth - gridWidth) / 2, startY = (label.pageHeight - gridHeight) / 2;
+    const columnGap = Number(label.columnGap) || 0;
+    const rowGap = Number(label.rowGap) || 0;
+    const gridWidth = label.width * label.columns + columnGap * (label.columns - 1);
+    const gridHeight = label.height * label.rows + rowGap * (label.rows - 1);
+    const startX = Number.isFinite(label.marginLeft) ? label.marginLeft : (label.pageWidth - gridWidth) / 2;
+    const startY = Number.isFinite(label.marginTop) ? label.marginTop : (label.pageHeight - gridHeight) / 2;
     items.forEach((item, index) => {
       if (index && index % perPage === 0) pdf.addPage();
-      const slot = index % perPage, col = slot % label.columns, row = Math.floor(slot / label.columns), x = startX + col * label.width, y = startY + row * label.height;
-      const borderInset = label.borderInset || 0.6;
+      const slot = index % perPage, col = slot % label.columns, row = Math.floor(slot / label.columns), x = startX + col * (label.width + columnGap), y = startY + row * (label.height + rowGap);
+      const borderInset = label.borderInset ?? 0.6;
       pdf.setDrawColor(178, 185, 195);
       pdf.setLineWidth(0.22);
       pdf.setLineDashPattern([1.2, 0.9], 0);
