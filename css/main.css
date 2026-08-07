@@ -1559,7 +1559,7 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
     display:grid!important;
-    grid-template-columns:minmax(86px,1fr) 96px 92px!important;
+    grid-template-columns:minmax(86px,1fr) 96px 96px!important;
     column-gap:5px!important;
     align-items:center!important;
     width:100%!important;
@@ -1608,7 +1608,7 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
   }
   body[data-session-page="customer"] .qty-control-row .qty-control{
     display:grid!important;
-    grid-template-columns:30px 24px 30px!important;
+    grid-template-columns:30px 32px 30px!important;
     gap:2px!important;
     justify-content:end!important;
     width:100%!important;
@@ -1621,7 +1621,7 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
     min-height:34px!important;
   }
   body[data-session-page="customer"] .qty-control-row .catalog-qty-input{
-    width:24px!important;
+    width:32px!important;
     min-width:0!important;
     height:34px!important;
     min-height:34px!important;
@@ -1636,18 +1636,18 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
 @media (max-width:380px){
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
-    grid-template-columns:minmax(78px,1fr) 92px 86px!important;
+    grid-template-columns:minmax(78px,1fr) 92px 92px!important;
     column-gap:4px!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-control{
-    grid-template-columns:28px 22px 28px!important;
+    grid-template-columns:28px 30px 28px!important;
     gap:3px!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-btn{
     width:28px!important;
     min-width:28px!important;
   }
-  body[data-session-page="customer"] .qty-control-row .catalog-qty-input{width:22px!important}
+  body[data-session-page="customer"] .qty-control-row .catalog-qty-input{width:30px!important}
 }
 
 
