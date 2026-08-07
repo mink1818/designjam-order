@@ -2494,8 +2494,9 @@ body[data-session-page="admin"] .pick-row.stock-row {
   gap: 10px !important;
   align-items: center !important;
   min-width: 0 !important;
-  font-size: 15px !important;
+  font-size: 18px !important;
 }
+body[data-session-page="admin"] .pick-row.stock-row > strong { font-size: 20px !important; }
 body[data-session-page="admin"] .admin-item-pricing {
   display: flex !important;
   flex-direction: column;
@@ -2503,7 +2504,7 @@ body[data-session-page="admin"] .admin-item-pricing {
   min-width: 0;
   line-height: 1.25;
 }
-body[data-session-page="admin"] .admin-item-pricing b { font-size: 15px; }
+body[data-session-page="admin"] .admin-item-pricing b { font-size: 18px; }
 body[data-session-page="admin"] .admin-item-pricing small {
   font-size: 12px;
   color: #64748b;
@@ -2512,7 +2513,7 @@ body[data-session-page="admin"] .admin-item-pricing small {
 body[data-session-page="admin"] .pick-row.stock-row em {
   text-align: right;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: 17px;
 }
 @media(max-width:760px){
   body[data-session-page="admin"] #adminContent,
@@ -2535,7 +2536,7 @@ body[data-session-page="admin"] .pick-row.stock-row em {
     grid-column: 3;
     grid-row: 1 / span 2;
     align-self: center;
-    font-size: 12px;
+    font-size: 15px;
   }
   body[data-session-page="admin"] .admin-item-pricing small {
     font-size: 11px;

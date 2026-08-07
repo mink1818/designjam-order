@@ -2,6 +2,23 @@
   box-sizing: border-box;
 }
 
+/* V6.4.1 거래명세서 수기 편집 모바일 배치 */
+@media(max-width:680px){
+  .screen-menu{flex-wrap:wrap}
+  .screen-menu button{flex:1 1 calc(50% - 8px)}
+  .screen-menu .statement-add-button{flex-basis:100%}
+  .statement-table th:nth-child(1),.statement-table td:nth-child(1){width:6%}
+  .statement-table th:nth-child(2),.statement-table td:nth-child(2){width:16%}
+  .statement-table th:nth-child(3),.statement-table td:nth-child(3){width:24%}
+  .statement-table th:nth-child(4),.statement-table td:nth-child(4){width:14%}
+  .statement-table th:nth-child(5),.statement-table td:nth-child(5){width:20%}
+  .statement-table th:nth-child(6),.statement-table td:nth-child(6){width:20%}
+  .statement-cell-input{padding:5px 2px;font-size:11px}
+  .statement-unit-label,.statement-soldout-note{font-size:8px}
+  .statement-row-delete{width:18px;height:18px;font-size:11px}
+  .statement-shipping-editor input{width:105px}
+}
+
 body {
   margin: 0;
   padding: 24px;
@@ -136,6 +153,8 @@ body {
 .statement-table th:nth-child(3),
 .statement-table td:nth-child(3) { text-align: left; }
 .statement-item-list { font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.statement-cell-input{width:100%;min-width:0;padding:6px 5px;border:1px solid #b9c5d3;border-radius:5px;background:#fffef5;color:#111;font:inherit;text-align:inherit}
+textarea.statement-cell-input{resize:vertical;line-height:1.35}.statement-number-input{text-align:right}.statement-unit-label,.statement-soldout-note{display:block;margin-top:3px;font-size:10px;color:#64748b}.statement-row-delete{display:block;width:22px;height:22px;margin:4px auto 0;padding:0;border:0;border-radius:50%;background:#fee2e2;color:#b91c1c;font-weight:900;cursor:pointer}.statement-shipping-editor{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-weight:700}.statement-shipping-editor input{width:130px;padding:5px;border:1px solid #b9c5d3;border-radius:5px;text-align:right;font:inherit}
 
 .soldout-row {
   color: #888;
@@ -197,6 +216,7 @@ body {
   .screen-menu {
     display: none;
   }
+  .editor-only{display:none!important}.statement-cell-input,.statement-shipping-editor input{padding:0;border:0;background:transparent;appearance:textfield}.statement-cell-input::-webkit-inner-spin-button,.statement-shipping-editor input::-webkit-inner-spin-button{display:none}textarea.statement-cell-input{resize:none;overflow:hidden}
 
   .statement-sheet {
     width: 100%;
@@ -610,3 +630,4 @@ body {
   }
 }
 .soldout-mark{display:inline-block;margin-left:5px;padding:2px 6px;border-radius:999px;background:#fff1d6;color:#8a4b00;font-size:11px;font-weight:900}.soldout-row{background:#fffaf0}.soldout-row td{color:#6b4a16}
+@media(max-width:680px){.screen-menu{flex-wrap:wrap}.screen-menu button{flex:1 1 calc(50% - 8px)}.screen-menu .statement-add-button{flex-basis:100%}.statement-table th:nth-child(1),.statement-table td:nth-child(1){width:6%}.statement-table th:nth-child(2),.statement-table td:nth-child(2){width:16%}.statement-table th:nth-child(3),.statement-table td:nth-child(3){width:24%}.statement-table th:nth-child(4),.statement-table td:nth-child(4){width:14%}.statement-table th:nth-child(5),.statement-table td:nth-child(5){width:20%}.statement-table th:nth-child(6),.statement-table td:nth-child(6){width:20%}.statement-cell-input{padding:5px 2px;font-size:11px}.statement-unit-label,.statement-soldout-note{font-size:8px}.statement-row-delete{width:18px;height:18px;font-size:11px}.statement-shipping-editor input{width:105px}}
