@@ -335,8 +335,8 @@ summaryTotal += Number(group.shipping_fee || 0);
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
           <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
-          <span>× ${item.qty}죽</span>
-          <em>${rowTotal.toLocaleString()}원</em>
+          <span>${item.qty}죽 · 단가 ${Number(item.price || 0).toLocaleString()}원 / 1죽</span>
+          <em>금액 ${rowTotal.toLocaleString()}원</em>
         </label>
       `;
     });

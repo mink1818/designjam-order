@@ -108,6 +108,14 @@ body {
   border-collapse: collapse;
 }
 
+.statement-table caption {
+  caption-side: top;
+  padding: 0 0 6px;
+  color: #4b5563;
+  font-size: 11px;
+  text-align: right;
+}
+
 .statement-table th,
 .statement-table td {
   padding: 12px 8px;

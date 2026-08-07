@@ -174,7 +174,7 @@ function renderStatement(items, productGroups = []) {
         <td><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
         <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
-        <td>${row.price.toLocaleString()}원</td>
+        <td>${row.price.toLocaleString()}원 / 1죽</td>
         <td>${row.shippedQty > 0 ? row.rowTotal.toLocaleString() + "원" : "-"}</td>
       </tr>
     `;
@@ -221,6 +221,7 @@ function renderStatement(items, productGroups = []) {
     </section>
 
     <table class="statement-table">
+      <caption>모든 단가와 금액은 1죽 단가를 기준으로 계산됩니다.</caption>
       <thead>
         <tr>
           <th>번호</th>
