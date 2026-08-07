@@ -149,7 +149,7 @@ function getOrderSummary(group) {
     }
     return `<div class="cart-item ${isSoldout ? "soldout-item" : ""}">
       <strong>${escapeHtml(item.item_number)}${isSoldout ? " 품절" : ""}</strong>
-      <span>${item.qty}죽</span>
+      <span>${item.qty}죽 · 단가 ${Number(item.price||0).toLocaleString()}원 / 1죽</span>
       <span>${isSoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
     </div>`;
   }).join("");

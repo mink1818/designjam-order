@@ -1559,15 +1559,15 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
     display:grid!important;
-    grid-template-columns:64px 82px minmax(0,1fr)!important;
-    column-gap:8px!important;
+    grid-template-columns:56px 96px minmax(110px,1fr)!important;
+    column-gap:5px!important;
     align-items:center!important;
     width:100%!important;
     box-sizing:border-box!important;
   }
   body[data-session-page="customer"] .qty-control-row{
     min-height:44px!important;
-    padding:4px 7px!important;
+    padding:4px 5px!important;
     margin:0 0 4px!important;
     border-radius:9px!important;
   }
@@ -1583,20 +1583,36 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
     text-align:center!important;
   }
   body[data-session-page="customer"] .compact-item-price{
-    font-size:14px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:1px!important;
+    font-size:12px!important;
     text-align:center!important;
     white-space:nowrap!important;
+    line-height:1!important;
+    overflow:hidden!important;
+  }
+  body[data-session-page="customer"] .compact-item-price > span,
+  body[data-session-page="customer"] .compact-item-price > small{
+    display:inline!important;
+    white-space:nowrap!important;
+  }
+  body[data-session-page="customer"] .compact-item-price > small{
+    margin:0!important;
+    font-size:10px!important;
+    font-weight:800!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-control{
     display:grid!important;
-    grid-template-columns:36px minmax(38px,1fr) 36px!important;
-    gap:4px!important;
+    grid-template-columns:30px minmax(40px,1fr) 30px!important;
+    gap:3px!important;
     width:100%!important;
     min-width:0!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-btn{
-    width:36px!important;
-    min-width:36px!important;
+    width:30px!important;
+    min-width:30px!important;
     height:34px!important;
     min-height:34px!important;
   }
@@ -1610,16 +1626,16 @@ html[data-theme="dark"] .mobile-order-column-head{background:#24364a;color:#dbe7
 @media (max-width:380px){
   body[data-session-page="customer"] .mobile-order-column-head,
   body[data-session-page="customer"] .qty-control-row{
-    grid-template-columns:54px 72px minmax(0,1fr)!important;
-    column-gap:5px!important;
+    grid-template-columns:50px 92px minmax(104px,1fr)!important;
+    column-gap:4px!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-control{
-    grid-template-columns:32px minmax(34px,1fr) 32px!important;
+    grid-template-columns:28px minmax(38px,1fr) 28px!important;
     gap:3px!important;
   }
   body[data-session-page="customer"] .qty-control-row .qty-btn{
-    width:32px!important;
-    min-width:32px!important;
+    width:28px!important;
+    min-width:28px!important;
   }
 }
 

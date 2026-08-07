@@ -55,6 +55,19 @@ let favoriteMainCategoryIds = new Set();
 let customerItemPriceMap = new Map();
 function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(String(itemNumber)) ?? group?.price ?? 0); }
 function displayWarehouseItem(group, itemNumber) { const code=String(group?.warehouse_code||'').trim().toUpperCase(); return code?`${code}-${itemNumber}`:String(itemNumber); }
+function formatGroupUnitPrice(group) {
+  const prices = [...new Set((group?.item_numbers || []).map(number => effectiveItemPrice(group, number)).filter(Number.isFinite))].sort((a,b)=>a-b);
+  if (!prices.length) return `${formatWon(group?.price || 0)} / 1죽`;
+  if (prices.length === 1) return `${formatWon(prices[0])} / 1죽`;
+  return `${Number(prices[0]).toLocaleString()}~${Number(prices[prices.length-1]).toLocaleString()}원 / 1죽`;
+}
+function formatCategoryUnitPrice(category) {
+  const categoryGroups = groups.filter(group => Number(group.category_id) === Number(category?.id));
+  const prices = categoryGroups.flatMap(group => (group.item_numbers || []).map(number => effectiveItemPrice(group, number))).filter(Number.isFinite).sort((a,b)=>a-b);
+  if (!prices.length) return `${formatWon(category?.price || 0)} / 1죽`;
+  if (prices[0] === prices[prices.length-1]) return `${formatWon(prices[0])} / 1죽`;
+  return `${Number(prices[0]).toLocaleString()}~${Number(prices[prices.length-1]).toLocaleString()}원 / 1죽`;
+}
 
 const ITEM_FAVORITES_KEY='designjam_item_favorites';
 function readItemFavorites(){try{return new Set(JSON.parse(localStorage.getItem(ITEM_FAVORITES_KEY)||'[]').map(String));}catch(_){return new Set();}}
@@ -911,7 +924,7 @@ function renderGlobalSearchResults() {
             </p>
 
             <p class="price-text">
-              ${Number(group.price).toLocaleString()}원 / 1죽
+              ${formatGroupUnitPrice(group)}
             </p>
           </button>
         `;
@@ -1056,7 +1069,7 @@ function renderCategoryWithGroups(category) {
         </div>
 
         <strong class="price-text category-section-price">
-          ${formatWon(category.price)} / 1죽
+          ${formatCategoryUnitPrice(category)}
         </strong>
       </div>
 
@@ -1145,7 +1158,7 @@ function renderGroupCard(group) {
       </span>
 
       <span class="price-text">
-        ${formatWon(group.price)} / 1죽
+        ${formatGroupUnitPrice(group)}
       </span>
 
       ${
@@ -1215,7 +1228,7 @@ function openGroup(groupId, requestedItem = "") {
           isSoldout ? "soldout-order-row" : ""
         }" data-qty-row="${escapeAttribute(numberText)}">
           <strong class="compact-item-number">${escapeHtml(displayWarehouseItem(group,numberText))}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}</strong>
-          <span class="compact-item-price">${formatWon(effectiveItemPrice(group,numberText))} / 1죽</span>
+          <span class="compact-item-price"><span>${formatWon(effectiveItemPrice(group,numberText))}</span><small>/1죽</small></span>
 
           <div class="qty-control">
             <button
@@ -1269,7 +1282,7 @@ function openGroup(groupId, requestedItem = "") {
       <p>${escapeHtml(category.name)}</p>
 
       <p class="price-text">
-        ${formatWon(group.price)} / 1죽
+        ${formatGroupUnitPrice(group)}
       </p>
 
       ${renderProductSlider(group)}
@@ -1582,6 +1595,7 @@ function renderCart() {
             <div>
               <strong>${escapeHtml(item.number)}</strong>
               <small>${escapeHtml(item.title)}</small>
+              <small class="cart-unit-price">단가 ${Number(item.price).toLocaleString()}원 / 1죽</small>
             </div>
           </div>
 
@@ -1810,7 +1824,7 @@ async function submitOrder() {
       return `
         <div class="cart-item">
           <strong>${escapeHtml(item.number)}</strong>
-          <span>${Number(item.qty).toLocaleString()}죽</span>
+          <span>${Number(item.qty).toLocaleString()}죽 · 단가 ${Number(item.price).toLocaleString()}원 / 1죽</span>
           <span>${itemTotal.toLocaleString()}원</span>
         </div>
       `;
@@ -2111,7 +2125,7 @@ function renderCustomerSearchResults(keyword=""){
     return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
       ${group.image_url?`<img src="${escapeAttribute(group.image_url)}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
       <span><strong>${escapeHtml(group.title||'상품')}</strong><small>${escapeHtml(category?.name||'')} · ${numbers.map(escapeHtml).join(', ')}</small></span>
-      <em>${formatWon(group.price)} / 1죽</em>
+      <em>${formatGroupUnitPrice(group)}</em>
     </button>`;
   }).join('');
 }
