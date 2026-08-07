@@ -25,7 +25,7 @@ function effectiveProxyPrice(itemNumber,basePrice=0){return Number(customerPrice
 function currentCustomerName(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';if(mode==='direct')return ($('proxyDirectName')?.value||'').trim();const c=customers.find(x=>String(x.id)===String($('proxyCustomer')?.value||''));return c?(c.business_name||c.owner_name||c.email||'등록 거래처'):''}
 function addLine(value={}){
  const row=document.createElement('div');row.className='proxy-line';
- row.innerHTML=`<input class="proxy-item" list="proxyItemList" autocomplete="off" placeholder="품번" value="${esc(value.item_number||'')}"><input class="proxy-qty" type="number" min="1" step="1" value="${Number(value.qty||1)}" placeholder="수량(죽)"><input class="proxy-price" type="number" min="0" step="1" value="${Number(value.price||0)}" placeholder="단가"><strong class="proxy-line-total">0원</strong><button class="remove-line" type="button">삭제</button>`;
+ row.innerHTML=`<input class="proxy-item" list="proxyItemList" autocomplete="off" placeholder="품번" value="${esc(value.item_number||'')}"><input class="proxy-qty" type="number" min="1" step="1" value="${Number(value.qty||1)}" placeholder="수량(죽)"><input class="proxy-price" type="number" min="0" step="1" value="${Number(value.price||0)}" placeholder="단가(1죽)"><strong class="proxy-line-total">0원</strong><button class="remove-line" type="button">삭제</button>`;
  const syncPrice=()=>{const input=row.querySelector('.proxy-item');const found=findItem(input.value);if(found){input.value=found.item_number;row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)}calc()};
  row.querySelector('.remove-line').onclick=()=>{row.remove();if(!document.querySelector('.proxy-line'))addLine();calc()};
  row.querySelector('.proxy-item').addEventListener('input',()=>{const found=findItem(row.querySelector('.proxy-item').value);if(found){row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)}calc()});
@@ -33,7 +33,7 @@ function addLine(value={}){
  row.querySelectorAll('.proxy-qty,.proxy-price').forEach(x=>x.addEventListener('input',calc));$('proxyLines').appendChild(row);syncPrice();
 }
 function calc(){
- let qty=0,total=0,count=0;document.querySelectorAll('.proxy-line').forEach(r=>{const q=Math.max(0,Math.floor(Number(r.querySelector('.proxy-qty').value||0))),p=Math.max(0,Number(r.querySelector('.proxy-price').value||0)),amount=q*p*10;qty+=q;total+=amount;if(r.querySelector('.proxy-item').value.trim())count++;r.querySelector('.proxy-line-total').textContent=amount.toLocaleString()+'원'});
+ let qty=0,total=0,count=0;document.querySelectorAll('.proxy-line').forEach(r=>{const q=Math.max(0,Math.floor(Number(r.querySelector('.proxy-qty').value||0))),p=Math.max(0,Number(r.querySelector('.proxy-price').value||0)),amount=q*p;qty+=q;total+=amount;if(r.querySelector('.proxy-item').value.trim())count++;r.querySelector('.proxy-line-total').textContent=amount.toLocaleString()+'원'});
  $('proxyTotal').textContent=`총 ${count.toLocaleString()}품번 · ${qty.toLocaleString()}죽 · ${total.toLocaleString()}원`;
  $('proxySummaryCustomer').textContent=currentCustomerName()||'미선택';$('proxySummarySku').textContent=count.toLocaleString()+'종';$('proxySummaryQty').textContent=qty.toLocaleString()+'죽';$('proxySummaryTotal').textContent=total.toLocaleString()+'원';
 }
@@ -50,7 +50,7 @@ async function submit(){
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
   const directInfo=mode==='direct'?[`대표자: ${($('proxyDirectOwner').value||'').trim()}`,`전화: ${($('proxyDirectPhone').value||'').trim()}`,`주소: ${($('proxyDirectAddress').value||'').trim()}`].filter(x=>!x.endsWith(': ')).join(' / '):'';
   const finalMemo=['[관리자 대신주문]',memo,directInfo].filter(Boolean).join(' | ');
-  const rows=lines.map(x=>({item_number:x.item_number,qty:x.qty,price:x.price,total:x.qty*x.price*10}));
+  const rows=lines.map(x=>({item_number:x.item_number,qty:x.qty,price:x.price,total:x.qty*x.price}));
   const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{
     p_order_number:order,
     p_customer_id:mode==='direct'?null:customer.id,

@@ -541,7 +541,7 @@ function renderCategoryList() {
 </p>
 
           <p>
-            <strong>기본 단가:</strong>
+            <strong>기본 단가(1죽):</strong>
             ${Number(category.price).toLocaleString()}원
           </p>
         </div>
@@ -904,7 +904,7 @@ function renderGroupList() {
           </p>
 
           <p>
-            <strong>단가:</strong>
+            <strong>단가(1죽):</strong>
             ${Number(
               group.price || 0
             ).toLocaleString()}원
@@ -2553,7 +2553,7 @@ function renderExcelPreview(rows, matchResult) {
             <th>카테고리</th>
             <th>묶음명</th>
             <th>품번</th>
-            <th>단가</th>
+            <th>단가(1죽)</th>
             <th>매칭</th>
           </tr>
         </thead>

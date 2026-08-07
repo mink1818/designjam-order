@@ -772,7 +772,7 @@ body.auth-pending > *,
 body.admin-page-leaving > * { visibility: hidden !important; }
 body.auth-pending::before,
 body.admin-page-leaving::before {
-  content: "디자인삭스 관리자\A화면을 불러오는 중...";
+  content: "디자인 잠 관리자\A화면을 불러오는 중...";
   white-space: pre-line;
   position: fixed;
   inset: 0;

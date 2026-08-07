@@ -134,7 +134,7 @@ function renderStatement(items, productGroups = []) {
     const orderedQty = Number(item.qty || 0);
     const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
     const shippedQty = Math.max(0, orderedQty - soldoutQty);
-    return sum + Number(item.price || 0) * shippedQty * 10;
+    return sum + Number(item.price || 0) * shippedQty;
   }, 0);
 
   const shippingFee =
@@ -163,7 +163,7 @@ function renderStatement(items, productGroups = []) {
     const row = compactRows.get(key);
     row.shippedQty += shippedQty;
     row.soldoutQty += soldoutQty;
-    row.rowTotal += price * shippedQty * 10;
+    row.rowTotal += price * shippedQty;
     const displayNumber = item.warehouse_code ? `${String(item.warehouse_code).toUpperCase()}-${item.item_number}` : item.item_number;
     row.itemNumbers.push(`${displayNumber}${orderedQty !== 1 ? `(${orderedQty})` : ""}${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
@@ -184,7 +184,7 @@ function renderStatement(items, productGroups = []) {
     <header class="statement-header">
       <div>
         <h1>거래명세서</h1>
-        <p>디자인 삭스</p>
+        <p>디자인 잠</p>
       </div>
 
       <div class="statement-date">
@@ -227,7 +227,7 @@ function renderStatement(items, productGroups = []) {
           <th>카테고리</th>
           <th>해당 품번</th>
           <th>수량(죽)</th>
-          <th>단가</th>
+          <th>단가(1죽)</th>
           <th>금액</th>
         </tr>
       </thead>
@@ -279,7 +279,7 @@ function renderStatement(items, productGroups = []) {
 
     <footer class="statement-footer">
       <p>상기 내용과 같이 거래하였음을 확인합니다.</p>
-      <h2>디자인 삭스</h2>
+      <h2>디자인 잠</h2>
     </footer>
   `;
 }

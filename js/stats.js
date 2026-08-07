@@ -86,7 +86,7 @@ function calculateStats(){
     let productAmount=0,orderQty=0;
     order.items.forEach(item=>{
       if(item.is_soldout)return;
-      const q=Number(item.qty||0),price=Number(item.price||0),amount=price*q*10;
+      const q=Number(item.qty||0),price=Number(item.price||0),amount=price*q;
       orderQty+=q;productAmount+=amount;
       const num=String(item.item_number||'품번 미입력');
       const p=products.get(num)||{name:num,qty:0,amount:0};p.qty+=q;p.amount+=amount;products.set(num,p);

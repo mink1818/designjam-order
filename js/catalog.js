@@ -911,7 +911,7 @@ function renderGlobalSearchResults() {
             </p>
 
             <p class="price-text">
-              ${Number(group.price).toLocaleString()}원
+              ${Number(group.price).toLocaleString()}원 / 1죽
             </p>
           </button>
         `;
@@ -1056,7 +1056,7 @@ function renderCategoryWithGroups(category) {
         </div>
 
         <strong class="price-text category-section-price">
-          ${formatWon(category.price)}
+          ${formatWon(category.price)} / 1죽
         </strong>
       </div>
 
@@ -1145,7 +1145,7 @@ function renderGroupCard(group) {
       </span>
 
       <span class="price-text">
-        ${formatWon(group.price)}
+        ${formatWon(group.price)} / 1죽
       </span>
 
       ${
@@ -1215,7 +1215,7 @@ function openGroup(groupId, requestedItem = "") {
           isSoldout ? "soldout-order-row" : ""
         }" data-qty-row="${escapeAttribute(numberText)}">
           <strong class="compact-item-number">${escapeHtml(displayWarehouseItem(group,numberText))}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}</strong>
-          <span class="compact-item-price">${formatWon(effectiveItemPrice(group,numberText))}</span>
+          <span class="compact-item-price">${formatWon(effectiveItemPrice(group,numberText))} / 1죽</span>
 
           <div class="qty-control">
             <button
@@ -1269,7 +1269,7 @@ function openGroup(groupId, requestedItem = "") {
       <p>${escapeHtml(category.name)}</p>
 
       <p class="price-text">
-        ${formatWon(group.price)}
+        ${formatWon(group.price)} / 1죽
       </p>
 
       ${renderProductSlider(group)}
@@ -1422,7 +1422,7 @@ function recalculateGroupTotal(groupId) {
     .forEach(input => {
       const qty = Math.max(0, Number(input.value) || 0);
       totalQty += qty;
-      totalPrice += qty * effectiveItemPrice(group,input.dataset.number) * 10;
+      totalPrice += qty * effectiveItemPrice(group,input.dataset.number);
       if (qty > 0) selectedKinds += 1;
       input.closest(".qty-control-row")?.classList.toggle("has-quantity", qty > 0);
     });
@@ -1565,7 +1565,7 @@ function renderCart() {
   const itemHtml = cart
     .map((item, index) => {
       const itemTotal =
-        Number(item.qty) * Number(item.price) * 10;
+        Number(item.qty) * Number(item.price);
 
       totalQty += Number(item.qty);
       totalPrice += itemTotal;
@@ -1771,7 +1771,7 @@ async function submitOrder() {
     warehouse_code: item.warehouseCode || null,
     qty: Number(item.qty),
     price: Number(item.price),
-    total: Number(item.qty) * Number(item.price) * 10,
+    total: Number(item.qty) * Number(item.price),
     status: "주문접수",
     shipping_fee: 0,
     is_soldout: false
@@ -1802,7 +1802,7 @@ async function submitOrder() {
   const completeItems = cart
     .map(item => {
       const itemTotal =
-        Number(item.qty) * Number(item.price) * 10;
+        Number(item.qty) * Number(item.price);
 
       totalQty += Number(item.qty);
       totalPrice += itemTotal;
@@ -2111,7 +2111,7 @@ function renderCustomerSearchResults(keyword=""){
     return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
       ${group.image_url?`<img src="${escapeAttribute(group.image_url)}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
       <span><strong>${escapeHtml(group.title||'상품')}</strong><small>${escapeHtml(category?.name||'')} · ${numbers.map(escapeHtml).join(', ')}</small></span>
-      <em>${formatWon(group.price)}</em>
+      <em>${formatWon(group.price)} / 1죽</em>
     </button>`;
   }).join('');
 }

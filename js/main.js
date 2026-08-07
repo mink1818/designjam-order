@@ -265,7 +265,7 @@ function renderCart() {
   let cartHtml = "";
 
   cart.forEach(item => {
-    const itemTotal = item.qty * item.price * 10;
+    const itemTotal = item.qty * item.price;
     totalQty += item.qty;
     totalPrice += itemTotal;
 
@@ -351,7 +351,7 @@ const customerName = currentCustomer.business_name;
   item_number: item.number,
   qty: item.qty,
   price: item.price,
-  total: item.qty * item.price * 10,
+  total: item.qty * item.price,
   status: "주문접수"
 }));
 
@@ -372,7 +372,7 @@ const customerName = currentCustomer.business_name;
       <div class="cart-item">
         <strong>${item.number}</strong>
         <span>${item.qty}죽</span>
-        <span>${(item.qty * item.price * 10).toLocaleString()}원</span>
+        <span>${(item.qty * item.price).toLocaleString()}원</span>
       </div>
     `;
   });

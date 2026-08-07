@@ -317,13 +317,13 @@ let summaryTotal = 0;
 let soldoutQty=0;
 
 group.items.forEach(item => {
-  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0)*10;
+  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0);
 });
 
 summaryTotal += Number(group.shipping_fee || 0);
 
     group.items.forEach(item => {
-      const rowTotal = item.price * item.qty * 10;
+      const rowTotal = item.price * item.qty;
       const stockStatus = getAdminStockStatus(item);
 
       itemHtml += `
