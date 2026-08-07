@@ -168,15 +168,14 @@ function renderStatement(items, productGroups = []) {
     row.itemNumbers.push(`${displayNumber}${orderedQty !== 1 ? `(${orderedQty})` : ""}${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
   const itemRows = [...compactRows.values()].map((row, index) => {
-    const oneJukPrice = row.price * 10;
     return `
-      <tr class="statement-edit-row ${row.shippedQty === 0 ? "soldout-row" : ""}" data-statement-row>
-        <td><span class="statement-row-number">${index + 1}</span><button type="button" class="statement-row-delete editor-only" onclick="removeStatementRow(this)" aria-label="행 삭제">×</button></td>
-        <td><input class="statement-cell-input statement-category-input" value="${escapeHtml(row.category)}" aria-label="카테고리"></td>
-        <td class="statement-item-list"><textarea class="statement-cell-input statement-item-input" rows="2" aria-label="품번">${escapeHtml(row.itemNumbers.join(", "))}</textarea></td>
-        <td><input class="statement-cell-input statement-number-input statement-qty-input" type="number" min="0" step="1" value="${row.shippedQty}" aria-label="수량(죽)">${row.soldoutQty ? `<small class="statement-soldout-note">품절 ${row.soldoutQty}죽</small>` : ""}</td>
-        <td><input class="statement-cell-input statement-number-input statement-unit-input" type="number" min="0" step="50" value="${oneJukPrice}" aria-label="1죽 단가"><small class="statement-unit-label">원 / 1죽</small></td>
-        <td><input class="statement-cell-input statement-number-input statement-amount-input" type="number" min="0" step="1" value="${row.rowTotal}" aria-label="금액"><small class="statement-unit-label">원</small></td>
+      <tr class="${row.shippedQty === 0 ? "soldout-row" : ""}">
+        <td>${index + 1}</td>
+        <td><strong>${escapeHtml(row.category)}</strong></td>
+        <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
+        <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
+        <td>${(row.price * 10).toLocaleString()}원 / 1죽</td>
+        <td>${row.shippedQty > 0 ? row.rowTotal.toLocaleString() + "원" : "-"}</td>
       </tr>
     `;
   }).join("");
@@ -234,7 +233,7 @@ function renderStatement(items, productGroups = []) {
         </tr>
       </thead>
 
-      <tbody id="statementItemsBody">
+      <tbody>
         ${itemRows}
       </tbody>
     </table>
@@ -259,22 +258,22 @@ function renderStatement(items, productGroups = []) {
       <section class="statement-summary">
         <div>
           <span>출고수량</span>
-          <strong id="statementTotalQty">${totalQty.toLocaleString()}죽</strong>
+          <strong>${totalQty.toLocaleString()}죽</strong>
         </div>
 
         <div>
           <span>상품금액</span>
-          <strong id="statementProductTotal">${productTotal.toLocaleString()}원</strong>
+          <strong>${productTotal.toLocaleString()}원</strong>
         </div>
 
         <div>
           <span>배송비</span>
-          <label class="statement-shipping-editor"><input id="statementShippingFee" type="number" min="0" step="500" value="${shippingFee}"><span>원</span></label>
+          <strong>${shippingFee.toLocaleString()}원</strong>
         </div>
 
         <div class="final-row">
           <span>최종금액</span>
-          <strong id="statementFinalTotal">${finalTotal.toLocaleString()}원</strong>
+          <strong>${finalTotal.toLocaleString()}원</strong>
         </div>
       </section>
     </section>
@@ -284,78 +283,7 @@ function renderStatement(items, productGroups = []) {
       <h2>디자인 잠</h2>
     </footer>
   `;
-  bindStatementEditor();
 }
-
-function statementNumber(value) {
-  const number = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(number) ? Math.max(0, number) : 0;
-}
-
-function statementRowTemplate(index) {
-  return `<tr class="statement-edit-row manual-statement-row" data-statement-row>
-    <td><span class="statement-row-number">${index}</span><button type="button" class="statement-row-delete editor-only" onclick="removeStatementRow(this)" aria-label="행 삭제">×</button></td>
-    <td><input class="statement-cell-input statement-category-input" value="수기입력" aria-label="카테고리"></td>
-    <td class="statement-item-list"><textarea class="statement-cell-input statement-item-input" rows="2" placeholder="품번 입력" aria-label="품번"></textarea></td>
-    <td><input class="statement-cell-input statement-number-input statement-qty-input" type="number" min="0" step="1" value="1" aria-label="수량(죽)"></td>
-    <td><input class="statement-cell-input statement-number-input statement-unit-input" type="number" min="0" step="50" value="0" aria-label="1죽 단가"><small class="statement-unit-label">원 / 1죽</small></td>
-    <td><input class="statement-cell-input statement-number-input statement-amount-input" type="number" min="0" step="1" value="0" aria-label="금액"><small class="statement-unit-label">원</small></td>
-  </tr>`;
-}
-
-function renumberStatementRows() {
-  document.querySelectorAll("[data-statement-row]").forEach((row, index) => {
-    const number = row.querySelector(".statement-row-number");
-    if (number) number.textContent = index + 1;
-  });
-}
-
-function recalculateStatement(event) {
-  const row = event?.target?.closest?.("[data-statement-row]");
-  if (row && (event.target.classList.contains("statement-qty-input") || event.target.classList.contains("statement-unit-input"))) {
-    const qty = statementNumber(row.querySelector(".statement-qty-input")?.value);
-    const unitPrice = statementNumber(row.querySelector(".statement-unit-input")?.value);
-    row.querySelector(".statement-amount-input").value = qty * unitPrice;
-  }
-  let totalQty = 0;
-  let productTotal = 0;
-  document.querySelectorAll("[data-statement-row]").forEach(item => {
-    totalQty += statementNumber(item.querySelector(".statement-qty-input")?.value);
-    productTotal += statementNumber(item.querySelector(".statement-amount-input")?.value);
-  });
-  const shippingFee = statementNumber(document.getElementById("statementShippingFee")?.value);
-  const qtyBox = document.getElementById("statementTotalQty");
-  const productBox = document.getElementById("statementProductTotal");
-  const finalBox = document.getElementById("statementFinalTotal");
-  if (qtyBox) qtyBox.textContent = `${totalQty.toLocaleString()}죽`;
-  if (productBox) productBox.textContent = `${productTotal.toLocaleString()}원`;
-  if (finalBox) finalBox.textContent = `${(productTotal + shippingFee).toLocaleString()}원`;
-}
-
-function bindStatementEditor() {
-  document.querySelectorAll(".statement-qty-input,.statement-unit-input,.statement-amount-input,#statementShippingFee").forEach(input => input.addEventListener("input", recalculateStatement));
-  recalculateStatement();
-}
-
-function addManualStatementRow() {
-  const body = document.getElementById("statementItemsBody");
-  if (!body) return;
-  body.insertAdjacentHTML("beforeend", statementRowTemplate(body.querySelectorAll("[data-statement-row]").length + 1));
-  const row = body.lastElementChild;
-  row.querySelectorAll(".statement-qty-input,.statement-unit-input,.statement-amount-input").forEach(input => input.addEventListener("input", recalculateStatement));
-  renumberStatementRows();
-  recalculateStatement();
-  row.querySelector(".statement-item-input")?.focus();
-}
-
-function removeStatementRow(button) {
-  button.closest("[data-statement-row]")?.remove();
-  renumberStatementRows();
-  recalculateStatement();
-}
-
-window.addManualStatementRow = addManualStatementRow;
-window.removeStatementRow = removeStatementRow;
 
 function renderStatementBankBox(first){
   const bankName=first.payment_bank_name||statementDefaultAccount?.bank_name||"";

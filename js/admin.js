@@ -301,6 +301,35 @@ function formatMobileOrderDate(value) {
   return `${month}-${day} ${hour}:${minute}`;
 }
 
+function canEditOrderItems(group) {
+  return group.status !== "출고완료" &&
+    !String(group.pickingStatus || "").includes("검증완료") &&
+    group.pickingStatus !== "피킹중" &&
+    group.items.every(item => Number(item.picked_qty || 0) === 0 && Number(item.soldout_qty || 0) === 0 && !item.is_soldout);
+}
+
+function renderOrderItemEditor(group, index) {
+  if (!canEditOrderItems(group)) return `<p class="order-edit-locked">피킹을 시작하거나 검증한 주문은 피킹 초기화 후 품목을 수정할 수 있습니다.</p>`;
+  const rows = group.items.map(item => {
+    const displayNumber = item.warehouse_code ? `${String(item.warehouse_code).toUpperCase()}-${item.item_number}` : item.item_number;
+    return `<div class="order-edit-item-row" data-order-edit-row data-id="${Number(item.id)}">
+      <input class="order-edit-number" type="text" value="${escapeAdminAttr(displayNumber)}" placeholder="품번(예: S-1001)">
+      <input class="order-edit-qty" type="number" min="1" step="1" value="${Number(item.qty || 1)}" aria-label="수량(죽)">
+      <input class="order-edit-price" type="number" min="0" step="50" value="${Number(item.price || 0) * 10}" aria-label="1죽 단가">
+      <input class="order-edit-row-total" type="number" min="0" step="1" value="${Number(item.qty || 0) * Number(item.price || 0) * 10}" aria-label="금액">
+    </div>`;
+  }).join("");
+  return `<section id="order-item-editor-${index}" class="order-item-editor" hidden>
+    <div class="order-edit-head"><span>품번</span><span>수량(죽)</span><span>단가(1죽)</span><span>금액</span></div>
+    <div class="order-edit-rows">${rows}</div>
+    <div class="order-edit-actions">
+      <button type="button" onclick="addOrderItemEditRow(${index})">+ 없는 품번 추가</button>
+      <button type="button" class="order-edit-save" onclick="saveOrderItems('${escapeAdminAttr(group.orderNumber)}',${index})">주문 품목 저장</button>
+    </div>
+    <small>여기서 수정하면 작업지시서·피킹검증·거래명세서에 같이 반영됩니다.</small>
+  </section>`;
+}
+
 function renderOrderCards(groups) {
   if (groups.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>검색 결과가 없습니다</h2></div>";
@@ -366,6 +395,9 @@ summaryTotal += Number(group.shipping_fee || 0);
 <div
 id="detail-${index}"
 class="order-detail">
+
+        ${canEditOrderItems(group) ? `<button class="cart-btn order-items-edit-toggle" type="button" onclick="toggleOrderItemEditor(${index})">품번·수량·단가 수정</button>` : ""}
+        ${renderOrderItemEditor(group, index)}
 
         <div class="pick-list">
           ${itemHtml}
@@ -610,6 +642,87 @@ function editVerifiedPicking(orderNumber) {
   location.href = `picking.html?order=${encodeURIComponent(orderNumber)}&edit=1`;
 }
 window.editVerifiedPicking = editVerifiedPicking;
+
+function splitWarehouseItemNumber(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^([SBI])[-\s](.+)$/i);
+  return match ? { warehouseCode: match[1].toUpperCase(), itemNumber: match[2].trim() } : { warehouseCode: null, itemNumber: text };
+}
+
+function updateOrderEditRowTotal(row) {
+  const qty = Math.max(0, Number(row.querySelector(".order-edit-qty")?.value || 0));
+  const price = Math.max(0, Number(row.querySelector(".order-edit-price")?.value || 0));
+  const total = row.querySelector(".order-edit-row-total");
+  if (total) total.value = qty * price;
+}
+
+function bindOrderEditRow(row) {
+  row.querySelectorAll(".order-edit-qty,.order-edit-price").forEach(input => input.addEventListener("input", () => updateOrderEditRowTotal(row)));
+  row.querySelector(".order-edit-row-total")?.addEventListener("input", event => {
+    const qty = Math.max(1, Number(row.querySelector(".order-edit-qty")?.value || 1));
+    const price = row.querySelector(".order-edit-price");
+    if (price) price.value = Math.max(0, Number(event.target.value || 0)) / qty;
+  });
+  updateOrderEditRowTotal(row);
+}
+
+function toggleOrderItemEditor(index) {
+  const editor = document.getElementById(`order-item-editor-${index}`);
+  if (!editor) return;
+  editor.hidden = !editor.hidden;
+  if (!editor.hidden) editor.querySelectorAll("[data-order-edit-row]").forEach(bindOrderEditRow);
+}
+
+function addOrderItemEditRow(index) {
+  const editor = document.getElementById(`order-item-editor-${index}`);
+  const rows = editor?.querySelector(".order-edit-rows");
+  if (!rows) return;
+  rows.insertAdjacentHTML("beforeend", `<div class="order-edit-item-row new-order-edit-row" data-order-edit-row>
+    <input class="order-edit-number" type="text" placeholder="품번(예: S-1001)">
+    <input class="order-edit-qty" type="number" min="1" step="1" value="1" aria-label="수량(죽)">
+    <input class="order-edit-price" type="number" min="0" step="50" value="0" aria-label="1죽 단가">
+    <input class="order-edit-row-total" type="number" min="0" step="1" value="0" aria-label="금액">
+    <button class="order-edit-remove-new" type="button" onclick="this.closest('[data-order-edit-row]').remove()">삭제</button>
+  </div>`);
+  const row = rows.lastElementChild;
+  bindOrderEditRow(row);
+  row.querySelector(".order-edit-number")?.focus();
+}
+
+async function saveOrderItems(orderNumber, index) {
+  const editor = document.getElementById(`order-item-editor-${index}`);
+  if (!editor) return;
+  const items = [...editor.querySelectorAll("[data-order-edit-row]")].map(row => {
+    const parsed = splitWarehouseItemNumber(row.querySelector(".order-edit-number")?.value);
+    const oneJukPrice = Math.max(0, Number(row.querySelector(".order-edit-price")?.value || 0));
+    return {
+      id: row.dataset.id ? Number(row.dataset.id) : null,
+      item_number: parsed.itemNumber,
+      warehouse_code: parsed.warehouseCode,
+      qty: Math.max(1, Math.floor(Number(row.querySelector(".order-edit-qty")?.value || 1))),
+      price: oneJukPrice / 10
+    };
+  });
+  if (!items.length || items.some(item => !item.item_number)) return alert("품번을 모두 입력해주세요.");
+  if (items.some(item => !Number.isFinite(item.price) || item.price < 0)) return alert("단가를 확인해주세요.");
+  if (!confirm("주문 품목을 저장하면 작업지시서·피킹검증·거래명세서에 반영됩니다.\n계속할까요?")) return;
+  const button = editor.querySelector(".order-edit-save");
+  if (button) { button.disabled = true; button.textContent = "저장 중..."; }
+  try {
+    const { data, error } = await supabaseClient.rpc("admin_save_order_items", { p_order_number: orderNumber, p_items: items });
+    if (error) throw error;
+    if (data?.ok === false) throw new Error(data.error || "주문 품목을 저장하지 못했습니다.");
+    alert("주문 품목을 저장했습니다.");
+    await loadOrders();
+  } catch (error) {
+    alert("주문 품목 저장 실패: " + error.message + "\nSQL/V6.4.1-ADMIN-ORDER-ITEM-EDIT.sql 적용 여부를 확인해주세요.");
+    if (button) { button.disabled = false; button.textContent = "주문 품목 저장"; }
+  }
+}
+
+window.toggleOrderItemEditor = toggleOrderItemEditor;
+window.addOrderItemEditRow = addOrderItemEditRow;
+window.saveOrderItems = saveOrderItems;
 
 function toggleDetail(id) {
   const box = document.getElementById(id);
