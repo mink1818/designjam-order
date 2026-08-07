@@ -387,6 +387,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div class="order-status-stack">
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+    ${canEditOrderItems(group) ? `<button class="order-card-edit-button" type="button" onclick="event.stopPropagation();openOrderItemEditor(${index})">주문수정</button>` : ""}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
@@ -673,6 +674,16 @@ function toggleOrderItemEditor(index) {
   if (!editor.hidden) editor.querySelectorAll("[data-order-edit-row]").forEach(bindOrderEditRow);
 }
 
+function openOrderItemEditor(index) {
+  const detail = document.getElementById(`detail-${index}`);
+  const editor = document.getElementById(`order-item-editor-${index}`);
+  if (!detail || !editor) return;
+  detail.style.display = "block";
+  editor.hidden = false;
+  editor.querySelectorAll("[data-order-edit-row]").forEach(bindOrderEditRow);
+  editor.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 function addOrderItemEditRow(index) {
   const editor = document.getElementById(`order-item-editor-${index}`);
   const rows = editor?.querySelector(".order-edit-rows");
@@ -715,12 +726,13 @@ async function saveOrderItems(orderNumber, index) {
     alert("주문 품목을 저장했습니다.");
     await loadOrders();
   } catch (error) {
-    alert("주문 품목 저장 실패: " + error.message + "\nSQL/V6.4.1-ADMIN-ORDER-ITEM-EDIT.sql 적용 여부를 확인해주세요.");
+    alert("주문 품목 저장 실패: " + error.message + "\nSQL/V6.4.2-ADMIN-ORDER-ITEM-EDIT.sql 적용 여부를 확인해주세요.");
     if (button) { button.disabled = false; button.textContent = "주문 품목 저장"; }
   }
 }
 
 window.toggleOrderItemEditor = toggleOrderItemEditor;
+window.openOrderItemEditor = openOrderItemEditor;
 window.addOrderItemEditRow = addOrderItemEditRow;
 window.saveOrderItems = saveOrderItems;
 
