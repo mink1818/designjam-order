@@ -387,7 +387,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div class="order-status-stack">
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
-    ${canEditOrderItems(group) ? `<button class="order-card-edit-button" type="button" onclick="event.stopPropagation();openOrderItemEditor(${index})">주문수정</button>` : ""}
+    <button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},${isDone})">${isDone ? "수정불가" : "주문수정"}</button>
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
@@ -684,6 +684,27 @@ function openOrderItemEditor(index) {
   editor.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+async function prepareOrderItemEditor(orderNumber, index, editable, isDone) {
+  if (isDone) {
+    alert("출고완료 주문은 재고·출고이력을 보호하기 위해 바로 수정할 수 없습니다.\n먼저 출고취소·재고복원을 진행해주세요.");
+    return;
+  }
+  if (editable) {
+    openOrderItemEditor(index);
+    return;
+  }
+  if (!confirm("이 주문에 피킹·품절·최종검증 기록이 있습니다.\n수정하려면 피킹을 초기화하고, 검증 시 차감된 재고를 복원해야 합니다.\n\n피킹을 초기화하고 주문을 수정할까요?")) return;
+  try {
+    const { data, error } = await supabaseClient.rpc("reset_order_picking", { p_order_number: orderNumber, p_device_name: "주문관리 수정 초기화" });
+    if (error) throw error;
+    alert(`피킹을 초기화했습니다.${Number(data?.restored_quantity || 0) > 0 ? `\nERP 재고 ${Number(data.restored_quantity)}개를 복원했습니다.` : ""}`);
+    await loadOrders();
+    setTimeout(() => openOrderItemEditor(index), 80);
+  } catch (error) {
+    alert("피킹 초기화 실패: " + error.message + "\nSQL/V6.4.0-PICKING-RESET-WAREHOUSE-CUSTOMER-PRICE.sql 적용 여부를 확인해주세요.");
+  }
+}
+
 function addOrderItemEditRow(index) {
   const editor = document.getElementById(`order-item-editor-${index}`);
   const rows = editor?.querySelector(".order-edit-rows");
@@ -733,6 +754,7 @@ async function saveOrderItems(orderNumber, index) {
 
 window.toggleOrderItemEditor = toggleOrderItemEditor;
 window.openOrderItemEditor = openOrderItemEditor;
+window.prepareOrderItemEditor = prepareOrderItemEditor;
 window.addOrderItemEditRow = addOrderItemEditRow;
 window.saveOrderItems = saveOrderItems;
 
