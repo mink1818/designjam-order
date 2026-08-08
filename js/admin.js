@@ -215,6 +215,7 @@ try {
     groups.filter(g => g.status === "출고완료").length;
 
   const keyword = adminSearch?.value?.trim() || "";
+  const normalizedKeyword=inventoryKey(keyword);const exactItemSearch=Boolean(keyword)&&groups.some(group=>group.items.some(item=>inventoryKey(item.item_number)===normalizedKeyword));
 
   const filteredGroups = groups
     .filter(group => {
@@ -231,6 +232,8 @@ try {
       if (!keyword) return true;
 
       const itemText = group.items.map(item => item.item_number).join(" ");
+
+      if(exactItemSearch)return group.items.some(item=>inventoryKey(item.item_number)===normalizedKeyword);
 
       return (
         group.customerName?.includes(keyword) ||

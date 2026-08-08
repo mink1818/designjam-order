@@ -4,6 +4,9 @@ body {
   background: #f4f4f4;
 }
 
+/* V6.4.8 S/B/I 출고지별 매출 */
+.warehouse-sales-card{display:flex;flex-direction:column;gap:7px;border-top:5px solid #64748b}.warehouse-sales-card.warehouse-s{border-top-color:#2563eb}.warehouse-sales-card.warehouse-b{border-top-color:#16a34a}.warehouse-sales-card.warehouse-i{border-top-color:#d97706}.warehouse-sales-card strong{font-size:22px}.warehouse-sales-card small{color:#64748b}
+
 header {
   background: #1b4b91;
   color: white;

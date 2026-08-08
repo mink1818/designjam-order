@@ -53,7 +53,8 @@ let currentUser = null;
 let currentCustomer = null;
 let favoriteMainCategoryIds = new Set();
 let customerItemPriceMap = new Map();
-function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(String(itemNumber)) ?? group?.price ?? 0); }
+function customerPriceKey(value) { return String(value ?? "").trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/, ""); }
+function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(customerPriceKey(itemNumber)) ?? group?.price ?? 0); }
 function displayWarehouseItem(group, itemNumber) { const code=String(group?.warehouse_code||'').trim().toUpperCase(); return code?`${code}-${itemNumber}`:String(itemNumber); }
 function formatGroupUnitPrice(group) {
   const prices = [...new Set((group?.item_numbers || []).map(number => effectiveItemPrice(group, number)).filter(Number.isFinite))].sort((a,b)=>a-b);
@@ -360,7 +361,7 @@ async function loadCatalog() {
   customerItemPriceMap = new Map();
   if (currentUser && !ADMIN_PREVIEW_MODE) {
     const priceResult = await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id", currentUser.id);
-    if (!priceResult.error) (priceResult.data || []).forEach(row => customerItemPriceMap.set(String(row.item_number), Number(row.price)));
+    if (!priceResult.error) (priceResult.data || []).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price)));
   }
 
   await loadCustomerFeatureData();
@@ -709,7 +710,7 @@ function renderAllProducts(pushHistory = true) {
   hideLegacyFilters();
 
   const keyword = normalizeSearch(catalogSearch?.value);
-  const matched = sortProductGroups(keyword ? groups.filter(group => buildGroupSearchText(group).includes(keyword)) : groups);
+  const matched = sortProductGroups(keyword ? filterGroupsForSearch(keyword) : groups);
 
   catalogList.innerHTML = `
     ${cartTopButton()}
@@ -816,6 +817,7 @@ function buildGroupSearchText(group) {
 
   return normalizeSearch(values.join(" "));
 }
+function filterGroupsForSearch(keyword,textBuilder=buildGroupSearchText){const key=normalizeSearch(keyword);if(!key)return groups;const exactExists=groups.some(group=>(group.item_numbers||[]).some(number=>normalizeSearch(number)===key));return groups.filter(group=>exactExists?(group.item_numbers||[]).some(number=>normalizeSearch(number)===key):textBuilder(group).includes(key))}
 
 /* 브랜드·카테고리·품번 전체 검색 */
 function renderGlobalSearchResults() {
@@ -828,9 +830,7 @@ function renderGlobalSearchResults() {
 
   catalogFilters.style.display = "none";
 
-  const matchedGroups = groups.filter(group =>
-    buildGroupSearchText(group).includes(normalizeSearch(keyword))
-  );
+  const matchedGroups = filterGroupsForSearch(keyword);
 
   if (matchedGroups.length === 0) {
     catalogList.innerHTML = `
@@ -1727,12 +1727,13 @@ function showOrderForm() {
 
       <label for="orderMemo">메모</label>
 
-      <input
+      <textarea
         id="orderMemo"
         class="order-input"
-        type="text"
+        rows="5"
+        maxlength="1000"
         placeholder="예: 빠른출고, 오후배송"
-      >
+      ></textarea>
 
       <button
         id="submitOrderButton"

@@ -26,6 +26,7 @@ const statementArea =
   document.getElementById("statementArea");
 let statementDefaultAccount = null;
 let currentStatementOrderNumber = "거래명세서";
+let currentStatementCustomerName = "거래처";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -131,6 +132,7 @@ async function loadStatement() {
 
 function renderStatement(items, productGroups = []) {
   const first = items[0];
+  currentStatementCustomerName = first.customer_name || "거래처";
 
   const productTotal = items.reduce((sum, item) => {
     const orderedQty = Number(item.qty || 0);
@@ -329,7 +331,8 @@ async function saveStatementImage(button) {
       scrollY: 0
     });
     const link = document.createElement("a");
-    link.download = `${String(currentStatementOrderNumber).replace(/[^0-9A-Za-z가-힣_-]/g, "_")}_거래명세서_전체.png`;
+    const now=new Date(),date=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    link.download = `${String(currentStatementCustomerName).replace(/[^0-9A-Za-z가-힣_-]/g, "_")}_${date}_거래명세서.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
     button.textContent = "이미지 저장 완료";

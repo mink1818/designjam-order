@@ -16,11 +16,11 @@
     if (document.getElementById('adminMobileBottomNav')) return;
     const active = currentKey();
     const items = [
+      ['back', '#back', '←', '뒤로'],
+      ['forward', '#forward', '→', '앞으로'],
       ['home', 'admin-home.html', '🏠', '홈'],
       ['orders', 'admin.html?view=orders', '📦', '주문'],
-      ['products', 'products.html', '🧦', '상품'],
-      ['members', 'members.html', '🏢', '거래처'],
-      ['settings', 'settings.html', '⚙️', '설정']
+      ['menu', 'admin-home.html#menu', '☰', '전체메뉴']
     ];
     const nav = document.createElement('nav');
     nav.id = 'adminMobileBottomNav';
@@ -30,6 +30,8 @@
       `<a href="${href}" class="${active === key ? 'active' : ''}" ${active === key ? 'aria-current="page"' : ''}><span>${icon}</span><b>${label}</b></a>`
     ).join('');
     document.body.appendChild(nav);
+    nav.querySelector('[href="#back"]')?.addEventListener('click',event=>{event.preventDefault();history.back()});
+    nav.querySelector('[href="#forward"]')?.addEventListener('click',event=>{event.preventDefault();history.forward()});
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addAdminMobileNav);
