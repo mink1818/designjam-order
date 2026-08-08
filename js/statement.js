@@ -25,6 +25,7 @@ function isDesignjamAdminEmail(email) {
 const statementArea =
   document.getElementById("statementArea");
 let statementDefaultAccount = null;
+let currentStatementOrderNumber = "거래명세서";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -87,6 +88,7 @@ async function checkAdminAccess() {
 async function loadStatement() {
   const params = new URLSearchParams(location.search);
   const orderNumber = params.get("order");
+  currentStatementOrderNumber = orderNumber || "거래명세서";
 
   if (!orderNumber) {
     statementArea.innerHTML = `
@@ -184,7 +186,7 @@ function renderStatement(items, productGroups = []) {
     <header class="statement-header">
       <div>
         <h1>거래명세서</h1>
-        <p>디자인 잠</p>
+        <p>디자인 삭스</p>
       </div>
 
       <div class="statement-date">
@@ -280,7 +282,7 @@ function renderStatement(items, productGroups = []) {
 
     <footer class="statement-footer">
       <p>상기 내용과 같이 거래하였음을 확인합니다.</p>
-      <h2>디자인 잠</h2>
+      <h2>디자인 삭스</h2>
     </footer>
   `;
 }
@@ -308,6 +310,37 @@ function printStatement() {
   window.addEventListener("afterprint", restore);
   window.print();
   setTimeout(restore, 1500);
+}
+
+async function saveStatementImage(button) {
+  if (!window.html2canvas) return alert("이미지 저장 기능을 불러오지 못했습니다. 인터넷 연결 후 새로고침해주세요.");
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "전체 화면 만드는 중...";
+  try {
+    const canvas = await window.html2canvas(statementArea, {
+      backgroundColor: "#ffffff",
+      scale: Math.min(1.5, Math.max(1, window.devicePixelRatio || 1)),
+      useCORS: true,
+      logging: false,
+      windowWidth: statementArea.scrollWidth,
+      windowHeight: statementArea.scrollHeight,
+      scrollX: 0,
+      scrollY: 0
+    });
+    const link = document.createElement("a");
+    link.download = `${String(currentStatementOrderNumber).replace(/[^0-9A-Za-z가-힣_-]/g, "_")}_거래명세서_전체.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    button.textContent = "이미지 저장 완료";
+  } catch (error) {
+    console.error(error);
+    alert("긴 화면 이미지 저장에 실패했습니다. 다시 시도해주세요.");
+    button.textContent = original;
+  } finally {
+    button.disabled = false;
+    setTimeout(() => { button.textContent = original; }, 1600);
+  }
 }
 
 function closeStatement() {

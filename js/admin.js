@@ -348,6 +348,29 @@ function getOrderWarehouseSections(items) {
   return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code) })).filter(section => section.items.length);
 }
 
+async function copyWarehouseOrder(button) {
+  const section = button.closest(".admin-warehouse-section");
+  const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
+  const text = rows.map(row => `${row.dataset.copyItem}\t${row.dataset.copyQty}`).join("\n");
+  if (!text) return alert("복사할 품번이 없습니다.");
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+  const original = button.textContent;
+  button.textContent = `${rows.length}품번 복사완료`;
+  button.classList.add("copied");
+  setTimeout(() => { button.textContent = original; button.classList.remove("copied"); }, 1600);
+}
+
 function renderOrderCards(groups) {
   if (groups.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>검색 결과가 없습니다</h2></div>";
@@ -372,14 +395,14 @@ summaryTotal += Number(group.shipping_fee || 0);
     getOrderWarehouseSections(group.items).forEach(section => {
       const sectionQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
       itemHtml += `<div class="admin-warehouse-section warehouse-${section.code.toLowerCase()}">
-        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span>${section.items.length}품번 · ${sectionQty}죽</span></div>`;
+        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · ${sectionQty}죽</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this)">품번·수량 복사</button></span></div>`;
       section.items.forEach(item => {
         const oneJukPrice = Number(item.price || 0);
         const rowTotal = oneJukPrice * Number(item.qty || 0);
         const stockStatus = getAdminStockStatus(item);
 
         itemHtml += `
-        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-row-total="${rowTotal}">
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.item_number)}" data-copy-qty="${Number(item.qty || 0)}">
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}

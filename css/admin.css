@@ -772,7 +772,7 @@ body.auth-pending > *,
 body.admin-page-leaving > * { visibility: hidden !important; }
 body.auth-pending::before,
 body.admin-page-leaving::before {
-  content: "디자인 잠 관리자\A화면을 불러오는 중...";
+  content: "디자인 삭스 관리자\A화면을 불러오는 중...";
   white-space: pre-line;
   position: fixed;
   inset: 0;
@@ -2282,6 +2282,7 @@ body[data-session-page="admin"] .v3-metric-grid{
 
 /* V6.4.6 주문관리 출고지 구분 */
 .admin-warehouse-section{margin:12px 0;border:1px solid #d8e1eb;border-radius:12px;overflow:hidden}.admin-warehouse-heading{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#edf2f7;color:#17324d}.admin-warehouse-heading strong{font-size:16px;font-weight:950}.admin-warehouse-heading span{font-size:12px;font-weight:800}.admin-warehouse-section.warehouse-s .admin-warehouse-heading{background:#dbeafe;color:#1d4ed8}.admin-warehouse-section.warehouse-b .admin-warehouse-heading{background:#dcfce7;color:#166534}.admin-warehouse-section.warehouse-i .admin-warehouse-heading{background:#fef3c7;color:#92400e}.admin-warehouse-section .pick-row{margin:0;border-radius:0;border-left:0;border-right:0}.admin-warehouse-section .pick-row:last-child{border-bottom:0}html[data-theme="dark"] .admin-warehouse-section{border-color:#475569}html[data-theme="dark"] .admin-warehouse-heading,html[data-theme="dark"] .admin-warehouse-section.warehouse-s .admin-warehouse-heading,html[data-theme="dark"] .admin-warehouse-section.warehouse-b .admin-warehouse-heading,html[data-theme="dark"] .admin-warehouse-section.warehouse-i .admin-warehouse-heading{background:#25364a;color:#f8fafc}
+.admin-warehouse-heading-actions{display:flex;align-items:center;gap:8px}.admin-warehouse-heading-actions small{font-size:12px}.warehouse-copy-button{border:0;border-radius:7px;padding:7px 10px;background:#173f70;color:#fff;font-size:12px;font-weight:900;cursor:pointer}.warehouse-copy-button.copied{background:#0b7a43}html[data-theme="dark"] .warehouse-copy-button{background:#3b82f6;color:#fff!important}@media(max-width:620px){.admin-warehouse-heading{align-items:flex-start;gap:8px}.admin-warehouse-heading-actions{flex-direction:column;align-items:flex-end;gap:4px}.warehouse-copy-button{padding:6px 8px;font-size:11px}}
 .barcode-label-preview[data-label-size="45x25"] .barcode-label-svg{width:84%}
 .barcode-label-preview[data-label-size="80x50"] .barcode-label-svg{width:86%}
 .barcode-label-preview::after{content:"PDF·인쇄 시 각 칸의 위·아래·좌·우에 연한 절단 구분선이 표시됩니다.";display:block;margin-top:12px;color:#5f6f82;font-size:12px;font-weight:800;text-align:center}

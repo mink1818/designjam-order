@@ -38,6 +38,9 @@ body {
   background: #777;
 }
 
+#saveLongStatement { background:#0b7a43; }
+.screen-menu button:disabled { opacity:.6; cursor:wait; }
+
 .statement-sheet {
   width: 100%;
   max-width: 850px;
