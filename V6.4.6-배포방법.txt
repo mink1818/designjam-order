@@ -1,0 +1,26 @@
+DESIGN SOCKS V6.4.6 배포 방법
+
+적용 내용
+- 주문관리 품목을 S/B/I/기타 출고지별로 분리 표시
+- 피킹검증·작업지시서를 출고지별로 분리 표시
+- 전체 작업지시서 출력 시 출고지마다 새 페이지로 출력
+- S/B/I 각 출고지만 개별 인쇄하는 버튼 추가
+- 등록 단가가 1죽 가격인데 관리자 화면에서 다시 ×10 되던 오류 수정
+- 관리자 주문관리·주문수정·피킹검증·거래명세서 금액 계산 정상화
+- 주문수정 저장 시 단가를 /10 하던 오류 수정
+- 관리자 대신주문 직접 입력 시 등록 거래처와 이름이 일치하면 품번별 거래처 단가 적용
+- ERP 재고센터에 S/B/I 출고지 필터 추가
+- S/B/I 출고지별 품번 재고 일괄편집 및 변경이력 기록
+
+Supabase SQL Editor에서 먼저 실행
+SQL/V6.4.6-WAREHOUSE-WORKSHEET-PRICE-BULK-STOCK.sql
+
+터미널
+git add .
+git commit -m "release v6.4.6 warehouse worksheets price and bulk stock"
+git push
+
+SQL 실행: 필요
+Supabase Functions 재배포: 불필요
+
+배포 후 Ctrl + F5로 새로고침하고 ERP 재고센터에서 상품 품번 동기화를 한 번 실행하세요.

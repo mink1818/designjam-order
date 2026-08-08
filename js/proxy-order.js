@@ -20,8 +20,11 @@ async function fetchAll(table,select,order='created_at'){
 function asItemNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function rawPrice(item){return Number(item?.price??item?.sale_price??item?.unit_price??item?.product_price??0)||0}
 function findItem(value){const key=normalizeItem(value);return items.find(x=>normalizeItem(x.item_number)===key)}
-function selectedCustomerId(){return String($('proxyCustomer')?.value||'')}
+function normalizeCustomer(value){return String(value||'').trim().normalize('NFKC').replace(/\s+/g,'').toLowerCase()}
+function matchedDirectCustomer(){const key=normalizeCustomer($('proxyDirectName')?.value);if(!key)return null;return customers.find(customer=>[customer.business_name,customer.owner_name,customer.email].some(value=>normalizeCustomer(value)===key))||null}
+function selectedCustomerId(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';if(mode==='direct')return String(matchedDirectCustomer()?.id||'');return String($('proxyCustomer')?.value||'')}
 function effectiveProxyPrice(itemNumber,basePrice=0){return Number(customerPrices.get(`${selectedCustomerId()}::${normalizeItem(itemNumber)}`)??basePrice??0)}
+function refreshAllLinePrices(){document.querySelectorAll('.proxy-line').forEach(row=>{const found=findItem(row.querySelector('.proxy-item')?.value);if(found)row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)});const match=matchedDirectCustomer(),box=$('proxyDirectPriceMatch');if(box){box.hidden=!match;box.textContent=match?`등록 거래처 “${match.business_name||match.owner_name||match.email}”의 품번별 전용 단가를 적용합니다.`:''}calc()}
 function currentCustomerName(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';if(mode==='direct')return ($('proxyDirectName')?.value||'').trim();const c=customers.find(x=>String(x.id)===String($('proxyCustomer')?.value||''));return c?(c.business_name||c.owner_name||c.email||'등록 거래처'):''}
 function addLine(value={}){
  const row=document.createElement('div');row.className='proxy-line';
@@ -39,7 +42,7 @@ function calc(){
 }
 function makeOrderNumber(){const d=new Date(),pad=n=>String(n).padStart(2,'0');return `ADMIN-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${Math.random().toString(36).slice(2,6).toUpperCase()}`}
 async function submit(){
- showError('');const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';const customer=customers.find(c=>String(c.id)===String($('proxyCustomer').value));const directName=($('proxyDirectName').value||'').trim();
+ showError('');const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';const customer=customers.find(c=>String(c.id)===String($('proxyCustomer').value));const directCustomer=mode==='direct'?matchedDirectCustomer():null;const directName=($('proxyDirectName').value||'').trim();
  if(mode==='select'&&!customer){showError('등록 거래처를 선택하세요.');return}if(mode==='direct'&&!directName){showError('직접 입력할 거래처명을 입력하세요.');return}
  const lines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0))})).filter(x=>x.item_number);
  if(!lines.length){showError('주문 품번을 한 개 이상 입력하세요.');return}
@@ -50,10 +53,10 @@ async function submit(){
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
   const directInfo=mode==='direct'?[`대표자: ${($('proxyDirectOwner').value||'').trim()}`,`전화: ${($('proxyDirectPhone').value||'').trim()}`,`주소: ${($('proxyDirectAddress').value||'').trim()}`].filter(x=>!x.endsWith(': ')).join(' / '):'';
   const finalMemo=['[관리자 대신주문]',memo,directInfo].filter(Boolean).join(' | ');
-  const rows=lines.map(x=>({item_number:x.item_number,qty:x.qty,price:x.price,total:x.qty*x.price}));
+  const rows=lines.map(x=>{const found=findItem(x.item_number);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:x.qty,price:x.price,total:x.qty*x.price}});
   const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{
     p_order_number:order,
-    p_customer_id:mode==='direct'?null:customer.id,
+    p_customer_id:mode==='direct'?(directCustomer?.id||null):customer.id,
     p_customer_name:customerName,
     p_memo:finalMemo,
     p_items:rows
@@ -69,16 +72,17 @@ async function init(){
   const [customerRows,inventoryRows,groups,priceRows]=await Promise.all([fetchAll('customers','id,business_name,owner_name,email,approved,blocked,is_admin','created_at'),fetchAll('inventory_items','*','item_number'),fetchAll('product_groups','*','sort_order'),fetchAll('customer_item_prices','customer_id,item_number,price','item_number').catch(()=>[])]);
   customers=customerRows.filter(x=>!x.is_admin&&!x.blocked);
   customerPrices=new Map((priceRows||[]).map(row=>[`${row.customer_id}::${normalizeItem(row.item_number)}`,Number(row.price)]));
-  const priceMap=new Map();(groups||[]).forEach(g=>asItemNumbers(g.item_numbers).forEach(n=>priceMap.set(normalizeItem(n),Number(g.price||0))));
-  items=(inventoryRows||[]).map(x=>({...x,price:rawPrice(x)||priceMap.get(normalizeItem(x.item_number))||0}));
+  const productMap=new Map();(groups||[]).forEach(g=>asItemNumbers(g.item_numbers).forEach(n=>productMap.set(normalizeItem(n),{price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').trim().toUpperCase()||null})));
+  items=(inventoryRows||[]).map(x=>{const product=productMap.get(normalizeItem(x.item_number))||{};return{...x,price:rawPrice(x)||product.price||0,warehouse_code:x.warehouse_code||product.warehouse_code||null}});
   // product_groups에만 있고 inventory_items에는 아직 없는 품번도 대신주문 검색에 노출
-  for(const g of groups||[])for(const n of asItemNumbers(g.item_numbers)){const key=normalizeItem(n);if(key&&!items.some(x=>normalizeItem(x.item_number)===key))items.push({item_number:String(n).trim(),price:Number(g.price||0)})}
+  for(const g of groups||[])for(const n of asItemNumbers(g.item_numbers)){const key=normalizeItem(n);if(key&&!items.some(x=>normalizeItem(x.item_number)===key))items.push({item_number:String(n).trim(),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').trim().toUpperCase()||null})}
   items.sort((a,b)=>String(a.item_number).localeCompare(String(b.item_number),'ko',{numeric:true}));
   $('proxyCustomer').innerHTML='<option value="">거래처 선택</option>'+customers.map(c=>`<option value="${c.id}">${esc(c.business_name||c.owner_name||c.email)}</option>`).join('');
+  $('proxyCustomerNameList').innerHTML=customers.map(c=>`<option value="${esc(c.business_name||c.owner_name||c.email)}"></option>`).join('');
   $('proxyItemList').innerHTML=items.map(x=>`<option value="${esc(x.item_number)}"></option>`).join('');
   const preset=new URLSearchParams(location.search).get('customer');if(preset)$('proxyCustomer').value=preset;addLine();calc();
  }catch(e){showError('대신 주문 화면 불러오기 실패: '+(e?.message||e))}
 }
-function updateCustomerMode(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';$('proxySelectWrap').hidden=mode!=='select';$('proxyDirectWrap').hidden=mode!=='direct';calc()}
-$('addProxyLine').onclick=()=>addLine();$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',updateCustomerMode));$('proxyCustomer').addEventListener('change',()=>{document.querySelectorAll('.proxy-line').forEach(row=>{const found=findItem(row.querySelector('.proxy-item').value);if(found)row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)});calc()});$('proxyDirectName').addEventListener('input',calc);document.addEventListener('DOMContentLoaded',()=>{updateCustomerMode();init()});
+function updateCustomerMode(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';$('proxySelectWrap').hidden=mode!=='select';$('proxyDirectWrap').hidden=mode!=='direct';if($('proxyDirectPriceMatch'))$('proxyDirectPriceMatch').hidden=true;refreshAllLinePrices()}
+$('addProxyLine').onclick=()=>addLine();$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',updateCustomerMode));$('proxyCustomer').addEventListener('change',refreshAllLinePrices);$('proxyDirectName').addEventListener('input',()=>{refreshAllLinePrices()});document.addEventListener('DOMContentLoaded',()=>{updateCustomerMode();init()});
 })();

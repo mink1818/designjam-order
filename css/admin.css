@@ -2279,6 +2279,9 @@ body[data-session-page="admin"] .v3-metric-grid{
 /* V5.3.36 바코드 3개 규격 출력 최적화 */
 .barcode-label-card{border:1px dashed #aeb8c5;border-radius:8px;box-shadow:0 4px 18px rgba(19,38,61,.12)}
 .barcode-label-preview[data-label-size="60x35"] .barcode-label-svg{width:88%}
+
+/* V6.4.6 주문관리 출고지 구분 */
+.admin-warehouse-section{margin:12px 0;border:1px solid #d8e1eb;border-radius:12px;overflow:hidden}.admin-warehouse-heading{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#edf2f7;color:#17324d}.admin-warehouse-heading strong{font-size:16px;font-weight:950}.admin-warehouse-heading span{font-size:12px;font-weight:800}.admin-warehouse-section.warehouse-s .admin-warehouse-heading{background:#dbeafe;color:#1d4ed8}.admin-warehouse-section.warehouse-b .admin-warehouse-heading{background:#dcfce7;color:#166534}.admin-warehouse-section.warehouse-i .admin-warehouse-heading{background:#fef3c7;color:#92400e}.admin-warehouse-section .pick-row{margin:0;border-radius:0;border-left:0;border-right:0}.admin-warehouse-section .pick-row:last-child{border-bottom:0}html[data-theme="dark"] .admin-warehouse-section{border-color:#475569}html[data-theme="dark"] .admin-warehouse-heading,html[data-theme="dark"] .admin-warehouse-section.warehouse-s .admin-warehouse-heading,html[data-theme="dark"] .admin-warehouse-section.warehouse-b .admin-warehouse-heading,html[data-theme="dark"] .admin-warehouse-section.warehouse-i .admin-warehouse-heading{background:#25364a;color:#f8fafc}
 .barcode-label-preview[data-label-size="45x25"] .barcode-label-svg{width:84%}
 .barcode-label-preview[data-label-size="80x50"] .barcode-label-svg{width:86%}
 .barcode-label-preview::after{content:"PDF·인쇄 시 각 칸의 위·아래·좌·우에 연한 절단 구분선이 표시됩니다.";display:block;margin-top:12px;color:#5f6f82;font-size:12px;font-weight:800;text-align:center}

@@ -315,8 +315,8 @@ function renderOrderItemEditor(group, index) {
     return `<div class="order-edit-item-row" data-order-edit-row data-id="${Number(item.id)}">
       <input class="order-edit-number" type="text" value="${escapeAdminAttr(displayNumber)}" placeholder="품번(예: S-1001)">
       <input class="order-edit-qty" type="number" min="1" step="1" value="${Number(item.qty || 1)}" aria-label="수량(죽)">
-      <input class="order-edit-price" type="number" min="0" step="50" value="${Number(item.price || 0) * 10}" aria-label="1죽 단가">
-      <input class="order-edit-row-total" type="number" min="0" step="1" value="${Number(item.qty || 0) * Number(item.price || 0) * 10}" aria-label="금액">
+      <input class="order-edit-price" type="number" min="0" step="50" value="${Number(item.price || 0)}" aria-label="1죽 단가">
+      <input class="order-edit-row-total" type="number" min="0" step="1" value="${Number(item.qty || 0) * Number(item.price || 0)}" aria-label="금액">
     </div>`;
   }).join("");
   return `<section id="order-item-editor-${index}" class="order-item-editor" hidden>
@@ -328,6 +328,24 @@ function renderOrderItemEditor(group, index) {
     </div>
     <small>여기서 수정하면 작업지시서·피킹검증·거래명세서에 같이 반영됩니다.</small>
   </section>`;
+}
+
+function getOrderWarehouseCode(item) {
+  const saved = String(item?.warehouse_code || "").trim().toUpperCase();
+  if (["S", "B", "I"].includes(saved)) return saved;
+  const match = String(item?.item_number || "").trim().toUpperCase().match(/^([SBI])(?:[-\s]|(?=\d))/);
+  return match ? match[1] : "기타";
+}
+
+function getOrderWarehouseLabel(code) {
+  return code === "S" ? "S 출고지" : code === "B" ? "B 출고지" : code === "I" ? "I 출고지" : "기타 출고지";
+}
+
+function getOrderWarehouseSections(items) {
+  const order = ["S", "B", "I", "기타"];
+  const map = new Map(order.map(code => [code, []]));
+  (items || []).forEach(item => (map.get(getOrderWarehouseCode(item)) || map.get("기타")).push(item));
+  return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code) })).filter(section => section.items.length);
 }
 
 function renderOrderCards(groups) {
@@ -346,17 +364,21 @@ let summaryTotal = 0;
 let soldoutQty=0;
 
 group.items.forEach(item => {
-  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0)*10;
+  const itemSoldout=Number(item.soldout_qty||0)||(item.is_soldout?Number(item.qty||0):0); soldoutQty+=itemSoldout; summaryQty += Math.max(0,Number(item.qty||0)-itemSoldout); summaryTotal += Math.max(0,Number(item.qty||0)-itemSoldout)*Number(item.price||0);
 });
 
 summaryTotal += Number(group.shipping_fee || 0);
 
-    group.items.forEach(item => {
-      const oneJukPrice = Number(item.price || 0) * 10;
-      const rowTotal = oneJukPrice * Number(item.qty || 0);
-      const stockStatus = getAdminStockStatus(item);
+    getOrderWarehouseSections(group.items).forEach(section => {
+      const sectionQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      itemHtml += `<div class="admin-warehouse-section warehouse-${section.code.toLowerCase()}">
+        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span>${section.items.length}품번 · ${sectionQty}죽</span></div>`;
+      section.items.forEach(item => {
+        const oneJukPrice = Number(item.price || 0);
+        const rowTotal = oneJukPrice * Number(item.qty || 0);
+        const stockStatus = getAdminStockStatus(item);
 
-      itemHtml += `
+        itemHtml += `
         <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-row-total="${rowTotal}">
           <input 
   type="checkbox" 
@@ -369,6 +391,8 @@ summaryTotal += Number(group.shipping_fee || 0);
           <em>금액 ${rowTotal.toLocaleString()}원</em>
         </label>
       `;
+      });
+      itemHtml += `</div>`;
     });
 
     html += `
@@ -469,7 +493,7 @@ class="order-detail">
 
         <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
         ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
-        <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">작업지시서 출력</button>
+        <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">출고지별 작업지시서 출력</button>
 
         <button
   class="cart-btn statement-btn"
@@ -732,7 +756,7 @@ async function saveOrderItems(orderNumber, index) {
       item_number: parsed.itemNumber,
       warehouse_code: parsed.warehouseCode,
       qty: Math.max(1, Math.floor(Number(row.querySelector(".order-edit-qty")?.value || 1))),
-      price: oneJukPrice / 10
+      price: oneJukPrice
     };
   });
   if (!items.length || items.some(item => !item.item_number)) return alert("품번을 모두 입력해주세요.");
