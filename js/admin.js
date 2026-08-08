@@ -354,7 +354,7 @@ function getOrderWarehouseSections(items) {
 async function copyWarehouseOrder(button) {
   const section = button.closest(".admin-warehouse-section");
   const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
-  const text = rows.map(row => `${row.dataset.copyItem}\t${row.dataset.copyQty}`).join("\n");
+  const text = rows.map(row => `${row.dataset.copyItem}  ${row.dataset.copyQty}`).join("\n");
   if (!text) return alert("복사할 품번이 없습니다.");
   try {
     await navigator.clipboard.writeText(text);
@@ -397,15 +397,20 @@ summaryTotal += Number(group.shipping_fee || 0);
 
     getOrderWarehouseSections(group.items).forEach(section => {
       const sectionQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      const sectionTotal = section.items.reduce((sum, item) => {
+        const ordered = Number(item.qty || 0);
+        const soldout = Math.min(ordered, Number(item.soldout_qty || (item.is_soldout ? ordered : 0)));
+        return sum + Math.max(0, ordered - soldout) * Number(item.price || 0);
+      }, 0);
       itemHtml += `<div class="admin-warehouse-section warehouse-${section.code.toLowerCase()}">
-        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · ${sectionQty}죽</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this)">품번·수량 복사</button></span></div>`;
+        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · ${sectionQty}죽 · 합계 ${sectionTotal.toLocaleString()}원</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this)">품번·수량 복사</button></span></div>`;
       section.items.forEach(item => {
         const oneJukPrice = Number(item.price || 0);
         const rowTotal = oneJukPrice * Number(item.qty || 0);
         const stockStatus = getAdminStockStatus(item);
 
         itemHtml += `
-        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.item_number)}" data-copy-qty="${Number(item.qty || 0)}">
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-soldout-qty="${Number(item.soldout_qty || (item.is_soldout ? item.qty : 0))}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.item_number)}" data-copy-qty="${Number(item.qty || 0)}">
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
@@ -517,7 +522,7 @@ class="order-detail">
           ${group.status === "출고완료" ? "출고취소·재고복원" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
         </button>
 
-        <button class="cart-btn picking-btn" type="button" onclick="location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
+        <button class="cart-btn picking-btn" type="button" onclick="event.stopPropagation();location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
         ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
         <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">출고지별 작업지시서 출력</button>
 
@@ -606,12 +611,12 @@ function recalcOrderCard(cardId) {
   rows.forEach(row => {
     const checkbox = row.querySelector("input[type='checkbox']");
     const qty = Number(row.dataset.qty || 0);
-    const rowTotal = Number(row.dataset.rowTotal || 0);
-
-    if (!checkbox.checked) {
-      qtyTotal += qty;
-      productTotal += rowTotal;
-    }
+    const recordedSoldout = Math.max(0, Number(row.dataset.soldoutQty || 0));
+    const soldoutQty = Math.min(qty, recordedSoldout > 0 ? recordedSoldout : (checkbox.checked ? qty : 0));
+    const shippedQty = Math.max(0, qty - soldoutQty);
+    const unitPrice = Number(row.dataset.unitPrice || 0);
+    qtyTotal += shippedQty;
+    productTotal += shippedQty * unitPrice;
   });
 
   const shipping = Number(card.querySelector(".shipping-input").value) || 0;

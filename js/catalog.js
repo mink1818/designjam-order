@@ -55,6 +55,16 @@ let favoriteMainCategoryIds = new Set();
 let customerItemPriceMap = new Map();
 function customerPriceKey(value) { return String(value ?? "").trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/, ""); }
 function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(customerPriceKey(itemNumber)) ?? group?.price ?? 0); }
+function refreshSavedCartPrices() {
+  let changed = false;
+  cart.forEach(item => {
+    const group = groups.find(groupItem => Number(groupItem.id) === Number(item.groupId));
+    if (!group) return;
+    const nextPrice = effectiveItemPrice(group, item.number);
+    if (Number(item.price) !== Number(nextPrice)) { item.price = Number(nextPrice); changed = true; }
+  });
+  if (changed) saveCart();
+}
 function displayWarehouseItem(group, itemNumber) { const code=String(group?.warehouse_code||'').trim().toUpperCase(); return code?`${code}-${itemNumber}`:String(itemNumber); }
 function formatGroupUnitPrice(group) {
   const prices = [...new Set((group?.item_numbers || []).map(number => effectiveItemPrice(group, number)).filter(Number.isFinite))].sort((a,b)=>a-b);
@@ -363,6 +373,7 @@ async function loadCatalog() {
     const priceResult = await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id", currentUser.id);
     if (!priceResult.error) (priceResult.data || []).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price)));
   }
+  refreshSavedCartPrices();
 
   await loadCustomerFeatureData();
 
@@ -1670,6 +1681,11 @@ function continueShopping() {
   if (activeMainCategoryId) { renderMainCategoryDetail(activeMainCategoryId); return; }
   renderMainCategories();
 }
+window.handleCustomerCartNav = function () {
+  if (currentScreen !== "cart") return false;
+  continueShopping();
+  return true;
+};
 
 function removeCartItem(index) {
   cart.splice(index, 1);

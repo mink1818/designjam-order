@@ -2671,19 +2671,21 @@ async function importCustomerItemPricesFromGrid() {
   const itemColumn = headers.indexOf("품번(원본)");
   const baseColumns = new Set(["묶음명","카테고리","품번(원본)","기본단가"]);
   const customerColumns = headers.map((name,index)=>({name,index})).filter(entry=>entry.name&&!baseColumns.has(entry.name));
-  const { data: customers, error: customerError } = await supabaseClient.from("customers").select("id,business_name").eq("is_admin",false);
+  const { data: customers, error: customerError } = await supabaseClient.from("customers").select("id,business_name,owner_name,email").eq("is_admin",false);
   if (customerError) throw customerError;
-  const customerByName = new Map((customers||[]).map(c=>[String(c.business_name||"").trim(),c.id]));
-  const unmatched = customerColumns.filter(c=>!customerByName.has(c.name)).map(c=>c.name);
+  const customerNameKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
+  const customerByName = new Map();
+  (customers||[]).forEach(c=>[c.business_name,c.owner_name,c.email].forEach(name=>{const key=customerNameKey(name);if(key)customerByName.set(key,c.id)}));
+  const unmatched = customerColumns.filter(c=>!customerByName.has(customerNameKey(c.name))).map(c=>c.name);
   const payload = [];
   grid.slice(headerIndex+1).forEach(row=>{
     let itemNumbers=[];
     try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
     customerColumns.forEach(column=>{
-      const customerId=customerByName.get(column.name);if(!customerId)return;
+      const customerId=customerByName.get(customerNameKey(column.name));if(!customerId)return;
       const price=Number(String(row[column.index]??"").replace(/[^0-9.-]/g,""));
       if(!Number.isFinite(price)||price<0||price%50!==0)return;
-      itemNumbers.forEach(itemNumber=>payload.push({customer_id:customerId,item_number:String(itemNumber),price,updated_at:new Date().toISOString()}));
+      itemNumbers.forEach(itemNumber=>payload.push({customer_id:customerId,item_number:String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,""),price,updated_at:new Date().toISOString()}));
     });
   });
   for(let i=0;i<payload.length;i+=500){const {error}=await supabaseClient.from("customer_item_prices").upsert(payload.slice(i,i+500),{onConflict:"customer_id,item_number"});if(error)throw error;}
