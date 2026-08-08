@@ -27,6 +27,30 @@
       borderInset: 0,
       label: "스티커용지 · A4 3×7 · 좌우 0.7mm · 간격 0.3mm · 상11/하14mm"
     }),
+    "a4wide2x5": Object.freeze({
+      width: 60,
+      height: 35,
+      columns: 2,
+      rows: 5,
+      pageWidth: 210,
+      pageHeight: 297,
+      marginLeft: 0.7,
+      marginRight: 0.7,
+      marginTop: 11,
+      marginBottom: 14,
+      columnGap: 88.6,
+      rowGap: 24.25,
+      font: [25, 21, 16],
+      textY: 7.2,
+      barcodeX: 5,
+      barcodeY: 12.5,
+      barcodeW: 50,
+      barcodeH: 17.5,
+      jsWidth: 2.45,
+      jsHeight: 120,
+      borderInset: 0.65,
+      label: "A4 직접인쇄 · 2×5 · 양쪽 배치 · 가운데 88.6mm 간격"
+    }),
     "45x25": Object.freeze({ width: 45, height: 25, columns: 4, rows: 10, pageWidth: 210, pageHeight: 297, font: [18, 15, 12], textY: 5.4, barcodeX: 4, barcodeY: 9.2, barcodeW: 37, barcodeH: 12.2, jsWidth: 2.05, jsHeight: 96, borderInset: 0.55, label: "45×25mm · Code128 · A4 4×10" }),
     "80x50": Object.freeze({ width: 80, height: 50, columns: 2, rows: 5, pageWidth: 210, pageHeight: 297, font: [31, 27, 21], textY: 10, barcodeX: 7, barcodeY: 18, barcodeW: 66, barcodeH: 25, jsWidth: 2.85, jsHeight: 145, borderInset: 0.8, label: "80×50mm · Code128 · A4 2×5" })
   });
