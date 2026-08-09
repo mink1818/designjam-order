@@ -7,6 +7,7 @@ let draftSaveTimer=null,draftSubmissionComplete=false;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalizeItem=v=>String(v||'').trim().normalize('NFKC').toUpperCase();
 const priceKey=v=>normalizeItem(v).replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'');
+const normalizeCustomerPriceName=value=>String(value||'').trim().normalize('NFKC').toLowerCase().replace(/[\s_.·,()\[\]{}\-/]+/g,'');
 function showError(message=''){const box=$('proxyError');if(!box)return;box.textContent=message;box.classList.toggle('show',Boolean(message));}
 async function guard(){
  const {data:{user}}=await supabaseClient.auth.getUser();
@@ -30,7 +31,9 @@ async function fetchSelectedCustomerPrices(customerId){
 }
 async function fetchCustomerPricesByName(customerName){
  if(!String(customerName||'').trim())return[];
- const result=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:String(customerName).trim()});
+ let result=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:String(customerName).trim()});
+ if(!result.error)return result.data||[];
+ result=await supabaseClient.from('customer_name_item_prices').select('item_number,price').eq('normalized_name',normalizeCustomerPriceName(customerName)).order('item_number',{ascending:true});
  if(result.error)throw new Error(result.error.message||'직접입력 거래처 전용단가 조회 실패');
  return result.data||[];
 }
@@ -63,8 +66,8 @@ function effectiveProxyPrice(itemNumber,basePrice=0){return Number(customerPrice
 function updateRegisteredPriceStatus(message='',isError=false){const box=$('proxyRegisteredPriceStatus');if(!box)return;box.hidden=!message;box.textContent=message;box.classList.toggle('auth-error',Boolean(isError));}
 async function reloadSelectedCustomerPrices(){
  const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select',customerId=selectedCustomerId(),customerName=($('proxyDirectName')?.value||'').trim(),ownerKey=selectedPriceOwnerKey(),token=++selectedPriceLoadToken;
- if(mode==='select'&&!customerId){updateRegisteredPriceStatus('등록 거래처를 선택하면 해당 거래처의 전용단가를 불러옵니다.');refreshAllLinePrices();return;}
- if(mode==='direct'&&!customerName){updateRegisteredPriceStatus('직접입력 거래처명을 입력하면 엑셀에 등록된 전용단가를 찾습니다.');refreshAllLinePrices();return;}
+ if(mode==='select'&&!customerId){updateRegisteredPriceStatus('등록 거래처를 선택하면 해당 거래처의 전용단가를 불러옵니다.');refreshAllLinePrices();return false;}
+ if(mode==='direct'&&!customerName){updateRegisteredPriceStatus('직접입력 거래처명을 입력하면 엑셀에 등록된 전용단가를 찾습니다.');refreshAllLinePrices();return false;}
  updateRegisteredPriceStatus(mode==='direct'?'거래처명으로 전용단가를 찾는 중입니다...':'선택 거래처의 전용단가를 불러오는 중입니다...');
  try{
   const selectedCustomer=customers.find(customer=>String(customer.id)===String(customerId));
@@ -81,7 +84,8 @@ async function reloadSelectedCustomerPrices(){
   rows.forEach(row=>customerPrices.set(`${ownerKey}::${priceKey(row.item_number)}`,Number(row.price)));
   updateRegisteredPriceStatus(rows.length?`${mode==='direct'?'직접입력 ':''}전용단가 ${rows.length.toLocaleString()}개 적용 중${nameRows.length?' · 거래처명 최신단가 우선':''}`:'이 거래처의 전용단가가 없어 기본단가를 적용합니다.');
   refreshAllLinePrices();
- }catch(error){if(token!==selectedPriceLoadToken)return;updateRegisteredPriceStatus(`전용단가 조회 실패: ${error.message}`,true);refreshAllLinePrices();}
+  return true;
+ }catch(error){if(token!==selectedPriceLoadToken)return false;updateRegisteredPriceStatus(`전용단가 조회 실패: ${error.message}`,true);refreshAllLinePrices();return false;}
 }
 function parsePastedItemLine(line){
  const source=String(line||'').trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*[\)）]\s*$/);
@@ -125,6 +129,9 @@ function makeOrderNumber(){const d=new Date(),pad=n=>String(n).padStart(2,'0');r
 async function submit(){
  showError('');const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';const customer=customers.find(c=>String(c.id)===String($('proxyCustomer').value));const directCustomer=mode==='direct'?matchedDirectCustomer():null;const directName=($('proxyDirectName').value||'').trim();
  if(mode==='select'&&!customer){showError('등록 거래처를 선택하세요.');return}if(mode==='direct'&&!directName){showError('직접 입력할 거래처명을 입력하세요.');return}
+ clearTimeout(directPriceTimer);
+ const priceReady=await reloadSelectedCustomerPrices();
+ if(!priceReady){showError('거래처별 단가 확인에 실패했습니다. 단가 조회 상태를 확인한 뒤 다시 접수하세요.');return}
  const lines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0))})).filter(x=>x.item_number);
  if(!lines.length){showError('주문 품번을 한 개 이상 입력하세요.');return}
  const unknown=lines.filter(x=>!findItem(x.item_number)).map(x=>x.item_number);if(unknown.length&&!confirm(`상품에 등록되지 않은 품번이 있습니다: ${unknown.join(', ')}\n그래도 주문할까요?`))return;
@@ -167,5 +174,5 @@ async function init(){
  }catch(e){showError('대신 주문 화면 불러오기 실패: '+(e?.message||e))}
 }
 function updateCustomerMode(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';$('proxySelectWrap').hidden=mode!=='select';$('proxyDirectWrap').hidden=mode!=='direct';if($('proxyDirectPriceMatch'))$('proxyDirectPriceMatch').hidden=true;refreshAllLinePrices();scheduleProxyDraftSave()}
-$('addProxyLine').onclick=()=>{addLine();scheduleProxyDraftSave()};$('applyProxyPaste').onclick=applyPastedOrder;$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',()=>{updateCustomerMode();reloadSelectedCustomerPrices()}));$('proxyCustomer').addEventListener('change',()=>{reloadSelectedCustomerPrices();scheduleProxyDraftSave()});$('proxyDirectName').addEventListener('input',()=>{clearTimeout(directPriceTimer);scheduleProxyDraftSave();const exact=matchedDirectCustomer();if(exact)directPriceTimer=setTimeout(reloadSelectedCustomerPrices,500);else{selectedPriceLoadToken++;updateRegisteredPriceStatus('거래처명을 모두 입력하면 전용단가를 확인합니다.');refreshAllLinePrices()}});$('proxyDirectName').addEventListener('change',reloadSelectedCustomerPrices);$('proxyDirectName').addEventListener('blur',()=>{clearTimeout(directPriceTimer);reloadSelectedCustomerPrices()});document.addEventListener('input',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});document.addEventListener('change',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});window.addEventListener('pagehide',saveProxyDraft);document.addEventListener('DOMContentLoaded',()=>{configureDirectCustomerInput();updateCustomerMode();init()});
+$('addProxyLine').onclick=()=>{addLine();scheduleProxyDraftSave()};$('applyProxyPaste').onclick=applyPastedOrder;$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',()=>{updateCustomerMode();reloadSelectedCustomerPrices()}));$('proxyCustomer').addEventListener('change',()=>{reloadSelectedCustomerPrices();scheduleProxyDraftSave()});$('proxyDirectName').addEventListener('input',()=>{clearTimeout(directPriceTimer);scheduleProxyDraftSave();const name=String($('proxyDirectName').value||'').trim();if(name)directPriceTimer=setTimeout(reloadSelectedCustomerPrices,450);else{selectedPriceLoadToken++;updateRegisteredPriceStatus('거래처명을 입력하면 전용단가를 확인합니다.');refreshAllLinePrices()}});$('proxyDirectName').addEventListener('change',reloadSelectedCustomerPrices);$('proxyDirectName').addEventListener('blur',()=>{clearTimeout(directPriceTimer);reloadSelectedCustomerPrices()});document.addEventListener('input',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});document.addEventListener('change',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});window.addEventListener('pagehide',saveProxyDraft);document.addEventListener('DOMContentLoaded',()=>{configureDirectCustomerInput();updateCustomerMode();init()});
 })();
