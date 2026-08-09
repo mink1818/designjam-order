@@ -156,11 +156,12 @@ async function loadOrders() {
   let data = [];
 
 try {
-  const [orderRows, inventoryRows] = await Promise.all([
+  const [orderRows, inventoryRows, customerPriceRows] = await Promise.all([
     fetchOrders(),
-    fetchInventorySnapshot()
+    fetchInventorySnapshot(),
+    fetchAdminCustomerItemPrices()
   ]);
-  data = orderRows;
+  data = applyAdminCustomerItemPrices(orderRows,customerPriceRows);
   setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
   adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;

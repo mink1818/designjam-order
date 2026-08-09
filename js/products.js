@@ -2703,9 +2703,9 @@ async function importCustomerItemPricesFromGrid() {
       itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");payloadMap.set(`${customerId}::${normalized}`,{customer_id:customerId,item_number:normalized,price,updated_at:new Date().toISOString()})});
     });
   });
-  const payload=[...payloadMap.values()];
-  for(let i=0;i<payload.length;i+=500){const {error}=await supabaseClient.from("customer_item_prices").upsert(payload.slice(i,i+500),{onConflict:"customer_id,item_number"});if(error)throw error;}
-  return { saved: payload.length, unmatched, invalid, matchedCustomers: customerColumns.length-unmatched.length, missingSheet: false };
+  const payload=[...payloadMap.values()];let saved=0,updatedOpenOrders=0;
+  for(let i=0;i<payload.length;i+=500){const batch=payload.slice(i,i+500).map(({customer_id,item_number,price})=>({customer_id,item_number,price}));const {data,error}=await supabaseClient.rpc("upsert_customer_item_prices",{p_prices:batch});if(error)throw new Error(`거래처별 단가 저장 실패: ${error.message}. V6.5.2 SQL을 먼저 실행해주세요.`);saved+=Number(data?.saved??batch.length);updatedOpenOrders+=Number(data?.updated_open_orders||0);}
+  return { saved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.length-unmatched.length, missingSheet: false };
 }
 
 function readCustomerPriceCustomerIds(workbook){
@@ -3400,6 +3400,7 @@ async function registerExcelProducts() {
           <span>실패 <strong>${errorCount}개</strong></span>
           <span>거래처별 단가 <strong>${customerPriceResult.saved}개</strong></span>
           <span>단가 연결 거래처 <strong>${customerPriceResult.matchedCustomers||0}개</strong></span>
+          <span>진행 주문 단가 갱신 <strong>${customerPriceResult.updatedOpenOrders||0}개</strong></span>
         </div>
         <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
         ${customerPriceResult.unmatched.length?`<p class="auth-error">등록 거래처명과 일치하지 않아 단가를 건너뜀: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}

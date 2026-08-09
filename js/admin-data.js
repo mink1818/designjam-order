@@ -8,6 +8,19 @@ async function fetchOrders() {
   return data || [];
 }
 
+function adminCustomerPriceKey(customerId,itemNumber){return `${String(customerId||'')}::${String(itemNumber||'').trim().normalize('NFKC').toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'')}`;}
+async function fetchAdminCustomerItemPrices(){
+  const rpc=await supabaseClient.rpc('get_admin_customer_item_prices');
+  if(!rpc.error)return rpc.data||[];
+  const fallback=await supabaseClient.from('customer_item_prices').select('customer_id,item_number,price');
+  if(fallback.error){console.warn('거래처별 단가 조회 실패:',fallback.error.message);return[];}
+  return fallback.data||[];
+}
+function applyAdminCustomerItemPrices(orderRows,priceRows){
+  const priceMap=new Map((priceRows||[]).map(row=>[adminCustomerPriceKey(row.customer_id,row.item_number),Number(row.price)]));
+  return (orderRows||[]).map(row=>{const price=priceMap.get(adminCustomerPriceKey(row.customer_id,row.item_number));return Number.isFinite(price)&&price>0?{...row,price,total:Number(row.qty||0)*price}:row;});
+}
+
 async function fetchInventorySnapshot() {
   const rows = [];
   for (let from = 0; ; from += 1000) {

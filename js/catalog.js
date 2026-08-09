@@ -370,8 +370,10 @@ async function loadCatalog() {
 
   customerItemPriceMap = new Map();
   if (currentUser && !ADMIN_PREVIEW_MODE) {
-    const priceResult = await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id", currentUser.id);
+    let priceResult = await supabaseClient.rpc("get_my_customer_item_prices");
+    if (priceResult.error) priceResult = await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id", currentUser.id);
     if (!priceResult.error) (priceResult.data || []).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price)));
+    else console.error("거래처별 전용단가 조회 실패:",priceResult.error.message);
   }
   refreshSavedCartPrices();
 

@@ -1,4 +1,4 @@
--- DESIGN SOCKS V6.5.1 거래처별 단가 적용 보강
+-- DESIGN SOCKS V6.5.2 거래처별 단가 적용 보강
 -- Supabase SQL Editor에서 전체 실행하세요.
 
 create table if not exists public.customer_item_prices (

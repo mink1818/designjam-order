@@ -19,6 +19,7 @@ async function guard(){
 async function fetchAll(table,select,order='created_at'){
  const out=[];for(let from=0;;from+=1000){let query=supabaseClient.from(table).select(select).range(from,from+999);if(order)query=query.order(order,{ascending:true});const {data,error}=await query;if(error)throw error;out.push(...(data||[]));if(!data||data.length<1000)break}return out;
 }
+async function fetchAdminCustomerPrices(){const rpc=await supabaseClient.rpc('get_admin_customer_item_prices');if(!rpc.error)return rpc.data||[];return fetchAll('customer_item_prices','customer_id,item_number,price','item_number').catch(()=>[])}
 function asItemNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function rawPrice(item){return Number(item?.price??item?.sale_price??item?.unit_price??item?.product_price??0)||0}
 function findItem(value){const key=priceKey(value);return items.find(x=>priceKey(x.item_number)===key)}
@@ -84,7 +85,7 @@ async function submit(){
 async function init(){
  if(!await guard())return;
  try{
-  const [customerRows,inventoryRows,groups,priceRows]=await Promise.all([fetchAll('customers','id,business_name,owner_name,email,approved,blocked,is_admin','created_at'),fetchAll('inventory_items','*','item_number'),fetchAll('product_groups','*','sort_order'),fetchAll('customer_item_prices','customer_id,item_number,price','item_number').catch(()=>[])]);
+  const [customerRows,inventoryRows,groups,priceRows]=await Promise.all([fetchAll('customers','id,business_name,owner_name,email,approved,blocked,is_admin','created_at'),fetchAll('inventory_items','*','item_number'),fetchAll('product_groups','*','sort_order'),fetchAdminCustomerPrices()]);
   customers=customerRows.filter(x=>!x.is_admin&&!x.blocked);
   customerPrices=new Map((priceRows||[]).map(row=>[`${row.customer_id}::${priceKey(row.item_number)}`,Number(row.price)]));
   const productMap=new Map();(groups||[]).forEach(g=>asItemNumbers(g.item_numbers).forEach(n=>productMap.set(normalizeItem(n),{price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').trim().toUpperCase()||null})));
