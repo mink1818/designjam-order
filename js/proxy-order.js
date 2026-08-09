@@ -72,7 +72,7 @@ async function reloadSelectedCustomerPrices(){
 }
 function parsePastedItemLine(line){
  const source=String(line||'').trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?\s*[\)）]\s*$/);
- if(!match)match=source.match(/^(.+?)\s*(?:[~～〜]|[,./:\-]|\s+)\s*(\d+)\s*(?:죽|족)?\s*$/);
+ if(!match)match=source.match(/^(.+?)\s*(?:[~～〜ㅡ]|[,./:\-]|\s+)\s*(\d+)\s*(?:죽|족)?\s*$/);
  if(!match)return{item:source.replace(/[,.\/~～〜]+$/,'').trim(),qty:1};
  return{item:match[1].trim(),qty:Math.max(1,Number(match[2]))};
 }

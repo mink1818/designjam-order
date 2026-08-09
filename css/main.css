@@ -1763,3 +1763,20 @@ html[data-theme="dark"] body[data-session-page="customer"] .cart-product-info st
 .catalog-sort-control{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:10px 0 14px;font-size:13px;font-weight:800;color:#42566b}
 .catalog-sort-control select{min-width:150px;height:38px;padding:0 32px 0 12px;border:1px solid #cbd6e2;border-radius:10px;background:#fff;font:inherit;color:#1f354b}
 @media(max-width:640px){.catalog-sort-control{justify-content:space-between;margin:8px 0 10px}.catalog-sort-control select{height:34px;min-width:138px;font-size:12px;padding-left:9px}.catalog-group-grid{gap:7px}.catalog-group-card{padding:6px}.catalog-item-numbers{font-size:11px;line-height:1.25}}
+/* V6.5.8 주문 메모 주소·연락처 변경 안내 */
+.order-memo-notice{
+  margin:6px 0 10px;
+  padding:10px 12px;
+  border:1px solid #f2cf66;
+  border-radius:10px;
+  background:#fff7d6;
+  color:#6b4f00;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.5;
+}
+html[data-theme="dark"] .order-memo-notice{
+  background:#473a12;
+  border-color:#806b24;
+  color:#ffe89a;
+}

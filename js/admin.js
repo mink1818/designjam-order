@@ -463,7 +463,7 @@ class="order-detail">
         <hr>
 
         <label class="shipping-label">관리자 메모</label>
-        <input class="customer-note-input" type="text" value="${escapeAdminAttr(customerNotes[group.orderNumber] || "")}" placeholder="예: 전화요망, 합배송, 후불" onchange="saveOrderNote('${escapeAdminAttr(group.orderNumber)}', this.value, this)">
+        <textarea class="customer-note-input" rows="3" maxlength="1000" placeholder="예: 전화요망, 합배송, 후불&#10;Enter를 눌러 다음 줄에 계속 작성할 수 있습니다." onchange="saveOrderNote('${escapeAdminAttr(group.orderNumber)}', this.value, this)">${escapeAdminHtml(customerNotes[group.orderNumber] || "")}</textarea>
 
         <label class="shipping-label">배송비</label>
 <div class="shipping-fee-control">

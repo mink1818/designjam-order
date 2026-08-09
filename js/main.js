@@ -309,11 +309,14 @@ function showOrderForm() {
       </p>
 
       <label>메모</label>
-      <input
+      <p class="order-memo-notice" role="note">📢 배송 주소 또는 연락처가 변경된 경우 주문 메모에 꼭 기입해 주세요.</p>
+      <textarea
         class="order-input"
         id="orderMemo"
+        rows="5"
+        maxlength="1000"
         placeholder="예: 빠른출고"
-      >
+      ></textarea>
 
       <button class="cart-btn" onclick="submitOrder()">
         주문 접수하기

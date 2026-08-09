@@ -1746,6 +1746,10 @@ function showOrderForm() {
 
       <label for="orderMemo">메모</label>
 
+      <p class="order-memo-notice" role="note">
+        📢 배송 주소 또는 연락처가 변경된 경우 주문 메모에 꼭 기입해 주세요.
+      </p>
+
       <textarea
         id="orderMemo"
         class="order-input"
