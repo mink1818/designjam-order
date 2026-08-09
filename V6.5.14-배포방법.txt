@@ -1,0 +1,26 @@
+DESIGN SOCKS V6.5.14 배포 안내
+
+적용 내용
+- 주문관리의 주문 상세에서 주문 전체삭제 버튼 제공
+- 삭제 전 두 번 확인하고 피킹으로 차감된 ERP 재고를 자동 복원
+- 주문 품목 전체를 한 번에 영구 삭제하고 목록·통계를 즉시 갱신
+- 바코드관리의 현재 품번을 선택한 A4 용지 모든 칸에 반복 인쇄
+- 맞춤 스티커 3×7은 21칸, 넓은 배치 2×5는 10칸 자동 채움
+- 기존 한 칸 출력·선택 품번 출력·PDF 생성 기능 유지
+- V6.5.13의 실시간 피킹설정·출고대기·최근스캔 기능 포함
+- 버전 및 PWA 캐시 V6.5.14 갱신
+
+배포 체크
+- SQL 실행: 필요
+- Supabase Function 재배포: 불필요
+- Git Push: 필요
+
+Supabase SQL Editor에서 실행
+SQL/V6.5.14-ORDER-DELETE.sql
+
+터미널 명령
+git add .
+git commit -m "release v6.5.14 order delete and full sheet barcode"
+git push
+
+배포 후 새 서비스워커가 V6.5.14을 감지하면 한 번 자동 새로고침합니다.

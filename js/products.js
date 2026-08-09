@@ -2767,7 +2767,7 @@ async function importCustomerItemPricesFromGrid() {
   });
   const payload=[...payloadMap.values()],namePayload=[...namePayloadMap.values()];let saved=0,nameSaved=0,updatedOpenOrders=0;
   for(let i=0;i<payload.length;i+=500){const batch=payload.slice(i,i+500).map(({customer_id,item_number,price})=>({customer_id,item_number,price}));const {data,error}=await supabaseClient.rpc("upsert_customer_item_prices",{p_prices:batch});if(error)throw new Error(`거래처별 단가 저장 실패: ${error.message}. V6.5.2 SQL을 먼저 실행해주세요.`);saved+=Number(data?.saved??batch.length);updatedOpenOrders+=Number(data?.updated_open_orders||0);}
-  for(let i=0;i<namePayload.length;i+=500){const batch=namePayload.slice(i,i+500);const {data,error}=await supabaseClient.rpc("upsert_customer_name_item_prices",{p_prices:batch});if(error)throw new Error(`직접입력 거래처 단가 저장 실패: ${error.message}. V6.5.13 SQL을 먼저 실행해주세요.`);nameSaved+=Number(data?.saved??batch.length);}
+  for(let i=0;i<namePayload.length;i+=500){const batch=namePayload.slice(i,i+500);const {data,error}=await supabaseClient.rpc("upsert_customer_name_item_prices",{p_prices:batch});if(error)throw new Error(`직접입력 거래처 단가 저장 실패: ${error.message}. V6.5.14 SQL을 먼저 실행해주세요.`);nameSaved+=Number(data?.saved??batch.length);}
   return { saved, nameSaved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), nameCustomers:customerColumns.length, missingSheet: false };
 }
 

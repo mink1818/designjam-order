@@ -63,7 +63,7 @@
     summary: $("barcodeValidationSummary"), selectedCount: $("barcodeSelectedCount"), preview: $("barcodeLabelPreview"),
     copies: $("barcodeCopyCount"), message: $("barcodeMessage"), selectVisible: $("barcodeSelectVisibleButton"),
     clear: $("barcodeClearSelectionButton"), selectAll: $("barcodeSelectAllButton"), deselectAll: $("barcodeDeselectAllButton"), deleteSelected: $("barcodeDeleteSelectedButton"), deleteAll: $("barcodeDeleteAllButton"), pdf: $("barcodeGeneratePdfButton"), print: $("barcodePrintButton"),
-    one: $("barcodePrintOneButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
+    one: $("barcodePrintOneButton"), fullSheet: $("barcodePrintFullSheetButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
     specBadge: $("barcodeSpecBadge"), previewSpec: $("barcodePreviewSpec"),
     searchInput: $("barcodeSearchInput"), searchButton: $("barcodeSearchButton"),
     sizeInputs: [...document.querySelectorAll('input[name="barcodeLabelSize"]')]
@@ -228,6 +228,12 @@
     return base.flatMap(item => Array.from({ length: copies }, () => item));
   }
 
+  function getFullSheetItems() {
+    const label = currentLabel();
+    const perPage = label.columns * label.rows;
+    return Array.from({ length: perPage }, () => state.active);
+  }
+
   function createPdf(items) {
     if (!items.length) throw new Error("출력할 품번을 선택해주세요.");
     const jsPDF = window.jspdf?.jsPDF; if (!jsPDF) throw new Error("PDF 라이브러리를 불러오지 못했습니다.");
@@ -267,6 +273,19 @@
       if (download) pdf.save(filename); else { const blobUrl = pdf.output("bloburl"); const popup = window.open(blobUrl, "_blank"); if (!popup) throw new Error("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해주세요."); }
       elements.message.innerHTML = `<p class="product-success">${items.length.toLocaleString()}장 바코드 라벨을 생성했습니다.</p>`;
     } catch (error) { elements.message.innerHTML = `<p class="auth-error">${escapeHtml(error.message)}</p>`; } finally {setTimeout(()=>{barcodeOutputLocked=false},3000)}
+  }
+
+  function printActiveFullSheet() {
+    const now=Date.now();
+    if(document.hidden)return;
+    if(barcodeOutputLocked||now-lastBarcodeOutputAt<3000){elements.message.innerHTML='<p class="auth-error">중복 인쇄를 차단했습니다. 잠시 후 다시 눌러주세요.</p>';return}
+    barcodeOutputLocked=true;lastBarcodeOutputAt=now;
+    try {
+      const items=getFullSheetItems(),pdf=createPdf(items),blobUrl=pdf.output("bloburl"),popup=window.open(blobUrl,"_blank");
+      if(!popup)throw new Error("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해주세요.");
+      elements.message.innerHTML=`<p class="product-success">${escapeHtml(state.active)} 품번을 현재 용지의 ${items.length.toLocaleString()}칸 전체에 채웠습니다.</p>`;
+    } catch(error) { elements.message.innerHTML=`<p class="auth-error">${escapeHtml(error.message)}</p>`; }
+    finally {setTimeout(()=>{barcodeOutputLocked=false},3000)}
   }
 
   elements.excel?.addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; elements.message.innerHTML = "<p>엑셀 품번을 읽는 중...</p>"; try { setItems(await readExcel(file), file.name); } catch (error) { elements.message.innerHTML = `<p class="auth-error">엑셀 읽기 실패: ${escapeHtml(error.message)}</p>`; } });
@@ -319,6 +338,7 @@
   elements.pdf?.addEventListener("click", () => generatePdf(true));
   elements.print?.addEventListener("click", () => generatePdf(false));
   elements.one?.addEventListener("click", () => generatePdf(false, true));
+  elements.fullSheet?.addEventListener("click", printActiveFullSheet);
   [[elements.p10,10],[elements.p50,50],[elements.p100,100]].forEach(([button,count]) => button?.addEventListener("click", () => { elements.copies.value = count; state.selected = new Set([state.active]); renderList(); generatePdf(false); }));
   elements.sizeInputs.forEach(input => input.addEventListener("change", () => applyLabelSize(input.value)));
   function applyProductsSnapshot(snapshot) {

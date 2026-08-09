@@ -550,6 +550,7 @@ class="order-detail">
 >
   거래명세서 출력
 </button>
+        <button class="cart-btn admin-delete-order-btn" type="button" onclick="deleteOrderFromAdmin(decodeURIComponent('${encodeURIComponent(group.orderNumber)}'),decodeURIComponent('${encodeURIComponent(group.customerName || '거래처 미입력')}'),${group.items.length})">주문 전체삭제</button>
       </div>
       </div>
     `;
@@ -560,6 +561,22 @@ class="order-detail">
   groups.forEach((_, index) => {
     recalcOrderCard(`order-${index}`);
   });
+}
+
+async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
+  if (!confirm(`주문 전체삭제\n\n거래처: ${customerName}\n주문번호: ${orderNumber}\n품번: ${Number(itemCount || 0)}개\n\n피킹으로 차감된 ERP 재고는 자동 복원되고 주문정보는 영구 삭제됩니다. 계속할까요?`)) return;
+  if (!confirm(`정말 삭제할까요?\n삭제한 주문은 복구할 수 없습니다.\n\n${orderNumber}`)) return;
+  try {
+    const { data, error } = await supabaseClient.rpc("delete_order_and_restore_inventory", {
+      p_order_number: orderNumber,
+      p_device_name: "주문관리 주문 전체삭제"
+    });
+    if (error) throw error;
+    alert(`${customerName} 주문을 전체삭제했습니다.\nERP 재고 복원: ${Number(data?.restored_quantity || 0).toLocaleString()}개`);
+    await loadOrders();
+  } catch (error) {
+    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.14-ORDER-DELETE.sql을 먼저 실행했는지 확인해주세요.`);
+  }
 }
 
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
