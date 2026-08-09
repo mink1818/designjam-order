@@ -1,0 +1,22 @@
+DESIGN SOCKS V6.5.26 배포 안내
+
+1. Supabase SQL Editor에서 아래 두 파일을 순서대로 실행
+   SQL/V6.4.2-ADMIN-ORDER-ITEM-EDIT.sql
+   SQL/V6.5.26-PRE-PICK-ORDER-MANAGEMENT.sql
+
+2. 터미널
+   git add .
+   git commit -m "release v6.5.26 product audit and pre-pick order management"
+   git push
+
+3. 배포 완료 후 브라우저 Ctrl+F5
+
+Supabase Function 재배포: 필요 없음
+
+주요 변경
+- 상품 엑셀 원본/고유/중복 품번 수 표시
+- ERP 품번 동기화 차이 CSV
+- 관리자·거래처 피킹 전 주문 수정/삭제
+- 엑셀 2칸(품번/수량) 붙여넣기 개선
+- S/B/I 전체 품번·수량 한 번에 복사
+- 전용단가 건수는 실제 조회 건수로 자동 표시(가격 계산 로직 변경 없음)

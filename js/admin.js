@@ -321,10 +321,11 @@ function renderOrderItemEditor(group, index) {
       <input class="order-edit-qty" type="number" min="1" step="1" value="${Number(item.qty || 1)}" aria-label="수량(죽)">
       <input class="order-edit-price" type="number" min="0" step="50" value="${Number(item.price || 0)}" aria-label="1죽 단가">
       <input class="order-edit-row-total" type="number" min="0" step="1" value="${Number(item.qty || 0) * Number(item.price || 0)}" aria-label="금액">
+      <button class="order-edit-remove-new" type="button" onclick="this.closest('[data-order-edit-row]').remove()">삭제</button>
     </div>`;
   }).join("");
   return `<section id="order-item-editor-${index}" class="order-item-editor" hidden>
-    <div class="order-edit-head"><span>품번</span><span>수량(죽)</span><span>단가(1죽)</span><span>금액</span></div>
+    <div class="order-edit-head"><span>품번</span><span>수량(죽)</span><span>단가(1죽)</span><span>금액</span><span>관리</span></div>
     <div class="order-edit-rows">${rows}</div>
     <div class="order-edit-actions">
       <button type="button" onclick="addOrderItemEditRow(${index})">+ 없는 품번 추가</button>
@@ -391,6 +392,31 @@ async function copyWarehouseOrder(button, event) {
   setTimeout(() => { button.textContent = original; button.classList.remove("copied"); }, 1600);
 }
 
+async function copyAllWarehouseOrders(button, event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  const card = button.closest('.order-card');
+  if (!card) return;
+  const blocks = [...card.querySelectorAll('.admin-warehouse-section')].map(section => {
+    const label = section.querySelector('.admin-warehouse-heading strong')?.textContent?.trim() || '기타 출고지';
+    const rows = [...section.querySelectorAll('.pick-row[data-copy-item]')]
+      .map(row => `${row.dataset.copyItem}  ${row.dataset.copyQty}`);
+    return rows.length ? `[${label}]\n${rows.join('\n')}` : '';
+  }).filter(Boolean);
+  if (!blocks.length) return alert('복사할 S·B·I 주문이 없습니다.');
+  const text = blocks.join('\n\n');
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    if (!fallbackCopyWithoutJump(text)) return alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.');
+  }
+  const original = button.textContent;
+  button.textContent = 'S·B·I 전체 복사완료';
+  button.classList.add('copied');
+  setTimeout(() => { button.textContent = original; button.classList.remove('copied'); }, 1600);
+}
+
 function renderOrderCards(groups) {
   if (groups.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>검색 결과가 없습니다</h2></div>";
@@ -435,7 +461,7 @@ summaryTotal += Number(group.shipping_fee || 0);
         const stockStatus = getAdminStockStatus(item);
 
         itemHtml += `
-        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${orderedQty}" data-soldout-qty="${itemSoldoutQty}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.item_number)}" data-copy-qty="${shippedQty}">
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${orderedQty}" data-soldout-qty="${itemSoldoutQty}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.warehouse_code?`${String(item.warehouse_code).toUpperCase()}-${item.item_number}`:item.item_number)}" data-copy-qty="${shippedQty}">
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
@@ -480,6 +506,7 @@ class="order-detail">
         ${canEditOrderItems(group) ? `<button class="cart-btn order-items-edit-toggle" type="button" onclick="toggleOrderItemEditor(${index})">품번·수량·단가 수정</button>` : ""}
         ${renderOrderItemEditor(group, index)}
 
+        <div class="order-copy-all-row"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event)">S·B·I 주문 전체 복사</button><small>품번과 수량을 두 칸 간격으로 한 번에 복사합니다.</small></div>
         <div class="pick-list">
           ${itemHtml}
         </div>
@@ -558,7 +585,7 @@ class="order-detail">
 >
   거래명세서 출력
 </button>
-        <button class="cart-btn admin-delete-order-btn" type="button" onclick="deleteOrderFromAdmin(decodeURIComponent('${encodeURIComponent(group.orderNumber)}'),decodeURIComponent('${encodeURIComponent(group.customerName || '거래처 미입력')}'),${group.items.length})">주문 전체삭제</button>
+        ${canEditOrderItems(group)?`<button class="cart-btn admin-delete-order-btn" type="button" onclick="deleteOrderFromAdmin(decodeURIComponent('${encodeURIComponent(group.orderNumber)}'),decodeURIComponent('${encodeURIComponent(group.customerName || '거래처 미입력')}'),${group.items.length})">피킹 전 주문 전체삭제</button>`:`<p class="order-delete-locked">피킹을 시작한 주문은 바로 삭제할 수 없습니다.</p>`}
       </div>
       </div>
     `;
@@ -580,10 +607,10 @@ async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
       p_device_name: "주문관리 주문 전체삭제"
     });
     if (error) throw error;
-    alert(`${customerName} 주문을 전체삭제했습니다.\nERP 재고 복원: ${Number(data?.restored_quantity || 0).toLocaleString()}개`);
+    alert(`${customerName} 피킹 전 주문을 전체삭제했습니다.`);
     await loadOrders();
   } catch (error) {
-    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.14-ORDER-DELETE.sql을 먼저 실행했는지 확인해주세요.`);
+    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.26-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
   }
 }
 
@@ -790,16 +817,7 @@ async function prepareOrderItemEditor(orderNumber, index, editable, isDone) {
     openOrderItemEditor(index);
     return;
   }
-  if (!confirm("이 주문에 피킹·품절·최종검증 기록이 있습니다.\n수정하려면 피킹을 초기화하고, 검증 시 차감된 재고를 복원해야 합니다.\n\n피킹을 초기화하고 주문을 수정할까요?")) return;
-  try {
-    const { data, error } = await supabaseClient.rpc("reset_order_picking", { p_order_number: orderNumber, p_device_name: "주문관리 수정 초기화" });
-    if (error) throw error;
-    alert(`피킹을 초기화했습니다.${Number(data?.restored_quantity || 0) > 0 ? `\nERP 재고 ${Number(data.restored_quantity)}개를 복원했습니다.` : ""}`);
-    await loadOrders();
-    setTimeout(() => openOrderItemEditor(index), 80);
-  } catch (error) {
-    alert("피킹 초기화 실패: " + error.message + "\nSQL/V6.4.0-PICKING-RESET-WAREHOUSE-CUSTOMER-PRICE.sql 적용 여부를 확인해주세요.");
-  }
+  alert('피킹을 시작한 주문은 품번·수량·단가를 바로 수정할 수 없습니다.\n피킹 화면의 전용 초기화 기능으로 대기 상태를 확인한 뒤 다시 시도해주세요.');
 }
 
 function addOrderItemEditRow(index) {
@@ -854,6 +872,7 @@ window.openOrderItemEditor = openOrderItemEditor;
 window.prepareOrderItemEditor = prepareOrderItemEditor;
 window.addOrderItemEditRow = addOrderItemEditRow;
 window.saveOrderItems = saveOrderItems;
+window.copyAllWarehouseOrders = copyAllWarehouseOrders;
 
 function toggleDetail(id) {
   const box = document.getElementById(id);

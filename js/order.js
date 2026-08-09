@@ -171,6 +171,7 @@ function safeOrderId(prefix, orderNumber) {
 function renderCompactActiveOrder(group) {
   const summary = getOrderSummary(group);
   const id = safeOrderId("active", group.orderNumber);
+  const editable = group.items.every(item => Number(item.picked_qty || 0) === 0 && Number(item.soldout_qty || 0) === 0 && !item.is_soldout && ["", "대기"].includes(String(item.picking_status || "대기")));
   return `<article class="completed-order-row active-order-row">
     <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
       <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
@@ -187,6 +188,7 @@ function renderCompactActiveOrder(group) {
       <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
       ${renderOrderBankBox(group)}
       <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
+      ${editable ? `<button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기(장바구니로 이동)</button><button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">피킹 전 주문 삭제</button>` : `<p><small>피킹을 시작한 주문은 거래처 화면에서 수정·삭제할 수 없습니다.</small></p>`}
     </div>
   </article>`;
 }
@@ -277,3 +279,14 @@ window.toggleOrderDetail = toggleOrderDetail;
 function downloadOrderCsv(){if(!myOrderGroups.length){alert('저장할 주문내역이 없습니다.');return;}const rows=[['주문일','주문번호','상태','품번','수량(죽)','단가(1죽)','금액','택배사','송장번호']];myOrderGroups.forEach(g=>g.items.forEach(i=>rows.push([formatDate(g.createdAt),g.orderNumber,g.status||'',i.item_number,i.qty,i.price,Number(i.price||0)*Number(i.qty||0),g.courier||'',g.trackingNumber||''])));const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`디자인 삭스_주문내역_${new Date().toISOString().slice(0,10)}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 document.getElementById('downloadOrdersBtn')?.addEventListener('click',downloadOrderCsv);
 window.copyOrderToCart=copyOrderToCart;
+
+async function deletePendingOrder(orderNumber, editing=false){
+  const group=myOrderGroups.find(x=>x.orderNumber===orderNumber);if(!group)return;
+  if(!confirm(editing?'현재 주문을 삭제하고 품목을 장바구니로 옮겨 수정할까요?':'피킹 전 주문을 삭제할까요?'))return;
+  if(editing){const cart=group.items.map(x=>({groupId:null,categoryId:null,title:'주문 수정',number:String(x.item_number),qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:''}));localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));}
+  const {error}=await supabaseClient.rpc('customer_delete_pending_order',{p_order_number:orderNumber});
+  if(error)return alert(`주문 삭제 실패: ${error.message}`);
+  if(editing)location.href='catalog.html';else await loadMyOrders();
+}
+function editPendingOrder(orderNumber){return deletePendingOrder(orderNumber,true)}
+window.deletePendingOrder=deletePendingOrder;window.editPendingOrder=editPendingOrder;

@@ -2518,6 +2518,7 @@ function parseImageUrlList(value) {
 function validateExcelItemPatterns(rows) {
   const errors = [];
   let expandedItemCount = 0;
+  const occurrences = new Map();
 
   rows.forEach((row, index) => {
     try {
@@ -2528,6 +2529,14 @@ function validateExcelItemPatterns(rows) {
       row.__expandedItemNumbers = expanded;
       row.__expandedItemCount = expanded.length;
       expandedItemCount += expanded.length;
+      expanded.forEach(item => {
+        const key = String(item).trim().toUpperCase();
+        const hit = occurrences.get(key) || { item: String(item).trim(), rows: [], groups: [] };
+        hit.rows.push(index + 2);
+        const group = String(row["묶음명"] || row["상품명"] || "").trim();
+        if (group && !hit.groups.includes(group)) hit.groups.push(group);
+        occurrences.set(key, hit);
+      });
     } catch (error) {
       errors.push(`${index + 2}행: ${error.message}`);
     }
@@ -2539,7 +2548,12 @@ function validateExcelItemPatterns(rows) {
     throw new Error(`품번 자동 확장 실패\n${preview}${extra}`);
   }
 
-  return { expandedItemCount };
+  const duplicateItems = [...occurrences.values()].filter(item => item.rows.length > 1);
+  return {
+    expandedItemCount,
+    uniqueItemCount: occurrences.size,
+    duplicateItems
+  };
 }
 
 function applyImageLibraryMatches(rows) {
@@ -2593,13 +2607,15 @@ function renderExcelPreview(rows, matchResult) {
 
   excelMessage.innerHTML = `
     <div class="product-success">
-      <h3>엑셀 읽기 완료: ${new Set(rows.map(row=>row.__sourceSheetName).filter(Boolean)).size || 1}개 시트 · 총 ${rows.length}개 상품 묶음 · ${matchResult.expandedItemCount || 0}개 품번</h3>
+      <h3>엑셀 읽기 완료: ${new Set(rows.map(row=>row.__sourceSheetName).filter(Boolean)).size || 1}개 시트 · 총 ${rows.length}개 상품 묶음 · 원본 확장 ${matchResult.expandedItemCount || 0}개 · 고유 ${matchResult.uniqueItemCount ?? matchResult.expandedItemCount ?? 0}개 품번</h3>
       <div class="bulk-result-grid">
         <span>사진 자동 매칭 <strong>${matchResult.matchedCount}개</strong></span>
         <span>URL 직접입력 <strong>${matchResult.directUrlCount}개</strong></span>
         <span>사진 없음 <strong>${matchResult.unmatchedCount}개</strong></span>
         <span>보관함 묶음 <strong>${bulkImageLibrary.size}개</strong></span>
+        <span>중복 품번 <strong>${matchResult.duplicateItems?.length || 0}개</strong></span>
       </div>
+      ${matchResult.duplicateItems?.length ? `<p class="product-warning"><strong>중복 확인:</strong> ${matchResult.duplicateItems.slice(0,20).map(item=>`${escapeHtml(item.item)} (${item.rows.join(', ')}행)`).join(' · ')}</p>` : ''}
       <p>아래는 처음 ${previewRows.length}개 미리보기입니다. 신규 행과 사진이 보이는지 확인한 뒤 반영하세요.</p>
     </div>
 
@@ -2713,7 +2729,7 @@ async function uploadExcelProducts() {
     const itemValidation = validateExcelItemPatterns(rows);
     window.pendingExcelRows = rows;
     const matchResult = applyImageLibraryMatches(rows);
-    matchResult.expandedItemCount = itemValidation.expandedItemCount;
+    Object.assign(matchResult, itemValidation);
     renderExcelPreview(rows, matchResult);
     if (!priceSheetName) {
       excelMessage.insertAdjacentHTML("afterbegin", `<div class="excel-error-list"><h3>⚠ 거래처별 단가 미등록</h3><p>이 파일에는 ‘거래처별단가’ 시트가 없습니다. 기본단가만 반영되며 거래처별 전용단가는 등록되지 않습니다.</p></div>`);

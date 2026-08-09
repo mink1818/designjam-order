@@ -57,6 +57,13 @@ begin
     raise exception '피킹을 시작한 주문은 피킹 초기화 후 수정해주세요.';
   end if;
 
+  delete from public.orders o
+   where o.order_number = p_order_number
+     and not exists (
+       select 1 from jsonb_array_elements(p_items) value
+        where nullif(value->>'id', '')::bigint = o.id
+     );
+
   for v_item in select value from jsonb_array_elements(p_items)
   loop
     v_id := nullif(v_item->>'id', '')::bigint;
