@@ -352,22 +352,38 @@ function getOrderWarehouseSections(items) {
   return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code) })).filter(section => section.items.length);
 }
 
-async function copyWarehouseOrder(button) {
+function fallbackCopyWithoutJump(text) {
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const focused = document.activeElement;
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.readOnly = true;
+  area.setAttribute("aria-hidden", "true");
+  area.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none;z-index:-1";
+  document.body.appendChild(area);
+  area.focus({ preventScroll: true });
+  area.select();
+  area.setSelectionRange(0, area.value.length);
+  const copied = document.execCommand("copy");
+  area.remove();
+  window.scrollTo(scrollX, scrollY);
+  if (focused && typeof focused.focus === "function") focused.focus({ preventScroll: true });
+  return copied;
+}
+
+async function copyWarehouseOrder(button, event) {
+  event?.preventDefault();
+  event?.stopPropagation();
   const section = button.closest(".admin-warehouse-section");
   const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
   const text = rows.map(row => `${row.dataset.copyItem}  ${row.dataset.copyQty}`).join("\n");
   if (!text) return alert("복사할 품번이 없습니다.");
   try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
     await navigator.clipboard.writeText(text);
   } catch (_) {
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.style.position = "fixed";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.select();
-    document.execCommand("copy");
-    area.remove();
+    if (!fallbackCopyWithoutJump(text)) return alert("복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.");
   }
   const original = button.textContent;
   button.textContent = `${rows.length}품번 복사완료`;
@@ -404,7 +420,7 @@ summaryTotal += Number(group.shipping_fee || 0);
         return sum + Math.max(0, ordered - soldout) * Number(item.price || 0);
       }, 0);
       itemHtml += `<div class="admin-warehouse-section warehouse-${section.code.toLowerCase()}">
-        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · ${sectionQty}죽 · 합계 ${sectionTotal.toLocaleString()}원</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this)">품번·수량 복사</button></span></div>`;
+        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · ${sectionQty}죽 · 합계 ${sectionTotal.toLocaleString()}원</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this,event)">품번·수량 복사</button></span></div>`;
       section.items.forEach(item => {
         const oneJukPrice = Number(item.price || 0);
         const rowTotal = oneJukPrice * Number(item.qty || 0);

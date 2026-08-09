@@ -1,17 +1,17 @@
-const CACHE_NAME='design-socks-v6-5-9-picking-selection-b1';
+const CACHE_NAME='design-socks-v6-5-10-copy-stability-b1';
 const APP_SHELL=[
-  '/offline.html?v=6590',
-  '/css/main.css?v=6590',
-  '/css/admin.css?v=6590',
-  '/css/statement.css?v=6590',
-  '/js/pwa.js?v=6590',
-  '/js/version-badge.js?v=6590',
-  '/js/back-navigation.js?v=6590',
-  '/icons/customer-192.png?v=6590',
-  '/icons/customer-512.png?v=6590',
-  '/icons/admin-192.png?v=6590',
-  '/icons/admin-512.png?v=6590',
-  '/images/install-guide/android-full-guide.jpg?v=6590'
+  '/offline.html?v=65100',
+  '/css/main.css?v=65100',
+  '/css/admin.css?v=65100',
+  '/css/statement.css?v=65100',
+  '/js/pwa.js?v=65100',
+  '/js/version-badge.js?v=65100',
+  '/js/back-navigation.js?v=65100',
+  '/icons/customer-192.png?v=65100',
+  '/icons/customer-512.png?v=65100',
+  '/icons/admin-192.png?v=65100',
+  '/icons/admin-512.png?v=65100',
+  '/images/install-guide/android-full-guide.jpg?v=65100'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
@@ -31,7 +31,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=6590');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=65100');
       throw new Error('offline');
     })
   );
