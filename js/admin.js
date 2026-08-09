@@ -413,21 +413,29 @@ group.items.forEach(item => {
 summaryTotal += Number(group.shipping_fee || 0);
 
     getOrderWarehouseSections(group.items).forEach(section => {
-      const sectionQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      const sectionOrderedQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      const sectionSoldoutQty = section.items.reduce((sum, item) => {
+        const ordered = Number(item.qty || 0);
+        return sum + Math.min(ordered, Number(item.soldout_qty || (item.is_soldout ? ordered : 0)));
+      }, 0);
+      const sectionQty = Math.max(0, sectionOrderedQty - sectionSoldoutQty);
       const sectionTotal = section.items.reduce((sum, item) => {
         const ordered = Number(item.qty || 0);
         const soldout = Math.min(ordered, Number(item.soldout_qty || (item.is_soldout ? ordered : 0)));
         return sum + Math.max(0, ordered - soldout) * Number(item.price || 0);
       }, 0);
       itemHtml += `<div class="admin-warehouse-section warehouse-${section.code.toLowerCase()}">
-        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · ${sectionQty}죽 · 합계 ${sectionTotal.toLocaleString()}원</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this,event)">품번·수량 복사</button></span></div>`;
+        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · 출고 ${sectionQty}죽${sectionSoldoutQty?` · 품절 ${sectionSoldoutQty}죽`:''} · 합계 ${sectionTotal.toLocaleString()}원</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this,event)">품번·수량 복사</button></span></div>`;
       section.items.forEach(item => {
         const oneJukPrice = Number(item.price || 0);
-        const rowTotal = oneJukPrice * Number(item.qty || 0);
+        const orderedQty = Number(item.qty || 0);
+        const itemSoldoutQty = Math.min(orderedQty, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0)));
+        const shippedQty = Math.max(0, orderedQty - itemSoldoutQty);
+        const rowTotal = oneJukPrice * shippedQty;
         const stockStatus = getAdminStockStatus(item);
 
         itemHtml += `
-        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${Number(item.qty || 0)}" data-soldout-qty="${Number(item.soldout_qty || (item.is_soldout ? item.qty : 0))}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.item_number)}" data-copy-qty="${Number(item.qty || 0)}">
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${orderedQty}" data-soldout-qty="${itemSoldoutQty}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.item_number)}" data-copy-qty="${shippedQty}">
           <input 
   type="checkbox" 
   ${item.is_soldout ? "checked" : ""}
@@ -435,8 +443,8 @@ summaryTotal += Number(group.shipping_fee || 0);
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
           <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
-          <span class="admin-item-pricing"><b>${item.qty}죽</b><small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
-          <em>금액 ${rowTotal.toLocaleString()}원</em>
+          <span class="admin-item-pricing"><b>출고 ${shippedQty}죽</b>${itemSoldoutQty?`<small>주문 ${orderedQty}죽 · 품절 ${itemSoldoutQty}죽</small>`:''}<small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
+          <em>출고금액 ${rowTotal.toLocaleString()}원</em>
         </label>
       `;
       });
