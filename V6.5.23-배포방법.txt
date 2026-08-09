@@ -1,4 +1,4 @@
-DESIGN SOCKS V6.5.23 배포 안내
+DESIGN SOCKS V6.5.24 배포 안내
 
 [원인]
 관리자 대신주문 화면에서는 거래처별 단가가 맞았지만 저장 RPC와 INSERT 단가 트리거가
@@ -12,11 +12,11 @@ DESIGN SOCKS V6.5.23 배포 안내
 
 [필수 SQL]
 Supabase SQL Editor에서 아래 파일을 전체 실행하세요.
-SQL/V6.5.23-PROXY-ORDER-PRICE-SNAPSHOT.sql
+SQL/V6.5.24-PROXY-ORDER-PRICE-SNAPSHOT.sql
 
 [배포]
 git add .
-git commit -m "release v6.5.23 preserve proxy order confirmed price"
+git commit -m "release v6.5.24 preserve proxy order confirmed price"
 git push
 
 [불필요]
