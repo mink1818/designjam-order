@@ -2,7 +2,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const ADMIN_SESSION_KEY='designjam_admin_session';
-let customers=[],items=[],currentAdminId=null,customerPrices=new Map();
+let customers=[],items=[],currentAdminId=null,customerPrices=new Map(),selectedPriceLoadToken=0;
 let draftSaveTimer=null,draftSubmissionComplete=false;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalizeItem=v=>String(v||'').trim().normalize('NFKC').toUpperCase();
@@ -20,6 +20,14 @@ async function fetchAll(table,select,order='created_at'){
  const out=[];for(let from=0;;from+=1000){let query=supabaseClient.from(table).select(select).range(from,from+999);if(order)query=query.order(order,{ascending:true});const {data,error}=await query;if(error)throw error;out.push(...(data||[]));if(!data||data.length<1000)break}return out;
 }
 async function fetchAdminCustomerPrices(){const rpc=await supabaseClient.rpc('get_admin_customer_item_prices');if(!rpc.error)return rpc.data||[];return fetchAll('customer_item_prices','customer_id,item_number,price','item_number').catch(()=>[])}
+async function fetchSelectedCustomerPrices(customerId){
+ if(!customerId)return[];
+ let result=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});
+ if(!result.error)return result.data||[];
+ result=await supabaseClient.from('customer_item_prices').select('item_number,price').eq('customer_id',customerId).order('item_number',{ascending:true});
+ if(result.error)throw new Error(result.error.message||'전용단가 조회 실패');
+ return result.data||[];
+}
 function asItemNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function rawPrice(item){return Number(item?.price??item?.sale_price??item?.unit_price??item?.product_price??0)||0}
 function findItem(value){const key=priceKey(value);return items.find(x=>priceKey(x.item_number)===key)}
@@ -33,6 +41,19 @@ function scheduleProxyDraftSave(){clearTimeout(draftSaveTimer);draftSaveTimer=se
 function clearProxyDraft(){const key=proxyDraftKey();if(key)localStorage.removeItem(key)}
 function restoreProxyDraft(){const key=proxyDraftKey();if(!key)return false;let draft=null;try{draft=JSON.parse(localStorage.getItem(key)||'null')}catch{}if(!draft)return false;const mode=document.querySelector(`input[name="proxyCustomerMode"][value="${draft.mode==='direct'?'direct':'select'}"]`);if(mode)mode.checked=true;$('proxyCustomer').value=draft.customer_id||'';$('proxyDirectName').value=draft.direct_name||'';$('proxyDirectOwner').value=draft.direct_owner||'';$('proxyDirectPhone').value=draft.direct_phone||'';$('proxyDirectAddress').value=draft.direct_address||'';$('proxyMemo').value=draft.memo||'';$('proxyPasteInput').value=draft.paste||'';$('proxyLines').innerHTML='';(Array.isArray(draft.rows)?draft.rows:[]).forEach(addLine);if(!document.querySelector('.proxy-line'))addLine();updateCustomerMode();calc();return true}
 function effectiveProxyPrice(itemNumber,basePrice=0){return Number(customerPrices.get(`${selectedCustomerId()}::${priceKey(itemNumber)}`)??basePrice??0)}
+function updateRegisteredPriceStatus(message='',isError=false){const box=$('proxyRegisteredPriceStatus');if(!box)return;box.hidden=!message;box.textContent=message;box.classList.toggle('auth-error',Boolean(isError));}
+async function reloadSelectedCustomerPrices(){
+ const customerId=selectedCustomerId(),token=++selectedPriceLoadToken;
+ if(!customerId){updateRegisteredPriceStatus('등록 거래처를 선택하면 해당 거래처의 전용단가를 불러옵니다.');refreshAllLinePrices();return;}
+ updateRegisteredPriceStatus('선택 거래처의 전용단가를 불러오는 중입니다...');
+ try{
+  const rows=await fetchSelectedCustomerPrices(customerId);if(token!==selectedPriceLoadToken)return;
+  for(const key of [...customerPrices.keys()])if(key.startsWith(`${customerId}::`))customerPrices.delete(key);
+  rows.forEach(row=>customerPrices.set(`${customerId}::${priceKey(row.item_number)}`,Number(row.price)));
+  updateRegisteredPriceStatus(rows.length?`전용단가 ${rows.length.toLocaleString()}개 적용 중`:'이 거래처에 등록된 전용단가가 없어 기본단가를 적용합니다.');
+  refreshAllLinePrices();
+ }catch(error){if(token!==selectedPriceLoadToken)return;updateRegisteredPriceStatus(`전용단가 조회 실패: ${error.message}`,true);refreshAllLinePrices();}
+}
 function parsePastedItemLine(line){
  const source=String(line||'').trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?\s*[\)）]\s*$/);
  if(!match)match=source.match(/^(.+?)\s*(?:[~～〜]|[,./:\-]|\s+)\s*(\d+)\s*(?:죽|족)?\s*$/);
@@ -93,12 +114,12 @@ async function init(){
   // product_groups에만 있고 inventory_items에는 아직 없는 품번도 대신주문 검색에 노출
   for(const g of groups||[])for(const n of asItemNumbers(g.item_numbers)){const key=normalizeItem(n);if(key&&!items.some(x=>normalizeItem(x.item_number)===key))items.push({item_number:String(n).trim(),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').trim().toUpperCase()||null})}
   items.sort((a,b)=>String(a.item_number).localeCompare(String(b.item_number),'ko',{numeric:true}));
-  $('proxyCustomer').innerHTML='<option value="">거래처 선택</option>'+customers.map(c=>`<option value="${c.id}">${esc(c.business_name||c.owner_name||c.email)}</option>`).join('');
+  $('proxyCustomer').innerHTML='<option value="">거래처 선택</option>'+customers.map(c=>`<option value="${c.id}">${esc(c.business_name||c.owner_name||'거래처')} · ${esc(c.email||String(c.id).slice(0,8))}</option>`).join('');
   $('proxyCustomerNameList').innerHTML=customers.map(c=>`<option value="${esc(c.business_name||c.owner_name||c.email)}"></option>`).join('');
   $('proxyItemList').innerHTML=items.map(x=>`<option value="${esc(x.item_number)}"></option>`).join('');
-  const preset=new URLSearchParams(location.search).get('customer');if(preset)$('proxyCustomer').value=preset;if(!restoreProxyDraft())addLine();calc();
+  const preset=new URLSearchParams(location.search).get('customer');if(preset)$('proxyCustomer').value=preset;if(!restoreProxyDraft())addLine();await reloadSelectedCustomerPrices();calc();
  }catch(e){showError('대신 주문 화면 불러오기 실패: '+(e?.message||e))}
 }
 function updateCustomerMode(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';$('proxySelectWrap').hidden=mode!=='select';$('proxyDirectWrap').hidden=mode!=='direct';if($('proxyDirectPriceMatch'))$('proxyDirectPriceMatch').hidden=true;refreshAllLinePrices();scheduleProxyDraftSave()}
-$('addProxyLine').onclick=()=>{addLine();scheduleProxyDraftSave()};$('applyProxyPaste').onclick=applyPastedOrder;$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',updateCustomerMode));$('proxyCustomer').addEventListener('change',()=>{refreshAllLinePrices();scheduleProxyDraftSave()});$('proxyDirectName').addEventListener('input',()=>{refreshAllLinePrices();scheduleProxyDraftSave()});document.addEventListener('input',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});document.addEventListener('change',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});window.addEventListener('pagehide',saveProxyDraft);document.addEventListener('DOMContentLoaded',()=>{updateCustomerMode();init()});
+$('addProxyLine').onclick=()=>{addLine();scheduleProxyDraftSave()};$('applyProxyPaste').onclick=applyPastedOrder;$('submitProxyOrder').onclick=submit;document.querySelectorAll('input[name="proxyCustomerMode"]').forEach(x=>x.addEventListener('change',()=>{updateCustomerMode();reloadSelectedCustomerPrices()}));$('proxyCustomer').addEventListener('change',()=>{reloadSelectedCustomerPrices();scheduleProxyDraftSave()});$('proxyDirectName').addEventListener('input',()=>{reloadSelectedCustomerPrices();scheduleProxyDraftSave()});document.addEventListener('input',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});document.addEventListener('change',event=>{if(event.target.closest?.('.proxy-card'))scheduleProxyDraftSave()});window.addEventListener('pagehide',saveProxyDraft);document.addEventListener('DOMContentLoaded',()=>{updateCustomerMode();init()});
 })();

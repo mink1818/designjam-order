@@ -2694,26 +2694,26 @@ async function importCustomerItemPricesFromGrid() {
   if (customerError) throw customerError;
   const customerNameKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
   const customerByName = new Map();
-  (customers||[]).forEach(c=>[c.business_name,c.owner_name,c.email].forEach(name=>{const key=customerNameKey(name);if(key)customerByName.set(key,c.id)}));
+  (customers||[]).forEach(c=>[c.business_name,c.owner_name,c.email].forEach(name=>{const key=customerNameKey(name);if(!key)return;const ids=customerByName.get(key)||[];if(!ids.some(id=>String(id)===String(c.id)))ids.push(c.id);customerByName.set(key,ids)}));
   const customerById=new Map((customers||[]).map(customer=>[String(customer.id),customer.id]));
   const excelCustomerIds=window.pendingCustomerPriceCustomerIds instanceof Map?window.pendingCustomerPriceCustomerIds:new Map();
-  const resolveCustomerId=name=>{const key=customerNameKey(name),excelId=String(excelCustomerIds.get(key)||'').trim();return customerById.get(excelId)||customerByName.get(key)||null};
-  const unmatched = customerColumns.filter(c=>!resolveCustomerId(c.name)).map(c=>c.name);
+  const resolveCustomerIds=name=>{const key=customerNameKey(name),excelId=String(excelCustomerIds.get(key)||'').trim(),explicit=customerById.get(excelId);return explicit?[explicit]:(customerByName.get(key)||[])};
+  const unmatched = customerColumns.filter(c=>!resolveCustomerIds(c.name).length).map(c=>c.name);
   const payloadMap = new Map();let invalid=0;
   grid.slice(headerIndex+1).forEach(row=>{
     let itemNumbers=[];
     try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
     customerColumns.forEach(column=>{
-      const customerId=resolveCustomerId(column.name);if(!customerId)return;
+      const customerIds=resolveCustomerIds(column.name);if(!customerIds.length)return;
       const raw=String(row[column.index]??"").trim();if(!raw)return;
       const price=Number(raw.replace(/[^0-9.-]/g,""));
       if(!Number.isFinite(price)||price<=0||price%50!==0){invalid++;return;}
-      itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");payloadMap.set(`${customerId}::${normalized}`,{customer_id:customerId,item_number:normalized,price,updated_at:new Date().toISOString()})});
+      customerIds.forEach(customerId=>itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");payloadMap.set(`${customerId}::${normalized}`,{customer_id:customerId,item_number:normalized,price,updated_at:new Date().toISOString()})}));
     });
   });
   const payload=[...payloadMap.values()];let saved=0,updatedOpenOrders=0;
   for(let i=0;i<payload.length;i+=500){const batch=payload.slice(i,i+500).map(({customer_id,item_number,price})=>({customer_id,item_number,price}));const {data,error}=await supabaseClient.rpc("upsert_customer_item_prices",{p_prices:batch});if(error)throw new Error(`거래처별 단가 저장 실패: ${error.message}. V6.5.2 SQL을 먼저 실행해주세요.`);saved+=Number(data?.saved??batch.length);updatedOpenOrders+=Number(data?.updated_open_orders||0);}
-  return { saved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.length-unmatched.length, missingSheet: false };
+  return { saved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), missingSheet: false };
 }
 
 function readCustomerPriceCustomerIds(workbook){
