@@ -131,7 +131,7 @@ html[data-theme="dark"] .movement-meta{color:#b8c7da!important}
 @media(max-width:800px){.warehouse-bulk-adjust{grid-template-columns:1fr 1fr}.warehouse-bulk-adjust strong,.warehouse-bulk-adjust #bulkNote{grid-column:1/-1}.warehouse-bulk-adjust button{width:100%}}
 @media(max-width:900px){.bulk-quantity-input{width:62px;padding:6px 3px}.inventory-live-row.bulk-editing{grid-template-columns:minmax(0,1fr) 62px 70px 94px}}
 
-/* V6.5.22 피킹 출고대기·가용재고 실시간 표시 */
+/* V6.5.23 피킹 출고대기·가용재고 실시간 표시 */
 .inventory-table-head,.inventory-live-row{grid-template-columns:minmax(92px,.75fr) minmax(130px,1.15fr) 82px 82px 82px 82px 108px!important;gap:6px!important}
 .pending-stock,.available-stock{display:block;text-align:center;font-weight:900}.pending-stock{color:#64748b}.pending-stock.has-pending{padding:4px 5px;border-radius:7px;background:#fff1cc;color:#9a5800}.available-stock{color:#075b31}.picking-session-button{border-color:#0b7a43!important}.picking-session-button.active{background:#b42318!important;color:#fff!important}
 html[data-theme="dark"] .pending-stock.has-pending{background:#4a3108;color:#fde68a}html[data-theme="dark"] .available-stock{color:#86efac}

@@ -1,0 +1,27 @@
+DESIGN SOCKS V6.5.23 배포 안내
+
+[원인]
+관리자 대신주문 화면에서는 거래처별 단가가 맞았지만 저장 RPC와 INSERT 단가 트리거가
+가격을 다시 조회하면서 화면에서 확인한 가격을 다른 단가로 덮어썼습니다.
+
+[수정]
+- 관리자 대신주문 화면에서 확인한 품번별 가격을 주문 확정단가로 그대로 저장
+- ADMIN 주문은 신규주문 단가 트리거의 재계산 대상에서 제외
+- 일반 거래처 주문은 기존처럼 서버의 거래처별 전용단가 적용
+- 피킹, 품절, 검증, 출고완료 이후 orders.price 및 total 변경 차단 유지
+
+[필수 SQL]
+Supabase SQL Editor에서 아래 파일을 전체 실행하세요.
+SQL/V6.5.23-PROXY-ORDER-PRICE-SNAPSHOT.sql
+
+[배포]
+git add .
+git commit -m "release v6.5.23 preserve proxy order confirmed price"
+git push
+
+[불필요]
+- Supabase Function 재배포 불필요
+- 엑셀 단가표 재등록 불필요
+
+배포 후 Ctrl+F5로 새로고침하고 새 대신주문 1건으로 확인하세요.
+이미 잘못 저장된 기존 주문은 자동 복원되지 않으므로 피킹 초기화 후 주문수정에서 바로잡아야 합니다.
