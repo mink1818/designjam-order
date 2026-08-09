@@ -1,4 +1,4 @@
-DESIGN SOCKS V6.5.21 배포 안내
+DESIGN SOCKS V6.5.22 배포 안내
 
 확정 원인
 - 화면의 `전용단가 1,000개 적용`은 실제 단가 총개수가 아니라 Supabase 1회 조회 최대치
@@ -14,7 +14,7 @@ DESIGN SOCKS V6.5.21 배포 안내
 - 9007을 포함한 1,000번째 이후 품번도 전용단가 적용
 - 관리자 주문관리와 거래명세서는 현재 단가표로 덮지 않고 주문 당시 저장 단가 유지
 - V6.5.20까지의 서버 재검증과 거래처 변경 시 단가 초기화 포함
-- 버전 및 PWA 캐시 V6.5.21 갱신
+- 버전 및 PWA 캐시 V6.5.22 갱신
 
 배포 체크
 - SQL 실행: 불필요(V6.5.19 SQL을 이미 실행한 경우)
@@ -24,7 +24,7 @@ DESIGN SOCKS V6.5.21 배포 안내
 
 터미널 명령
 git add .
-git commit -m "release v6.5.21 customer price pagination"
+git commit -m "release v6.5.22 customer price pagination"
 git push
 
 확인 순서
