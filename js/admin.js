@@ -378,7 +378,7 @@ async function copyWarehouseOrder(button, event) {
   event?.stopPropagation();
   const section = button.closest(".admin-warehouse-section");
   const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
-  const text = rows.map(row => `${row.dataset.copyItem}  ${row.dataset.copyQty}`).join("\n");
+  const text = rows.map(row => `${row.dataset.copyItem}\t${row.dataset.copyQty}`).join("\n");
   if (!text) return alert("복사할 품번이 없습니다.");
   try {
     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
@@ -397,14 +397,9 @@ async function copyAllWarehouseOrders(button, event) {
   event?.stopPropagation();
   const card = button.closest('.order-card');
   if (!card) return;
-  const blocks = [...card.querySelectorAll('.admin-warehouse-section')].map(section => {
-    const label = section.querySelector('.admin-warehouse-heading strong')?.textContent?.trim() || '기타 출고지';
-    const rows = [...section.querySelectorAll('.pick-row[data-copy-item]')]
-      .map(row => `${row.dataset.copyItem}  ${row.dataset.copyQty}`);
-    return rows.length ? `[${label}]\n${rows.join('\n')}` : '';
-  }).filter(Boolean);
-  if (!blocks.length) return alert('복사할 S·B·I 주문이 없습니다.');
-  const text = blocks.join('\n\n');
+  const rows = [...card.querySelectorAll('.admin-warehouse-section .pick-row[data-copy-item]')];
+  if (!rows.length) return alert('복사할 S·B·I 주문이 없습니다.');
+  const text = rows.map(row => `${row.dataset.copyItem}\t${row.dataset.copyQty}`).join('\n');
   try {
     if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
     await navigator.clipboard.writeText(text);
@@ -610,7 +605,7 @@ async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
     alert(`${customerName} 피킹 전 주문을 전체삭제했습니다.`);
     await loadOrders();
   } catch (error) {
-    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.26-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
+    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.27-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
   }
 }
 
