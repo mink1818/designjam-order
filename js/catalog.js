@@ -1552,7 +1552,8 @@ function addGroupToCart(groupId, nextAction = "cart") {
     return;
   }
 
-  renderCart();
+  // 담기 완료 확인 후 장바구니로 강제 이동하지 않고, 방금 보던 카테고리 목록으로 복귀합니다.
+  returnFromGroupDetail();
 }
 
 function rememberCartReturnState() {

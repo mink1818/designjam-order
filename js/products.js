@@ -2621,15 +2621,20 @@ async function uploadExcelProducts() {
 
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
-    const firstSheetName = workbook.SheetNames[0];
-
-    if (!firstSheetName) throw new Error("엑셀 파일에 시트가 없습니다.");
+    if (!workbook.SheetNames[0]) throw new Error("엑셀 파일에 시트가 없습니다.");
+    const productSheetName = workbook.SheetNames.find(name => {
+      const grid=XLSX.utils.sheet_to_json(workbook.Sheets[name],{header:1,defval:"",raw:false});
+      return grid.slice(0,10).some(row=>["대분류","카테고리","묶음명","품번","단가"].every(header=>row.map(cell=>String(cell).trim()).includes(header)));
+    });
+    if (!productSheetName) throw new Error("상품등록 시트에서 ‘대분류·카테고리·묶음명·품번·단가’ 제목을 찾지 못했습니다.");
 
     const rows = XLSX.utils.sheet_to_json(
-      workbook.Sheets[firstSheetName],
+      workbook.Sheets[productSheetName],
       { defval: "", raw: false }
     );
-    const priceSheetName = workbook.SheetNames.find(name => String(name).trim() === "거래처별단가");
+    const normalizePriceSheetName=name=>String(name||"").trim().normalize("NFKC").replace(/[\s._()\[\]{}\-]+/g,"");
+    const priceSheetName = workbook.SheetNames.find(name => ["거래처별단가","거래처단가","업체별단가","거래처별가격"].includes(normalizePriceSheetName(name)));
+    window.pendingCustomerPriceSheetName = priceSheetName || "";
     window.pendingCustomerPriceGrid = priceSheetName
       ? XLSX.utils.sheet_to_json(workbook.Sheets[priceSheetName], { header: 1, defval: "", raw: false })
       : [];
@@ -2649,6 +2654,9 @@ async function uploadExcelProducts() {
     const matchResult = applyImageLibraryMatches(rows);
     matchResult.expandedItemCount = itemValidation.expandedItemCount;
     renderExcelPreview(rows, matchResult);
+    if (!priceSheetName) {
+      excelMessage.insertAdjacentHTML("afterbegin", `<div class="excel-error-list"><h3>⚠ 거래처별 단가 미등록</h3><p>이 파일에는 ‘거래처별단가’ 시트가 없습니다. 기본단가만 반영되며 거래처별 전용단가는 등록되지 않습니다.</p></div>`);
+    }
 
     document.getElementById("registerExcelButton").style.display = "block";
     const importModePanel = document.getElementById("excelImportModePanel");
@@ -2664,32 +2672,36 @@ window.uploadExcelProducts = uploadExcelProducts;
 
 async function importCustomerItemPricesFromGrid() {
   const grid = Array.isArray(window.pendingCustomerPriceGrid) ? window.pendingCustomerPriceGrid : [];
-  if (!grid.length) return { saved: 0, unmatched: [] };
-  const headerIndex = grid.findIndex(row => row.some(cell => String(cell).trim() === "품번(원본)"));
-  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 '품번(원본)' 제목을 찾지 못했습니다."] };
+  if (!grid.length) return { saved: 0, unmatched: [], invalid: 0, missingSheet: true };
+  const headerKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
+  const headerIndex = grid.findIndex(row => row.some(cell => ["품번원본","품번","상품번호","sku"].includes(headerKey(cell))));
+  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 ‘품번(원본)’ 또는 ‘품번’ 제목을 찾지 못했습니다."], invalid: 0, missingSheet: false };
   const headers = grid[headerIndex].map(value => String(value).trim());
-  const itemColumn = headers.indexOf("품번(원본)");
-  const baseColumns = new Set(["묶음명","카테고리","품번(원본)","기본단가"]);
-  const customerColumns = headers.map((name,index)=>({name,index})).filter(entry=>entry.name&&!baseColumns.has(entry.name));
+  const itemColumn = headers.findIndex(value=>["품번원본","품번","상품번호","sku"].includes(headerKey(value)));
+  const baseColumns = new Set(["순번","묶음명","카테고리","대분류","품번원본","품번","상품번호","sku","기본단가","단가","설명","표시순서","포함브랜드"]);
+  const customerColumns = headers.map((name,index)=>({name:String(name).replace(/^(거래처|업체)\s*[:：]\s*/,'').trim(),index})).filter(entry=>entry.name&&!baseColumns.has(headerKey(entry.name)));
+  if (!customerColumns.length) return { saved: 0, unmatched: ["거래처별단가 시트에 실제 등록 거래처명 열이 없습니다."], invalid: 0, missingSheet: false };
   const { data: customers, error: customerError } = await supabaseClient.from("customers").select("id,business_name,owner_name,email").eq("is_admin",false);
   if (customerError) throw customerError;
   const customerNameKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
   const customerByName = new Map();
   (customers||[]).forEach(c=>[c.business_name,c.owner_name,c.email].forEach(name=>{const key=customerNameKey(name);if(key)customerByName.set(key,c.id)}));
   const unmatched = customerColumns.filter(c=>!customerByName.has(customerNameKey(c.name))).map(c=>c.name);
-  const payload = [];
+  const payloadMap = new Map();let invalid=0;
   grid.slice(headerIndex+1).forEach(row=>{
     let itemNumbers=[];
     try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
     customerColumns.forEach(column=>{
       const customerId=customerByName.get(customerNameKey(column.name));if(!customerId)return;
-      const price=Number(String(row[column.index]??"").replace(/[^0-9.-]/g,""));
-      if(!Number.isFinite(price)||price<0||price%50!==0)return;
-      itemNumbers.forEach(itemNumber=>payload.push({customer_id:customerId,item_number:String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,""),price,updated_at:new Date().toISOString()}));
+      const raw=String(row[column.index]??"").trim();if(!raw)return;
+      const price=Number(raw.replace(/[^0-9.-]/g,""));
+      if(!Number.isFinite(price)||price<=0||price%50!==0){invalid++;return;}
+      itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");payloadMap.set(`${customerId}::${normalized}`,{customer_id:customerId,item_number:normalized,price,updated_at:new Date().toISOString()})});
     });
   });
+  const payload=[...payloadMap.values()];
   for(let i=0;i<payload.length;i+=500){const {error}=await supabaseClient.from("customer_item_prices").upsert(payload.slice(i,i+500),{onConflict:"customer_id,item_number"});if(error)throw error;}
-  return { saved: payload.length, unmatched };
+  return { saved: payload.length, unmatched, invalid, missingSheet: false };
 }
 
 function parseItemPattern(value) {
@@ -3353,6 +3365,8 @@ async function registerExcelProducts() {
         </div>
         <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
         ${customerPriceResult.unmatched.length?`<p class="auth-error">등록 거래처명과 일치하지 않아 단가를 건너뜀: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}
+        ${customerPriceResult.missingSheet?`<p class="auth-error">거래처별단가 시트가 없어 전용단가는 등록되지 않았습니다.</p>`:''}
+        ${customerPriceResult.invalid?`<p class="auth-error">비어 있지 않으면서 50원 단위의 양수가 아닌 단가 ${customerPriceResult.invalid}칸을 건너뛰었습니다.</p>`:''}
       </div>
       ${skippedMessages.length ? `<div class="excel-error-list excel-skip-list"><h3>중복으로 건너뛴 행</h3>${skippedMessages.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}
       ${errorMessages.length ? `<div class="excel-error-list"><h3>실패한 행</h3>${errorMessages.map(message => `<p>${escapeHtml(message)}</p>`).join("")}</div>` : ""}`;

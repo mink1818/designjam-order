@@ -322,26 +322,19 @@ async function saveStatementImage(button) {
   try {
     const now=new Date(),date=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
     const baseName=`${String(currentStatementCustomerName).replace(/[^0-9A-Za-z가-힣_-]/g, "_")}_${date}_거래명세서`;
-    const originalRows=[...statementArea.querySelectorAll('.statement-table tbody tr')];
-    const chunks=[];for(let i=0;i<originalRows.length;i+=20)chunks.push(originalRows.slice(i,i+20));
-    if(!chunks.length)chunks.push([]);
-    const blobs=[];
-    for(let page=0;page<chunks.length;page++){
-      button.textContent=`고해상도 저장 중 ${page+1}/${chunks.length}`;
-      const clone=statementArea.cloneNode(true),tbody=clone.querySelector('.statement-table tbody');
-      if(tbody){tbody.innerHTML='';chunks[page].forEach(row=>tbody.appendChild(row.cloneNode(true)))}
-      clone.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;background:#fff;color:#111;z-index:-1';
-      document.body.appendChild(clone);
-      const canvas=await window.html2canvas(clone,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false,windowWidth:1000,scrollX:0,scrollY:0});
-      clone.remove();
-      const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('이미지 변환 실패')),'image/png'));
-      blobs.push(blob);
-    }
+    const clone=statementArea.cloneNode(true);
+    clone.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;max-width:none;background:#fff;color:#111;z-index:-1';
+    document.body.appendChild(clone);
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const width=Math.max(1000,clone.scrollWidth),height=Math.max(1,clone.scrollHeight);
+    // Chrome/Edge 캔버스 한 변 한계보다 여유 있게 30,000px 안에서 최대 3배 고해상도를 적용합니다.
+    const scale=Math.max(.1,Math.min(3,30000/height,12000/width));
+    button.textContent=`한 장 고해상도 저장 중 (${scale.toFixed(1)}배)`;
+    const canvas=await window.html2canvas(clone,{backgroundColor:'#ffffff',scale,useCORS:true,logging:false,windowWidth:width,windowHeight:height,scrollX:0,scrollY:0});
+    clone.remove();
+    const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('이미지 변환 실패')),'image/png'));
     const link=document.createElement('a');
-    if(blobs.length===1){link.download=`${baseName}.png`;link.href=URL.createObjectURL(blobs[0])}
-    else if(window.JSZip){const zip=new JSZip();blobs.forEach((blob,index)=>zip.file(`${baseName}_${String(index+1).padStart(2,'0')}페이지.png`,blob));link.download=`${baseName}_${blobs.length}페이지.zip`;link.href=URL.createObjectURL(await zip.generateAsync({type:'blob'}))}
-    else{link.download=`${baseName}_01페이지.png`;link.href=URL.createObjectURL(blobs[0]);alert('페이지가 길어 첫 페이지만 저장합니다. PDF 인쇄 저장을 이용해주세요.')}
-    link.click();setTimeout(()=>URL.revokeObjectURL(link.href),5000);
+    link.download=`${baseName}.png`;link.href=URL.createObjectURL(blob);link.click();setTimeout(()=>URL.revokeObjectURL(link.href),5000);
     button.textContent = "이미지 저장 완료";
   } catch (error) {
     console.error(error);
