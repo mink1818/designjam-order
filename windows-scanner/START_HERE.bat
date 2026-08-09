@@ -1,5 +1,5 @@
 @echo off
-chcp 65001 > nul
+chcp 65101 > nul
 cd /d "%~dp0"
 echo DESIGN SOCKS Scanner setup and EXE build
 call 1_INSTALL.bat

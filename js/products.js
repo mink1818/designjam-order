@@ -2635,8 +2635,9 @@ async function uploadExcelProducts() {
     const normalizePriceSheetName=name=>String(name||"").trim().normalize("NFKC").replace(/[\s._()\[\]{}\-]+/g,"");
     const priceSheetName = workbook.SheetNames.find(name => ["거래처별단가","거래처단가","업체별단가","거래처별가격"].includes(normalizePriceSheetName(name)));
     window.pendingCustomerPriceSheetName = priceSheetName || "";
+    window.pendingCustomerPriceCustomerIds = readCustomerPriceCustomerIds(workbook);
     window.pendingCustomerPriceGrid = priceSheetName
-      ? XLSX.utils.sheet_to_json(workbook.Sheets[priceSheetName], { header: 1, defval: "", raw: false })
+      ? resolveCustomerPriceFormulaHeaders(workbook, priceSheetName)
       : [];
 
     if (rows.length === 0) throw new Error("엑셀에 등록할 내용이 없습니다.");
@@ -2672,27 +2673,30 @@ window.uploadExcelProducts = uploadExcelProducts;
 
 async function importCustomerItemPricesFromGrid() {
   const grid = Array.isArray(window.pendingCustomerPriceGrid) ? window.pendingCustomerPriceGrid : [];
-  if (!grid.length) return { saved: 0, unmatched: [], invalid: 0, missingSheet: true };
+  if (!grid.length) return { saved: 0, unmatched: [], invalid: 0, matchedCustomers: 0, missingSheet: true };
   const headerKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
   const headerIndex = grid.findIndex(row => row.some(cell => ["품번원본","품번","상품번호","sku"].includes(headerKey(cell))));
-  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 ‘품번(원본)’ 또는 ‘품번’ 제목을 찾지 못했습니다."], invalid: 0, missingSheet: false };
+  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 ‘품번(원본)’ 또는 ‘품번’ 제목을 찾지 못했습니다."], invalid: 0, matchedCustomers: 0, missingSheet: false };
   const headers = grid[headerIndex].map(value => String(value).trim());
   const itemColumn = headers.findIndex(value=>["품번원본","품번","상품번호","sku"].includes(headerKey(value)));
-  const baseColumns = new Set(["순번","묶음명","카테고리","대분류","품번원본","품번","상품번호","sku","기본단가","단가","설명","표시순서","포함브랜드"]);
+  const baseColumns = new Set(["순번","묶음명","카테고리","대분류","품번원본","품번","상품번호","sku","기본단가","단가","설명","표시순서","포함브랜드","출고지","표시품번","비고"]);
   const customerColumns = headers.map((name,index)=>({name:String(name).replace(/^(거래처|업체)\s*[:：]\s*/,'').trim(),index})).filter(entry=>entry.name&&!baseColumns.has(headerKey(entry.name)));
-  if (!customerColumns.length) return { saved: 0, unmatched: ["거래처별단가 시트에 실제 등록 거래처명 열이 없습니다."], invalid: 0, missingSheet: false };
+  if (!customerColumns.length) return { saved: 0, unmatched: ["거래처별단가 시트에 실제 등록 거래처명 열이 없습니다."], invalid: 0, matchedCustomers: 0, missingSheet: false };
   const { data: customers, error: customerError } = await supabaseClient.from("customers").select("id,business_name,owner_name,email").eq("is_admin",false);
   if (customerError) throw customerError;
   const customerNameKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
   const customerByName = new Map();
   (customers||[]).forEach(c=>[c.business_name,c.owner_name,c.email].forEach(name=>{const key=customerNameKey(name);if(key)customerByName.set(key,c.id)}));
-  const unmatched = customerColumns.filter(c=>!customerByName.has(customerNameKey(c.name))).map(c=>c.name);
+  const customerById=new Map((customers||[]).map(customer=>[String(customer.id),customer.id]));
+  const excelCustomerIds=window.pendingCustomerPriceCustomerIds instanceof Map?window.pendingCustomerPriceCustomerIds:new Map();
+  const resolveCustomerId=name=>{const key=customerNameKey(name),excelId=String(excelCustomerIds.get(key)||'').trim();return customerById.get(excelId)||customerByName.get(key)||null};
+  const unmatched = customerColumns.filter(c=>!resolveCustomerId(c.name)).map(c=>c.name);
   const payloadMap = new Map();let invalid=0;
   grid.slice(headerIndex+1).forEach(row=>{
     let itemNumbers=[];
     try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
     customerColumns.forEach(column=>{
-      const customerId=customerByName.get(customerNameKey(column.name));if(!customerId)return;
+      const customerId=resolveCustomerId(column.name);if(!customerId)return;
       const raw=String(row[column.index]??"").trim();if(!raw)return;
       const price=Number(raw.replace(/[^0-9.-]/g,""));
       if(!Number.isFinite(price)||price<=0||price%50!==0){invalid++;return;}
@@ -2701,7 +2705,40 @@ async function importCustomerItemPricesFromGrid() {
   });
   const payload=[...payloadMap.values()];
   for(let i=0;i<payload.length;i+=500){const {error}=await supabaseClient.from("customer_item_prices").upsert(payload.slice(i,i+500),{onConflict:"customer_id,item_number"});if(error)throw error;}
-  return { saved: payload.length, unmatched, invalid, missingSheet: false };
+  return { saved: payload.length, unmatched, invalid, matchedCustomers: customerColumns.length-unmatched.length, missingSheet: false };
+}
+
+function readCustomerPriceCustomerIds(workbook){
+  const normalize=value=>String(value||'').trim().normalize('NFKC').toLowerCase().replace(/[\s._()\[\]{}\-]+/g,'');
+  const sheetName=workbook.SheetNames.find(name=>['거래처목록','거래처리스트','업체목록'].includes(normalize(name)));
+  if(!sheetName)return new Map();
+  const grid=XLSX.utils.sheet_to_json(workbook.Sheets[sheetName],{header:1,defval:'',raw:false});
+  const headerIndex=grid.findIndex(row=>row.some(cell=>normalize(cell)==='거래처명'));
+  if(headerIndex<0)return new Map();
+  const headers=grid[headerIndex].map(normalize),nameColumn=headers.indexOf('거래처명');
+  const idColumn=headers.findIndex(header=>['거래처id선택','거래처id','고객id','customerid'].includes(header));
+  const result=new Map();if(nameColumn<0||idColumn<0)return result;
+  grid.slice(headerIndex+1).forEach(row=>{const nameKey=normalize(row[nameColumn]),id=String(row[idColumn]||'').trim();if(nameKey&&id)result.set(nameKey,id)});
+  return result;
+}
+
+function resolveCustomerPriceFormulaHeaders(workbook, sheetName) {
+  const worksheet = workbook.Sheets[sheetName];
+  const grid = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: false });
+  const headerKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
+  const headerIndex=grid.findIndex(row=>row.some(cell=>["품번원본","품번","상품번호","sku"].includes(headerKey(cell))));
+  if(headerIndex<0)return grid;
+  grid[headerIndex]=grid[headerIndex].map((value,columnIndex)=>{
+    if(value&&!/^#(?:NAME|REF)\?/i.test(String(value)))return value;
+    const address=XLSX.utils.encode_cell({r:headerIndex,c:columnIndex});
+    const formula=String(worksheet[address]?.f||'').replace(/^=/,'').trim();
+    const reference=formula.match(/^'?([^']+)'?!\$?([A-Z]+)\$?(\d+)$/i);
+    if(!reference)return value;
+    const sourceSheet=workbook.Sheets[reference[1]];
+    const sourceCell=sourceSheet?.[`${reference[2].toUpperCase()}${reference[3]}`];
+    return String(sourceCell?.w??sourceCell?.v??value??'').trim();
+  });
+  return grid;
 }
 
 function parseItemPattern(value) {
@@ -3362,6 +3399,7 @@ async function registerExcelProducts() {
           <span>숨김 처리 <strong>${hiddenDuplicateCount + hiddenMissingCount}개</strong></span>
           <span>실패 <strong>${errorCount}개</strong></span>
           <span>거래처별 단가 <strong>${customerPriceResult.saved}개</strong></span>
+          <span>단가 연결 거래처 <strong>${customerPriceResult.matchedCustomers||0}개</strong></span>
         </div>
         <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
         ${customerPriceResult.unmatched.length?`<p class="auth-error">등록 거래처명과 일치하지 않아 단가를 건너뜀: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}
