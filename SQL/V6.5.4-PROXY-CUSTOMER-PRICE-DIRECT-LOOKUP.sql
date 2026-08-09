@@ -1,4 +1,4 @@
--- DESIGN SOCKS V6.5.4 관리자 대신주문 거래처 단가 직접조회·중복상호 동기화
+-- DESIGN SOCKS V6.5.5 관리자 대신주문 거래처 단가 직접조회·중복상호 동기화
 -- Supabase SQL Editor에서 전체 실행하세요.
 
 create or replace function public.get_customer_item_prices_for_admin(p_customer_id uuid)

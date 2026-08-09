@@ -1204,8 +1204,51 @@ async function deleteMainCategory(id, name) {
   await loadMainCategories();
 }
 
+function productImageStoragePath(publicUrl) {
+  try {
+    const url = new URL(String(publicUrl || ""));
+    const marker = "/storage/v1/object/public/product-images/";
+    const markerIndex = url.pathname.indexOf(marker);
+    return markerIndex >= 0 ? decodeURIComponent(url.pathname.slice(markerIndex + marker.length)) : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+/* 대분류 대표사진만 삭제하고 대분류·하위 카테고리는 유지 */
+async function deleteMainCategoryCover(id, name) {
+  const mainCategory = allMainCategories.find(item => String(item.id) === String(id));
+  if (!mainCategory?.cover_url) {
+    alert("삭제할 대표사진이 없습니다.");
+    return;
+  }
+  if (!confirm(`"${name}" 대분류의 대표사진만 삭제할까요?\n\n대분류와 하위 상품은 그대로 유지됩니다.`)) return;
+
+  const oldUrl = mainCategory.cover_url;
+  const { error } = await supabaseClient
+    .from("product_main_categories")
+    .update({ cover_url: "" })
+    .eq("id", id);
+  if (error) {
+    alert("대표사진 삭제 실패: " + error.message);
+    return;
+  }
+
+  const storagePath = productImageStoragePath(oldUrl);
+  if (storagePath) {
+    const storageResult = await supabaseClient.storage.from("product-images").remove([storagePath]);
+    if (storageResult.error) console.warn("기존 대표사진 파일 정리 실패:", storageResult.error.message);
+  }
+  if (String(document.getElementById("mainCategoryId").value) === String(id)) mainCategoryCover.value = "";
+  showMessage("mainCategoryMessage", `"${name}" 대분류의 대표사진을 삭제했습니다.`);
+  await loadMainCategories();
+}
+
 window.deleteMainCategory =
   deleteMainCategory;
+
+window.deleteMainCategoryCover =
+  deleteMainCategoryCover;
 
 window.editMainCategory =
   editMainCategory;
@@ -1289,6 +1332,16 @@ function renderMainCategories() {
                     mainCategory.name
                   )}"
                 >
+                <button
+                  class="cart-btn gray-btn"
+                  type="button"
+                  onclick="deleteMainCategoryCover(
+                    ${mainCategory.id},
+                    '${escapeAttribute(mainCategory.name)}'
+                  )"
+                >
+                  대표사진 삭제
+                </button>
               `
               : ""
           }
@@ -2540,14 +2593,14 @@ function renderExcelPreview(rows, matchResult) {
 
   excelMessage.innerHTML = `
     <div class="product-success">
-      <h3>엑셀 읽기 완료: 총 ${rows.length}개 상품 묶음 · ${matchResult.expandedItemCount || 0}개 품번</h3>
+      <h3>엑셀 읽기 완료: ${new Set(rows.map(row=>row.__sourceSheetName).filter(Boolean)).size || 1}개 시트 · 총 ${rows.length}개 상품 묶음 · ${matchResult.expandedItemCount || 0}개 품번</h3>
       <div class="bulk-result-grid">
         <span>사진 자동 매칭 <strong>${matchResult.matchedCount}개</strong></span>
         <span>URL 직접입력 <strong>${matchResult.directUrlCount}개</strong></span>
         <span>사진 없음 <strong>${matchResult.unmatchedCount}개</strong></span>
         <span>보관함 묶음 <strong>${bulkImageLibrary.size}개</strong></span>
       </div>
-      <p>아래는 처음 ${previewRows.length}개 미리보기입니다.</p>
+      <p>아래는 처음 ${previewRows.length}개 미리보기입니다. 신규 행과 사진이 보이는지 확인한 뒤 반영하세요.</p>
     </div>
 
     <div class="excel-preview-wrap">
@@ -2629,16 +2682,16 @@ async function uploadExcelProducts() {
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     if (!workbook.SheetNames[0]) throw new Error("엑셀 파일에 시트가 없습니다.");
-    const productSheetName = workbook.SheetNames.find(name => {
+    const productSheetNames = workbook.SheetNames.filter(name => {
       const grid=XLSX.utils.sheet_to_json(workbook.Sheets[name],{header:1,defval:"",raw:false});
       return grid.slice(0,10).some(row=>["대분류","카테고리","묶음명","품번","단가"].every(header=>row.map(cell=>String(cell).trim()).includes(header)));
     });
-    if (!productSheetName) throw new Error("상품등록 시트에서 ‘대분류·카테고리·묶음명·품번·단가’ 제목을 찾지 못했습니다.");
+    if (!productSheetNames.length) throw new Error("상품등록 시트에서 ‘대분류·카테고리·묶음명·품번·단가’ 제목을 찾지 못했습니다.");
 
-    const rows = XLSX.utils.sheet_to_json(
-      workbook.Sheets[productSheetName],
+    const rows = productSheetNames.flatMap(sheetName => XLSX.utils.sheet_to_json(
+      workbook.Sheets[sheetName],
       { defval: "", raw: false }
-    );
+    ).map((row,rowIndex)=>({ ...row, __sourceSheetName:sheetName, __sourceRowNumber:rowIndex+2 })));
     const normalizePriceSheetName=name=>String(name||"").trim().normalize("NFKC").replace(/[\s._()\[\]{}\-]+/g,"");
     const priceSheetName = workbook.SheetNames.find(name => ["거래처별단가","거래처단가","업체별단가","거래처별가격"].includes(normalizePriceSheetName(name)));
     window.pendingCustomerPriceSheetName = priceSheetName || "";
@@ -2699,21 +2752,23 @@ async function importCustomerItemPricesFromGrid() {
   const excelCustomerIds=window.pendingCustomerPriceCustomerIds instanceof Map?window.pendingCustomerPriceCustomerIds:new Map();
   const resolveCustomerIds=name=>{const key=customerNameKey(name),excelId=String(excelCustomerIds.get(key)||'').trim(),explicit=customerById.get(excelId);return explicit?[explicit]:(customerByName.get(key)||[])};
   const unmatched = customerColumns.filter(c=>!resolveCustomerIds(c.name).length).map(c=>c.name);
-  const payloadMap = new Map();let invalid=0;
+  const payloadMap = new Map(),namePayloadMap=new Map();let invalid=0;
   grid.slice(headerIndex+1).forEach(row=>{
     let itemNumbers=[];
     try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
     customerColumns.forEach(column=>{
-      const customerIds=resolveCustomerIds(column.name);if(!customerIds.length)return;
       const raw=String(row[column.index]??"").trim();if(!raw)return;
       const price=Number(raw.replace(/[^0-9.-]/g,""));
       if(!Number.isFinite(price)||price<=0||price%50!==0){invalid++;return;}
+      const customerIds=resolveCustomerIds(column.name);
+      itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");namePayloadMap.set(`${customerNameKey(column.name)}::${normalized}`,{customer_name:column.name,item_number:normalized,price})});
       customerIds.forEach(customerId=>itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");payloadMap.set(`${customerId}::${normalized}`,{customer_id:customerId,item_number:normalized,price,updated_at:new Date().toISOString()})}));
     });
   });
-  const payload=[...payloadMap.values()];let saved=0,updatedOpenOrders=0;
+  const payload=[...payloadMap.values()],namePayload=[...namePayloadMap.values()];let saved=0,nameSaved=0,updatedOpenOrders=0;
   for(let i=0;i<payload.length;i+=500){const batch=payload.slice(i,i+500).map(({customer_id,item_number,price})=>({customer_id,item_number,price}));const {data,error}=await supabaseClient.rpc("upsert_customer_item_prices",{p_prices:batch});if(error)throw new Error(`거래처별 단가 저장 실패: ${error.message}. V6.5.2 SQL을 먼저 실행해주세요.`);saved+=Number(data?.saved??batch.length);updatedOpenOrders+=Number(data?.updated_open_orders||0);}
-  return { saved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), missingSheet: false };
+  for(let i=0;i<namePayload.length;i+=500){const batch=namePayload.slice(i,i+500);const {data,error}=await supabaseClient.rpc("upsert_customer_name_item_prices",{p_prices:batch});if(error)throw new Error(`직접입력 거래처 단가 저장 실패: ${error.message}. V6.5.5 SQL을 먼저 실행해주세요.`);nameSaved+=Number(data?.saved??batch.length);}
+  return { saved, nameSaved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), nameCustomers:customerColumns.length, missingSheet: false };
 }
 
 function readCustomerPriceCustomerIds(workbook){
@@ -3176,6 +3231,8 @@ async function registerExcelProducts() {
   let hiddenDuplicateCount = 0;
   let deletedDuplicateCount = 0;
   let hiddenMissingCount = 0;
+  let hiddenMissingCategoryCount = 0;
+  let hiddenMissingMainCount = 0;
   let errorCount = 0;
   const errorMessages = [];
   const skippedMessages = [];
@@ -3191,8 +3248,25 @@ async function registerExcelProducts() {
     const importItemSetKeys = new Set();
     const importIndividualItemKeys = new Set();
     const keptGroupIds = new Set();
+    const touchedMainCategoryIds = new Set();
     const touchedCategoryIds = new Set();
     const duplicateIdsToHide = new Set();
+    const excelMainOrder = new Map();
+    const excelCategoryOrder = new Map();
+    rows.forEach(row => {
+      const mainName = String(row["대분류"] || "").trim();
+      const categoryName = String(row["카테고리"] || "").trim();
+      const mainKey = normalizeDuplicateText(mainName);
+      const categoryKey = normalizeDuplicateText(categoryName);
+      if (mainKey && !excelMainOrder.has(mainKey)) excelMainOrder.set(mainKey, excelMainOrder.size + 1);
+      if (mainKey && categoryKey) {
+        const fullCategoryKey = `${mainKey}::${categoryKey}`;
+        if (!excelCategoryOrder.has(fullCategoryKey)) {
+          const sameMainCount = [...excelCategoryOrder.keys()].filter(key => key.startsWith(`${mainKey}::`)).length;
+          excelCategoryOrder.set(fullCategoryKey, sameMainCount + 1);
+        }
+      }
+    });
 
     if (mode === "replace") {
       hiddenMissingCount += await hideProductGroups(duplicateIndex.groups.map(group => group.id));
@@ -3229,19 +3303,24 @@ async function registerExcelProducts() {
         if (!mainCategory) {
           const { data, error } = await supabaseClient
             .from("product_main_categories")
-            .insert({ name: mainCategoryName, cover_url: "", sort_order: allMainCategories.length + 1, is_active: true })
+            .insert({ name: mainCategoryName, cover_url: "", sort_order: excelMainOrder.get(mainCategoryNameKey) || allMainCategories.length + 1, is_active: true })
             .select().single();
           if (error) throw error;
           mainCategory = data;
           allMainCategories.push(mainCategory);
           duplicateIndex.mainByName.set(mainCategoryNameKey, mainCategory);
-        } else if (mainCategory.is_active === false && mode !== "append") {
-          const { error } = await supabaseClient.from("product_main_categories").update({ is_active: true }).eq("id", mainCategory.id);
+        } else if (mode !== "append") {
+          const mainSortOrder = excelMainOrder.get(mainCategoryNameKey) || 1;
+          const { error } = await supabaseClient.from("product_main_categories").update({ name: mainCategoryName, sort_order: Math.max(1, mainSortOrder), is_active: true }).eq("id", mainCategory.id);
           if (error) throw error;
+          mainCategory.name = mainCategoryName;
+          mainCategory.sort_order = Math.max(1, mainSortOrder);
           mainCategory.is_active = true;
         }
+        touchedMainCategoryIds.add(String(mainCategory.id));
 
         const categoryNameKey = normalizeDuplicateText(categoryName);
+        const categorySortOrder = excelCategoryOrder.get(`${mainCategoryNameKey}::${categoryNameKey}`) || sortOrder;
         const categoryLookupKey = `${String(mainCategory.id)}::${categoryNameKey}`;
         let category = duplicateIndex.categoryByKey.get(categoryLookupKey) ||
           allCategories.find(item => String(item.main_category_id) === String(mainCategory.id) && normalizeDuplicateText(item.name) === categoryNameKey);
@@ -3257,7 +3336,7 @@ async function registerExcelProducts() {
               price,
               tags: brandTags,
               cover_url: imageUrl,
-              sort_order: sortOrder,
+              sort_order: categorySortOrder,
               is_active: true
             }).select().single();
           if (error) throw error;
@@ -3265,12 +3344,16 @@ async function registerExcelProducts() {
           allCategories.push(category);
           duplicateIndex.categoryByKey.set(categoryLookupKey, category);
         } else {
-          const updatedTags = [...new Set([...(category.tags || []), ...brandTags])];
+          const updatedTags = mode === "append" ? [...new Set([...(category.tags || []), ...brandTags])] : brandTags;
+          const categoryUpdate = mode === "append"
+            ? { tags: updatedTags, is_active: true }
+            : { name: categoryName, price, tags: updatedTags, cover_url: imageUrl || category.cover_url || "", sort_order: categorySortOrder, is_active: true };
           const { error } = await supabaseClient
             .from("product_categories")
-            .update({ tags: updatedTags, is_active: true })
+            .update(categoryUpdate)
             .eq("id", category.id);
           if (error) throw error;
+          Object.assign(category, categoryUpdate);
           category.is_active = true;
         }
         touchedCategoryIds.add(String(category.id));
@@ -3409,6 +3492,26 @@ async function registerExcelProducts() {
       hiddenDuplicateCount = await hideProductGroups([...duplicateIdsToHide]);
     }
 
+    if (mode === "sync" || mode === "replace") {
+      const missingCategoryIds = duplicateIndex.categories
+        .filter(category => !touchedCategoryIds.has(String(category.id)) && category.is_active !== false)
+        .map(category => category.id);
+      if (missingCategoryIds.length) {
+        const { error } = await supabaseClient.from("product_categories").update({ is_active: false }).in("id", missingCategoryIds);
+        if (error) throw error;
+        hiddenMissingCategoryCount = missingCategoryIds.length;
+      }
+
+      const missingMainIds = duplicateIndex.mains
+        .filter(main => !touchedMainCategoryIds.has(String(main.id)) && main.is_active !== false)
+        .map(main => main.id);
+      if (missingMainIds.length) {
+        const { error } = await supabaseClient.from("product_main_categories").update({ is_active: false }).in("id", missingMainIds);
+        if (error) throw error;
+        hiddenMissingMainCount = missingMainIds.length;
+      }
+    }
+
     const customerPriceResult = await importCustomerItemPricesFromGrid();
     await loadMainCategories();
     await loadProductData();
@@ -3424,13 +3527,17 @@ async function registerExcelProducts() {
           <span>대분류 중복 정리 <strong>${structureCleanup.removedMainCount}개</strong></span>
           <span>카테고리 중복 정리 <strong>${structureCleanup.removedCategoryCount}개</strong></span>
           <span>숨김 처리 <strong>${hiddenDuplicateCount + hiddenMissingCount}개</strong></span>
+          <span>엑셀에서 빠진 카테고리 숨김 <strong>${hiddenMissingCategoryCount}개</strong></span>
+          <span>엑셀에서 빠진 대분류 숨김 <strong>${hiddenMissingMainCount}개</strong></span>
           <span>실패 <strong>${errorCount}개</strong></span>
           <span>거래처별 단가 <strong>${customerPriceResult.saved}개</strong></span>
           <span>단가 연결 거래처 <strong>${customerPriceResult.matchedCustomers||0}개</strong></span>
+          <span>거래처명 단가 <strong>${customerPriceResult.nameSaved||0}개</strong></span>
+          <span>거래처명 프로필 <strong>${customerPriceResult.nameCustomers||0}개</strong></span>
           <span>진행 주문 단가 갱신 <strong>${customerPriceResult.updatedOpenOrders||0}개</strong></span>
         </div>
         <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
-        ${customerPriceResult.unmatched.length?`<p class="auth-error">등록 거래처명과 일치하지 않아 단가를 건너뜀: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}
+        ${customerPriceResult.unmatched.length?`<p>아직 가입 계정이 없는 거래처도 거래처명 전용단가로 저장됨: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}
         ${customerPriceResult.missingSheet?`<p class="auth-error">거래처별단가 시트가 없어 전용단가는 등록되지 않았습니다.</p>`:''}
         ${customerPriceResult.invalid?`<p class="auth-error">비어 있지 않으면서 50원 단위의 양수가 아닌 단가 ${customerPriceResult.invalid}칸을 건너뛰었습니다.</p>`:''}
       </div>
@@ -3552,6 +3659,8 @@ async function refreshBulkImageLibrary({ silent = false } = {}) {
       const { data: publicData } = supabaseClient.storage
         .from("product-images")
         .getPublicUrl(`${BULK_IMAGE_FOLDER}/${item.name}`);
+      const cacheVersion = encodeURIComponent(String(item.updated_at || item.created_at || item.metadata?.lastModified || Date.now()));
+      const versionedPublicUrl = `${publicData.publicUrl}${publicData.publicUrl.includes("?") ? "&" : "?"}v=${cacheVersion}`;
 
       if (!library.has(parsed.key)) {
         library.set(parsed.key, {
@@ -3562,7 +3671,7 @@ async function refreshBulkImageLibrary({ silent = false } = {}) {
 
       library.get(parsed.key).photos.push({
         order: parsed.order,
-        url: publicData.publicUrl,
+        url: versionedPublicUrl,
         fileName: item.name
       });
     });
@@ -3666,6 +3775,12 @@ async function saveSelectedImagesToLibrary() {
     bulkGroupImages.value = "";
 
     if (Array.isArray(window.pendingExcelRows) && window.pendingExcelRows.length) {
+      window.pendingExcelRows.forEach(row => {
+        if (row.__imageMatchStatus === "matched" || row.__imageMatchStatus === "unmatched") {
+          row["대표사진URL"] = "";
+          row["추가사진URL"] = [];
+        }
+      });
       const result = applyImageLibraryMatches(window.pendingExcelRows);
       renderExcelPreview(window.pendingExcelRows, result);
     }

@@ -16,7 +16,7 @@
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=4023">
 <title>디자인 삭스 주문관리 (관리자)</title>
 
-  <link rel="stylesheet" href="css/admin.css?v=6540">
+  <link rel="stylesheet" href="css/admin.css?v=6550">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,7 +27,7 @@
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=4023">
 </head>
 
-<body class="auth-pending" data-app-version="6.5.4" data-session-page="admin" data-pwa-app="admin">
+<body class="auth-pending" data-app-version="6.5.5" data-session-page="admin" data-pwa-app="admin">
 
 <header>
   <h1>🧦 상품관리</h1>
@@ -331,12 +331,12 @@ accept="image/*">
     <div id="excelImportModePanel" class="excel-import-mode-panel" style="display:none;">
       <strong>3. 등록 방식 선택</strong>
       <label class="excel-mode-option">
-        <input type="radio" name="excelImportMode" value="append" checked>
+        <input type="radio" name="excelImportMode" value="append">
         <span><b>신규만 추가</b><small>기존 상품은 유지하고 중복 행은 건너뜁니다.</small></span>
       </label>
       <label class="excel-mode-option recommended">
-        <input type="radio" name="excelImportMode" value="sync">
-        <span><b>엑셀 동기화 (추천)</b><small>기존 상품 수정·신규 추가·중복 정리·엑셀에서 빠진 상품 숨김을 처리합니다.</small></span>
+        <input type="radio" name="excelImportMode" value="sync" checked>
+        <span><b>엑셀 동기화 (추천)</b><small>대분류·카테고리·상품의 순서와 구성을 엑셀대로 변경하고, 엑셀에서 빠진 항목은 숨김 처리합니다.</small></span>
       </label>
       <label class="excel-mode-option danger-mode">
         <input type="radio" name="excelImportMode" value="replace">
@@ -788,17 +788,17 @@ class="order-input">
 
 <script src="js/operations-core.js?v=4023"></script>
 <script src="js/products.js?v=4023"></script>
-<script src="js/barcode-manager.js?v=6540"></script>
+<script src="js/barcode-manager.js?v=6550"></script>
 
 <script src="js/group-manager.js?v=4023"></script>
 
-<script src="js/session-status.js?v=6540"></script>
+<script src="js/session-status.js?v=6550"></script>
 <script src="js/pwa.js?v=4023"></script>
 <script src="js/admin-page-transition.js?v=4023"></script>
-<script src="js/version-badge.js?v=6540"></script>
-<script src="js/back-navigation.js?v=6540"></script>
-<script src="js/admin-accordions.js?v=6540"></script>
+<script src="js/version-badge.js?v=6550"></script>
+<script src="js/back-navigation.js?v=6550"></script>
+<script src="js/admin-accordions.js?v=6550"></script>
 <script src="js/ui-preferences.js?v=4023"></script>
-<script src="js/admin-mobile-nav.js?v=6540"></script>
+<script src="js/admin-mobile-nav.js?v=6550"></script>
 </body>
 </html>
