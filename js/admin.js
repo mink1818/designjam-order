@@ -156,12 +156,12 @@ async function loadOrders() {
   let data = [];
 
 try {
-  const [orderRows, inventoryRows, customerPriceRows] = await Promise.all([
+  const [orderRows, inventoryRows] = await Promise.all([
     fetchOrders(),
-    fetchInventorySnapshot(),
-    fetchAdminCustomerItemPrices()
+    fetchInventorySnapshot()
   ]);
-  data = applyAdminCustomerItemPrices(orderRows,customerPriceRows);
+  // 관리자 주문화면은 현재 단가표가 아니라 주문 접수 당시 저장된 단가를 유지합니다.
+  data = orderRows;
   setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
   adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;

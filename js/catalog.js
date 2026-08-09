@@ -54,6 +54,12 @@ let currentCustomer = null;
 let favoriteMainCategoryIds = new Set();
 let customerItemPriceMap = new Map();
 function customerPriceKey(value) { return String(value ?? "").trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/, ""); }
+async function fetchMyCustomerPricesPaged(userId) {
+  const rows=[];let rpcError=null;
+  for(let from=0;;from+=1000){const result=await supabaseClient.rpc("get_my_customer_item_prices").range(from,from+999);if(result.error){rpcError=result.error;break}rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
+  rows.length=0;
+  for(let from=0;;from+=1000){const result=await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id",userId).order("item_number",{ascending:true}).range(from,from+999);if(result.error)throw new Error(result.error.message||rpcError?.message||"거래처별 전용단가 조회 실패");rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
+}
 function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(customerPriceKey(itemNumber)) ?? group?.price ?? 0); }
 function refreshSavedCartPrices() {
   let changed = false;
@@ -370,10 +376,8 @@ async function loadCatalog() {
 
   customerItemPriceMap = new Map();
   if (currentUser && !ADMIN_PREVIEW_MODE) {
-    let priceResult = await supabaseClient.rpc("get_my_customer_item_prices");
-    if (priceResult.error) priceResult = await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id", currentUser.id);
-    if (!priceResult.error) (priceResult.data || []).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price)));
-    else console.error("거래처별 전용단가 조회 실패:",priceResult.error.message);
+    try { (await fetchMyCustomerPricesPaged(currentUser.id)).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price))); }
+    catch (error) { console.error("거래처별 전용단가 조회 실패:",error.message); }
   }
   refreshSavedCartPrices();
 

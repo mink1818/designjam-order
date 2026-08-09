@@ -23,19 +23,17 @@ async function fetchAll(table,select,order='created_at'){
 async function fetchAdminCustomerPrices(){const rpc=await supabaseClient.rpc('get_admin_customer_item_prices');if(!rpc.error)return rpc.data||[];return fetchAll('customer_item_prices','customer_id,item_number,price','item_number').catch(()=>[])}
 async function fetchSelectedCustomerPrices(customerId){
  if(!customerId)return[];
- let result=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});
- if(!result.error)return result.data||[];
- result=await supabaseClient.from('customer_item_prices').select('item_number,price').eq('customer_id',customerId).order('item_number',{ascending:true});
- if(result.error)throw new Error(result.error.message||'전용단가 조회 실패');
- return result.data||[];
+ const rows=[];let rpcError=null;
+ for(let from=0;;from+=1000){const result=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId}).range(from,from+999);if(result.error){rpcError=result.error;break}rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
+ rows.length=0;
+ for(let from=0;;from+=1000){const result=await supabaseClient.from('customer_item_prices').select('item_number,price').eq('customer_id',customerId).order('item_number',{ascending:true}).range(from,from+999);if(result.error)throw new Error(result.error.message||rpcError?.message||'전용단가 조회 실패');rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
 }
 async function fetchCustomerPricesByName(customerName){
  if(!String(customerName||'').trim())return[];
- let result=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:String(customerName).trim()});
- if(!result.error)return result.data||[];
- result=await supabaseClient.from('customer_name_item_prices').select('item_number,price').eq('normalized_name',normalizeCustomerPriceName(customerName)).order('item_number',{ascending:true});
- if(result.error)throw new Error(result.error.message||'직접입력 거래처 전용단가 조회 실패');
- return result.data||[];
+ const rows=[];let rpcError=null;
+ for(let from=0;;from+=1000){const result=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:String(customerName).trim()}).range(from,from+999);if(result.error){rpcError=result.error;break}rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
+ rows.length=0;
+ for(let from=0;;from+=1000){const result=await supabaseClient.from('customer_name_item_prices').select('item_number,price').eq('normalized_name',normalizeCustomerPriceName(customerName)).order('item_number',{ascending:true}).range(from,from+999);if(result.error)throw new Error(result.error.message||rpcError?.message||'직접입력 거래처 전용단가 조회 실패');rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
 }
 function asItemNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function rawPrice(item){return Number(item?.price??item?.sale_price??item?.unit_price??item?.product_price??0)||0}
