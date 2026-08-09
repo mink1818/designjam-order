@@ -2325,7 +2325,14 @@ function parseItemPattern(value) {
     }
 
     const startCode = parseCode(rangeParts[0]);
-    const endCode = parseCode(rangeParts[1]);
+    let endCode = parseCode(rangeParts[1]);
+
+    if (startCode.isNumberCode && endCode.isNumberCode && startCode.prefix && !endCode.prefix) {
+      endCode = { ...endCode, prefix: startCode.prefix };
+    }
+    if (startCode.isNumberCode && endCode.isNumberCode && startCode.suffix && !endCode.suffix) {
+      endCode = { ...endCode, suffix: startCode.suffix };
+    }
 
     if (!startCode.isNumberCode || !endCode.isNumberCode) {
       throw new Error(`"${originalPart}" 품번 범위를 확인해주세요.`);
@@ -2675,10 +2682,11 @@ async function importCustomerItemPricesFromGrid() {
   const grid = Array.isArray(window.pendingCustomerPriceGrid) ? window.pendingCustomerPriceGrid : [];
   if (!grid.length) return { saved: 0, unmatched: [], invalid: 0, matchedCustomers: 0, missingSheet: true };
   const headerKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
-  const headerIndex = grid.findIndex(row => row.some(cell => ["품번원본","품번","상품번호","sku"].includes(headerKey(cell))));
-  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 ‘품번(원본)’ 또는 ‘품번’ 제목을 찾지 못했습니다."], invalid: 0, matchedCustomers: 0, missingSheet: false };
+  const itemHeaders = ["품번원본","품번","표시품번","상품번호","sku"];
+  const headerIndex = grid.findIndex(row => row.some(cell => itemHeaders.includes(headerKey(cell))));
+  if (headerIndex < 0) return { saved: 0, unmatched: ["거래처별단가 시트에서 ‘표시품번’, ‘품번(원본)’ 또는 ‘품번’ 제목을 찾지 못했습니다."], invalid: 0, matchedCustomers: 0, missingSheet: false };
   const headers = grid[headerIndex].map(value => String(value).trim());
-  const itemColumn = headers.findIndex(value=>["품번원본","품번","상품번호","sku"].includes(headerKey(value)));
+  const itemColumn = headers.findIndex(value=>itemHeaders.includes(headerKey(value)));
   const baseColumns = new Set(["순번","묶음명","카테고리","대분류","품번원본","품번","상품번호","sku","기본단가","단가","설명","표시순서","포함브랜드","출고지","표시품번","비고"]);
   const customerColumns = headers.map((name,index)=>({name:String(name).replace(/^(거래처|업체)\s*[:：]\s*/,'').trim(),index})).filter(entry=>entry.name&&!baseColumns.has(headerKey(entry.name)));
   if (!customerColumns.length) return { saved: 0, unmatched: ["거래처별단가 시트에 실제 등록 거래처명 열이 없습니다."], invalid: 0, matchedCustomers: 0, missingSheet: false };
@@ -2726,7 +2734,7 @@ function resolveCustomerPriceFormulaHeaders(workbook, sheetName) {
   const worksheet = workbook.Sheets[sheetName];
   const grid = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: false });
   const headerKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
-  const headerIndex=grid.findIndex(row=>row.some(cell=>["품번원본","품번","상품번호","sku"].includes(headerKey(cell))));
+  const headerIndex=grid.findIndex(row=>row.some(cell=>["품번원본","품번","표시품번","상품번호","sku"].includes(headerKey(cell))));
   if(headerIndex<0)return grid;
   grid[headerIndex]=grid[headerIndex].map((value,columnIndex)=>{
     if(value&&!/^#(?:NAME|REF)\?/i.test(String(value)))return value;
@@ -2798,7 +2806,26 @@ function parseItemPattern(value) {
     }
 
     const startCode = parseCode(rangeParts[0]);
-    const endCode = parseCode(rangeParts[1]);
+    let endCode = parseCode(rangeParts[1]);
+
+    // 출고지 표시형 범위(B-661~663, S-1001~1003)는 끝 품번에서
+    // 동일한 접두어를 생략해도 같은 범위로 인식합니다.
+    if (
+      startCode.isNumberCode &&
+      endCode.isNumberCode &&
+      startCode.prefix &&
+      !endCode.prefix
+    ) {
+      endCode = { ...endCode, prefix: startCode.prefix };
+    }
+    if (
+      startCode.isNumberCode &&
+      endCode.isNumberCode &&
+      startCode.suffix &&
+      !endCode.suffix
+    ) {
+      endCode = { ...endCode, suffix: startCode.suffix };
+    }
 
     if (!startCode.isNumberCode || !endCode.isNumberCode) {
       throw new Error(`"${originalPart}" 품번 범위를 확인해주세요.`);
