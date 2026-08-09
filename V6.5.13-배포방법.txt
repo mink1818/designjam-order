@@ -1,0 +1,30 @@
+DESIGN SOCKS V6.5.13 배포 안내
+
+적용 내용
+- 주문별 바코드 1회 스캔수량 1개/10개를 DB에 저장
+- 다른 PC·모바일의 피킹 화면에도 스캔수량 실시간 반영
+- 피킹시작/피킹중지 상태를 주문별 저장하고 다른 기기와 실시간 공유
+- ERP 재고센터 최근 스캔을 DB 작업이력에서 복원
+- 새로고침·다른 PC에서도 최근 입출고 스캔기록 표시
+- 피킹수량을 ERP 출고대기 수량으로 실시간 표시
+- 현재재고·출고대기·가용재고 분리 표시
+- 스캔, +/−, 품절, S/B/I 일괄피킹 변경 즉시 ERP에 반영
+- 최종검증 전에는 실제재고를 차감하지 않아 취소·수정 가능
+- 최종검증 시 기존 방식으로 실제재고 차감, 출고대기는 자동 해제
+- V6.5.13의 SBI 체크 및 재고복원형 주문 전체삭제 포함
+- 버전 및 PWA 캐시 V6.5.13 갱신
+
+배포 체크
+- SQL 실행: 필요
+- Supabase Function 재배포: 불필요
+- Git Push: 필요
+
+Supabase SQL Editor에서 실행
+SQL/V6.5.13-LIVE-PICKING-RESERVATION.sql
+
+터미널 명령
+git add .
+git commit -m "release v6.5.13 realtime picking reservation and scanner history"
+git push
+
+배포 후 새 서비스워커가 V6.5.13을 감지하면 한 번 자동 새로고침합니다.
