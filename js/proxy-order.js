@@ -36,7 +36,13 @@ async function fetchCustomerPricesByName(customerName){
 }
 function asItemNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function rawPrice(item){return Number(item?.price??item?.sale_price??item?.unit_price??item?.product_price??0)||0}
-function findItem(value){const key=priceKey(value);return items.find(x=>priceKey(x.item_number)===key)}
+function findItem(value){
+ const key=priceKey(value),exact=items.find(x=>priceKey(x.item_number)===key);if(exact)return exact;
+ // 숫자로 끝나는 기본 품번은 A/M 꼬리표 후보가 하나뿐일 때만 자동 연결합니다.
+ if(!/\d$/.test(key))return null;
+ const candidates=items.filter(x=>{const itemKey=priceKey(x.item_number);return /^[\s\S]*\d[AM]$/.test(itemKey)&&itemKey.slice(0,-1)===key});
+ return candidates.length===1?candidates[0]:null;
+}
 function normalizeCustomer(value){return String(value||'').trim().normalize('NFKC').replace(/\s+/g,'').toLowerCase()}
 function isMobileDirectInput(){return window.matchMedia?.('(max-width: 700px), (pointer: coarse)')?.matches===true}
 function configureDirectCustomerInput(){
@@ -61,18 +67,25 @@ async function reloadSelectedCustomerPrices(){
  if(mode==='direct'&&!customerName){updateRegisteredPriceStatus('직접입력 거래처명을 입력하면 엑셀에 등록된 전용단가를 찾습니다.');refreshAllLinePrices();return;}
  updateRegisteredPriceStatus(mode==='direct'?'거래처명으로 전용단가를 찾는 중입니다...':'선택 거래처의 전용단가를 불러오는 중입니다...');
  try{
-  let rows=customerId?await fetchSelectedCustomerPrices(customerId):[];
-  if(!rows.length&&mode==='direct')rows=await fetchCustomerPricesByName(customerName);
+  const selectedCustomer=customers.find(customer=>String(customer.id)===String(customerId));
+  const lookupName=mode==='direct'?customerName:String(selectedCustomer?.business_name||selectedCustomer?.owner_name||'').trim();
+  const idRows=customerId?await fetchSelectedCustomerPrices(customerId):[];
+  const nameRows=lookupName?await fetchCustomerPricesByName(lookupName).catch(()=>[]):[];
+  const mergedRows=new Map();
+  // 거래처명 단가가 운영 기준입니다. 중복 가입계정의 오래된 ID 단가가 이를 덮지 않게 순서를 바꾸지 마세요.
+  idRows.forEach(row=>mergedRows.set(priceKey(row.item_number),row));
+  nameRows.forEach(row=>mergedRows.set(priceKey(row.item_number),row));
+  const rows=[...mergedRows.values()];
   if(token!==selectedPriceLoadToken)return;
   for(const key of [...customerPrices.keys()])if(key.startsWith(`${ownerKey}::`))customerPrices.delete(key);
   rows.forEach(row=>customerPrices.set(`${ownerKey}::${priceKey(row.item_number)}`,Number(row.price)));
-  updateRegisteredPriceStatus(rows.length?`${mode==='direct'?'직접입력 ':''}전용단가 ${rows.length.toLocaleString()}개 적용 중`:'이 거래처의 전용단가가 없어 기본단가를 적용합니다.');
+  updateRegisteredPriceStatus(rows.length?`${mode==='direct'?'직접입력 ':''}전용단가 ${rows.length.toLocaleString()}개 적용 중${nameRows.length?' · 거래처명 최신단가 우선':''}`:'이 거래처의 전용단가가 없어 기본단가를 적용합니다.');
   refreshAllLinePrices();
  }catch(error){if(token!==selectedPriceLoadToken)return;updateRegisteredPriceStatus(`전용단가 조회 실패: ${error.message}`,true);refreshAllLinePrices();}
 }
 function parsePastedItemLine(line){
- const source=String(line||'').trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?\s*[\)）]\s*$/);
- if(!match)match=source.match(/^(.+?)\s*(?:[~～〜ㅡ]|[,./:\-]|\s+)\s*(\d+)\s*(?:죽|족)?\s*$/);
+ const source=String(line||'').trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*[\)）]\s*$/);
+ if(!match)match=source.match(/^(.+?)\s*(?:[~～〜ㅡ]|[,./:\-]|\s+)\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*$/);
  if(!match)return{item:source.replace(/[,.\/~～〜]+$/,'').trim(),qty:1};
  return{item:match[1].trim(),qty:Math.max(1,Number(match[2]))};
 }

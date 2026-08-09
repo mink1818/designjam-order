@@ -68,10 +68,8 @@ async function loadMyOrders() {
     const key = row.id || [row.order_number, row.item_number, row.created_at].join("|");
     uniqueRows.set(key, row);
   });
+  // 주문내역은 현재 단가표가 아니라 주문 접수 당시 저장된 단가를 유지합니다.
   let data = [...uniqueRows.values()];
-  let priceResult=await supabaseClient.rpc('get_my_customer_item_prices');
-  if(priceResult.error)priceResult=await supabaseClient.from('customer_item_prices').select('item_number,price').eq('customer_id',user.id);
-  if(!priceResult.error){const key=value=>String(value||'').trim().normalize('NFKC').toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'');const map=new Map((priceResult.data||[]).map(row=>[key(row.item_number),Number(row.price)]));data=data.map(row=>{const price=map.get(key(row.item_number));return Number.isFinite(price)&&price>0?{...row,price,total:Number(row.qty||0)*price}:row;});}
 
   const grouped = {};
   (data || []).forEach(order => {

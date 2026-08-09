@@ -49,15 +49,6 @@ function formatDate(value, dateOnly = false) {
   }
   return date.toLocaleString("ko-KR");
 }
-function statementPriceKey(value){return String(value||'').trim().normalize('NFKC').toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'');}
-async function applyStatementCustomerPrices(items){
-  const customerId=items?.[0]?.customer_id;if(!customerId)return items;
-  let result=await supabaseClient.from('customer_item_prices').select('item_number,price').eq('customer_id',customerId);
-  if(result.error){const rpc=await supabaseClient.rpc('get_admin_customer_item_prices');if(!rpc.error)result={data:(rpc.data||[]).filter(row=>String(row.customer_id)===String(customerId)),error:null};}
-  if(result.error)return items;
-  const map=new Map((result.data||[]).map(row=>[statementPriceKey(row.item_number),Number(row.price)]));
-  return items.map(item=>{const price=map.get(statementPriceKey(item.item_number));return Number.isFinite(price)&&price>0?{...item,price,total:Number(item.qty||0)*price}:item;});
-}
 
 async function checkAdminAccess() {
   const {
@@ -136,7 +127,8 @@ async function loadStatement() {
     const result = await supabaseClient.from("product_groups").select("title,item_numbers");
     if (!result.error) productGroups = result.data || [];
   } catch (_) {}
-  renderStatement(await applyStatementCustomerPrices(data), productGroups);
+  // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.
+  renderStatement(data, productGroups);
 }
 
 function renderStatement(items, productGroups = []) {

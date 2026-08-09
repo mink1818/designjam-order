@@ -830,7 +830,7 @@ function buildGroupSearchText(group) {
 
   return normalizeSearch(values.join(" "));
 }
-function filterGroupsForSearch(keyword,textBuilder=buildGroupSearchText){const key=normalizeSearch(keyword);if(!key)return groups;const exactExists=groups.some(group=>(group.item_numbers||[]).some(number=>normalizeSearch(number)===key));return groups.filter(group=>exactExists?(group.item_numbers||[]).some(number=>normalizeSearch(number)===key):textBuilder(group).includes(key))}
+function filterGroupsForSearch(keyword,textBuilder=buildGroupSearchText){const key=normalizeSearch(keyword);if(!key)return groups;const optionalItem=resolveUniqueOptionalSuffixItem(keyword),resolvedKey=normalizeSearch(optionalItem);const exactExists=groups.some(group=>(group.item_numbers||[]).some(number=>normalizeSearch(number)===key));return groups.filter(group=>optionalItem?(group.item_numbers||[]).some(number=>normalizeSearch(number)===resolvedKey):exactExists?(group.item_numbers||[]).some(number=>normalizeSearch(number)===key):textBuilder(group).includes(key))}
 
 /* 브랜드·카테고리·품번 전체 검색 */
 function renderGlobalSearchResults() {
@@ -2045,6 +2045,18 @@ function normalizeSearch(value) {
     .replace(/[\s\-_./·,()\[\]{}]+/g, "");
 }
 
+function resolveUniqueOptionalSuffixItem(value) {
+  const key = normalizeSearch(value);
+  if (!key || !/\d$/.test(key)) return "";
+  const allNumbers = groups.flatMap(group => (group.item_numbers || []).map(String));
+  if (allNumbers.some(number => normalizeSearch(number) === key)) return "";
+  const candidates = [...new Set(allNumbers.filter(number => {
+    const itemKey = normalizeSearch(number);
+    return /\d[am]$/.test(itemKey) && itemKey.slice(0, -1) === key;
+  }))];
+  return candidates.length === 1 ? candidates[0] : "";
+}
+
 function formatWon(value) {
   return `${Number(value || 0).toLocaleString()}원`;
 }
@@ -2139,12 +2151,13 @@ function renderCustomerSearchResults(keyword=""){
     box.innerHTML='<div class="customer-search-empty">브랜드 또는 품번을 입력하면 상품이 바로 표시됩니다.<br><small>예: 나이키, 6005</small></div>';
     return;
   }
-  const matches=groups.filter(group=>getGroupSearchText(group).includes(query)).slice(0,30);
+  const optionalItem=resolveUniqueOptionalSuffixItem(keyword),optionalKey=normalizedLiveSearch(optionalItem);
+  const matches=groups.filter(group=>optionalItem?(group.item_numbers||[]).some(number=>normalizedLiveSearch(number)===optionalKey):getGroupSearchText(group).includes(query)).slice(0,30);
   if(!matches.length){box.innerHTML='<div class="customer-search-empty">검색 결과가 없습니다.</div>';return;}
   box.innerHTML=matches.map(group=>{
     const category=categories.find(item=>Number(item.id)===Number(group.category_id));
     const numbers=(group.item_numbers||[]).map(String);
-    const exact=numbers.find(number=>normalizedLiveSearch(number).includes(query));
+    const exact=numbers.find(number=>optionalItem?normalizedLiveSearch(number)===optionalKey:normalizedLiveSearch(number).includes(query));
     const target=exact||numbers[0]||'';
     return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
       ${group.image_url?`<img src="${escapeAttribute(group.image_url)}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
