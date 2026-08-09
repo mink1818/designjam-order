@@ -121,6 +121,17 @@ html[data-theme="dark"] .pick-controls{background:transparent!important}
 .warehouse-outbound-check{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:27px;padding:3px 6px;border:1px solid #64748b;border-radius:7px;background:#fff;color:#334155;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}.warehouse-outbound-check input{width:14px;height:14px;margin:0}.warehouse-check-s{border-color:#2563eb;color:#1d4ed8}.warehouse-check-s input{accent-color:#2563eb}.warehouse-check-b{border-color:#16a34a;color:#166534}.warehouse-check-b input{accent-color:#16a34a}.warehouse-check-i{border-color:#d97706;color:#92400e}.warehouse-check-i input{accent-color:#d97706}.warehouse-s .pick-row-actions,.warehouse-b .pick-row-actions,.warehouse-i .pick-row-actions{flex-wrap:wrap}
 html[data-theme="dark"] .scan-quantity-control{border-color:#52677f;background:#132033;color:#eef5ff}html[data-theme="dark"] .scan-quantity-control button{border-color:#64748b;background:#1e293b;color:#fff}html[data-theme="dark"] .scan-quantity-control button.active{background:#38a3ff;color:#071827}html[data-theme="dark"] .scan-quantity-control span{color:#cbd5e1}html[data-theme="dark"] .warehouse-outbound-check{background:#1e293b;color:#f8fafc}
 @media(max-width:700px){.scan-quantity-control{gap:6px;padding:8px}.scan-quantity-control strong{width:100%}.scan-quantity-control button{flex:1;min-width:64px}.warehouse-heading-actions{flex-wrap:wrap;justify-content:flex-end}.warehouse-heading-actions button{padding:6px 8px;font-size:11px}.warehouse-outbound-check{min-height:20px;padding:1px 3px;gap:2px;font-size:8px;line-height:1}.warehouse-outbound-check input{width:10px;height:10px}.delete-order-btn{padding:8px!important;font-size:11px!important}}
+@media(max-width:700px){
+ .warehouse-s .pick-row-actions,.warehouse-b .pick-row-actions,.warehouse-i .pick-row-actions{flex-wrap:nowrap!important;gap:2px!important;min-width:0}
+ .warehouse-pick-section .pick-item-row{grid-template-columns:minmax(60px,1fr) 28px 28px minmax(172px,auto);gap:2px!important;padding-left:4px!important;padding-right:4px!important}
+ .warehouse-pick-section .pick-row-actions>*{flex:0 0 auto}
+ .warehouse-pick-section .picking-state{padding:4px 3px!important;font-size:8px!important;min-width:43px;line-height:1}
+ .warehouse-pick-section .pick-row-actions button{padding:5px 4px!important;font-size:9px!important;min-width:27px}
+ .warehouse-pick-section .soldout-check{min-height:22px;padding:2px 3px!important;gap:1px;font-size:8px!important}
+ .warehouse-pick-section .soldout-check input{width:10px;height:10px}
+ .warehouse-pick-section .warehouse-outbound-check{min-height:22px;padding:2px 3px!important;gap:1px;font-size:8px!important}
+ .warehouse-pick-section .warehouse-outbound-check input{width:10px;height:10px}
+}
 @media print{.scan-quantity-control,.bulk-pick-button,.warehouse-outbound-check{display:none!important}}
 .delete-order-btn{background:#7f1d1d!important;color:#fff!important}
 .picking-session-button{border-color:#0b7a43!important;background:#e8fff3!important;color:#075b31!important}.picking-session-button.active{background:#b42318!important;border-color:#b42318!important;color:#fff!important}

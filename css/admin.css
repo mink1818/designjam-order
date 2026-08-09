@@ -1344,6 +1344,7 @@ body.auth-pending.auth-ready::after { display: none; }
 .barcode-label-svg{display:block;width:97%;height:58%;margin-top:3%;overflow:visible}
 .barcode-actions{display:flex;flex-wrap:wrap;gap:8px}
 .barcode-full-sheet-btn{background:#0f766e!important;color:#fff!important}
+.barcode-continuous-btn{background:#1d4ed8!important;color:#fff!important}
 .admin-delete-order-btn{background:#7f1d1d!important;color:#fff!important;margin-left:8px}
 @media(max-width:700px){.admin-delete-order-btn{margin-left:0;width:100%;margin-top:8px}.barcode-actions .cart-btn{flex:1 1 145px}}
 @media(max-width:760px){.barcode-source-grid,.barcode-workspace{grid-template-columns:1fr}.barcode-toolbar{grid-template-columns:1fr 1fr}.barcode-panel-head{align-items:flex-start;flex-direction:column}.barcode-label-card{width:min(360px,100%)}}

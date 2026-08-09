@@ -63,7 +63,7 @@
     summary: $("barcodeValidationSummary"), selectedCount: $("barcodeSelectedCount"), preview: $("barcodeLabelPreview"),
     copies: $("barcodeCopyCount"), message: $("barcodeMessage"), selectVisible: $("barcodeSelectVisibleButton"),
     clear: $("barcodeClearSelectionButton"), selectAll: $("barcodeSelectAllButton"), deselectAll: $("barcodeDeselectAllButton"), deleteSelected: $("barcodeDeleteSelectedButton"), deleteAll: $("barcodeDeleteAllButton"), pdf: $("barcodeGeneratePdfButton"), print: $("barcodePrintButton"),
-    one: $("barcodePrintOneButton"), fullSheet: $("barcodePrintFullSheetButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
+    one: $("barcodePrintOneButton"), fullSheet: $("barcodePrintFullSheetButton"), continuous: $("barcodePrintContinuousButton"), p10: $("barcodePreset10Button"), p50: $("barcodePreset50Button"), p100: $("barcodePreset100Button"),
     specBadge: $("barcodeSpecBadge"), previewSpec: $("barcodePreviewSpec"),
     searchInput: $("barcodeSearchInput"), searchButton: $("barcodeSearchButton"),
     sizeInputs: [...document.querySelectorAll('input[name="barcodeLabelSize"]')]
@@ -288,6 +288,23 @@
     finally {setTimeout(()=>{barcodeOutputLocked=false},3000)}
   }
 
+  function printSelectedContinuously() {
+    const now=Date.now();
+    if(document.hidden)return;
+    if(barcodeOutputLocked||now-lastBarcodeOutputAt<3000){elements.message.innerHTML='<p class="auth-error">중복 인쇄를 차단했습니다. 잠시 후 다시 눌러주세요.</p>';return}
+    const selectedItems=state.items.filter(item=>state.selected.has(item));
+    if(!selectedItems.length){elements.message.innerHTML='<p class="auth-error">연속 인쇄할 품번을 먼저 선택해주세요.</p>';return}
+    const copies=Math.max(1,Math.min(1000,Number(elements.copies.value)||1));
+    const items=selectedItems.flatMap(item=>Array.from({length:copies},()=>item));
+    barcodeOutputLocked=true;lastBarcodeOutputAt=now;
+    try {
+      const pdf=createPdf(items),blobUrl=pdf.output("bloburl"),popup=window.open(blobUrl,"_blank");
+      if(!popup)throw new Error("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해주세요.");
+      elements.message.innerHTML=`<p class="product-success">${selectedItems.length.toLocaleString()}개 품번을 각 ${copies.toLocaleString()}장씩, 총 ${items.length.toLocaleString()}칸에 빈칸 없이 연속 배치했습니다.</p>`;
+    } catch(error) { elements.message.innerHTML=`<p class="auth-error">${escapeHtml(error.message)}</p>`; }
+    finally {setTimeout(()=>{barcodeOutputLocked=false},3000)}
+  }
+
   elements.excel?.addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; elements.message.innerHTML = "<p>엑셀 품번을 읽는 중...</p>"; try { setItems(await readExcel(file), file.name); } catch (error) { elements.message.innerHTML = `<p class="auth-error">엑셀 읽기 실패: ${escapeHtml(error.message)}</p>`; } });
   function loadDirectInput() {
     const value = elements.searchInput?.value || "";
@@ -339,6 +356,7 @@
   elements.print?.addEventListener("click", () => generatePdf(false));
   elements.one?.addEventListener("click", () => generatePdf(false, true));
   elements.fullSheet?.addEventListener("click", printActiveFullSheet);
+  elements.continuous?.addEventListener("click", printSelectedContinuously);
   [[elements.p10,10],[elements.p50,50],[elements.p100,100]].forEach(([button,count]) => button?.addEventListener("click", () => { elements.copies.value = count; state.selected = new Set([state.active]); renderList(); generatePdf(false); }));
   elements.sizeInputs.forEach(input => input.addEventListener("change", () => applyLabelSize(input.value)));
   function applyProductsSnapshot(snapshot) {
