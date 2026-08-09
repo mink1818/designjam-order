@@ -2792,10 +2792,11 @@ function resolveCustomerPriceFormulaHeaders(workbook, sheetName) {
   const headerIndex=grid.findIndex(row=>row.some(cell=>["품번원본","품번","표시품번","상품번호","sku"].includes(headerKey(cell))));
   if(headerIndex<0)return grid;
   grid[headerIndex]=grid[headerIndex].map((value,columnIndex)=>{
-    if(value&&!/^#(?:NAME|REF)\?/i.test(String(value)))return value;
     const address=XLSX.utils.encode_cell({r:headerIndex,c:columnIndex});
+    // 수식 셀은 엑셀 파일에 남은 이전 계산값(value/w)을 믿지 않고 참조 원본을 매번 직접 읽습니다.
+    // 거래처목록 이름을 바꾼 직후 계산·저장하지 않은 파일도 최신 거래처명으로 가져오기 위함입니다.
     const formula=String(worksheet[address]?.f||'').replace(/^=/,'').trim();
-    const reference=formula.match(/^'?([^']+)'?!\$?([A-Z]+)\$?(\d+)$/i);
+    const reference=formula.match(/^@?'?([^']+?)'?!\$?([A-Z]+)\$?(\d+)$/i);
     if(!reference)return value;
     const sourceSheet=workbook.Sheets[reference[1]];
     const sourceCell=sourceSheet?.[`${reference[2].toUpperCase()}${reference[3]}`];
@@ -3534,7 +3535,7 @@ async function registerExcelProducts() {
           <span>단가 연결 거래처 <strong>${customerPriceResult.matchedCustomers||0}개</strong></span>
           <span>거래처명 단가 <strong>${customerPriceResult.nameSaved||0}개</strong></span>
           <span>거래처명 프로필 <strong>${customerPriceResult.nameCustomers||0}개</strong></span>
-          <span>진행 주문 단가 갱신 <strong>${customerPriceResult.updatedOpenOrders||0}개</strong></span>
+          <span>기존 주문가격 보호 <strong>적용</strong></span>
         </div>
         <p>숨김 처리된 상품은 거래처 화면에 노출되지 않으며 기존 주문 기록은 유지됩니다.</p>
         ${customerPriceResult.unmatched.length?`<p>아직 가입 계정이 없는 거래처도 거래처명 전용단가로 저장됨: ${customerPriceResult.unmatched.map(escapeHtml).join(', ')}</p>`:''}
