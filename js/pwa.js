@@ -2,7 +2,7 @@
   'use strict';
   const app=document.body?.dataset?.pwaApp||'customer';
   const name=app==='admin'?'디자인 삭스 주문관리 (관리자)':'디자인 삭스 주문관리 (거래처)';
-  const icon=app==='admin'?'/icons/admin-192.png?v=6580':'/icons/customer-192.png?v=6580';
+  const icon=app==='admin'?'/icons/admin-192.png?v=6590':'/icons/customer-192.png?v=6590';
   let deferredPrompt=null;
 
   function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
@@ -54,7 +54,7 @@
           <div class="ds-device-guide" data-guide="android">
             ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>아래 사진 순서대로 눌러 삼성 인터넷으로 연 뒤 홈 화면에 추가하세요.</div>':''}
             <div class="ds-full-guide-image">
-              <img src="/images/install-guide/android-full-guide.jpg?v=6580" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
+              <img src="/images/install-guide/android-full-guide.jpg?v=6590" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
             </div>
             <div class="ds-warning" style="margin-top:14px"><b>안내 사진을 누르면 크게 볼 수 있습니다.</b><br>사진의 빨간 표시를 순서대로 누르면 설치가 완료됩니다.</div>
           </div>
@@ -180,7 +180,7 @@
     ensureBackToTop();
     document.querySelectorAll('[data-install-app]').forEach(b=>b.addEventListener('click',installApp));
     if('serviceWorker'in navigator){
-      navigator.serviceWorker.register('/service-worker.js?v=6580').then(reg=>reg.update()).catch(console.warn);
+      navigator.serviceWorker.register('/service-worker.js?v=6590').then(reg=>reg.update()).catch(console.warn);
     }
   });
 })();
