@@ -2583,3 +2583,37 @@ html[data-theme="dark"] .order-delivery-preview,html[data-theme="dark"] .order-d
  .proxy-delivery-grid{grid-template-columns:1fr!important}
  .proxy-delivery-grid .wide{grid-column:auto}
 }
+
+/* V6.5.31 큰 글자·가로형 주문 요약·반응형 버튼 정리 */
+@media(min-width:761px){
+ body[data-session-page="admin"] .compact-order-header{
+  grid-template-columns:minmax(340px,1.8fr) minmax(230px,.85fr) minmax(290px,auto) 24px!important;
+  gap:14px!important;min-height:58px!important;padding:9px 14px!important;
+ }
+ body[data-session-page="admin"] .order-primary{min-width:0}
+ body[data-session-page="admin"] .order-primary h2{font-size:18px!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ body[data-session-page="admin"] .order-delivery-preview{display:inline-block;max-width:55%;margin:2px 12px 0 0!important;font-size:14px!important;vertical-align:middle}
+ body[data-session-page="admin"] .order-summary-number{display:inline-block;font-size:13px!important;vertical-align:middle;white-space:nowrap!important}
+ body[data-session-page="admin"] .order-compact-stats{font-size:15px!important;gap:16px!important;white-space:nowrap}
+ body[data-session-page="admin"] .order-status-stack{display:flex!important;flex-direction:row!important;align-items:center!important;gap:6px!important;min-width:0!important}
+ body[data-session-page="admin"] .order-status-stack .order-status-pill{width:auto!important;min-width:72px!important;padding:7px 9px!important;font-size:13px!important}
+ body[data-session-page="admin"] .order-card-edit-button{width:auto!important;min-width:78px!important;min-height:31px!important;padding:6px 9px!important;font-size:12px!important;white-space:nowrap}
+}
+@media(max-width:760px){
+ body[data-session-page="admin"] .admin-order-list{gap:6px!important}
+ body[data-session-page="admin"] .compact-order-header{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto auto!important;gap:5px!important;padding:9px 10px!important}
+ body[data-session-page="admin"] .order-primary{grid-column:1!important;grid-row:1!important}
+ body[data-session-page="admin"] .order-primary h2{display:block!important;font-size:16px!important;line-height:1.25!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ body[data-session-page="admin"] .order-primary h2 small{display:inline-flex!important;margin-left:4px!important;font-size:10px!important}
+ body[data-session-page="admin"] .order-delivery-preview{display:block!important;max-width:100%;font-size:13px!important;margin:4px 0 0!important}
+ body[data-session-page="admin"] .mobile-order-summary{grid-column:1!important;grid-row:2!important;display:grid!important;grid-template-columns:minmax(90px,1fr) auto auto!important;gap:8px!important;padding:2px 0!important;font-size:13px!important}
+ body[data-session-page="admin"] .mobile-order-summary span,body[data-session-page="admin"] .mobile-order-summary strong,body[data-session-page="admin"] .mobile-order-summary b{font-size:13px!important}
+ body[data-session-page="admin"] .order-status-stack{grid-column:1!important;grid-row:3!important;display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:5px!important;width:100%!important;min-width:0!important}
+ body[data-session-page="admin"] .order-status-stack .order-status-pill,body[data-session-page="admin"] .order-card-edit-button{width:100%!important;min-width:0!important;min-height:30px!important;padding:5px 3px!important;font-size:11px!important;box-sizing:border-box}
+ body[data-session-page="admin"] .order-expand-icon{display:none!important}
+ body[data-session-page="admin"] .admin-note-badge{grid-column:1!important;font-size:11px!important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media(max-width:370px){
+ body[data-session-page="admin"] .order-status-stack .order-status-pill,body[data-session-page="admin"] .order-card-edit-button{font-size:10px!important;padding-left:1px!important;padding-right:1px!important}
+ body[data-session-page="admin"] .mobile-order-summary span,body[data-session-page="admin"] .mobile-order-summary strong,body[data-session-page="admin"] .mobile-order-summary b{font-size:12px!important}
+}

@@ -147,3 +147,22 @@ html[data-theme="dark"] .scan-quantity-control{border-color:#52677f;background:#
 html[data-theme="dark"] .pick-delivery-name,html[data-theme="dark"] .pick-delivery-name b{color:#bfdbfe!important}
 @keyframes pickingLivePulse{50%{opacity:.62}}
 @media(max-width:700px){.pick-delivery-name{font-size:12px!important;margin-top:4px}.picking-live-badge{font-size:9px;padding:2px 6px}}
+
+/* V6.5.31 큰 글자·압축형 피킹 대기 목록 */
+.order-pick-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 8px;align-items:center;padding:9px 10px!important}
+.order-pick-card>strong{grid-column:1/-1;font-size:19px!important;line-height:1.25;white-space:normal}
+.order-pick-card .pick-delivery-name{grid-column:1;min-width:0;margin:0!important;font-size:14px!important}
+.order-pick-card .pick-order-number{grid-column:1;min-width:0;font-size:12px!important;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-pick-card .pick-order-counts{grid-column:2;grid-row:2/4;align-self:center;font-size:13px!important;text-align:right;white-space:nowrap;color:#334155}
+html[data-theme="dark"] .order-pick-card .pick-order-number{color:#aebdd0!important}
+html[data-theme="dark"] .order-pick-card .pick-order-counts{color:#e2e8f0!important}
+@media(max-width:900px){
+ .order-pick-card{grid-template-columns:minmax(0,1fr) auto;padding:8px 9px!important;margin-bottom:6px!important}
+ .order-pick-card>strong{font-size:17px!important}
+ .order-pick-card .pick-delivery-name{font-size:13px!important}
+ .order-pick-card .pick-order-counts{font-size:12px!important}
+}
+@media(max-width:420px){
+ .order-pick-card .pick-order-counts{grid-column:1/-1;grid-row:auto;text-align:left;white-space:normal}
+ .order-pick-card .pick-order-number{font-size:11px!important}
+}
