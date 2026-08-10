@@ -1508,7 +1508,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
-// V6.5.45: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
+// V6.5.46: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
