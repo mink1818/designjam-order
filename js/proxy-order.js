@@ -4,6 +4,7 @@ const $=id=>document.getElementById(id);
 const ADMIN_SESSION_KEY='designjam_admin_session';
 let customers=[],items=[],currentAdminId=null,activeCustomerPrices=new Map(),selectedPriceLoadToken=0,directPriceTimer=null;
 let draftSaveTimer=null,draftSubmissionComplete=false;
+const PROXY_ITEM_CHOICE_KEY='designjam_proxy_item_choices_v1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalizeItem=v=>String(v||'').trim().normalize('NFKC').toUpperCase();
 const priceKey=v=>normalizeItem(v).replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'');
@@ -45,6 +46,11 @@ function findItem(value){
  return candidates.length===1?candidates[0]:null;
 }
 function proxyItemKind(itemNumber){const key=priceKey(itemNumber);if(/A$/.test(key))return'아동양말';if(/M$/.test(key))return'무지양말';return'일반양말'}
+function proxyChoiceStorageKey(){return`${PROXY_ITEM_CHOICE_KEY}:${currentAdminId||'guest'}`}
+function loadProxyItemChoices(){try{return JSON.parse(localStorage.getItem(proxyChoiceStorageKey())||'{}')}catch{return{}}}
+function proxyChoiceBase(value){return priceKey(value).replace(/[AM]$/,'')}
+function rememberProxyItemChoice(baseNumber,actualNumber){const choices=loadProxyItemChoices();choices[proxyChoiceBase(baseNumber)]=priceKey(actualNumber);localStorage.setItem(proxyChoiceStorageKey(),JSON.stringify(choices))}
+function forgetProxyItemChoice(baseNumber){const choices=loadProxyItemChoices();delete choices[proxyChoiceBase(baseNumber)];localStorage.setItem(proxyChoiceStorageKey(),JSON.stringify(choices))}
 function resolveProxyItem(value){
  const key=priceKey(value);
  // 관리자가 A/M까지 입력한 경우에만 해당 품번을 즉시 확정합니다.
@@ -55,14 +61,17 @@ function resolveProxyItem(value){
  }
  if(!/\d$/.test(key))return{item:null,candidates:[]};
  const candidates=items.filter(x=>priceKey(x.item_number).replace(/[AM]$/,'')===key);
- return{item:candidates.length===1?candidates[0]:null,candidates};
+ if(candidates.length<=1)return{item:candidates[0]||null,candidates,remembered:null};
+ const rememberedKey=loadProxyItemChoices()[key];
+ const remembered=rememberedKey?candidates.find(item=>priceKey(item.item_number)===rememberedKey)||null:null;
+ return{item:null,candidates,remembered};
 }
-function chooseProxyItem(requested,candidates){
+function chooseProxyItem(requested,candidates,remembered=null){
  return new Promise(resolve=>{
   const modal=document.createElement('div');modal.className='proxy-choice-modal';
-  modal.innerHTML=`<div class="proxy-choice-card"><h3>${esc(requested)} 품번 종류 선택</h3><p>주문하려는 양말 종류를 선택하세요.</p><div class="proxy-choice-buttons">${candidates.map((item,index)=>`<button type="button" data-index="${index}"><strong>${esc(proxyItemKind(item.item_number))}</strong><small>${esc(item.item_number)}</small></button>`).join('')}</div><button type="button" class="proxy-choice-cancel">취소</button></div>`;
+  modal.innerHTML=`<div class="proxy-choice-card"><h3>${esc(requested)} 품번 종류 선택</h3><p>주문하려는 양말 종류를 선택하세요.</p><div class="proxy-choice-buttons">${candidates.map((item,index)=>`<button type="button" class="${remembered&&priceKey(remembered.item_number)===priceKey(item.item_number)?'remembered':''}" data-index="${index}"><strong>${esc(proxyItemKind(item.item_number))}</strong><small>${esc(item.item_number)}</small>${remembered&&priceKey(remembered.item_number)===priceKey(item.item_number)?'<em>기억된 선택</em>':''}</button>`).join('')}</div><label class="proxy-choice-remember"><input type="checkbox"${remembered?' checked':''}> 다음 주문에도 이 선택 기억</label><button type="button" class="proxy-choice-cancel">취소</button></div>`;
   const finish=value=>{modal.remove();resolve(value)};
-  modal.querySelectorAll('[data-index]').forEach(button=>button.onclick=()=>finish(candidates[Number(button.dataset.index)]||null));
+  modal.querySelectorAll('[data-index]').forEach(button=>button.onclick=()=>{const selected=candidates[Number(button.dataset.index)]||null;if(selected&&modal.querySelector('.proxy-choice-remember input')?.checked)rememberProxyItemChoice(requested,selected.item_number);else forgetProxyItemChoice(requested);finish(selected)});
   modal.querySelector('.proxy-choice-cancel').onclick=()=>finish(null);modal.onclick=e=>{if(e.target===modal)finish(null)};document.body.appendChild(modal);
  });
 }
@@ -133,7 +142,7 @@ async function applyPastedOrder(){
  const rows=text.split(/\r?\n|[;|]/).map(line=>line.trim()).filter(Boolean),raw=[],merged=new Map(),unmatched=[],fields={};
  const labels=[['customer',/^(?:거래처명?|업체명?)\s*[:：]\s*(.+)$/i],['delivery',/^(?:납품처명?|배송처명?)\s*[:：]\s*(.+)$/i],['phone',/^(?:연락처|전화(?:번호)?)\s*[:：]\s*(.+)$/i],['address',/^(?:주소|납품주소|배송주소)\s*[:：]\s*(.+)$/i],['memo',/^(?:메모|요청사항)\s*[:：]\s*(.+)$/i]];
  for(const line of rows){let handled=false;for(const [key,re] of labels){const match=line.match(re);if(match){fields[key]=match[1].trim();handled=true;break}}if(handled)continue;const cells=line.split(/\t+/).map(v=>v.trim()).filter(Boolean);if(cells.length>=2){raw.push({item:cells[0],qty:Math.max(1,Number(String(cells[1]).replace(/[^0-9]/g,'')||1))});continue}const range=expandPastedItemRange(line);if(range.length){range.forEach(item=>raw.push({item,qty:1}));continue}const parsed=parsePastedItemLine(line);if(/\d/.test(parsed.item))raw.push(parsed)}
- for(const row of raw){const resolution=resolveProxyItem(row.item);let found=resolution.item;if(!found&&resolution.candidates.length>1)found=await chooseProxyItem(row.item,resolution.candidates);const itemNumber=found?.item_number||row.item;if(!found)unmatched.push(row.item);const key=normalizeItem(itemNumber),current=merged.get(key)||{item_number:itemNumber,qty:0};current.qty+=row.qty;merged.set(key,current)}
+ for(const row of raw){const resolution=resolveProxyItem(row.item);let found=resolution.item;if(!found&&resolution.candidates.length>1)found=await chooseProxyItem(row.item,resolution.candidates,resolution.remembered);const itemNumber=found?.item_number||row.item;if(!found)unmatched.push(row.item);const key=normalizeItem(itemNumber),current=merged.get(key)||{item_number:itemNumber,qty:0};current.qty+=row.qty;merged.set(key,current)}
  if(fields.customer){const matched=customers.find(c=>normalizeCustomer(c.business_name)===normalizeCustomer(fields.customer));if(matched){document.querySelector('input[name="proxyCustomerMode"][value="select"]').checked=true;$('proxyCustomer').value=matched.id}else{document.querySelector('input[name="proxyCustomerMode"][value="direct"]').checked=true;$('proxyDirectName').value=fields.customer}updateCustomerMode();await reloadSelectedCustomerPrices();loadProxyDestinations()}
  if(fields.delivery)$('proxyDeliveryName').value=fields.delivery;if(fields.phone)$('proxyDeliveryPhone').value=fields.phone;if(fields.address)$('proxyDeliveryAddress').value=fields.address;if(fields.memo)$('proxyMemo').value=fields.memo;
  const parsed=[...merged.values()];if(parsed.length){$('proxyLines').innerHTML='';parsed.forEach(row=>addLine(row));refreshAllLinePrices()}$('proxyPasteInput').value='';const result=$('proxyPasteResult');if(result)result.textContent=`주문정보 적용 완료 · ${parsed.length.toLocaleString()}품번${unmatched.length?` · 상품 미등록 확인 ${[...new Set(unmatched)].length}개`:''}`;calc();scheduleProxyDraftSave();

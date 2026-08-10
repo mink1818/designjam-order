@@ -1508,7 +1508,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
-// V6.5.46: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
+// V6.5.47: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
@@ -1539,7 +1539,15 @@ function loadBulkItemChoices() {
 
 function rememberBulkItemChoice(baseNumber, actualNumber) {
   const choices = loadBulkItemChoices();
-  choices[normalizeBulkItemNumber(baseNumber)] = normalizeBulkItemNumber(actualNumber);
+  const baseKey = normalizeBulkItemNumber(baseNumber).replace(/^[SBI][-_/\s]+/, "");
+  choices[baseKey] = normalizeBulkItemNumber(actualNumber);
+  localStorage.setItem(bulkChoiceStorageKey(), JSON.stringify(choices));
+}
+
+function forgetBulkItemChoice(baseNumber) {
+  const choices = loadBulkItemChoices();
+  const baseKey = normalizeBulkItemNumber(baseNumber).replace(/^[SBI][-_/\s]+/, "");
+  delete choices[baseKey];
   localStorage.setItem(bulkChoiceStorageKey(), JSON.stringify(choices));
 }
 
@@ -1570,7 +1578,8 @@ function resolveBulkOrderItem(value, index) {
   if (!candidates.length) return { matched: null, candidates: [] };
   const remembered = loadBulkItemChoices()[withoutWarehouse];
   const rememberedRow = remembered && candidates.find(row => row.normalized === remembered);
-  return { matched: rememberedRow || null, candidates };
+  // 중복 품번은 기억값이 있어도 선택창을 항상 보여 다른 종류 선택·기억 해제가 가능해야 합니다.
+  return { matched: null, candidates, remembered: rememberedRow || null };
 }
 
 function bulkItemType(number) {
@@ -1580,7 +1589,7 @@ function bulkItemType(number) {
   return "일반양말";
 }
 
-function chooseBulkOrderCandidate(requestedNumber, candidates) {
+function chooseBulkOrderCandidate(requestedNumber, candidates, rememberedRow = null) {
   return new Promise(resolve => {
     document.getElementById("bulkItemChoiceModal")?.remove();
     const modal = document.createElement("div");
@@ -1593,9 +1602,9 @@ function chooseBulkOrderCandidate(requestedNumber, candidates) {
         <h3 id="bulkChoiceTitle">품번 ${escapeHtml(requestedNumber)}</h3>
         <p>어떤 종류의 양말인지 선택해 주세요.</p>
         <div class="bulk-item-type-buttons">
-          ${candidates.map((row, i) => `<button type="button" class="bulk-item-type-button" data-candidate-index="${i}"><b>${escapeHtml(bulkItemType(row.number))}</b><small>관리 품번 ${escapeHtml(row.number)}</small></button>`).join("")}
+          ${candidates.map((row, i) => `<button type="button" class="bulk-item-type-button${rememberedRow?.normalized === row.normalized ? " remembered" : ""}" data-candidate-index="${i}"><b>${escapeHtml(bulkItemType(row.number))}</b><small>관리 품번 ${escapeHtml(row.number)}</small>${rememberedRow?.normalized === row.normalized ? "<em>기억된 선택</em>" : ""}</button>`).join("")}
         </div>
-        <label class="bulk-choice-remember"><input type="checkbox" id="bulkChoiceRemember"> 다음 주문에도 이 선택 기억</label>
+        <label class="bulk-choice-remember"><input type="checkbox" id="bulkChoiceRemember"${rememberedRow ? " checked" : ""}> 다음 주문에도 이 선택 기억</label>
         <button type="button" class="cart-btn gray-btn bulk-choice-cancel">취소</button>
       </div>`;
     document.body.appendChild(modal);
@@ -1603,6 +1612,7 @@ function chooseBulkOrderCandidate(requestedNumber, candidates) {
     modal.querySelectorAll("[data-candidate-index]").forEach(button => button.addEventListener("click", () => {
       const row = candidates[Number(button.dataset.candidateIndex)];
       if (row && modal.querySelector("#bulkChoiceRemember")?.checked) rememberBulkItemChoice(requestedNumber, row.number);
+      else forgetBulkItemChoice(requestedNumber);
       finish(row);
     }));
     modal.querySelector(".bulk-choice-close")?.addEventListener("click", () => finish(null));
@@ -1708,8 +1718,8 @@ function renderCustomerBulkOrder() {
         </ul>
         <div class="customer-bulk-order-example"><span>입력 예시</span><code>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035</code></div>
       </div>
-      <p class="customer-bulk-duplicate-summary">현재 등록상품 기준 중복 기본품번 <b>${getDuplicateBulkItemCount()}</b>개 · 중복 시 일반양말·아동양말·무지양말을 선택합니다.</p>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="납품처명: ○○매장\n연락처: 010-0000-0000\n주소: 서울시...\n메모: 빠른 출고\n\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
+      <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
       <div class="customer-bulk-order-actions">
@@ -1742,7 +1752,7 @@ async function applyCustomerBulkOrder() {
   for (const [requestedNumber, qty] of totals.entries()) {
     const resolution = resolveBulkOrderItem(requestedNumber, index);
     let found = resolution.matched;
-    if (!found && resolution.candidates.length > 1) found = await chooseBulkOrderCandidate(requestedNumber, resolution.candidates);
+    if (!found && resolution.candidates.length > 1) found = await chooseBulkOrderCandidate(requestedNumber, resolution.candidates, resolution.remembered);
     if (!found) { missing.push(requestedNumber); continue; }
     const { group, number } = found;
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
