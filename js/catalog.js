@@ -1508,7 +1508,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
-// V6.5.53: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
+// V6.5.54: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
@@ -1755,11 +1755,13 @@ function renderCustomerBulkOrder() {
           <li>품번과 수량 사이는 공백 또는 탭으로 띄워주세요.</li>
           <li>수량을 적지 않은 품번은 1죽으로 입력됩니다.</li>
           <li><b>5031~5035</b>처럼 범위를 입력하면 포함된 품번을 각각 1죽씩 입력합니다.</li>
-          <li>납품처명·연락처·주소·메모를 함께 적으면 주문정보에 자동 저장됩니다.</li>
+          <li>이름·연락처·주소를 순서대로 적으면 납품처 정보로 자동 인식합니다.</li>
+          <li>메모는 주소 다음 줄에 적을 수 있으며, 적지 않으면 메모 없이 주문됩니다.</li>
         </ul>
-        <div class="customer-bulk-order-example"><span>입력 예시</span><code>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035</code></div>
+        <div class="customer-bulk-order-example"><span>입력 예시</span><code>행복양말<br>010-1234-5678<br>충남 천안시 서북구 성환읍 123-4<br>문 앞에 놓아주세요&nbsp;&nbsp;(메모 선택)<br><br>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035</code></div>
       </div>
-      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="납품처명: ○○매장\n연락처: 010-0000-0000\n주소: 서울시...\n메모: 빠른 출고\n\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
+      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="행복양말\n010-1234-5678\n충남 천안시 서북구 성환읍 123-4\n문 앞에 놓아주세요 (메모는 선택)\n\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
+      <p class="customer-bulk-order-help"><b>안내:</b> 주소 입력은 자동 인식 기능이므로 형식에 따라 정확히 구분되지 않을 수 있습니다. 주소가 잘못 인식되면 품번·수량만 입력한 뒤 주문 화면에서 납품처를 선택해 주세요.</p>
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
