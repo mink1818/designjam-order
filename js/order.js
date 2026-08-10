@@ -9,6 +9,7 @@ const completedPeriod = document.getElementById("completedPeriod");
 let myOrderGroups = [];
 let currentOrderUser = null;
 let defaultPaymentAccount = null;
+let customerShareDocumentAllowed = false;
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
 
 completedPeriod?.addEventListener("change", renderMyOrders);
@@ -35,7 +36,7 @@ async function loadMyOrders() {
 
   const { data: customer, error: customerError } = await supabaseClient
     .from("customers")
-    .select("business_name")
+    .select("business_name, customer_grade")
     .eq("id", user.id)
     .single();
 
@@ -43,6 +44,10 @@ async function loadMyOrders() {
     activeOrderResult.innerHTML = "<p>거래처 정보를 불러오지 못했습니다.</p>";
     return;
   }
+
+  // 등급명은 거래처 화면에 노출하지 않고 사용 가능한 계정에만 버튼을 표시합니다.
+  customerShareDocumentAllowed = ["우수", "우수고객", "VIP", "VVIP"]
+    .includes(String(customer.customer_grade || ""));
 
   const { data: idOrders, error: idOrderError } = await supabaseClient
     .from("orders")
@@ -190,7 +195,7 @@ function renderCompactActiveOrder(group) {
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
-    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button></div>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button>${customerShareDocumentAllowed?`<button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button>`:''}</div>
     <div id="${id}" class="completed-order-detail">
       <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>` : `<span class="order-status-badge">주문확인 진행 중</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
       <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
@@ -225,7 +230,7 @@ function renderFullOrder(group) {
     <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
     ${renderOrderBankBox(group)}
     <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
-    <button class="reorder-btn" type="button" onclick="openCustomerShareDocument('${group.orderNumber}')">거래처 전달용 문서 만들기</button>
+    ${customerShareDocumentAllowed?`<button class="reorder-btn" type="button" onclick="openCustomerShareDocument('${group.orderNumber}')">거래처 전달용 문서 만들기</button>`:''}
     <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
   </div>`;
 }
@@ -240,7 +245,7 @@ function renderCompletedOrder(group) {
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
-    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button></div>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button>${customerShareDocumentAllowed?`<button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button>`:''}</div>
     <div id="${id}" class="completed-order-detail">
       ${summary.itemRows}
       <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
