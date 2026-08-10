@@ -1509,6 +1509,7 @@ function cartTopButton() {
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices";
+const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
 
 function normalizeBulkItemNumber(value) {
   return String(value ?? "").trim().normalize("NFKC").toUpperCase();
@@ -1592,7 +1593,7 @@ function chooseBulkOrderCandidate(requestedNumber, candidates) {
         <div class="bulk-item-type-buttons">
           ${candidates.map((row, i) => `<button type="button" class="bulk-item-type-button" data-candidate-index="${i}"><b>${escapeHtml(bulkItemType(row.number))}</b><small>관리 품번 ${escapeHtml(row.number)}</small></button>`).join("")}
         </div>
-        <label class="bulk-choice-remember"><input type="checkbox" id="bulkChoiceRemember" checked> 다음 주문에도 이 선택 기억</label>
+        <label class="bulk-choice-remember"><input type="checkbox" id="bulkChoiceRemember"> 다음 주문에도 이 선택 기억</label>
         <button type="button" class="cart-btn gray-btn bulk-choice-cancel">취소</button>
       </div>`;
     document.body.appendChild(modal);
@@ -1628,6 +1629,7 @@ function parseCustomerBulkOrder(text) {
   String(text || "").split(/\r?\n/).forEach(rawLine => {
     const line = rawLine.trim();
     if (!line) return;
+    if (/^(?:납품처명?|배송처명?|연락처|전화(?:번호)?|주소|납품주소|배송주소|메모|요청사항)\s*[:：]/i.test(line)) return;
     const cleaned = line
       .replace(/[()\[\]]/g, " ")
       .replace(/(죽씩|족씩|죽|족)/gi, " ")
@@ -1648,6 +1650,40 @@ function parseCustomerBulkOrder(text) {
   return parsed;
 }
 
+function parseCustomerBulkDelivery(text) {
+  const fields = {};
+  const labels = [
+    ["deliveryName", /^(?:납품처명?|배송처명?)\s*[:：]\s*(.+)$/i],
+    ["deliveryPhone", /^(?:연락처|전화(?:번호)?)\s*[:：]\s*(.+)$/i],
+    ["deliveryAddress", /^(?:주소|납품주소|배송주소)\s*[:：]\s*(.+)$/i],
+    ["memo", /^(?:메모|요청사항)\s*[:：]\s*(.+)$/i]
+  ];
+  String(text || "").split(/\r?\n/).forEach(raw => {
+    const line = raw.trim();
+    for (const [key, pattern] of labels) {
+      const match = line.match(pattern);
+      if (match) { fields[key] = match[1].trim(); break; }
+    }
+  });
+  return fields;
+}
+
+async function saveCustomerBulkDeliveryDraft(fields) {
+  if (!fields || !Object.values(fields).some(Boolean)) return;
+  localStorage.setItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY, JSON.stringify(fields));
+  if (!currentUser || !fields.deliveryName) return;
+  const row = {
+    customer_id: currentUser.id,
+    delivery_name: fields.deliveryName,
+    delivery_phone: fields.deliveryPhone || null,
+    delivery_address: fields.deliveryAddress || null,
+    last_used_at: new Date().toISOString()
+  };
+  const { error } = await supabaseClient.from("customer_delivery_destinations")
+    .upsert(row, { onConflict: "customer_id,delivery_name,delivery_address" });
+  if (error) console.warn("붙여넣기 납품처 자동 저장 실패:", error.message);
+}
+
 function renderCustomerBulkOrder() {
   if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   rememberCartReturnState();
@@ -1658,7 +1694,7 @@ function renderCustomerBulkOrder() {
   catalogList.innerHTML = `
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
-      <p>문자·카톡 주문 내용을 붙여넣으면 품번과 수량을 장바구니에 한 번에 담을 수 있습니다.</p>
+      <p>문자·카톡 주문 내용을 붙여넣으면 품번·수량과 납품처 정보를 한 번에 입력할 수 있습니다.</p>
       <div class="customer-bulk-order-guide">
         <strong>입력 방법</strong>
         <ul>
@@ -1666,11 +1702,12 @@ function renderCustomerBulkOrder() {
           <li>품번과 수량 사이는 공백 또는 탭으로 띄워주세요.</li>
           <li>수량을 적지 않은 품번은 1죽으로 입력됩니다.</li>
           <li><b>5031~5035</b>처럼 범위를 입력하면 포함된 품번을 각각 1죽씩 입력합니다.</li>
+          <li>납품처명·연락처·주소·메모를 함께 적으면 주문정보에 자동 저장됩니다.</li>
         </ul>
         <div class="customer-bulk-order-example"><span>입력 예시</span><code>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035</code></div>
       </div>
       <p class="customer-bulk-duplicate-summary">현재 등록상품 기준 중복 기본품번 <b>${getDuplicateBulkItemCount()}</b>개 · 중복 시 일반양말·아동양말·무지양말을 선택합니다.</p>
-      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="한 줄에 하나씩 입력하세요.\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
+      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="납품처명: ○○매장\n연락처: 010-0000-0000\n주소: 서울시...\n메모: 빠른 출고\n\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
       <div class="customer-bulk-order-actions">
@@ -1687,7 +1724,9 @@ function renderCustomerBulkOrder() {
 async function applyCustomerBulkOrder() {
   const input = document.getElementById("customerBulkOrderInput");
   const resultBox = document.getElementById("customerBulkOrderResult");
-  const rows = parseCustomerBulkOrder(input?.value || "");
+  const pastedText = input?.value || "";
+  const rows = parseCustomerBulkOrder(pastedText);
+  const deliveryFields = parseCustomerBulkDelivery(pastedText);
   if (!rows.length) { if (resultBox) resultBox.textContent = "품번과 수량을 입력해 주세요."; return; }
 
   const index = getBulkOrderItemIndex();
@@ -1722,8 +1761,10 @@ async function applyCustomerBulkOrder() {
   }
 
   if (addedQty) saveCart();
+  await saveCustomerBulkDeliveryDraft(deliveryFields);
   const messages = [];
   if (addedQty) messages.push(`${addedKinds}품번 · ${addedQty}죽을 장바구니에 담았습니다.`);
+  if (deliveryFields.deliveryName || deliveryFields.deliveryAddress) messages.push(`납품처 정보 자동 저장: ${deliveryFields.deliveryName || deliveryFields.deliveryAddress}`);
   if (missing.length) messages.push(`미등록/확인 필요: ${missing.join(", ")}`);
   if (soldout.length) messages.push(`현재 품절 표시: ${[...new Set(soldout)].join(", ")}`);
   if (resultBox) {
@@ -1969,6 +2010,8 @@ function showOrderForm() {
   currentScreen = "order";
   showSearch(false);
   hideLegacyFilters();
+  let pastedDelivery = {};
+  try { pastedDelivery = JSON.parse(localStorage.getItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY) || "{}"); } catch (_) {}
 
   catalogList.innerHTML = `
     <div class="product-card">
@@ -1985,14 +2028,14 @@ function showOrderForm() {
           <select id="deliveryDestinationSelect" class="order-input"><option value="registered">가입 시 등록한 주소</option><option value="new">+ 새 납품처 입력</option></select>
         </label>
         <label for="deliveryName">납품처명
-          <input id="deliveryName" class="order-input" list="deliveryDestinationList" maxlength="100" value="${escapeHtml(currentCustomer.delivery_name || currentCustomer.business_name || '')}" placeholder="실제로 배송받는 업체명">
+          <input id="deliveryName" class="order-input" list="deliveryDestinationList" maxlength="100" value="${escapeHtml(pastedDelivery.deliveryName || currentCustomer.delivery_name || currentCustomer.business_name || '')}" placeholder="실제로 배송받는 업체명">
           <datalist id="deliveryDestinationList"></datalist>
         </label>
         <label for="deliveryPhone">납품처 연락처
-          <input id="deliveryPhone" class="order-input" maxlength="50" value="${escapeHtml(currentCustomer.phone || '')}" placeholder="배송 연락처">
+          <input id="deliveryPhone" class="order-input" maxlength="50" value="${escapeHtml(pastedDelivery.deliveryPhone || currentCustomer.phone || '')}" placeholder="배송 연락처">
         </label>
         <label for="deliveryAddress" class="wide">납품처 주소
-          <input id="deliveryAddress" class="order-input" maxlength="300" value="${escapeHtml(currentCustomer.address || '')}" placeholder="실제 배송 주소">
+          <input id="deliveryAddress" class="order-input" maxlength="300" value="${escapeHtml(pastedDelivery.deliveryAddress || currentCustomer.address || '')}" placeholder="실제 배송 주소">
         </label>
       </div>
       <p class="order-delivery-help">가입 시 등록한 주소와 실제 납품지가 다른 경우 입력해 주세요. 동일한 주소라면 등록 주소를 선택하세요.</p>
@@ -2012,7 +2055,7 @@ function showOrderForm() {
         rows="5"
         maxlength="1000"
         placeholder="예: 빠른출고, 오후배송"
-      ></textarea>
+      >${escapeHtml(pastedDelivery.memo || '')}</textarea>
 
       <button
         id="submitOrderButton"
@@ -2039,7 +2082,7 @@ async function hydrateDeliveryDestinations(){
   if(!currentUser)return;const {data,error}=await supabaseClient.from('customer_delivery_destinations').select('id,delivery_name,delivery_phone,delivery_address,last_used_at,is_default').eq('customer_id',currentUser.id).order('is_default',{ascending:false}).order('last_used_at',{ascending:false}).limit(100);if(error)return;
   const destinations=data||[],select=document.getElementById('deliveryDestinationSelect'),manager=document.getElementById('deliveryDestinationManager');
   const apply=row=>{document.getElementById('deliveryName').value=row?.delivery_name||currentCustomer.business_name||'';document.getElementById('deliveryPhone').value=row?.delivery_phone||currentCustomer.phone||'';document.getElementById('deliveryAddress').value=row?.delivery_address||currentCustomer.address||'';};
-  if(select){select.innerHTML='<option value="registered">가입 시 등록한 주소</option>'+destinations.map((row,index)=>`<option value="${row.id}">${escapeHtml(row.delivery_name)}${row.is_default?' · 기본':''}</option>`).join('')+'<option value="new">+ 새 납품처 입력</option>';const preferred=destinations.find(x=>x.is_default);if(preferred){select.value=String(preferred.id);apply(preferred)}select.onchange=()=>{if(select.value==='registered')apply(null);else if(select.value==='new')apply({delivery_name:'',delivery_phone:'',delivery_address:''});else apply(destinations.find(x=>String(x.id)===select.value));};}
+  if(select){select.innerHTML='<option value="registered">가입 시 등록한 주소</option>'+destinations.map((row,index)=>`<option value="${row.id}">${escapeHtml(row.delivery_name)}${row.is_default?' · 기본':''}</option>`).join('')+'<option value="new">+ 새 납품처 입력</option>';let draft={};try{draft=JSON.parse(localStorage.getItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY)||'{}')}catch(_){}const pasted=destinations.find(x=>draft.deliveryName&&x.delivery_name===draft.deliveryName&&String(x.delivery_address||'')===String(draft.deliveryAddress||''));const preferred=pasted||destinations.find(x=>x.is_default);if(preferred){select.value=String(preferred.id);apply(preferred)}select.onchange=()=>{if(select.value==='registered')apply(null);else if(select.value==='new')apply({delivery_name:'',delivery_phone:'',delivery_address:''});else apply(destinations.find(x=>String(x.id)===select.value));};}
   if(manager)manager.innerHTML=destinations.length?`<details><summary>저장된 납품처 수정·삭제 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
 }
 
@@ -2119,6 +2162,7 @@ async function submitOrder() {
     p_delivery_address:deliveryAddress
   });
   if(deliverySave.error)console.warn('납품처 목록 저장 실패:',deliverySave.error.message);
+  localStorage.removeItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY);
 
   let totalQty = 0;
   let totalPrice = 0;

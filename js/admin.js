@@ -450,6 +450,15 @@ async function copyAllWarehouseOrders(button, event, mode='excel') {
   setTimeout(() => { button.textContent = original; button.classList.remove('copied'); }, 1600);
 }
 
+async function copyOrderDetails(button,event,mode='excel'){
+ event?.preventDefault();event?.stopPropagation();const card=button.closest('.order-card');if(!card)return;
+ const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map(row=>({item:row.dataset.copyItem,qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0)}));
+ if(!rows.length)return alert('복사할 주문 품목이 없습니다.');
+ const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
+ try{if(!navigator.clipboard?.writeText)throw new Error();await navigator.clipboard.writeText(text)}catch(_){if(!fallbackCopyWithoutJump(text))return alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.')}
+ const original=button.textContent;button.textContent='상세 복사완료';setTimeout(()=>button.textContent=original,1600);
+}
+
 function renderOrderCards(groups) {
   if (groups.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>검색 결과가 없습니다</h2></div>";
@@ -541,7 +550,7 @@ class="order-detail">
         ${renderOrderItemEditor(group, index)}
 
         <div class="order-party-summary"><p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}</div>
-        <div class="order-copy-all-row"><span class="copy-button-pair"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event,'kakao')">S·B·I 카톡용 전체복사</button><button type="button" class="warehouse-copy-button all-warehouse-copy-button excel-copy-button" onclick="copyAllWarehouseOrders(this,event,'excel')">S·B·I 엑셀용 전체복사</button></span><small>카톡은 넓은 간격, 엑셀은 A열 품번·B열 수량으로 복사됩니다.</small></div>
+        <div class="order-copy-all-row"><span class="copy-button-pair"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event,'kakao')">S·B·I 카톡용 전체복사</button><button type="button" class="warehouse-copy-button all-warehouse-copy-button excel-copy-button" onclick="copyAllWarehouseOrders(this,event,'excel')">S·B·I 엑셀용 전체복사</button><button type="button" class="warehouse-copy-button" onclick="copyOrderDetails(this,event,'kakao')">품번·수량·단가 카톡복사</button><button type="button" class="warehouse-copy-button excel-copy-button" onclick="copyOrderDetails(this,event,'excel')">품번·수량·단가 엑셀복사</button></span><small>상세복사는 품번·출고수량·1죽 단가·금액을 함께 복사합니다.</small></div>
         <div class="pick-list">
           ${itemHtml}
         </div>
@@ -908,6 +917,7 @@ window.prepareOrderItemEditor = prepareOrderItemEditor;
 window.addOrderItemEditRow = addOrderItemEditRow;
 window.saveOrderItems = saveOrderItems;
 window.copyAllWarehouseOrders = copyAllWarehouseOrders;
+window.copyOrderDetails = copyOrderDetails;
 
 function toggleDetail(id) {
   const box = document.getElementById(id);
@@ -1019,6 +1029,12 @@ function openStatement(orderNumber) {
   window.open(url, "_blank");
 }
 
+function loadAuthenticatedAdminChrome(){
+  if(document.getElementById('authenticatedAdminChrome'))return;
+  const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
+  ['js/session-status.js?v=65430','js/admin-mobile-nav.js?v=65430'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+}
+
 async function initializeAdminPage() {
   const loginBox = document.getElementById("loginBox");
   const adminContent = document.getElementById("adminContent");
@@ -1030,6 +1046,7 @@ async function initializeAdminPage() {
   const showAdmin = () => {
     if (loginBox) loginBox.style.display = "none";
     if (adminContent) adminContent.style.display = "block";
+    loadAuthenticatedAdminChrome();
   };
 
   try {

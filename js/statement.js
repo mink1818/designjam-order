@@ -27,6 +27,8 @@ const statementArea =
 let statementDefaultAccount = null;
 let currentStatementOrderNumber = "거래명세서";
 let currentStatementCustomerName = "거래처";
+const statementParams = new URLSearchParams(location.search);
+const customerStatementMode = statementParams.get("customer") === "1";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -50,35 +52,32 @@ function formatDate(value, dateOnly = false) {
   return date.toLocaleString("ko-KR");
 }
 
-async function checkAdminAccess() {
+async function checkStatementAccess() {
   const {
     data: { user },
     error: userError
   } = await supabaseClient.auth.getUser();
 
-  const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
-
-  if (userError || !user || sessionUserId !== user.id) {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    if (user) await supabaseClient.auth.signOut();
-    location.replace("admin.html");
+  if (userError || !user) {
+    location.replace(customerStatementMode ? "login.html" : "admin.html");
     return false;
   }
 
   const { data: customer, error: customerError } =
     await supabaseClient
       .from("customers")
-      .select("is_admin, blocked")
+      .select("is_admin, blocked, approved")
       .eq("id", user.id)
       .single();
 
   const emailAllowed = isDesignjamAdminEmail(user.email);
   const databaseAllowed = !customerError && customer?.is_admin === true && customer?.blocked !== true;
 
-  if (!emailAllowed && !databaseAllowed) {
+  const customerAllowed = !customerError && customer?.is_admin !== true && customer?.approved === true && customer?.blocked !== true;
+  if (customerStatementMode ? !customerAllowed : (!emailAllowed && !databaseAllowed)) {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     await supabaseClient.auth.signOut();
-    location.replace("admin.html");
+    location.replace(customerStatementMode ? "login.html" : "admin.html");
     return false;
   }
 
@@ -87,8 +86,7 @@ async function checkAdminAccess() {
 }
 
 async function loadStatement() {
-  const params = new URLSearchParams(location.search);
-  const orderNumber = params.get("order");
+  const orderNumber = statementParams.get("order");
   currentStatementOrderNumber = orderNumber || "거래명세서";
 
   if (!orderNumber) {
@@ -129,6 +127,13 @@ async function loadStatement() {
   } catch (_) {}
   // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.
   renderStatement(data, productGroups);
+  if(customerStatementMode) enableCustomerStatementEditing();
+}
+
+function enableCustomerStatementEditing(){
+ document.body.classList.add('customer-statement-mode');
+ const notice=document.getElementById('statementModeNotice');if(notice)notice.textContent='작성용 수정은 저장 이미지에만 반영되며 실제 주문·단가는 변경되지 않습니다.';
+ statementArea.querySelectorAll('.customer-info span,.statement-table tbody td:not(:first-child),.statement-summary strong,.statement-footer h2,.statement-footer p').forEach(node=>{node.contentEditable='true';node.spellcheck=false;node.title='눌러서 출력 문구를 수정할 수 있습니다.'});
 }
 
 function renderStatement(items, productGroups = []) {
@@ -366,11 +371,11 @@ function closeStatement() {
     return;
   }
 
-  location.href = "admin.html";
+  location.href = customerStatementMode ? "order.html" : "admin.html?view=orders";
 }
 
 async function startStatementPage() {
-  const allowed = await checkAdminAccess();
+  const allowed = await checkStatementAccess();
 
   if (!allowed) return;
 

@@ -195,6 +195,8 @@ function renderCompactActiveOrder(group) {
       <p><strong>배송비:</strong> ${Number(group.shippingFee || 0).toLocaleString()}원</p>
       <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
       ${renderOrderBankBox(group)}
+      <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
+      <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
       <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
       ${editable ? `<button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기(장바구니로 이동)</button><button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">피킹 전 주문 삭제</button>` : `<p><small>피킹을 시작한 주문은 거래처 화면에서 수정·삭제할 수 없습니다.</small></p>`}
     </div>
@@ -220,6 +222,8 @@ function renderFullOrder(group) {
     <h2 class="price-text">최종금액: ${summary.finalTotal.toLocaleString()}원</h2>
     <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
     ${renderOrderBankBox(group)}
+    <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
+    <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
     <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
   </div>`;
 }
@@ -241,6 +245,8 @@ function renderCompletedOrder(group) {
       <p><strong>송장번호:</strong> ${escapeHtml(group.trackingNumber || "입력 전")}</p>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
       ${renderOrderBankBox(group)}
+      <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
+      <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
       <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
     </div>
   </article>`;
@@ -252,6 +258,18 @@ function toggleOrderDetail(id, button) {
   const isOpen = detail.classList.toggle("open");
   const toggle = button?.querySelector(".completed-toggle");
   if (toggle) toggle.textContent = isOpen ? "접기 ▲" : "상세보기 ▼";
+}
+
+function openCustomerStatement(orderNumber){
+  window.open(`statement.html?order=${encodeURIComponent(orderNumber)}&customer=1`, "_blank", "noopener");
+}
+
+async function copyCustomerOrderDetails(orderNumber,mode='excel',button){
+ const group=myOrderGroups.find(row=>row.orderNumber===orderNumber);if(!group)return;
+ const rows=group.items.map(item=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0))),qty=Math.max(0,ordered-soldout),price=Number(item.price||0);return{item:String(item.warehouse_code?`${String(item.warehouse_code).toUpperCase()}-${item.item_number}`:item.item_number),qty,price}}).filter(row=>row.qty>0);
+ const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
+ try{await navigator.clipboard.writeText(text)}catch(_){const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove()}
+ const original=button?.textContent;if(button){button.textContent='복사완료';setTimeout(()=>button.textContent=original,1400)}
 }
 
 function toggleCompletedOrder(id) {

@@ -21,6 +21,7 @@ body {
   max-width: 850px;
   margin: 0 auto 16px;
 }
+.statement-mode-notice{align-self:center;flex:1;min-width:220px;color:#475569;font-size:13px}.customer-statement-mode [contenteditable="true"]{outline:1px dashed #93c5fd;outline-offset:2px;border-radius:3px}.customer-statement-mode [contenteditable="true"]:focus{outline:2px solid #2563eb;background:#eff6ff}@media(max-width:700px){.statement-mode-notice{order:5;width:100%;font-size:12px}.screen-menu{flex-wrap:wrap}}
 
 .screen-menu button {
   flex: 1;

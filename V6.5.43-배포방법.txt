@@ -1,0 +1,17 @@
+DESIGN SOCKS V6.5.43 배포
+
+1. 기존 프로젝트에 이 버전 파일을 덮어씁니다.
+2. 터미널에서 아래 명령을 차례로 실행합니다.
+
+git add .
+git commit -m "release v6.5.43 delivery statement and detailed copy"
+git push
+
+3. Vercel 배포가 끝나면 PC는 Ctrl+F5, 모바일은 앱/브라우저를 완전히 종료 후 다시 실행합니다.
+
+SQL 실행: 불필요
+Supabase Function 재배포: 불필요
+Git Push: 필요
+
+※ 기존 V6.5.28/V6.5.32 납품처 SQL을 이미 적용한 환경을 기준으로 합니다.
+※ 거래처별 전용단가 조회·저장·주문단가 스냅샷 로직은 변경하지 않았습니다.
