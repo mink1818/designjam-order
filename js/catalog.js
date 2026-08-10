@@ -1508,7 +1508,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
-// V6.5.49: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
+// V6.5.50: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
@@ -1703,15 +1703,13 @@ async function saveCustomerBulkDeliveryDraft(fields) {
   if (!fields || !Object.values(fields).some(Boolean)) return;
   localStorage.setItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY, JSON.stringify(fields));
   if (!currentUser || !fields.deliveryName || !hasAdvancedCustomerAccess()) return;
-  const row = {
-    customer_id: currentUser.id,
-    delivery_name: fields.deliveryName,
-    delivery_phone: fields.deliveryPhone || null,
-    delivery_address: fields.deliveryAddress || null,
-    last_used_at: new Date().toISOString()
-  };
-  const { error } = await supabaseClient.from("customer_delivery_destinations")
-    .upsert(row, { onConflict: "customer_id,delivery_name,delivery_address" });
+  const { error } = await supabaseClient.rpc("save_premium_customer_delivery_destination", {
+    p_id: null,
+    p_delivery_name: fields.deliveryName,
+    p_delivery_phone: fields.deliveryPhone || "",
+    p_delivery_address: fields.deliveryAddress || "",
+    p_is_default: false
+  });
   if (error) console.warn("붙여넣기 납품처 자동 저장 실패:", error.message);
 }
 
@@ -2055,9 +2053,7 @@ function showOrderForm() {
       </p>
 
       <div class="order-delivery-grid">
-        <label for="deliveryDestinationSelect" class="wide">실제 납품지 선택
-          <select id="deliveryDestinationSelect" class="order-input"><option value="registered">가입 시 등록한 주소</option><option value="new">+ 새 납품처 입력</option></select>
-        </label>
+        <div class="wide delivery-destination-select-wrap"><label for="deliveryDestinationSelect">실제 납품지 선택</label><div class="delivery-destination-select-row"><select id="deliveryDestinationSelect" class="order-input"><option value="registered">가입 시 등록한 주소</option><option value="new">+ 새 납품처 입력</option></select><button id="editSelectedDestinationBtn" type="button" onclick="editSelectedDestination()">수정</button><button id="deleteSelectedDestinationBtn" class="danger-btn" type="button" onclick="deleteSelectedDestination()">삭제</button></div></div>
         <label for="deliveryName">납품처명 <b class="required-mark">* 필수</b>
           <small class="field-help">가입 주소와 실제 납품지가 다르면 입력하고, 같으면 등록 주소를 선택하세요.</small>
           <input id="deliveryName" class="order-input" list="deliveryDestinationList" maxlength="100" value="${escapeHtml(pastedDelivery.deliveryName || currentCustomer.delivery_name || currentCustomer.business_name || '')}" placeholder="실제로 배송받는 업체명">
@@ -2114,13 +2110,16 @@ async function hydrateDeliveryDestinations(){
   if(!currentUser)return;const advanced=hasAdvancedCustomerAccess();const {data,error}=advanced?await supabaseClient.from('customer_delivery_destinations').select('id,delivery_name,delivery_phone,delivery_address,last_used_at,is_default').eq('customer_id',currentUser.id).order('is_default',{ascending:false}).order('last_used_at',{ascending:false}).limit(100):{data:[],error:null};if(error)return;
   const destinations=data||[],select=document.getElementById('deliveryDestinationSelect'),manager=document.getElementById('deliveryDestinationManager');
   const apply=row=>{document.getElementById('deliveryName').value=row?.delivery_name||currentCustomer.business_name||'';document.getElementById('deliveryPhone').value=row?.delivery_phone||currentCustomer.phone||'';document.getElementById('deliveryAddress').value=row?.delivery_address||currentCustomer.address||'';};
-  if(select){select.innerHTML='<option value="registered">가입 시 등록한 주소</option>'+destinations.map((row,index)=>`<option value="${row.id}">${escapeHtml(row.delivery_name)}${row.is_default?' · 기본':''}</option>`).join('')+'<option value="new">+ 새 납품처 입력</option>';let draft={};try{draft=JSON.parse(localStorage.getItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY)||'{}')}catch(_){}const pasted=destinations.find(x=>draft.deliveryName&&x.delivery_name===draft.deliveryName&&String(x.delivery_address||'')===String(draft.deliveryAddress||''));const preferred=pasted||destinations.find(x=>x.is_default);if(preferred){select.value=String(preferred.id);apply(preferred)}select.onchange=()=>{if(select.value==='registered')apply(null);else if(select.value==='new')apply({delivery_name:'',delivery_phone:'',delivery_address:''});else apply(destinations.find(x=>String(x.id)===select.value));};}
+  if(select){const syncButtons=()=>{const saved=/^\d+$/.test(select.value);const edit=document.getElementById('editSelectedDestinationBtn'),del=document.getElementById('deleteSelectedDestinationBtn');if(edit){edit.hidden=!advanced;edit.disabled=!saved}if(del){del.hidden=!advanced;del.disabled=!saved}};select.innerHTML='<option value="registered">가입 시 등록한 주소</option>'+destinations.map((row,index)=>`<option value="${row.id}">${escapeHtml(row.delivery_name)}${row.is_default?' · 기본':''}</option>`).join('')+'<option value="new">+ 새 납품처 입력</option>';let draft={};try{draft=JSON.parse(localStorage.getItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY)||'{}')}catch(_){}const pasted=destinations.find(x=>draft.deliveryName&&x.delivery_name===draft.deliveryName&&String(x.delivery_address||'')===String(draft.deliveryAddress||''));const preferred=pasted||destinations.find(x=>x.is_default);if(preferred){select.value=String(preferred.id);apply(preferred)}select.onchange=()=>{if(select.value==='registered')apply(null);else if(select.value==='new')apply({delivery_name:'',delivery_phone:'',delivery_address:''});else apply(destinations.find(x=>String(x.id)===select.value));syncButtons();};syncButtons();}
   if(manager)manager.innerHTML=!advanced?'<p class="premium-feature-note">저장 거래처 관리 기능은 우수고객 이상에서 사용할 수 있습니다.</p>':destinations.length?`<details><summary>저장된 거래처 정보 수정·삭제 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
 }
 
-async function editSavedDestination(id){const select=document.getElementById('deliveryDestinationSelect');if(select){select.value=String(id);select.dispatchEvent(new Event('change'));}const name=prompt('수정할 납품처명을 입력하세요.',document.getElementById('deliveryName')?.value||'');if(name===null)return;const phone=prompt('연락처를 입력하세요.',document.getElementById('deliveryPhone')?.value||'');if(phone===null)return;const address=prompt('주소를 입력하세요.',document.getElementById('deliveryAddress')?.value||'');if(address===null)return;const {error}=await supabaseClient.rpc('save_customer_delivery_destination',{p_id:Number(id),p_delivery_name:name,p_delivery_phone:phone,p_delivery_address:address,p_is_default:false});if(error)return alert('납품처 수정 실패: '+error.message);await hydrateDeliveryDestinations();}
-async function deleteSavedDestination(id){if(!confirm('이 납품처 정보를 삭제할까요?'))return;const {error}=await supabaseClient.rpc('delete_customer_delivery_destination',{p_id:Number(id)});if(error)return alert('납품처 삭제 실패: '+error.message);await hydrateDeliveryDestinations();}
-window.editSavedDestination=editSavedDestination;window.deleteSavedDestination=deleteSavedDestination;
+async function editSavedDestination(id){if(!hasAdvancedCustomerAccess())return alert('우수거래처 이상에서 사용할 수 있습니다.');const select=document.getElementById('deliveryDestinationSelect');if(select){select.value=String(id);select.dispatchEvent(new Event('change'));}const name=prompt('수정할 납품처명을 입력하세요.',document.getElementById('deliveryName')?.value||'');if(name===null)return;const phone=prompt('연락처를 입력하세요.',document.getElementById('deliveryPhone')?.value||'');if(phone===null)return;const address=prompt('주소를 입력하세요.',document.getElementById('deliveryAddress')?.value||'');if(address===null)return;const {error}=await supabaseClient.rpc('save_premium_customer_delivery_destination',{p_id:Number(id),p_delivery_name:name,p_delivery_phone:phone,p_delivery_address:address,p_is_default:false});if(error)return alert('납품처 수정 실패: '+error.message);await hydrateDeliveryDestinations();}
+async function deleteSavedDestination(id){if(!hasAdvancedCustomerAccess())return alert('우수거래처 이상에서 사용할 수 있습니다.');if(!confirm('이 납품처 정보를 삭제할까요?'))return;const {error}=await supabaseClient.rpc('delete_premium_customer_delivery_destination',{p_id:Number(id)});if(error)return alert('납품처 삭제 실패: '+error.message);await hydrateDeliveryDestinations();}
+function selectedDestinationId(){const value=document.getElementById('deliveryDestinationSelect')?.value||'';return /^\d+$/.test(value)?value:null;}
+function editSelectedDestination(){const id=selectedDestinationId();if(!id)return alert('수정할 저장 납품지를 선택해주세요.');editSavedDestination(id);}
+function deleteSelectedDestination(){const id=selectedDestinationId();if(!id)return alert('삭제할 저장 납품지를 선택해주세요.');deleteSavedDestination(id);}
+window.editSavedDestination=editSavedDestination;window.deleteSavedDestination=deleteSavedDestination;window.editSelectedDestination=editSelectedDestination;window.deleteSelectedDestination=deleteSelectedDestination;
 
 async function submitOrder() {
   if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }

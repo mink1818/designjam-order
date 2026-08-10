@@ -22,6 +22,7 @@ body {
   margin: 0 auto 16px;
 }
 .statement-mode-notice{align-self:center;flex:1;min-width:220px;color:#475569;font-size:13px}.customer-statement-mode [contenteditable="true"]{outline:1px dashed #93c5fd;outline-offset:2px;border-radius:3px}.customer-statement-mode [contenteditable="true"]:focus{outline:2px solid #2563eb;background:#eff6ff}@media(max-width:700px){.statement-mode-notice{order:5;width:100%;font-size:12px}.screen-menu{flex-wrap:wrap}}
+.statement-mode-badge{display:flex;align-items:center;padding:8px 10px;border-radius:8px;background:#112437;color:#fff;font-size:12px;white-space:nowrap}.statement-recipient-select{min-width:170px;max-width:240px;padding:8px;border:1px solid #b9c7d6;border-radius:8px;background:#fff}@media(max-width:700px){.statement-mode-badge{width:100%;justify-content:center}.statement-recipient-select{min-width:0;max-width:none;flex:1}}
 
 .screen-menu button {
   flex: 1;
