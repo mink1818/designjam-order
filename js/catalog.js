@@ -481,6 +481,9 @@ function renderMainCategories(pushHistory = true) {
 
   catalogList.innerHTML = `
     <section class="customer-main-quick-menu" aria-label="빠른 메뉴">
+      <button class="customer-quick-card bulk-order-home-card" type="button" onclick="renderCustomerBulkOrder()">
+        <span aria-hidden="true">📋</span><strong>붙여넣기 주문</strong>
+      </button>
       <button class="customer-quick-card primary" type="button" onclick="renderAllProducts()">
         <span aria-hidden="true">🧦</span><strong>전체상품</strong>
       </button>
@@ -1576,7 +1579,7 @@ function renderCustomerBulkOrder() {
   catalogList.innerHTML = `
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
-      <p>문자·카톡 주문 내용을 붙여넣으면 로그인한 거래처의 전용단가로 장바구니에 담깁니다.</p>
+      <p>문자·카톡 주문 내용을 붙여넣으면 품번과 수량을 장바구니에 한 번에 담을 수 있습니다.</p>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="한 줄에 하나씩 입력하세요.\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
