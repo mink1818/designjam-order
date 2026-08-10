@@ -27,17 +27,8 @@ const statementArea =
 let currentStatementOrderNumber = "거래명세서";
 let currentStatementCustomerName = "거래처";
 let currentStatementCustomerId = null;
-let currentStatementProfile = null;
-let currentRecipientProfile = null;
-let currentRecipientProfiles = [];
-let currentRecipientKey = "";
-let statementAdvancedAllowed = false;
 const statementParams = new URLSearchParams(location.search);
-const customerStatementMode = statementParams.get("customer") === "1";
-
-function normalizeRecipientKey(name,address){
-  return `${String(name||'').trim().toLowerCase().replace(/\s+/g,'')}|${String(address||'').trim().toLowerCase().replace(/\s+/g,'')}`;
-}
+let statementLogistics = { bank:null, courier:"", tracking:"" };
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -68,7 +59,7 @@ async function checkStatementAccess() {
   } = await supabaseClient.auth.getUser();
 
   if (userError || !user) {
-    location.replace(customerStatementMode ? "login.html" : "admin.html");
+    location.replace("admin.html");
     return false;
   }
 
@@ -82,15 +73,12 @@ async function checkStatementAccess() {
   const emailAllowed = isDesignjamAdminEmail(user.email);
   const databaseAllowed = !customerError && customer?.is_admin === true && customer?.blocked !== true;
 
-  const customerAllowed = !customerError && customer?.is_admin !== true && customer?.approved === true && customer?.blocked !== true;
-  if (customerStatementMode ? !customerAllowed : (!emailAllowed && !databaseAllowed)) {
+  if (!emailAllowed && !databaseAllowed) {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     await supabaseClient.auth.signOut();
-    location.replace(customerStatementMode ? "login.html" : "admin.html");
+    location.replace("admin.html");
     return false;
   }
-
-  statementAdvancedAllowed = !customerStatementMode || ["우수","우수고객","VIP","VVIP"].includes(String(customer?.customer_grade || "일반"));
 
   document.body.classList.add("auth-ready");
   return true;
@@ -131,20 +119,10 @@ async function loadStatement() {
   }
 
   currentStatementCustomerId = data[0].customer_id || null;
-  if (currentStatementCustomerId && customerStatementMode) {
-    try {
-      const profileResult = await supabaseClient.from("customer_statement_profiles").select("*").eq("customer_id", currentStatementCustomerId).maybeSingle();
-      if (!profileResult.error) currentStatementProfile = profileResult.data || null;
-      if (customerStatementMode) {
-        const recipientResult = await supabaseClient.from("customer_statement_recipient_profiles").select("*").eq("customer_id", currentStatementCustomerId).order("updated_at", { ascending: false });
-        if (!recipientResult.error) {
-          currentRecipientProfiles = recipientResult.data || [];
-          currentRecipientKey = normalizeRecipientKey(data[0].delivery_name || data[0].customer_name, data[0].delivery_address || '');
-          currentRecipientProfile = currentRecipientProfiles.find(row => row.recipient_key === currentRecipientKey) || null;
-        }
-      }
-    } catch (_) {}
-  }
+  try {
+    const account = data[0].payment_account_number ? {bank_name:data[0].payment_bank_name,account_number:data[0].payment_account_number,account_holder:data[0].payment_account_holder} : (await supabaseClient.from("payment_accounts").select("bank_name,account_number,account_holder").eq("is_default",true).eq("is_active",true).maybeSingle()).data;
+    statementLogistics={bank:account||null,courier:data[0].courier||"",tracking:data[0].tracking_number||""};
+  } catch (_) { statementLogistics={bank:null,courier:data[0].courier||"",tracking:data[0].tracking_number||""}; }
   let productGroups = [];
   try {
     const result = await supabaseClient.from("product_groups").select("title,item_numbers");
@@ -152,51 +130,14 @@ async function loadStatement() {
   } catch (_) {}
   // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.
   renderStatement(data, productGroups);
-  enableCustomerStatementEditing();
-}
-
-function enableCustomerStatementEditing(){
- document.body.classList.add('customer-statement-mode');
- const notice=document.getElementById('statementModeNotice');
- const badge=document.getElementById('statementModeBadge');
- if(badge)badge.textContent=customerStatementMode?'거래처용 커스텀 거래명세서':'관리자 거래명세서';
- const recipientSelect=document.getElementById('statementRecipientSelect');
- if(!customerStatementMode){if(notice)notice.textContent='관리자가 거래처에 발행하는 기본 거래명세서입니다.';return;}
- if(customerStatementMode&&recipientSelect&&statementAdvancedAllowed){recipientSelect.hidden=false;recipientSelect.innerHTML=`<option value="">현재 주문 납품처</option>${currentRecipientProfiles.map(row=>`<option value="${escapeHtml(row.recipient_key)}">${escapeHtml(row.recipient_name||'저장 거래처')}</option>`).join('')}`;recipientSelect.value=currentRecipientProfile?.recipient_key||'';recipientSelect.onchange=()=>applySavedRecipientProfile(recipientSelect.value);}
- if(!statementAdvancedAllowed){if(notice)notice.textContent='거래명세서 정보 저장·편집은 우수고객 이상에서 사용할 수 있습니다.';return;}
- if(notice)notice.textContent='수정한 거래처·대표자·주소·하단 상호는 저장 후 재로그인해도 유지됩니다.';
- document.getElementById('saveStatementProfileBtn')?.removeAttribute('hidden');
- statementArea.querySelectorAll('[data-profile-field]').forEach(node=>{node.contentEditable='true';node.spellcheck=false;node.title='눌러서 수정한 뒤 상단의 정보 저장을 누르세요.'});
-}
-
-function applySavedRecipientProfile(key){
- const row=currentRecipientProfiles.find(item=>item.recipient_key===key);if(!row)return;
- currentRecipientKey=row.recipient_key;currentRecipientProfile=row;
- const set=(field,value)=>{const node=statementArea.querySelector(`[data-profile-field="${field}"]`);if(node)node.textContent=value||'';};
- set('customer_name',row.recipient_name);set('owner_name',row.owner_name);set('delivery_address',row.delivery_address);
-}
-
-async function saveStatementProfile(){
-  if(!statementAdvancedAllowed || !currentStatementCustomerId)return;
-  const value=field=>statementArea.querySelector(`[data-profile-field="${field}"]`)?.textContent?.trim()||null;
-  const payload={customer_id:currentStatementCustomerId,customer_name:customerStatementMode?null:value('customer_name'),owner_name:customerStatementMode?null:value('owner_name'),delivery_address:customerStatementMode?null:value('delivery_address'),brand_name:value('brand_name'),footer_name:value('footer_name'),statement_title:value('statement_title'),confirmation_text:value('confirmation_text'),updated_at:new Date().toISOString()};
-  const {error}=await supabaseClient.from('customer_statement_profiles').upsert(payload,{onConflict:'customer_id'});
-  if(error)return alert('거래명세서 정보 저장 실패: '+error.message+'\n\nSQL/V6.5.50-CUSTOMER-STATEMENT-CUSTOM.sql을 먼저 실행하세요.');
-  if(customerStatementMode){const recipientName=value('customer_name'),address=value('delivery_address');currentRecipientKey=currentRecipientKey||normalizeRecipientKey(recipientName,address);const recipientPayload={customer_id:currentStatementCustomerId,recipient_key:currentRecipientKey,recipient_name:recipientName,owner_name:value('owner_name'),delivery_address:address,updated_at:new Date().toISOString()};const recipientResult=await supabaseClient.from('customer_statement_recipient_profiles').upsert(recipientPayload,{onConflict:'customer_id,recipient_key'});if(recipientResult.error)return alert('거래처별 커스텀 정보 저장 실패: '+recipientResult.error.message);const existing=currentRecipientProfiles.findIndex(row=>row.recipient_key===currentRecipientKey);if(existing>=0)currentRecipientProfiles[existing]=recipientPayload;else currentRecipientProfiles.unshift(recipientPayload);}
-  currentStatementProfile=payload;alert('거래명세서 정보가 저장되었습니다. 다음 로그인 후에도 유지됩니다.');
 }
 
 function renderStatement(items, productGroups = []) {
   const first = items[0];
-  const profile = customerStatementMode ? (currentStatementProfile || {}) : {};
-  const recipientProfile = currentRecipientProfile || {};
-  const customerName = customerStatementMode ? (recipientProfile.recipient_name || first.delivery_name || "거래처") : (profile.customer_name || first.customer_name || "거래처");
-  const ownerName = customerStatementMode ? (recipientProfile.owner_name || "-") : (profile.owner_name || first.customer_owner_name || "-");
-  const deliveryAddress = customerStatementMode ? (recipientProfile.delivery_address || first.delivery_address || "-") : (profile.delivery_address || first.delivery_address || "-");
-  const brandName = profile.brand_name || (customerStatementMode ? first.customer_name : "디자인 삭스") || "디자인 삭스";
-  const footerName = profile.footer_name || brandName;
-  const statementTitle = profile.statement_title || "거래명세서";
-  const confirmationText = profile.confirmation_text || "상기 내용과 같이 거래하였음을 확인합니다.";
+  const customerName = first.customer_name || "거래처";
+  const ownerName = first.customer_owner_name || "-";
+  const deliveryAddress = first.delivery_address || "-";
+  const brandName = "디자인 삭스", footerName = brandName, statementTitle = "거래명세서", confirmationText = "상기 내용과 같이 거래하였음을 확인합니다.";
   currentStatementCustomerName = customerName;
 
   const productTotal = items.reduce((sum, item) => {
@@ -314,7 +255,11 @@ function renderStatement(items, productGroups = []) {
       </tbody>
     </table>
 
-    <section class="statement-bottom-grid statement-summary-only">
+    <section class="statement-bottom-grid">
+      <div class="statement-logistics-column">
+        ${statementLogistics.bank?.account_number?`<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(statementLogistics.bank.bank_name||'')} ${escapeHtml(statementLogistics.bank.account_number)}</p><p>예금주: ${escapeHtml(statementLogistics.bank.account_holder||'')}</p></div>`:''}
+        <div class="delivery-info"><strong>택배정보</strong><p>택배사: ${escapeHtml(statementLogistics.courier||'-')}</p><p>송장번호: ${escapeHtml(statementLogistics.tracking||'-')}</p></div>
+      </div>
       <section class="statement-summary">
         <div>
           <span>출고수량</span>
@@ -400,11 +345,11 @@ function closeStatement() {
     return;
   }
 
-  location.href = customerStatementMode ? "order.html" : "admin.html?view=orders";
+  location.href = "admin.html?view=orders";
 }
 
 async function startStatementPage() {
-  document.title = customerStatementMode ? "거래처용 커스텀 거래명세서" : "관리자 거래명세서";
+  document.title = "관리자 거래명세서";
   const allowed = await checkStatementAccess();
 
   if (!allowed) return;

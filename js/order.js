@@ -190,7 +190,7 @@ function renderCompactActiveOrder(group) {
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
-    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerStatement('${group.orderNumber}')">거래명세서</button></div>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button></div>
     <div id="${id}" class="completed-order-detail">
       <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>` : `<span class="order-status-badge">주문확인 진행 중</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
       <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
@@ -225,7 +225,7 @@ function renderFullOrder(group) {
     <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
     ${renderOrderBankBox(group)}
     <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
-    <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
+    <button class="reorder-btn" type="button" onclick="openCustomerShareDocument('${group.orderNumber}')">거래처 전달용 문서 만들기</button>
     <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
   </div>`;
 }
@@ -240,7 +240,7 @@ function renderCompletedOrder(group) {
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
-    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerStatement('${group.orderNumber}')">거래명세서</button></div>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button></div>
     <div id="${id}" class="completed-order-detail">
       ${summary.itemRows}
       <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
@@ -261,8 +261,8 @@ function toggleOrderDetail(id, button) {
   if (toggle) toggle.textContent = isOpen ? "접기 ▲" : "상세보기 ▼";
 }
 
-function openCustomerStatement(orderNumber){
-  window.open(`statement.html?order=${encodeURIComponent(orderNumber)}&customer=1`, "_blank", "noopener");
+function openCustomerShareDocument(orderNumber){
+  location.href=`customer-share-document.html?order=${encodeURIComponent(orderNumber)}`;
 }
 
 async function copyCustomerOrderDetails(orderNumber,mode='excel',button){
