@@ -97,6 +97,7 @@ async function loadMyOrders() {
           holder: order.payment_account_holder || ""
         },
         createdAt: order.created_at,
+        completedAt: order.status === "출고완료" ? (order.completed_at || order.shipped_at || order.updated_at || order.created_at) : null,
         items: []
       };
     }
@@ -104,6 +105,8 @@ async function loadMyOrders() {
 
     if (order.status === "출고완료") {
       grouped[order.order_number].status = "출고완료";
+      const completedAt = order.completed_at || order.shipped_at || order.updated_at || order.created_at;
+      if (!grouped[order.order_number].completedAt || new Date(completedAt) > new Date(grouped[order.order_number].completedAt)) grouped[order.order_number].completedAt = completedAt;
     } else if (grouped[order.order_number].status !== "출고완료" && order.status) {
       grouped[order.order_number].status = order.status;
     }
@@ -122,7 +125,7 @@ async function loadMyOrders() {
 function renderMyOrders() {
   const activeGroups = myOrderGroups.filter(group => group.status !== "출고완료");
   const completedGroups = myOrderGroups.filter(group =>
-    group.status === "출고완료" && isWithinPeriod(group.createdAt)
+    group.status === "출고완료" && isWithinPeriod(group.completedAt || group.createdAt)
   );
 
   activeOrderResult.innerHTML = activeGroups.length
@@ -141,7 +144,7 @@ function isWithinPeriod(createdAt) {
   if (Number.isNaN(created.getTime())) return true;
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
-  cutoff.setDate(cutoff.getDate() - Number(value));
+  if (value !== "today") cutoff.setDate(cutoff.getDate() - Math.max(0, Number(value) - 1));
   return created >= cutoff;
 }
 
@@ -187,7 +190,7 @@ function renderCompactActiveOrder(group) {
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
-    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerStatement('${group.orderNumber}')">거래명세서</button></div>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerStatement('${group.orderNumber}')">거래명세서</button></div>
     <div id="${id}" class="completed-order-detail">
       <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>` : `<span class="order-status-badge">주문확인 진행 중</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
       <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
@@ -197,8 +200,6 @@ function renderCompactActiveOrder(group) {
       <p><strong>배송비:</strong> ${Number(group.shippingFee || 0).toLocaleString()}원</p>
       <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
       ${renderOrderBankBox(group)}
-      <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
-      <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
       ${editable ? `` : `<p><small>주문확인을 시작한 주문은 거래처 화면에서 수정·삭제할 수 없습니다.</small></p>`}
     </div>
   </article>`;
@@ -234,11 +235,12 @@ function renderCompletedOrder(group) {
   const id = safeOrderId("completed", group.orderNumber);
   return `<article class="completed-order-row">
     <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
-      <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
+      <span><strong>${formatDate(group.completedAt || group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
       <span>${summary.qtyTotal}죽</span>
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerStatement('${group.orderNumber}')">거래명세서</button></div>
     <div id="${id}" class="completed-order-detail">
       ${summary.itemRows}
       <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
@@ -246,8 +248,6 @@ function renderCompletedOrder(group) {
       <p><strong>송장번호:</strong> ${escapeHtml(group.trackingNumber || "입력 전")}</p>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
       ${renderOrderBankBox(group)}
-      <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
-      <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
       <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
     </div>
   </article>`;

@@ -1508,7 +1508,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
-// V6.5.48: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
+// V6.5.49: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
@@ -1642,6 +1642,8 @@ function parseCustomerBulkOrder(text) {
     const line = rawLine.trim();
     if (!line) return;
     if (/^(?:납품처명?|배송처명?|연락처|전화(?:번호)?|주소|납품주소|배송주소|메모|요청사항)\s*[:：]/i.test(line)) return;
+    if (/0\d{1,2}[\s-]?\d{3,4}[\s-]?\d{4}/.test(line.replace(/\s+/g, ""))) return;
+    if (/(?:특별시|광역시|특별자치|[가-힣]+(?:도|시|군|구|읍|면|동|로|길))/.test(line) && /\d/.test(line)) return;
     const cleaned = line
       .replace(/[()\[\]]/g, " ")
       .replace(/(죽씩|족씩|죽|족)/gi, " ")
@@ -1655,6 +1657,7 @@ function parseCustomerBulkOrder(text) {
     if (!parts.length) return;
 
     const itemToken = canUseSeparated ? separated[1].trim() : parts[0];
+    if (!/^(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?$/i.test(normalizeBulkItemNumber(itemToken))) return;
     const quantityToken = canUseSeparated ? separated[2] : parts.slice(1).find(value => /^\d+(?:\.\d+)?$/.test(value));
     const quantity = Math.max(1, Math.floor(Number(quantityToken) || 1));
     expandBulkOrderRange(itemToken).forEach(number => parsed.push({ number, qty: quantity }));
@@ -1693,7 +1696,7 @@ function parseCustomerBulkDelivery(text) {
 }
 
 function hasAdvancedCustomerAccess(){
-  return ["우수","VIP"].includes(String(currentCustomer?.customer_grade || "일반"));
+  return ["우수","우수고객","VIP","VVIP"].includes(String(currentCustomer?.customer_grade || "일반"));
 }
 
 async function saveCustomerBulkDeliveryDraft(fields) {
@@ -1800,7 +1803,7 @@ async function applyCustomerBulkOrder() {
   }
   if (addedQty && !missing.length) {
     localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
-    setTimeout(renderCart, 350);
+    setTimeout(showOrderForm, 350);
   }
 }
 window.renderCustomerBulkOrder = renderCustomerBulkOrder;

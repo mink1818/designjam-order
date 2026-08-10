@@ -83,7 +83,7 @@ async function checkStatementAccess() {
     return false;
   }
 
-  statementAdvancedAllowed = !customerStatementMode || ["우수","VIP"].includes(String(customer?.customer_grade || "일반"));
+  statementAdvancedAllowed = !customerStatementMode || ["우수","우수고객","VIP","VVIP"].includes(String(customer?.customer_grade || "일반"));
 
   document.body.classList.add("auth-ready");
   return true;
@@ -154,7 +154,7 @@ async function saveStatementProfile(){
   const value=field=>statementArea.querySelector(`[data-profile-field="${field}"]`)?.textContent?.trim()||null;
   const payload={customer_id:currentStatementCustomerId,customer_name:value('customer_name'),owner_name:value('owner_name'),delivery_address:value('delivery_address'),brand_name:value('brand_name'),footer_name:value('footer_name'),updated_at:new Date().toISOString()};
   const {error}=await supabaseClient.from('customer_statement_profiles').upsert(payload,{onConflict:'customer_id'});
-  if(error)return alert('거래명세서 정보 저장 실패: '+error.message+'\n\nSQL/V6.5.48-CUSTOMER-PREMIUM-STATEMENT.sql을 먼저 실행하세요.');
+  if(error)return alert('거래명세서 정보 저장 실패: '+error.message+'\n\nSQL/V6.5.49-CUSTOMER-PREMIUM-STATEMENT.sql을 먼저 실행하세요.');
   currentStatementProfile=payload;alert('거래명세서 정보가 저장되었습니다. 다음 로그인 후에도 유지됩니다.');
 }
 
