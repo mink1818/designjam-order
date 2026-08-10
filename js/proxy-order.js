@@ -109,6 +109,11 @@ function expandPastedItemRange(line){
 function applyPastedOrder(){const text=String($('proxyPasteInput')?.value||'').trim();if(!text)return alert('붙여넣을 품번을 입력하세요.');const rows=text.split(/\r?\n|[;|]/).map(line=>line.trim()).filter(Boolean),merged=new Map(),unmatched=[];const addParsed=(item,qty)=>{if(!item)return;const key=normalizeItem(item);const current=merged.get(key)||{item_number:item,qty:0};current.qty+=qty;merged.set(key,current)};for(const line of rows){const cells=line.split(/\t+/).map(v=>v.trim()).filter(Boolean);if(cells.length>=2){const qtyText=String(cells[1]).replace(/[^0-9]/g,'');const qty=Math.max(1,Number(qtyText||1));addParsed(cells[0],qty);if(!findItem(cells[0]))unmatched.push(cells[0]);continue}const rangeItems=expandPastedItemRange(line);if(rangeItems.length){rangeItems.forEach(item=>{addParsed(item,1);if(!findItem(item))unmatched.push(item)});continue}const parsedLine=parsePastedItemLine(line);addParsed(parsedLine.item,parsedLine.qty);if(!findItem(parsedLine.item))unmatched.push(parsedLine.item)}const parsed=[...merged.values()];if(!parsed.length)return alert('인식할 수 있는 품번이 없습니다.');$('proxyLines').innerHTML='';parsed.forEach(row=>addLine(row));refreshAllLinePrices();$('proxyPasteInput').value='';const result=$('proxyPasteResult');if(result)result.textContent=`${parsed.length.toLocaleString()}품번 자동 입력 완료${unmatched.length?` · 상품 미등록 확인 ${[...new Set(unmatched)].length}개`:''}`;calc();scheduleProxyDraftSave()}
 function refreshAllLinePrices(){document.querySelectorAll('.proxy-line').forEach(row=>{const found=findItem(row.querySelector('.proxy-item')?.value);if(found)row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)});const match=matchedDirectCustomer(),box=$('proxyDirectPriceMatch');if(box){box.hidden=!match;box.textContent=match?`등록 거래처 “${match.business_name||match.owner_name||match.email}”의 품번별 전용 단가를 적용합니다.`:''}calc()}
 function currentCustomerName(){const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select';if(mode==='direct')return ($('proxyDirectName')?.value||'').trim();const c=customers.find(x=>String(x.id)===String($('proxyCustomer')?.value||''));return c?(c.business_name||c.owner_name||c.email||'등록 거래처'):''}
+function safeDirectOwnerName(){
+ const owner=String($('proxyDirectOwner')?.value||'').trim();if(!owner)return'';
+ try{const profile=JSON.parse(sessionStorage.getItem('designjam_admin_profile')||localStorage.getItem('designjam_admin_profile')||'{}');const adminName=String(profile.name||'').trim();if(adminName&&owner.normalize('NFKC')===adminName.normalize('NFKC'))return''}catch{}
+ return owner;
+}
 function addLine(value={}){
  const row=document.createElement('div');row.className='proxy-line';
  row.innerHTML=`<input class="proxy-item" list="proxyItemList" autocomplete="off" placeholder="품번" value="${esc(value.item_number||'')}"><input class="proxy-qty" type="number" min="1" step="1" value="${Number(value.qty||1)}" placeholder="수량(죽)"><input class="proxy-price" type="number" min="0" step="1" value="${Number(value.price||0)}" placeholder="단가(1죽)"><strong class="proxy-line-total">0원</strong><button class="remove-line" type="button">삭제</button>`;
@@ -139,7 +144,7 @@ async function submit(){
  const btn=$('submitProxyOrder');btn.disabled=true;btn.textContent='주문 저장 중...';
  try{
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
-  const directInfo=mode==='direct'?[`대표자: ${($('proxyDirectOwner').value||'').trim()}`,`전화: ${($('proxyDirectPhone').value||'').trim()}`,`주소: ${($('proxyDirectAddress').value||'').trim()}`].filter(x=>!x.endsWith(': ')).join(' / '):'';
+  const directInfo=mode==='direct'?[`대표자: ${safeDirectOwnerName()}`,`전화: ${($('proxyDirectPhone').value||'').trim()}`,`주소: ${($('proxyDirectAddress').value||'').trim()}`].filter(x=>!x.endsWith(': ')).join(' / '):'';
   const finalMemo=['[관리자 대신주문]',memo,directInfo].filter(Boolean).join(' | ');
   const rows=lines.map(x=>{const found=findItem(x.item_number);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:x.qty,price:x.price,total:x.qty*x.price}});
   const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{
@@ -151,7 +156,7 @@ async function submit(){
   });
   if(error)throw error;
   if(data?.ok===false)throw new Error(data.error||'대신주문 저장에 실패했습니다.');
-  const ownerName=mode==='direct'?($('proxyDirectOwner').value||'').trim():(customer?.owner_name||'');
+  const ownerName=mode==='direct'?safeDirectOwnerName():(customer?.owner_name||'');
   const deliverySave=await supabaseClient.rpc('save_order_delivery_info',{p_order_number:order,p_owner_name:ownerName,p_delivery_name:deliveryName,p_delivery_phone:deliveryPhone,p_delivery_address:deliveryAddress});
   if(deliverySave.error)throw new Error(`납품처 저장 실패: ${deliverySave.error.message}`);
   draftSubmissionComplete=true;clearProxyDraft();alert(`관리자 대신주문이 접수되었습니다.\n거래처: ${customerName}\n총 ${lines.length}품번\n주문번호: ${order}\n피킹 화면에서 최종검증하세요.`);location.href=`picking.html?order=${encodeURIComponent(order)}`;

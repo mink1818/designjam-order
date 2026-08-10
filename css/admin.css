@@ -2564,6 +2564,8 @@ body[data-session-page="admin"] .pick-row.stock-row em {
 }
 /* V6.5.28 거래처·대표자·납품처 및 복사 버튼 */
 .customer-owner-name{display:inline-block;margin-left:7px;font-size:.72em;font-weight:800;color:#52677e}
+.order-delivery-preview{margin:2px 0 3px!important;font-size:13px;color:#334e68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-delivery-preview strong{color:#173f70}
 .order-party-summary{margin:0 0 14px;padding:12px 14px;border:1px solid #d9e3ee;border-radius:12px;background:#f7faff}
 .order-party-summary p{margin:4px 0;overflow-wrap:anywhere}
 .copy-button-pair{display:inline-flex;gap:7px;flex-wrap:wrap;align-items:center}
@@ -2571,6 +2573,7 @@ body[data-session-page="admin"] .pick-row.stock-row em {
 .proxy-delivery-grid{margin-top:14px;padding-top:14px;border-top:1px solid #dbe3ec}
 .proxy-grid .wide{grid-column:1/-1}
 html[data-theme="dark"] .order-party-summary{background:#132033;border-color:#40536b}
+html[data-theme="dark"] .order-delivery-preview,html[data-theme="dark"] .order-delivery-preview strong{color:#bfdbfe!important}
 @media(max-width:700px){
  .customer-owner-name{display:block;margin:4px 0 0;font-size:.68em}
  .order-party-summary{padding:10px;font-size:13px}

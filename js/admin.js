@@ -83,6 +83,23 @@ async function adminLogin() {
 const adminOrders = document.getElementById("adminOrders");
 const adminSearch = document.getElementById("adminSearch");
 const adminUrlParams = new URLSearchParams(location.search);
+
+function currentAdminDisplayName() {
+  try {
+    const profile = JSON.parse(sessionStorage.getItem("designjam_admin_profile") || localStorage.getItem("designjam_admin_profile") || "{}");
+    return String(profile.name || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+
+function visibleOrderOwnerName(ownerName, isProxy) {
+  const owner = String(ownerName || "").trim();
+  if (!owner) return "";
+  const adminName = currentAdminDisplayName();
+  if (isProxy && adminName && owner.normalize("NFKC") === adminName.normalize("NFKC")) return "";
+  return owner;
+}
 const requestedCustomerId = adminUrlParams.get("customer") || "";
 if (adminSearch && adminUrlParams.get("search")) adminSearch.value = adminUrlParams.get("search");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
@@ -187,10 +204,12 @@ try {
   data.forEach(order => {
     const customerProfile=adminCustomerIdentityMap.get(String(order.customer_id||''))||{};
     if (!grouped[order.order_number]) {
+      const isProxyOrder = String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]');
+      const ownerCandidate = order.customer_owner_name || customerProfile.owner_name || '';
       grouped[order.order_number] = {
         orderNumber: order.order_number,
         customerName: order.customer_name,
-        customerOwnerName: order.customer_owner_name || customerProfile.owner_name || '',
+        customerOwnerName: visibleOrderOwnerName(ownerCandidate, isProxyOrder),
         deliveryName: order.delivery_name || order.customer_name || '',
         deliveryPhone: order.delivery_phone || customerProfile.phone || '',
         deliveryAddress: order.delivery_address || customerProfile.address || '',
@@ -206,7 +225,7 @@ try {
         paymentBankName: order.payment_bank_name || "",
         paymentAccountNumber: order.payment_account_number || "",
         paymentAccountHolder: order.payment_account_holder || "",
-        isProxy: String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]'),
+        isProxy: isProxyOrder,
         pickingStatus: order.picking_status || '대기',
         items: []
       };
@@ -496,6 +515,7 @@ summaryTotal += Number(group.shipping_fee || 0);
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"} ${group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
+    <p class="order-delivery-preview"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}</p>
     <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
