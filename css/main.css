@@ -1780,3 +1780,17 @@ html[data-theme="dark"] .order-memo-notice{
   border-color:#806b24;
   color:#ffe89a;
 }
+/* V6.5.28 모바일/PC 납품처 입력 */
+.logged-customer small{display:inline-block;margin-left:8px;color:#60738a}
+.order-delivery-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.order-delivery-grid label{font-weight:800}
+.order-delivery-grid .wide{grid-column:1/-1}
+.order-party-summary{padding:10px 12px;margin:8px 0 12px;border:1px solid #dce5ef;border-radius:10px;background:#f7faff}
+.order-party-summary p{margin:4px 0;overflow-wrap:anywhere}
+@media(max-width:650px){
+ .logged-customer small{display:block;margin:4px 0 0}
+ .order-delivery-grid{grid-template-columns:1fr;gap:8px}
+ .order-delivery-grid .wide{grid-column:auto}
+ .order-delivery-grid .order-input{width:100%;min-width:0}
+ .order-party-summary{font-size:13px}
+}

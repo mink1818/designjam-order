@@ -205,6 +205,18 @@ function renderStatement(items, productGroups = []) {
       </div>
 
       <div>
+        <strong>대표자</strong>
+        <span>${escapeHtml(first.customer_owner_name || "-")}</span>
+      </div>
+
+      <div>
+        <strong>납품처</strong>
+        <span>${escapeHtml(first.delivery_name || first.customer_name || "-")}</span>
+      </div>
+
+      ${first.delivery_address?`<div><strong>납품주소</strong><span>${escapeHtml(first.delivery_address)}</span></div>`:''}
+
+      <div>
         <strong>주문번호</strong>
         <span>${escapeHtml(first.order_number)}</span>
       </div>

@@ -97,6 +97,11 @@ let customerNotes = {};
 let paymentAccounts = [];
 let adminInventoryMap = new Map();
 let adminInventoryAvailable = false;
+let adminCustomerIdentityMap = new Map();
+
+async function fetchCustomerIdentitySnapshot(){
+  const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('customers').select('id,business_name,owner_name,phone,address').range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows;
+}
 
 function inventoryKey(value) {
   return String(value ?? "").trim().toUpperCase();
@@ -156,12 +161,14 @@ async function loadOrders() {
   let data = [];
 
 try {
-  const [orderRows, inventoryRows] = await Promise.all([
+  const [orderRows, inventoryRows, customerRows] = await Promise.all([
     fetchOrders(),
-    fetchInventorySnapshot()
+    fetchInventorySnapshot(),
+    fetchCustomerIdentitySnapshot()
   ]);
   // 관리자 주문화면은 현재 단가표가 아니라 주문 접수 당시 저장된 단가를 유지합니다.
   data = orderRows;
+  adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
   setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
   adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
@@ -178,10 +185,15 @@ try {
   const grouped = {};
 
   data.forEach(order => {
+    const customerProfile=adminCustomerIdentityMap.get(String(order.customer_id||''))||{};
     if (!grouped[order.order_number]) {
       grouped[order.order_number] = {
         orderNumber: order.order_number,
         customerName: order.customer_name,
+        customerOwnerName: order.customer_owner_name || customerProfile.owner_name || '',
+        deliveryName: order.delivery_name || order.customer_name || '',
+        deliveryPhone: order.delivery_phone || customerProfile.phone || '',
+        deliveryAddress: order.delivery_address || customerProfile.address || '',
         customerId: order.customer_id,
         memo: order.memo,
         status: order.status,
@@ -238,6 +250,8 @@ try {
 
       return (
         group.customerName?.includes(keyword) ||
+        group.customerOwnerName?.includes(keyword) ||
+        group.deliveryName?.includes(keyword) ||
         group.orderNumber?.includes(keyword) ||
         itemText.includes(keyword)
       );
@@ -373,12 +387,17 @@ function fallbackCopyWithoutJump(text) {
   return copied;
 }
 
-async function copyWarehouseOrder(button, event) {
+function formatOrderCopyRows(rows,mode='excel'){
+  if(mode==='kakao')return rows.map(row=>`${row.dataset.copyItem}      ${row.dataset.copyQty}`).join('\n');
+  return rows.map(row=>`${row.dataset.copyItem}\t${row.dataset.copyQty}`).join('\n');
+}
+
+async function copyWarehouseOrder(button, event, mode='excel') {
   event?.preventDefault();
   event?.stopPropagation();
   const section = button.closest(".admin-warehouse-section");
   const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
-  const text = rows.map(row => `${row.dataset.copyItem}\t${row.dataset.copyQty}`).join("\n");
+  const text = formatOrderCopyRows(rows,mode);
   if (!text) return alert("복사할 품번이 없습니다.");
   try {
     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
@@ -392,14 +411,14 @@ async function copyWarehouseOrder(button, event) {
   setTimeout(() => { button.textContent = original; button.classList.remove("copied"); }, 1600);
 }
 
-async function copyAllWarehouseOrders(button, event) {
+async function copyAllWarehouseOrders(button, event, mode='excel') {
   event?.preventDefault();
   event?.stopPropagation();
   const card = button.closest('.order-card');
   if (!card) return;
   const rows = [...card.querySelectorAll('.admin-warehouse-section .pick-row[data-copy-item]')];
   if (!rows.length) return alert('복사할 S·B·I 주문이 없습니다.');
-  const text = rows.map(row => `${row.dataset.copyItem}\t${row.dataset.copyQty}`).join('\n');
+  const text = formatOrderCopyRows(rows,mode);
   try {
     if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
     await navigator.clipboard.writeText(text);
@@ -446,7 +465,7 @@ summaryTotal += Number(group.shipping_fee || 0);
         return sum + Math.max(0, ordered - soldout) * Number(item.price || 0);
       }, 0);
       itemHtml += `<div class="admin-warehouse-section warehouse-${section.code.toLowerCase()}">
-        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · 출고 ${sectionQty}죽${sectionSoldoutQty?` · 품절 ${sectionSoldoutQty}죽`:''} · 합계 ${sectionTotal.toLocaleString()}원</small><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this,event)">품번·수량 복사</button></span></div>`;
+        <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · 출고 ${sectionQty}죽${sectionSoldoutQty?` · 품절 ${sectionSoldoutQty}죽`:''} · 합계 ${sectionTotal.toLocaleString()}원</small><span class="copy-button-pair"><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this,event,'kakao')">카톡용 복사</button><button type="button" class="warehouse-copy-button excel-copy-button" onclick="copyWarehouseOrder(this,event,'excel')">엑셀용 복사</button></span></span></div>`;
       section.items.forEach(item => {
         const oneJukPrice = Number(item.price || 0);
         const orderedQty = Number(item.qty || 0);
@@ -476,7 +495,7 @@ summaryTotal += Number(group.shipping_fee || 0);
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
     <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
@@ -501,7 +520,8 @@ class="order-detail">
         ${canEditOrderItems(group) ? `<button class="cart-btn order-items-edit-toggle" type="button" onclick="toggleOrderItemEditor(${index})">품번·수량·단가 수정</button>` : ""}
         ${renderOrderItemEditor(group, index)}
 
-        <div class="order-copy-all-row"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event)">S·B·I 주문 전체 복사</button><small>품번과 수량을 두 칸 간격으로 한 번에 복사합니다.</small></div>
+        <div class="order-party-summary"><p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')} · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}</div>
+        <div class="order-copy-all-row"><span class="copy-button-pair"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event,'kakao')">S·B·I 카톡용 전체복사</button><button type="button" class="warehouse-copy-button all-warehouse-copy-button excel-copy-button" onclick="copyAllWarehouseOrders(this,event,'excel')">S·B·I 엑셀용 전체복사</button></span><small>카톡은 넓은 간격, 엑셀은 A열 품번·B열 수량으로 복사됩니다.</small></div>
         <div class="pick-list">
           ${itemHtml}
         </div>
@@ -594,8 +614,8 @@ class="order-detail">
 }
 
 async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
-  if (!confirm(`주문 전체삭제\n\n거래처: ${customerName}\n주문번호: ${orderNumber}\n품번: ${Number(itemCount || 0)}개\n\n피킹으로 차감된 ERP 재고는 자동 복원되고 주문정보는 영구 삭제됩니다. 계속할까요?`)) return;
-  if (!confirm(`정말 삭제할까요?\n삭제한 주문은 복구할 수 없습니다.\n\n${orderNumber}`)) return;
+  if (!confirm(`주문 전체삭제\n\n거래처: ${customerName}\n주문번호: ${orderNumber}\n품번: ${Number(itemCount || 0)}개\n\n주문 화면에서는 삭제되며 원본은 삭제 주문 이력에 보관됩니다. 계속할까요?`)) return;
+  if (!confirm(`정말 삭제할까요?\n삭제 후 관리자 메인의 삭제 주문 이력에서 원본을 확인할 수 있습니다.\n\n${orderNumber}`)) return;
   try {
     const { data, error } = await supabaseClient.rpc("delete_order_and_restore_inventory", {
       p_order_number: orderNumber,
@@ -605,7 +625,7 @@ async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
     alert(`${customerName} 피킹 전 주문을 전체삭제했습니다.`);
     await loadOrders();
   } catch (error) {
-    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.27-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
+    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.28-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
   }
 }
 

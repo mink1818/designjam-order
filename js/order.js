@@ -77,6 +77,10 @@ async function loadMyOrders() {
       grouped[order.order_number] = {
         orderNumber: order.order_number,
         customerName: order.customer_name,
+        customerOwnerName: order.customer_owner_name || customer.owner_name || customer.representative || '',
+        deliveryName: order.delivery_name || order.customer_name || '',
+        deliveryPhone: order.delivery_phone || '',
+        deliveryAddress: order.delivery_address || '',
         memo: order.memo,
         status: order.status,
         shippingFee: order.shipping_fee || 0,
@@ -181,6 +185,7 @@ function renderCompactActiveOrder(group) {
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
     <div id="${id}" class="completed-order-detail">
+      <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
       ${summary.itemRows}
       <p><strong>상품금액:</strong> ${summary.productTotal.toLocaleString()}원</p>
@@ -200,6 +205,9 @@ function renderFullOrder(group) {
     <p><strong>주문일:</strong> ${formatDate(group.createdAt)}</p>
     <p><strong>주문번호:</strong> ${escapeHtml(group.orderNumber)}</p>
     <p><strong>상태:</strong> ${escapeHtml(group.status)}</p>
+    <p><strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p>
+    <p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}</p>
+    ${group.deliveryAddress?`<p><strong>납품주소:</strong> ${escapeHtml(group.deliveryAddress)}</p>`:''}
     <p><strong>메모:</strong> ${escapeHtml(group.memo || "")}</p>
     ${summary.itemRows}
     <hr>

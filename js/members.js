@@ -80,6 +80,8 @@ function renderCustomerRow(c){
    <div class="customer-detail-stats"><span>주문 <b>${c.order_count}</b>회</span><span>누적 <b>${money(c.total_sales)}</b>원</span><span>가입 <b>${date(c.created_at)}</b></span></div>
    <div class="customer-contact-grid"><p><strong>이메일</strong>${esc(c.email||'-')}</p><p><strong>주소</strong>${esc(c.address||'-')}</p></div>
    <div class="v3-customer-form">
+    <label>거래처명<input data-field="business_name" maxlength="100" value="${esc(c.business_name||'')}"></label>
+    <label>대표자명<input data-field="owner_name" maxlength="100" value="${esc(c.owner_name||c.representative||'')}"></label>
     <label>등급<select data-field="customer_grade"><option ${grade==='일반'?'selected':''}>일반</option><option ${grade==='우수'?'selected':''}>우수</option><option ${grade==='VIP'?'selected':''}>VIP</option></select></label>
     <label>할인율(%)<input data-field="discount_rate" type="number" min="0" max="100" step="0.1" value="${Number(c.discount_rate||0)}"></label>
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
@@ -100,7 +102,11 @@ function openProxyOrder(id){location.href=`proxy-order.html?customer=${encodeURI
 async function saveCustomer(id){
  const card=list.querySelector(`[data-id="${id}"]`);const payload={};
  card.querySelectorAll('[data-field]').forEach(el=>payload[el.dataset.field]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value||0):el.value.trim());
- const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);alert('거래처 정보가 저장되었습니다.');loadCustomers();
+ const businessName=payload.business_name,ownerName=payload.owner_name;delete payload.business_name;delete payload.owner_name;
+ if(!businessName)return alert('거래처명을 입력하세요.');
+ const identity=await supabaseClient.rpc('admin_update_customer_identity',{p_customer_id:id,p_business_name:businessName,p_owner_name:ownerName});
+ if(identity.error)return alert('거래처명·대표자명 저장 실패: '+identity.error.message+'\n\nSQL/V6.5.28-CUSTOMER-DELIVERY-AUDIT.sql을 먼저 실행하세요.');
+ const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);alert('거래처 정보가 저장되었습니다. 변경 이력도 기록했습니다.');loadCustomers();
 }
 async function approveCustomer(id){const {error}=await supabaseClient.from('customers').update({approved:true,blocked:false}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
 async function toggleBlock(id,blocked){if(!confirm(blocked?'차단을 해제할까요?':'이 거래처를 차단할까요?'))return;const {error}=await supabaseClient.from('customers').update({blocked:!blocked}).eq('id',id);if(error)return alert(error.message);loadCustomers();}

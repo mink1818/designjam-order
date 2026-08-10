@@ -1744,7 +1744,21 @@ function showOrderForm() {
       <p class="logged-customer">
         <strong>거래처:</strong>
         ${escapeHtml(currentCustomer.business_name)}
+        <small>대표자 ${escapeHtml(currentCustomer.owner_name || currentCustomer.representative || '-')}</small>
       </p>
+
+      <div class="order-delivery-grid">
+        <label for="deliveryName">납품처명
+          <input id="deliveryName" class="order-input" list="deliveryDestinationList" maxlength="100" value="${escapeHtml(currentCustomer.delivery_name || currentCustomer.business_name || '')}" placeholder="실제로 배송받는 업체명">
+          <datalist id="deliveryDestinationList"></datalist>
+        </label>
+        <label for="deliveryPhone">납품처 연락처
+          <input id="deliveryPhone" class="order-input" maxlength="50" value="${escapeHtml(currentCustomer.phone || '')}" placeholder="배송 연락처">
+        </label>
+        <label for="deliveryAddress" class="wide">납품처 주소
+          <input id="deliveryAddress" class="order-input" maxlength="300" value="${escapeHtml(currentCustomer.address || '')}" placeholder="실제 배송 주소">
+        </label>
+      </div>
 
       ${renderBankTransferBox()}
 
@@ -1780,6 +1794,13 @@ function showOrderForm() {
       </button>
     </div>
   `;
+  hydrateDeliveryDestinations();
+}
+
+async function hydrateDeliveryDestinations(){
+  if(!currentUser)return;const {data,error}=await supabaseClient.from('customer_delivery_destinations').select('delivery_name,delivery_phone,delivery_address,last_used_at').eq('customer_id',currentUser.id).order('last_used_at',{ascending:false}).limit(50);if(error)return;
+  const destinations=data||[],list=document.getElementById('deliveryDestinationList'),nameInput=document.getElementById('deliveryName');if(list)list.innerHTML=destinations.map(row=>`<option value="${escapeHtml(row.delivery_name)}">${escapeHtml(row.delivery_address||'')}</option>`).join('');
+  if(nameInput)nameInput.addEventListener('change',()=>{const found=destinations.find(row=>row.delivery_name===nameInput.value);if(!found)return;document.getElementById('deliveryPhone').value=found.delivery_phone||'';document.getElementById('deliveryAddress').value=found.delivery_address||'';});
 }
 
 async function submitOrder() {
@@ -1801,6 +1822,10 @@ async function submitOrder() {
 
   const memo =
     document.getElementById("orderMemo")?.value.trim() || "";
+  const deliveryName=document.getElementById('deliveryName')?.value.trim()||'';
+  const deliveryPhone=document.getElementById('deliveryPhone')?.value.trim()||'';
+  const deliveryAddress=document.getElementById('deliveryAddress')?.value.trim()||'';
+  if(!deliveryName)return alert('납품처명을 입력해주세요.');
 
   const orderNumber = makeOrderNumber();
 
@@ -1808,6 +1833,10 @@ async function submitOrder() {
     order_number: orderNumber,
     customer_id: currentUser.id,
     customer_name: currentCustomer.business_name,
+    customer_owner_name: currentCustomer.owner_name || currentCustomer.representative || null,
+    delivery_name: deliveryName,
+    delivery_phone: deliveryPhone || null,
+    delivery_address: deliveryAddress || null,
     memo,
     item_number: item.number,
     warehouse_code: item.warehouseCode || null,
@@ -1837,6 +1866,15 @@ async function submitOrder() {
     alert("주문 저장 실패: " + error.message);
     return;
   }
+
+  const deliverySave=await supabaseClient.rpc('save_order_delivery_info',{
+    p_order_number:orderNumber,
+    p_owner_name:currentCustomer.owner_name||currentCustomer.representative||'',
+    p_delivery_name:deliveryName,
+    p_delivery_phone:deliveryPhone,
+    p_delivery_address:deliveryAddress
+  });
+  if(deliverySave.error)console.warn('납품처 목록 저장 실패:',deliverySave.error.message);
 
   let totalQty = 0;
   let totalPrice = 0;
