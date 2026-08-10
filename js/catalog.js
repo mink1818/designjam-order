@@ -1494,15 +1494,153 @@ function cartTopButton() {
   );
 
   return `
-    <button
-      class="cart-btn catalog-cart-button"
-      type="button"
-      onclick="renderCart()"
-    >
-      🛒 장바구니 ${totalQty > 0 ? `(${totalQty})` : ""}
-    </button>
+    <div class="catalog-quick-order-actions">
+      <button class="cart-btn customer-bulk-order-button" type="button" onclick="renderCustomerBulkOrder()">📋 품번·수량 붙여넣기</button>
+      <button class="cart-btn catalog-cart-button" type="button" onclick="renderCart()">🛒 장바구니 ${totalQty > 0 ? `(${totalQty})` : ""}</button>
+    </div>
   `;
 }
+
+const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
+
+function normalizeBulkItemNumber(value) {
+  return String(value ?? "").trim().normalize("NFKC").toUpperCase();
+}
+
+function getBulkOrderItemIndex() {
+  const rows = [];
+  groups.forEach(group => (group.item_numbers || []).forEach(number => {
+    rows.push({ group, number: String(number), normalized: normalizeBulkItemNumber(number) });
+  }));
+  return rows;
+}
+
+function resolveBulkOrderItem(value, index) {
+  const key = normalizeBulkItemNumber(value);
+  if (!key) return null;
+  let matched = index.find(row => row.normalized === key);
+  if (matched) return matched;
+
+  const withoutWarehouse = key.replace(/^[SBI][-_\s]+/, "");
+  matched = index.find(row => row.normalized === withoutWarehouse);
+  if (matched) return matched;
+
+  // A/M 접미사가 생략된 경우 후보가 하나일 때만 자동 인식합니다.
+  const suffixCandidates = index.filter(row => row.normalized.replace(/[AM]$/, "") === withoutWarehouse);
+  return suffixCandidates.length === 1 ? suffixCandidates[0] : null;
+}
+
+function expandBulkOrderRange(token) {
+  const text = normalizeBulkItemNumber(token);
+  const match = text.match(/^([SBI][-_]?)?(\d+)[~～]([SBI][-_]?)?(\d+)$/);
+  if (!match) return [text];
+  const prefix = match[1] || match[3] || "";
+  const start = Number(match[2]);
+  const end = Number(match[4]);
+  if (!Number.isInteger(start) || !Number.isInteger(end) || end < start || end - start > 500) return [text];
+  return Array.from({ length: end - start + 1 }, (_, offset) => `${prefix}${start + offset}`);
+}
+
+function parseCustomerBulkOrder(text) {
+  const parsed = [];
+  String(text || "").split(/\r?\n/).forEach(rawLine => {
+    const line = rawLine.trim();
+    if (!line) return;
+    const cleaned = line
+      .replace(/[()\[\]]/g, " ")
+      .replace(/(죽씩|족씩|죽|족)/gi, " ")
+      .trim();
+    const separated = cleaned.match(/^(.+?)(?:[\t ,;|/.:ㅡ]+|-)(\d+)$/);
+    const canUseSeparated = separated && !/^[SBI]$/i.test(separated[1].trim());
+    const parts = cleaned
+      .split(/[\t,;|/.:\sㅡ]+/)
+      .map(value => value.trim())
+      .filter(Boolean);
+    if (!parts.length) return;
+
+    const itemToken = canUseSeparated ? separated[1].trim() : parts[0];
+    const quantityToken = canUseSeparated ? separated[2] : parts.slice(1).find(value => /^\d+(?:\.\d+)?$/.test(value));
+    const quantity = Math.max(1, Math.floor(Number(quantityToken) || 1));
+    expandBulkOrderRange(itemToken).forEach(number => parsed.push({ number, qty: quantity }));
+  });
+  return parsed;
+}
+
+function renderCustomerBulkOrder() {
+  if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
+  rememberCartReturnState();
+  currentScreen = "bulk-order";
+  showSearch(false);
+  hideLegacyFilters();
+  const draft = localStorage.getItem(CUSTOMER_BULK_ORDER_DRAFT_KEY) || "";
+  catalogList.innerHTML = `
+    <div class="product-card customer-bulk-order-card">
+      <h2>📋 품번·수량 한번에 주문</h2>
+      <p>문자·카톡 주문 내용을 붙여넣으면 로그인한 거래처의 전용단가로 장바구니에 담깁니다.</p>
+      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="한 줄에 하나씩 입력하세요.\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
+      <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
+      <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
+      <div class="customer-bulk-order-actions">
+        <button class="cart-btn" type="button" onclick="applyCustomerBulkOrder()">장바구니에 한번에 담기</button>
+        <button class="cart-btn gray-btn" type="button" onclick="renderCart()">장바구니 확인</button>
+        <button class="cart-btn gray-btn" type="button" onclick="continueShopping()">상품 목록으로</button>
+      </div>
+    </div>`;
+  const input = document.getElementById("customerBulkOrderInput");
+  input?.addEventListener("input", () => localStorage.setItem(CUSTOMER_BULK_ORDER_DRAFT_KEY, input.value));
+  requestAnimationFrame(() => input?.focus());
+}
+
+function applyCustomerBulkOrder() {
+  const input = document.getElementById("customerBulkOrderInput");
+  const resultBox = document.getElementById("customerBulkOrderResult");
+  const rows = parseCustomerBulkOrder(input?.value || "");
+  if (!rows.length) { if (resultBox) resultBox.textContent = "품번과 수량을 입력해 주세요."; return; }
+
+  const index = getBulkOrderItemIndex();
+  const totals = new Map();
+  rows.forEach(row => totals.set(row.number, (totals.get(row.number) || 0) + row.qty));
+  const missing = [];
+  const soldout = [];
+  let addedKinds = 0;
+  let addedQty = 0;
+
+  totals.forEach((qty, requestedNumber) => {
+    const found = resolveBulkOrderItem(requestedNumber, index);
+    if (!found) { missing.push(requestedNumber); return; }
+    const { group, number } = found;
+    if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
+    const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
+    if (existing) existing.qty = Number(existing.qty || 0) + qty;
+    else cart.push({
+      groupId: group.id,
+      categoryId: group.category_id,
+      title: group.title,
+      number: String(number),
+      qty,
+      price: effectiveItemPrice(group, number),
+      warehouseCode: String(group.warehouse_code || ""),
+      imageUrl: group.image_url || ""
+    });
+    addedKinds += 1;
+    addedQty += qty;
+  });
+
+  if (addedQty) saveCart();
+  const messages = [];
+  if (addedQty) messages.push(`${addedKinds}품번 · ${addedQty}죽을 장바구니에 담았습니다.`);
+  if (missing.length) messages.push(`미등록/확인 필요: ${missing.join(", ")}`);
+  if (soldout.length) messages.push(`현재 품절 표시: ${[...new Set(soldout)].join(", ")}`);
+  if (resultBox) {
+    resultBox.innerHTML = messages.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("");
+  }
+  if (addedQty && !missing.length) {
+    localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
+    setTimeout(renderCart, 350);
+  }
+}
+window.renderCustomerBulkOrder = renderCustomerBulkOrder;
+window.applyCustomerBulkOrder = applyCustomerBulkOrder;
 
 function addGroupToCart(groupId, nextAction = "cart") {
   if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
