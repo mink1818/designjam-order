@@ -312,7 +312,7 @@
   else mount();
 })();
 
-// V6.5.47: 관리자·거래처 PC 화면 공통 브라우저 이동 버튼
+// V6.5.48: 관리자·거래처 PC 화면 공통 브라우저 이동 버튼
 (function addDesktopBrowserControls(){
   function mount(){
     if (document.getElementById('designjamDesktopBrowserControls')) return;

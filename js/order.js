@@ -156,7 +156,7 @@ function getOrderSummary(group) {
       productTotal += rowTotal;
     }
     return `<div class="cart-item ${isSoldout ? "soldout-item" : ""}">
-      <strong>${escapeHtml(item.item_number)}${isSoldout ? " 품절" : ""}</strong>
+      <strong>${escapeHtml(String(item.item_number||'').replace(/^[SBI]-/i,''))}${isSoldout ? " 품절" : ""}</strong>
       <span>${item.qty}죽 · 단가 ${Number(item.price||0).toLocaleString()}원 / 1죽</span>
       <span>${isSoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
     </div>`;
@@ -187,7 +187,9 @@ function renderCompactActiveOrder(group) {
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
+    <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerStatement('${group.orderNumber}')">거래명세서</button></div>
     <div id="${id}" class="completed-order-detail">
+      <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>` : `<span class="order-status-badge">주문확인 진행 중</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
       <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
       ${summary.itemRows}
@@ -197,8 +199,7 @@ function renderCompactActiveOrder(group) {
       ${renderOrderBankBox(group)}
       <button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">품번·수량·단가 카톡복사</button><button class="reorder-btn" type="button" onclick="copyCustomerOrderDetails('${group.orderNumber}','excel',this)">품번·수량·단가 엑셀복사</button>
       <button class="reorder-btn" type="button" onclick="openCustomerStatement('${group.orderNumber}')">거래처용 거래명세서</button>
-      <button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button>
-      ${editable ? `<button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기(장바구니로 이동)</button><button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">피킹 전 주문 삭제</button>` : `<p><small>피킹을 시작한 주문은 거래처 화면에서 수정·삭제할 수 없습니다.</small></p>`}
+      ${editable ? `` : `<p><small>주문확인을 시작한 주문은 거래처 화면에서 수정·삭제할 수 없습니다.</small></p>`}
     </div>
   </article>`;
 }
@@ -266,7 +267,7 @@ function openCustomerStatement(orderNumber){
 
 async function copyCustomerOrderDetails(orderNumber,mode='excel',button){
  const group=myOrderGroups.find(row=>row.orderNumber===orderNumber);if(!group)return;
- const rows=group.items.map(item=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0))),qty=Math.max(0,ordered-soldout),price=Number(item.price||0);return{item:String(item.warehouse_code?`${String(item.warehouse_code).toUpperCase()}-${item.item_number}`:item.item_number),qty,price}}).filter(row=>row.qty>0);
+ const rows=group.items.map(item=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0))),qty=Math.max(0,ordered-soldout),price=Number(item.price||0);return{item:String(item.item_number||'').replace(/^[SBI]-/i,''),qty,price}}).filter(row=>row.qty>0);
  const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
  try{await navigator.clipboard.writeText(text)}catch(_){const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove()}
  const original=button?.textContent;if(button){button.textContent='복사완료';setTimeout(()=>button.textContent=original,1400)}

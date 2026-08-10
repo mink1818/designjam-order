@@ -1508,7 +1508,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
-// V6.5.47: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
+// V6.5.48: 예전 버전에서 기본 체크 상태로 저장된 선택값을 사용하지 않습니다.
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
@@ -1677,13 +1677,29 @@ function parseCustomerBulkDelivery(text) {
       if (match) { fields[key] = match[1].trim(); break; }
     }
   });
+  const remaining = String(text || "").split(/\r?\n/).map(v => v.trim()).filter(Boolean).filter(line => {
+    if (labels.some(([, pattern]) => pattern.test(line))) return false;
+    const parsedItems = parseCustomerBulkOrder(line);
+    if (parsedItems.some(item => { const hit=resolveBulkOrderItem(item.number,getBulkOrderItemIndex()); return !!hit.matched || hit.candidates.length>0; })) return false;
+    return true;
+  });
+  const phoneIndex = remaining.findIndex(line => /0\d{1,2}[\s-]?\d{3,4}[\s-]?\d{4}/.test(line.replace(/\s+/g, "")) || /0\d{1,2}[\s-]+\d{3,4}[\s-]+\d{4}/.test(line));
+  if (!fields.deliveryPhone && phoneIndex >= 0) fields.deliveryPhone = remaining.splice(phoneIndex, 1)[0];
+  const addressIndex = remaining.findIndex(line => /(?:특별시|광역시|특별자치|[가-힣]+[시도군구읍면동로길])/.test(line) && /\d/.test(line));
+  if (!fields.deliveryAddress && addressIndex >= 0) fields.deliveryAddress = remaining.splice(addressIndex, 1)[0];
+  if (!fields.deliveryName && remaining.length) fields.deliveryName = remaining.shift();
+  if (!fields.memo && remaining.length) fields.memo = remaining.join(" / ");
   return fields;
+}
+
+function hasAdvancedCustomerAccess(){
+  return ["우수","VIP"].includes(String(currentCustomer?.customer_grade || "일반"));
 }
 
 async function saveCustomerBulkDeliveryDraft(fields) {
   if (!fields || !Object.values(fields).some(Boolean)) return;
   localStorage.setItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY, JSON.stringify(fields));
-  if (!currentUser || !fields.deliveryName) return;
+  if (!currentUser || !fields.deliveryName || !hasAdvancedCustomerAccess()) return;
   const row = {
     customer_id: currentUser.id,
     delivery_name: fields.deliveryName,
@@ -2039,18 +2055,19 @@ function showOrderForm() {
         <label for="deliveryDestinationSelect" class="wide">실제 납품지 선택
           <select id="deliveryDestinationSelect" class="order-input"><option value="registered">가입 시 등록한 주소</option><option value="new">+ 새 납품처 입력</option></select>
         </label>
-        <label for="deliveryName">납품처명
+        <label for="deliveryName">납품처명 <b class="required-mark">* 필수</b>
+          <small class="field-help">가입 주소와 실제 납품지가 다르면 입력하고, 같으면 등록 주소를 선택하세요.</small>
           <input id="deliveryName" class="order-input" list="deliveryDestinationList" maxlength="100" value="${escapeHtml(pastedDelivery.deliveryName || currentCustomer.delivery_name || currentCustomer.business_name || '')}" placeholder="실제로 배송받는 업체명">
           <datalist id="deliveryDestinationList"></datalist>
         </label>
         <label for="deliveryPhone">납품처 연락처
           <input id="deliveryPhone" class="order-input" maxlength="50" value="${escapeHtml(pastedDelivery.deliveryPhone || currentCustomer.phone || '')}" placeholder="배송 연락처">
         </label>
-        <label for="deliveryAddress" class="wide">납품처 주소
+        <label for="deliveryAddress" class="wide">납품처 주소 <b class="required-mark">* 필수</b>
           <input id="deliveryAddress" class="order-input" maxlength="300" value="${escapeHtml(pastedDelivery.deliveryAddress || currentCustomer.address || '')}" placeholder="실제 배송 주소">
         </label>
       </div>
-      <p class="order-delivery-help">가입 시 등록한 주소와 실제 납품지가 다른 경우 입력해 주세요. 동일한 주소라면 등록 주소를 선택하세요.</p>
+      <p class="order-delivery-help">우수고객 이상은 여러 거래처 배송정보를 저장·수정·삭제하여 다시 선택할 수 있습니다.</p>
       <div id="deliveryDestinationManager" class="delivery-destination-manager"></div>
 
       ${renderBankTransferBox()}
@@ -2091,11 +2108,11 @@ function showOrderForm() {
 }
 
 async function hydrateDeliveryDestinations(){
-  if(!currentUser)return;const {data,error}=await supabaseClient.from('customer_delivery_destinations').select('id,delivery_name,delivery_phone,delivery_address,last_used_at,is_default').eq('customer_id',currentUser.id).order('is_default',{ascending:false}).order('last_used_at',{ascending:false}).limit(100);if(error)return;
+  if(!currentUser)return;const advanced=hasAdvancedCustomerAccess();const {data,error}=advanced?await supabaseClient.from('customer_delivery_destinations').select('id,delivery_name,delivery_phone,delivery_address,last_used_at,is_default').eq('customer_id',currentUser.id).order('is_default',{ascending:false}).order('last_used_at',{ascending:false}).limit(100):{data:[],error:null};if(error)return;
   const destinations=data||[],select=document.getElementById('deliveryDestinationSelect'),manager=document.getElementById('deliveryDestinationManager');
   const apply=row=>{document.getElementById('deliveryName').value=row?.delivery_name||currentCustomer.business_name||'';document.getElementById('deliveryPhone').value=row?.delivery_phone||currentCustomer.phone||'';document.getElementById('deliveryAddress').value=row?.delivery_address||currentCustomer.address||'';};
   if(select){select.innerHTML='<option value="registered">가입 시 등록한 주소</option>'+destinations.map((row,index)=>`<option value="${row.id}">${escapeHtml(row.delivery_name)}${row.is_default?' · 기본':''}</option>`).join('')+'<option value="new">+ 새 납품처 입력</option>';let draft={};try{draft=JSON.parse(localStorage.getItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY)||'{}')}catch(_){}const pasted=destinations.find(x=>draft.deliveryName&&x.delivery_name===draft.deliveryName&&String(x.delivery_address||'')===String(draft.deliveryAddress||''));const preferred=pasted||destinations.find(x=>x.is_default);if(preferred){select.value=String(preferred.id);apply(preferred)}select.onchange=()=>{if(select.value==='registered')apply(null);else if(select.value==='new')apply({delivery_name:'',delivery_phone:'',delivery_address:''});else apply(destinations.find(x=>String(x.id)===select.value));};}
-  if(manager)manager.innerHTML=destinations.length?`<details><summary>저장된 납품처 수정·삭제 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
+  if(manager)manager.innerHTML=!advanced?'<p class="premium-feature-note">저장 거래처 관리 기능은 우수고객 이상에서 사용할 수 있습니다.</p>':destinations.length?`<details><summary>저장된 거래처 정보 수정·삭제 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
 }
 
 async function editSavedDestination(id){const select=document.getElementById('deliveryDestinationSelect');if(select){select.value=String(id);select.dispatchEvent(new Event('change'));}const name=prompt('수정할 납품처명을 입력하세요.',document.getElementById('deliveryName')?.value||'');if(name===null)return;const phone=prompt('연락처를 입력하세요.',document.getElementById('deliveryPhone')?.value||'');if(phone===null)return;const address=prompt('주소를 입력하세요.',document.getElementById('deliveryAddress')?.value||'');if(address===null)return;const {error}=await supabaseClient.rpc('save_customer_delivery_destination',{p_id:Number(id),p_delivery_name:name,p_delivery_phone:phone,p_delivery_address:address,p_is_default:false});if(error)return alert('납품처 수정 실패: '+error.message);await hydrateDeliveryDestinations();}
@@ -2125,6 +2142,7 @@ async function submitOrder() {
   const deliveryPhone=document.getElementById('deliveryPhone')?.value.trim()||'';
   const deliveryAddress=document.getElementById('deliveryAddress')?.value.trim()||'';
   if(!deliveryName)return alert('납품처명을 입력해주세요.');
+  if(!deliveryAddress)return alert('납품처 주소를 입력해주세요.');
 
   const orderNumber = makeOrderNumber();
 

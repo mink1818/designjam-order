@@ -24,9 +24,11 @@ function isDesignjamAdminEmail(email) {
 
 const statementArea =
   document.getElementById("statementArea");
-let statementDefaultAccount = null;
 let currentStatementOrderNumber = "거래명세서";
 let currentStatementCustomerName = "거래처";
+let currentStatementCustomerId = null;
+let currentStatementProfile = null;
+let statementAdvancedAllowed = false;
 const statementParams = new URLSearchParams(location.search);
 const customerStatementMode = statementParams.get("customer") === "1";
 
@@ -66,7 +68,7 @@ async function checkStatementAccess() {
   const { data: customer, error: customerError } =
     await supabaseClient
       .from("customers")
-      .select("is_admin, blocked, approved")
+      .select("is_admin, blocked, approved, customer_grade")
       .eq("id", user.id)
       .single();
 
@@ -80,6 +82,8 @@ async function checkStatementAccess() {
     location.replace(customerStatementMode ? "login.html" : "admin.html");
     return false;
   }
+
+  statementAdvancedAllowed = !customerStatementMode || ["우수","VIP"].includes(String(customer?.customer_grade || "일반"));
 
   document.body.classList.add("auth-ready");
   return true;
@@ -119,7 +123,13 @@ async function loadStatement() {
     return;
   }
 
-  try { const {data}=await supabaseClient.from("payment_accounts").select("*").eq("is_default",true).eq("is_active",true).maybeSingle(); statementDefaultAccount=data||null; } catch(e) { console.warn(e); }
+  currentStatementCustomerId = data[0].customer_id || null;
+  if (currentStatementCustomerId) {
+    try {
+      const profileResult = await supabaseClient.from("customer_statement_profiles").select("*").eq("customer_id", currentStatementCustomerId).maybeSingle();
+      if (!profileResult.error) currentStatementProfile = profileResult.data || null;
+    } catch (_) {}
+  }
   let productGroups = [];
   try {
     const result = await supabaseClient.from("product_groups").select("title,item_numbers");
@@ -127,18 +137,36 @@ async function loadStatement() {
   } catch (_) {}
   // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.
   renderStatement(data, productGroups);
-  if(customerStatementMode) enableCustomerStatementEditing();
+  enableCustomerStatementEditing();
 }
 
 function enableCustomerStatementEditing(){
  document.body.classList.add('customer-statement-mode');
- const notice=document.getElementById('statementModeNotice');if(notice)notice.textContent='작성용 수정은 저장 이미지에만 반영되며 실제 주문·단가는 변경되지 않습니다.';
- statementArea.querySelectorAll('.customer-info span,.statement-table tbody td:not(:first-child),.statement-summary strong,.statement-footer h2,.statement-footer p').forEach(node=>{node.contentEditable='true';node.spellcheck=false;node.title='눌러서 출력 문구를 수정할 수 있습니다.'});
+ const notice=document.getElementById('statementModeNotice');
+ if(!statementAdvancedAllowed){if(notice)notice.textContent='거래명세서 정보 저장·편집은 우수고객 이상에서 사용할 수 있습니다.';return;}
+ if(notice)notice.textContent='수정한 거래처·대표자·주소·하단 상호는 저장 후 재로그인해도 유지됩니다.';
+ document.getElementById('saveStatementProfileBtn')?.removeAttribute('hidden');
+ statementArea.querySelectorAll('[data-profile-field]').forEach(node=>{node.contentEditable='true';node.spellcheck=false;node.title='눌러서 수정한 뒤 상단의 정보 저장을 누르세요.'});
+}
+
+async function saveStatementProfile(){
+  if(!statementAdvancedAllowed || !currentStatementCustomerId)return;
+  const value=field=>statementArea.querySelector(`[data-profile-field="${field}"]`)?.textContent?.trim()||null;
+  const payload={customer_id:currentStatementCustomerId,customer_name:value('customer_name'),owner_name:value('owner_name'),delivery_address:value('delivery_address'),brand_name:value('brand_name'),footer_name:value('footer_name'),updated_at:new Date().toISOString()};
+  const {error}=await supabaseClient.from('customer_statement_profiles').upsert(payload,{onConflict:'customer_id'});
+  if(error)return alert('거래명세서 정보 저장 실패: '+error.message+'\n\nSQL/V6.5.48-CUSTOMER-PREMIUM-STATEMENT.sql을 먼저 실행하세요.');
+  currentStatementProfile=payload;alert('거래명세서 정보가 저장되었습니다. 다음 로그인 후에도 유지됩니다.');
 }
 
 function renderStatement(items, productGroups = []) {
   const first = items[0];
-  currentStatementCustomerName = first.customer_name || "거래처";
+  const profile = currentStatementProfile || {};
+  const customerName = profile.customer_name || first.customer_name || "거래처";
+  const ownerName = profile.owner_name || first.customer_owner_name || "-";
+  const deliveryAddress = profile.delivery_address || first.delivery_address || "-";
+  const brandName = profile.brand_name || "디자인 삭스";
+  const footerName = profile.footer_name || brandName;
+  currentStatementCustomerName = customerName;
 
   const productTotal = items.reduce((sum, item) => {
     const orderedQty = Number(item.qty || 0);
@@ -174,8 +202,8 @@ function renderStatement(items, productGroups = []) {
     row.shippedQty += shippedQty;
     row.soldoutQty += soldoutQty;
     row.rowTotal += price * shippedQty;
-    const displayNumber = item.warehouse_code ? `${String(item.warehouse_code).toUpperCase()}-${item.item_number}` : item.item_number;
-    row.itemNumbers.push(`${displayNumber}${orderedQty !== 1 ? `(${orderedQty})` : ""}${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
+    const displayNumber = String(item.item_number || '').replace(/^[SBI]-/i,'');
+    row.itemNumbers.push(`${displayNumber}-(${orderedQty})${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
   const itemRows = [...compactRows.values()].map((row, index) => {
     return `
@@ -184,7 +212,7 @@ function renderStatement(items, productGroups = []) {
         <td><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
         <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
-        <td>${row.price.toLocaleString()}원 / 1죽</td>
+        <td class="statement-unit-price">${row.price.toLocaleString()}원/죽</td>
         <td>${row.shippedQty > 0 ? row.rowTotal.toLocaleString() + "원" : "-"}</td>
       </tr>
     `;
@@ -194,7 +222,7 @@ function renderStatement(items, productGroups = []) {
     <header class="statement-header">
       <div>
         <h1>거래명세서</h1>
-        <p>디자인 삭스</p>
+        <p data-profile-field="brand_name">${escapeHtml(brandName)}</p>
       </div>
 
       <div class="statement-date">
@@ -206,20 +234,15 @@ function renderStatement(items, productGroups = []) {
     <section class="customer-info">
       <div>
         <strong>거래처</strong>
-        <span>${escapeHtml(first.customer_name || "-")}</span>
+        <span data-profile-field="customer_name">${escapeHtml(customerName)}</span>
       </div>
 
       <div>
         <strong>대표자</strong>
-        <span>${escapeHtml(first.customer_owner_name || "-")}</span>
+        <span data-profile-field="owner_name">${escapeHtml(ownerName)}</span>
       </div>
 
-      <div>
-        <strong>납품처</strong>
-        <span>${escapeHtml(first.delivery_name || first.customer_name || "-")}</span>
-      </div>
-
-      ${first.delivery_address?`<div><strong>납품주소</strong><span>${escapeHtml(first.delivery_address)}</span></div>`:''}
+      <div><strong>납품주소</strong><span data-profile-field="delivery_address">${escapeHtml(deliveryAddress)}</span></div>
 
       <div>
         <strong>주문번호</strong>
@@ -228,7 +251,7 @@ function renderStatement(items, productGroups = []) {
 
       <div>
         <strong>주문일</strong>
-        <span>${formatDate(first.created_at)}</span>
+        <span>${formatDate(first.created_at, true)}</span>
       </div>
 
       <div>
@@ -250,7 +273,7 @@ function renderStatement(items, productGroups = []) {
           <th>카테고리</th>
           <th>해당 품번</th>
           <th>수량(죽)</th>
-          <th>단가(1죽)</th>
+          <th>단가/죽</th>
           <th>금액</th>
         </tr>
       </thead>
@@ -260,23 +283,7 @@ function renderStatement(items, productGroups = []) {
       </tbody>
     </table>
 
-    <section class="statement-bottom-grid">
-      <div class="statement-logistics-column">
-        ${renderStatementBankBox(first)}
-
-        <section class="delivery-info shipping-info">
-          <p>
-            <strong>택배사:</strong>
-            ${escapeHtml(first.courier || "-")}
-          </p>
-
-          <p>
-            <strong>송장번호:</strong>
-            ${escapeHtml(first.tracking_number || "-")}
-          </p>
-        </section>
-      </div>
-
+    <section class="statement-bottom-grid statement-summary-only">
       <section class="statement-summary">
         <div>
           <span>출고수량</span>
@@ -302,19 +309,10 @@ function renderStatement(items, productGroups = []) {
 
     <footer class="statement-footer">
       <p>상기 내용과 같이 거래하였음을 확인합니다.</p>
-      <h2>디자인 삭스</h2>
+      <h2 data-profile-field="footer_name">${escapeHtml(footerName)}</h2>
     </footer>
   `;
 }
-
-function renderStatementBankBox(first){
-  const bankName=first.payment_bank_name||statementDefaultAccount?.bank_name||"";
-  const account=first.payment_account_number||statementDefaultAccount?.account_number||"";
-  const holder=first.payment_account_holder||statementDefaultAccount?.account_holder||"";
-  if(!account)return "";
-  return `<section class="delivery-info bank-transfer-box"><p><strong>입금 계좌:</strong> ${escapeHtml(bankName)} ${escapeHtml(account)}</p><p><strong>예금주:</strong> ${escapeHtml(holder)}</p></section>`;
-}
-
 
 function printStatement() {
   const originalTitle = document.title;
