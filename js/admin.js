@@ -1033,8 +1033,10 @@ async function initializeAdminPage() {
   };
 
   try {
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError) console.warn("관리자 세션 확인 오류:", userError);
+    // 네트워크 왕복 전에 로컬 세션을 먼저 읽어 로그인 화면 대기·깜빡임을 줄입니다.
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError) console.warn("관리자 세션 확인 오류:", sessionError);
+    const user = sessionData?.session?.user || null;
 
     const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
     const savedUserId = localStorage.getItem(ADMIN_SESSION_KEY);

@@ -2,6 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <script>
+    // 저장된 테마를 CSS보다 먼저 적용해 로그인 화면의 밝기 깜빡임을 막습니다.
+    (()=>{try{const m=localStorage.getItem('designjam_theme_mode')||'light';document.documentElement.dataset.theme=m==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):m}catch(_){}})();
+  </script>
 
   <meta
     name="viewport"
@@ -14,21 +18,21 @@
   <meta property="og:description" content="디자인 삭스 거래처용 상품 주문 및 주문조회 시스템">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/login.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/customer-512.png?v=65380">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/customer-512.png?v=65390">
 <title>디자인 삭스 주문관리 (거래처)</title>
 
-  <link rel="stylesheet" href="css/main.css?v=65380">
+  <link rel="stylesheet" href="css/main.css?v=65390">
 
   <meta name="theme-color" content="#24589f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="디자인 삭스 거래처">
-  <link rel="manifest" href="manifest-customer.webmanifest?v=65380">
-  <link rel="icon" href="icons/customer-192.png?v=65380">
-  <link rel="apple-touch-icon" href="icons/customer-180.png?v=65380">
+  <link rel="manifest" href="manifest-customer.webmanifest?v=65390">
+  <link rel="icon" href="icons/customer-192.png?v=65390">
+  <link rel="apple-touch-icon" href="icons/customer-180.png?v=65390">
 </head>
 
-<body data-pwa-app="customer">
+<body class="login-page login-stable" data-pwa-app="customer" data-app-version="6.5.39">
 
 <header>
   <h1>🧦 디자인 삭스</h1>
@@ -93,10 +97,10 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/login.js?v=65380"></script>
+<script src="js/login.js?v=65390"></script>
 
-<script src="js/pwa.js?v=65380"></script>
-<script src="js/version-badge.js?v=65380"></script>
-<script src="js/ui-preferences.js?v=65380"></script>
+<script src="js/pwa.js?v=65390"></script>
+<script src="js/version-badge.js?v=65390"></script>
+<script src="js/ui-preferences.js?v=65390"></script>
 </body>
 </html>

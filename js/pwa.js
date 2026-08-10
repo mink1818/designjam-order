@@ -2,7 +2,7 @@
   'use strict';
   const app=document.body?.dataset?.pwaApp||'customer';
   const name=app==='admin'?'디자인 삭스 주문관리 (관리자)':'디자인 삭스 주문관리 (거래처)';
-  const icon=app==='admin'?'/icons/admin-192.png?v=65380':'/icons/customer-192.png?v=65380';
+  const icon=app==='admin'?'/icons/admin-192.png?v=65390':'/icons/customer-192.png?v=65390';
   let deferredPrompt=null;
 
   function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
@@ -27,6 +27,8 @@
   }
 
   function showSplash(){
+    // 로그인 화면에서는 시작 화면이 겹쳐 보이지 않도록 표시하지 않습니다.
+    if(document.body?.classList.contains('login-stable'))return;
     if(!isStandalone()||sessionStorage.getItem('ds_splash_seen_'+app))return;
     sessionStorage.setItem('ds_splash_seen_'+app,'1');
     const el=document.createElement('div');
@@ -54,7 +56,7 @@
           <div class="ds-device-guide" data-guide="android">
             ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>아래 사진 순서대로 눌러 삼성 인터넷으로 연 뒤 홈 화면에 추가하세요.</div>':''}
             <div class="ds-full-guide-image">
-              <img src="/images/install-guide/android-full-guide.jpg?v=65380" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
+              <img src="/images/install-guide/android-full-guide.jpg?v=65390" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
             </div>
             <div class="ds-warning" style="margin-top:14px"><b>안내 사진을 누르면 크게 볼 수 있습니다.</b><br>사진의 빨간 표시를 순서대로 누르면 설치가 완료됩니다.</div>
           </div>
@@ -183,11 +185,14 @@
       let reloading=false;
       navigator.serviceWorker.addEventListener('controllerchange',()=>{
         if(reloading)return;
+        // 로그인 입력 중 자동 새로고침되면 화면이 깜빡이고 입력값이 사라질 수 있습니다.
+        // 새 서비스워커는 다음 페이지 이동부터 자연스럽게 적용합니다.
+        if(document.body?.classList.contains('login-stable'))return;
         const current=document.body?.dataset?.appVersion||'';
         const applied=sessionStorage.getItem('ds_sw_reloaded_version');
         if(current&&applied!==current){reloading=true;sessionStorage.setItem('ds_sw_reloaded_version',current);location.reload()}
       });
-      navigator.serviceWorker.register('/service-worker.js?v=65380').then(reg=>{
+      navigator.serviceWorker.register('/service-worker.js?v=65390').then(reg=>{
         reg.update();
         if(reg.waiting)reg.waiting.postMessage('SKIP_WAITING');
         reg.addEventListener('updatefound',()=>{
