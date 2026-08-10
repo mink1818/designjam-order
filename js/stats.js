@@ -5,6 +5,8 @@ const supabaseClient=window.supabase.createClient(
 const ADMIN_EMAILS=new Set(['900smk@naver.com','sm0727sm@hanmail.net','p1028p@naver.com']);
 const ADMIN_SESSION_KEY='designjam_admin_session';
 let rawOrders=[];
+let deletedOrders=[];
+let orderChangeHistory=[];
 let productGroupMap=new Map();
 let categoryNameMap=new Map();
 let mainCategoryNameMap=new Map();
@@ -46,14 +48,18 @@ function setDefaultDates(){
 
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
-  const [ordersResult,groupsResult,categoriesResult,mainsResult]=await Promise.all([
+  const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult]=await Promise.all([
     supabaseClient.from('orders').select('*').order('created_at',{ascending:true}),
     supabaseClient.from('product_groups').select('*'),
     supabaseClient.from('product_categories').select('id,name,main_category_id'),
-    supabaseClient.from('product_main_categories').select('id,name')
+    supabaseClient.from('product_main_categories').select('id,name'),
+    supabaseClient.from('deleted_order_history').select('*').order('deleted_at',{ascending:true}).limit(5000),
+    supabaseClient.from('order_change_history').select('*').order('changed_at',{ascending:true}).limit(5000)
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
+  deletedOrders=deletedResult.error?[]:(deletedResult.data||[]);
+  orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
   categoryNameMap=new Map((categoriesResult.data||[]).map(x=>[String(x.id),x]));
   mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
@@ -81,8 +87,9 @@ function calculateStats(){
   let orders=groupOrders(rows);
   if(completedOnly)orders=orders.filter(o=>o.status==='출고완료');
   const daily=new Map(),products=new Map(),customers=new Map(),categories=new Map(),warehouseSales=new Map(['S','B','I'].map(code=>[code,{code,qty:0,amount:0}]));
-  let totalAmount=0,totalQty=0,doneCount=0,pendingCount=0;
+  let totalAmount=0,totalQty=0,doneCount=0,pendingCount=0,proxyOrderCount=0;
   orders.forEach(order=>{
+    if(String(order.orderNumber).startsWith('ADMIN-')||order.items.some(x=>String(x.memo||'').includes('[관리자 대신주문]')))proxyOrderCount++;
     let productAmount=0,orderQty=0;
     order.items.forEach(item=>{
       if(item.is_soldout)return;
@@ -99,17 +106,27 @@ function calculateStats(){
     const day=localDateKey(order.createdAt);const d=daily.get(day)||{date:day,amount:0,qty:0,orders:0};d.amount+=orderAmount;d.qty+=orderQty;d.orders++;daily.set(day,d);
     const customerKey=order.customerId||order.customerName;const c=customers.get(customerKey)||{name:order.customerName||'거래처 미입력',amount:0,qty:0,orders:0};c.amount+=orderAmount;c.qty+=orderQty;c.orders++;customers.set(customerKey,c);
   });
+  const inRange=(value)=>{const d=new Date(value);return (!start||d>=start)&&(!end||d<=end)};
+  const deleted=deletedOrders.filter(x=>inRange(x.deleted_at));
+  const deletedAmount=deleted.reduce((sum,entry)=>{const items=Array.isArray(entry.order_snapshot)?entry.order_snapshot:[];const product=items.reduce((s,x)=>s+(x.is_soldout?0:Number(x.price||0)*Number(x.qty||0)),0);const shipping=Math.max(0,...items.map(x=>Number(x.shipping_fee||0)));return sum+product+shipping;},0);
+  const changes=orderChangeHistory.filter(x=>inRange(x.changed_at));const changedOrderCount=new Set(changes.map(x=>x.order_number)).size;
   const customerCount=customers.size,orderCount=orders.length,average=orderCount?Math.round(totalAmount/orderCount):0,completionRate=orderCount?Math.round(doneCount/orderCount*100):0;
-  return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,customerCount,average,completionRate,doneCount,pendingCount,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
+  return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
 }
 
 function renderMetrics(s){
   const cards=[
-    ['총 주문금액',money(s.totalAmount),'원'],['총 주문수량',qty(s.totalQty),'죽'],['주문건수',money(s.orderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['평균 주문금액',money(s.average),'원'],['출고완료율',money(s.completionRate),'%']
+    ['현재 주문금액',money(s.totalAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
   ];
   $('statsCards').innerHTML=cards.map(([label,value,unit])=>`<div class="v3-metric-card"><span>${label}</span><strong>${value}</strong><small>${unit}</small></div>`).join('');
   $('statusAll').textContent=`${s.orderCount.toLocaleString()}건`;$('statusPending').textContent=`${s.pendingCount.toLocaleString()}건`;$('statusDone').textContent=`${s.doneCount.toLocaleString()}건`;
   const start=s.start?localDateKey(s.start):'전체 시작';const end=s.end?localDateKey(s.end):'현재';$('statsPeriodLabel').textContent=`집계 기간: ${start} ~ ${end}${s.completedOnly?' · 출고완료만 포함':''}`;
+}
+
+function renderAuditSummary(s){
+  $('orderChannelCards').innerHTML=`<article class="product-card stats-audit-card"><span>거래처 직접주문</span><strong>${money(Math.max(0,s.orderCount-s.proxyOrderCount))}건</strong><small>현재 주문 기준</small></article><article class="product-card stats-audit-card proxy"><span>관리자 대신주문</span><strong>${money(s.proxyOrderCount)}건</strong><small>실제 거래처명으로 순위·매출 반영</small></article><article class="product-card stats-audit-card changed"><span>주문 변경</span><strong>${money(s.changedOrderCount)}건</strong><small>총 ${money(s.changeCount)}회 변경</small></article><article class="product-card stats-audit-card deleted"><span>주문 삭제</span><strong>${money(s.deletedCount)}건</strong><small>취소금액 ${money(s.deletedAmount)}원</small></article>`;
+  const recent=[...s.changes.map(x=>({at:x.changed_at,type:'변경',order:x.order_number,name:x.customer_name||'',reason:x.change_reason||'주문 품목 수정'})),...s.deleted.map(x=>({at:x.deleted_at,type:'삭제',order:x.order_number,name:x.customer_name||'',reason:x.delete_reason||'주문 삭제'}))].sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,12);
+  $('orderAuditList').innerHTML=recent.length?recent.map(x=>`<div class="stats-audit-row"><b class="${x.type==='삭제'?'deleted':'changed'}">${x.type}</b><span><strong>${esc(x.name||'거래처 미입력')}</strong><small>${esc(x.order)} · ${new Date(x.at).toLocaleString('ko-KR')}</small></span><em>${esc(x.reason)}</em></div>`).join(''):'<p class="empty-copy">선택 기간의 주문 변경·삭제 이력이 없습니다.</p>';
 }
 
 function renderBarChart(targetId,rows,valueKey,formatter){
@@ -130,10 +147,10 @@ function renderCategoryShare(rows){
 }
 
 function renderAll(){
-  currentStats=calculateStats();renderMetrics(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');renderBarChart('salesTrendChart',currentStats.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderBarChart('qtyTrendChart',currentStats.daily,'qty',v=>`${qty(v)}죽`);renderRanking('topProductsList',currentStats.products,'product');renderRanking('topCustomersList',currentStats.customers,'customer');renderCategoryShare(currentStats.categories);
+  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');renderBarChart('salesTrendChart',currentStats.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderRanking('topProductsList',currentStats.products,'product');renderRanking('topCustomersList',currentStats.customers,'customer');renderCategoryShare(currentStats.categories);
 }
 
-function exportExcel(){if(!currentStats)return;if(!window.XLSX)return alert('엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const period=`${currentStats.start?localDateKey(currentStats.start):'전체'} ~ ${currentStats.end?localDateKey(currentStats.end):'현재'}`;const summary=[['DESIGN SOCKS 운영 통계'],['집계기간',period],[],['핵심지표','값','단위'],['총 주문금액',currentStats.totalAmount,'원'],['총 주문수량',currentStats.totalQty,'죽'],['주문건수',currentStats.orderCount,'건'],['거래처 수',currentStats.customerCount,'곳'],['평균 주문금액',currentStats.average,'원'],['출고완료율',currentStats.completionRate,'%'],[],['주문상태','건수'],['주문접수/출고대기',currentStats.pendingCount],['출고완료',currentStats.doneCount]];const make=(rows,widths)=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=widths.map(w=>({wch:w}));ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};if(rows.length>1)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}})};return ws;};const wb=XLSX.utils.book_new();const wsSummary=XLSX.utils.aoa_to_sheet(summary);wsSummary['!merges']=[XLSX.utils.decode_range('A1:C1')];wsSummary['!cols']=[{wch:24},{wch:22},{wch:12}];XLSX.utils.book_append_sheet(wb,wsSummary,'요약');XLSX.utils.book_append_sheet(wb,make([['날짜','주문금액','수량(죽)','주문건수'],...currentStats.daily.map(x=>[x.date,x.amount,x.qty,x.orders])],[14,18,14,12]),'날짜별');XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...currentStats.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'상품별');XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...currentStats.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'거래처별');XLSX.utils.book_append_sheet(wb,make([['순위','대분류','수량(죽)','주문금액'],...currentStats.categories.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,26,14,18]),'카테고리별');XLSX.writeFile(wb,`DESIGN_SOCKS_운영통계_${localDateKey(new Date())}.xlsx`);}
+function exportExcel(){if(!currentStats)return;if(!window.XLSX)return alert('엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const period=`${currentStats.start?localDateKey(currentStats.start):'전체'} ~ ${currentStats.end?localDateKey(currentStats.end):'현재'}`;const summary=[['DESIGN SOCKS 운영 통계'],['집계기간',period],[],['핵심지표','값','단위'],['총 주문금액',currentStats.totalAmount,'원'],['총 주문수량',currentStats.totalQty,'죽'],['주문건수',currentStats.orderCount,'건'],['거래처 수',currentStats.customerCount,'곳'],['평균 주문금액',currentStats.average,'원'],['출고완료율',currentStats.completionRate,'%'],[],['주문상태','건수'],['주문접수/출고대기',currentStats.pendingCount],['출고완료',currentStats.doneCount]];const make=(rows,widths)=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=widths.map(w=>({wch:w}));ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};if(rows.length>1)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}})};return ws;};const wb=XLSX.utils.book_new();const wsSummary=XLSX.utils.aoa_to_sheet(summary);wsSummary['!merges']=[XLSX.utils.decode_range('A1:C1')];wsSummary['!cols']=[{wch:24},{wch:22},{wch:12}];XLSX.utils.book_append_sheet(wb,wsSummary,'요약');XLSX.utils.book_append_sheet(wb,make([['날짜','주문금액','수량(죽)','주문건수'],...currentStats.daily.map(x=>[x.date,x.amount,x.qty,x.orders])],[14,18,14,12]),'날짜별');XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...currentStats.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'상품별');XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...currentStats.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'거래처별');XLSX.utils.book_append_sheet(wb,make([['순위','대분류','수량(죽)','주문금액'],...currentStats.categories.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,26,14,18]),'카테고리별');XLSX.utils.book_append_sheet(wb,make([['구분','거래처','주문번호','일시','사유'],...currentStats.changes.map(x=>['변경',x.customer_name||'',x.order_number,x.changed_at,x.change_reason||'주문 품목 수정']),...currentStats.deleted.map(x=>['삭제',x.customer_name||'',x.order_number,x.deleted_at,x.delete_reason||'주문 삭제'])],[10,28,30,22,30]),'변경삭제이력');XLSX.writeFile(wb,`DESIGN_SOCKS_운영통계_${localDateKey(new Date())}.xlsx`);}
 
 function bindEvents(){
   $('statsRangeButtons').querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{currentRange=btn.dataset.range;$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));renderAll();}));
