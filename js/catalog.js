@@ -1507,6 +1507,7 @@ function cartTopButton() {
 }
 
 const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
+const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices";
 
 function normalizeBulkItemNumber(value) {
   return String(value ?? "").trim().normalize("NFKC").toUpperCase();
@@ -1515,35 +1516,110 @@ function normalizeBulkItemNumber(value) {
 function getBulkOrderItemIndex() {
   const rows = [];
   groups.forEach(group => (group.item_numbers || []).forEach(number => {
-    rows.push({ group, number: String(number), normalized: normalizeBulkItemNumber(number) });
+    // DB에 범위 문자열이 남아 있어도 1A~16A, 1M~2M을 개별 품번으로 펼칩니다.
+    expandBulkOrderRange(number).forEach(expanded => {
+      rows.push({ group, number: String(expanded), normalized: normalizeBulkItemNumber(expanded) });
+    });
   }));
   return rows;
 }
 
+function bulkChoiceStorageKey() {
+  return `${CUSTOMER_BULK_ITEM_CHOICE_KEY}:${currentUser?.id || "guest"}`;
+}
+
+function loadBulkItemChoices() {
+  try { return JSON.parse(localStorage.getItem(bulkChoiceStorageKey()) || "{}"); }
+  catch (_) { return {}; }
+}
+
+function rememberBulkItemChoice(baseNumber, actualNumber) {
+  const choices = loadBulkItemChoices();
+  choices[normalizeBulkItemNumber(baseNumber)] = normalizeBulkItemNumber(actualNumber);
+  localStorage.setItem(bulkChoiceStorageKey(), JSON.stringify(choices));
+}
+
+function getDuplicateBulkItemCount(index = getBulkOrderItemIndex()) {
+  const bases = new Map();
+  index.forEach(row => {
+    const base = row.normalized.replace(/[AM]$/, "");
+    if (!bases.has(base)) bases.set(base, new Set());
+    bases.get(base).add(row.normalized);
+  });
+  return [...bases.values()].filter(numbers => numbers.size > 1).length;
+}
+
 function resolveBulkOrderItem(value, index) {
   const key = normalizeBulkItemNumber(value);
-  if (!key) return null;
-  let matched = index.find(row => row.normalized === key);
-  if (matched) return matched;
-
+  if (!key) return { matched: null, candidates: [] };
   const withoutWarehouse = key.replace(/^[SBI][-_\s]+/, "");
-  matched = index.find(row => row.normalized === withoutWarehouse);
-  if (matched) return matched;
 
-  // A/M 접미사가 생략된 경우 후보가 하나일 때만 자동 인식합니다.
-  const suffixCandidates = index.filter(row => row.normalized.replace(/[AM]$/, "") === withoutWarehouse);
-  return suffixCandidates.length === 1 ? suffixCandidates[0] : null;
+  // 거래처가 A/M까지 정확히 입력한 경우 해당 품번을 그대로 사용합니다.
+  if (/[AM]$/.test(withoutWarehouse)) {
+    const exact = index.find(row => row.normalized === withoutWarehouse);
+    return { matched: exact || null, candidates: exact ? [exact] : [] };
+  }
+
+  // 숫자 품번만 입력하면 일반·A(아동)·M(무지) 후보를 모두 확인합니다.
+  const candidates = index.filter(row => row.normalized.replace(/[AM]$/, "") === withoutWarehouse);
+  if (candidates.length === 1) return { matched: candidates[0], candidates };
+  if (!candidates.length) return { matched: null, candidates: [] };
+  const remembered = loadBulkItemChoices()[withoutWarehouse];
+  const rememberedRow = remembered && candidates.find(row => row.normalized === remembered);
+  return { matched: rememberedRow || null, candidates };
+}
+
+function bulkItemType(number) {
+  const value = normalizeBulkItemNumber(number);
+  if (value.endsWith("A")) return "아동양말";
+  if (value.endsWith("M")) return "무지양말";
+  return "일반양말";
+}
+
+function chooseBulkOrderCandidate(requestedNumber, candidates) {
+  return new Promise(resolve => {
+    document.getElementById("bulkItemChoiceModal")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "bulkItemChoiceModal";
+    modal.className = "bulk-item-choice-modal";
+    modal.innerHTML = `
+      <div class="bulk-item-choice-dialog" role="dialog" aria-modal="true" aria-labelledby="bulkChoiceTitle">
+        <button type="button" class="bulk-choice-close" aria-label="닫기">×</button>
+        <small>중복 품번 확인</small>
+        <h3 id="bulkChoiceTitle">품번 ${escapeHtml(requestedNumber)}</h3>
+        <p>어떤 종류의 양말인지 선택해 주세요.</p>
+        <div class="bulk-item-type-buttons">
+          ${candidates.map((row, i) => `<button type="button" class="bulk-item-type-button" data-candidate-index="${i}"><b>${escapeHtml(bulkItemType(row.number))}</b><small>관리 품번 ${escapeHtml(row.number)}</small></button>`).join("")}
+        </div>
+        <label class="bulk-choice-remember"><input type="checkbox" id="bulkChoiceRemember" checked> 다음 주문에도 이 선택 기억</label>
+        <button type="button" class="cart-btn gray-btn bulk-choice-cancel">취소</button>
+      </div>`;
+    document.body.appendChild(modal);
+    const finish = row => { modal.remove(); resolve(row || null); };
+    modal.querySelectorAll("[data-candidate-index]").forEach(button => button.addEventListener("click", () => {
+      const row = candidates[Number(button.dataset.candidateIndex)];
+      if (row && modal.querySelector("#bulkChoiceRemember")?.checked) rememberBulkItemChoice(requestedNumber, row.number);
+      finish(row);
+    }));
+    modal.querySelector(".bulk-choice-close")?.addEventListener("click", () => finish(null));
+    modal.querySelector(".bulk-choice-cancel")?.addEventListener("click", () => finish(null));
+    modal.addEventListener("click", event => { if (event.target === modal) finish(null); });
+  });
 }
 
 function expandBulkOrderRange(token) {
   const text = normalizeBulkItemNumber(token);
-  const match = text.match(/^([SBI][-_]?)?(\d+)[~～]([SBI][-_]?)?(\d+)$/);
+  const match = text.match(/^([SBI][-_]?)?(\d+)([AM]?)[~～]([SBI][-_]?)?(\d+)([AM]?)$/);
   if (!match) return [text];
-  const prefix = match[1] || match[3] || "";
+  const prefix = match[1] || match[4] || "";
   const start = Number(match[2]);
-  const end = Number(match[4]);
+  const end = Number(match[5]);
+  const startSuffix = match[3] || "";
+  const endSuffix = match[6] || "";
+  if (startSuffix && endSuffix && startSuffix !== endSuffix) return [text];
+  const suffix = startSuffix || endSuffix;
   if (!Number.isInteger(start) || !Number.isInteger(end) || end < start || end - start > 500) return [text];
-  return Array.from({ length: end - start + 1 }, (_, offset) => `${prefix}${start + offset}`);
+  return Array.from({ length: end - start + 1 }, (_, offset) => `${prefix}${start + offset}${suffix}`);
 }
 
 function parseCustomerBulkOrder(text) {
@@ -1592,6 +1668,7 @@ function renderCustomerBulkOrder() {
         </ul>
         <div class="customer-bulk-order-example"><span>입력 예시</span><code>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035</code></div>
       </div>
+      <p class="customer-bulk-duplicate-summary">현재 등록상품 기준 중복 기본품번 <b>${getDuplicateBulkItemCount()}</b>개 · 중복 시 일반양말·아동양말·무지양말을 선택합니다.</p>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="한 줄에 하나씩 입력하세요.\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
@@ -1606,7 +1683,7 @@ function renderCustomerBulkOrder() {
   requestAnimationFrame(() => input?.focus());
 }
 
-function applyCustomerBulkOrder() {
+async function applyCustomerBulkOrder() {
   const input = document.getElementById("customerBulkOrderInput");
   const resultBox = document.getElementById("customerBulkOrderResult");
   const rows = parseCustomerBulkOrder(input?.value || "");
@@ -1620,9 +1697,11 @@ function applyCustomerBulkOrder() {
   let addedKinds = 0;
   let addedQty = 0;
 
-  totals.forEach((qty, requestedNumber) => {
-    const found = resolveBulkOrderItem(requestedNumber, index);
-    if (!found) { missing.push(requestedNumber); return; }
+  for (const [requestedNumber, qty] of totals.entries()) {
+    const resolution = resolveBulkOrderItem(requestedNumber, index);
+    let found = resolution.matched;
+    if (!found && resolution.candidates.length > 1) found = await chooseBulkOrderCandidate(requestedNumber, resolution.candidates);
+    if (!found) { missing.push(requestedNumber); continue; }
     const { group, number } = found;
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
     const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
@@ -1639,7 +1718,7 @@ function applyCustomerBulkOrder() {
     });
     addedKinds += 1;
     addedQty += qty;
-  });
+  }
 
   if (addedQty) saveCart();
   const messages = [];
