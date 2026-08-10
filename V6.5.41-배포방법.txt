@@ -1,4 +1,4 @@
-DESIGN SOCKS V6.5.43 배포 방법
+DESIGN SOCKS V6.5.44 배포 방법
 
 핵심 수정
 - 관리자 로그인 화면에서 관리자 전용 페이지 강제 검사를 분리
@@ -10,7 +10,7 @@ DESIGN SOCKS V6.5.43 배포 방법
 배포
 git pull --rebase
 git add .
-git commit -m "release v6.5.43 admin login reload loop fix"
+git commit -m "release v6.5.44 admin login reload loop fix"
 git push
 
 SQL 실행: 불필요

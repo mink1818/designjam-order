@@ -46,8 +46,13 @@ function findItem(value){
 }
 function proxyItemKind(itemNumber){const key=priceKey(itemNumber);if(/A$/.test(key))return'아동양말';if(/M$/.test(key))return'무지양말';return'일반양말'}
 function resolveProxyItem(value){
- const key=priceKey(value),exact=items.find(x=>priceKey(x.item_number)===key);
- if(exact)return{item:exact,candidates:[exact]};
+ const key=priceKey(value);
+ // 관리자가 A/M까지 입력한 경우에만 해당 품번을 즉시 확정합니다.
+ // 숫자 기본 품번만 입력한 경우에는 일반·아동(A)·무지(M)를 모두 모아 선택창을 띄웁니다.
+ if(/[AM]$/.test(key)){
+  const exact=items.find(x=>priceKey(x.item_number)===key);
+  return{item:exact||null,candidates:exact?[exact]:[]};
+ }
  if(!/\d$/.test(key))return{item:null,candidates:[]};
  const candidates=items.filter(x=>priceKey(x.item_number).replace(/[AM]$/,'')===key);
  return{item:candidates.length===1?candidates[0]:null,candidates};

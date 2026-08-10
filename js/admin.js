@@ -407,7 +407,7 @@ function fallbackCopyWithoutJump(text) {
 }
 
 function formatOrderCopyRows(rows,mode='excel'){
-  if(mode==='kakao')return rows.map(row=>`${row.dataset.copyItem}      ${row.dataset.copyQty}`).join('\n');
+  if(mode==='kakao')return rows.map(row=>`${row.dataset.copyItem}            ${row.dataset.copyQty}`).join('\n');
   return rows.map(row=>`${row.dataset.copyItem}\t${row.dataset.copyQty}`).join('\n');
 }
 
@@ -1032,7 +1032,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65430','js/admin-mobile-nav.js?v=65430'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65440','js/admin-mobile-nav.js?v=65440'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

@@ -136,6 +136,15 @@ html[data-theme="dark"] .scan-quantity-control{border-color:#52677f;background:#
  .warehouse-pick-section .picking-item-note:focus{width:86px}
 }
 @media print{.scan-quantity-control,.bulk-pick-button,.warehouse-outbound-check,.picking-item-note{display:none!important}}
+
+/* V6.5.44 모바일 피킹: 로그인 상태창 겹침 방지 및 품번별 메모 숨김 */
+@media(max-width:700px){
+ body.picking-page>header{padding-top:76px!important}
+ body.picking-page #designjamSessionStatus.session-status{position:absolute!important;top:6px!important;right:6px!important;left:auto!important;max-width:calc(100vw - 12px)!important}
+ body.picking-page .picking-item-note{display:none!important}
+ body.picking-page .warehouse-pick-section .pick-item-row{grid-template-columns:minmax(78px,1fr) 28px 28px minmax(166px,auto)!important}
+ body.picking-page .pick-item-row>strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+}
 .delete-order-btn{background:#7f1d1d!important;color:#fff!important}
 .picking-session-button{border-color:#0b7a43!important;background:#e8fff3!important;color:#075b31!important}.picking-session-button.active{background:#b42318!important;border-color:#b42318!important;color:#fff!important}
 
