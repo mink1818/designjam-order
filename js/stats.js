@@ -46,15 +46,29 @@ function setDefaultDates(){
   const now=new Date();$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));
 }
 
+async function fetchAllStatsRows(table,orderColumn,ascending=true){
+  const rows=[];
+  for(let from=0;;from+=1000){
+    const result=await supabaseClient.from(table).select('*').order(orderColumn,{ascending}).range(from,from+999);
+    if(result.error)return {data:rows,error:result.error};
+    rows.push(...(result.data||[]));
+    if(!result.data||result.data.length<1000)return {data:rows,error:null};
+  }
+}
+
+function normalizeStatsCustomerName(value){
+  return String(value||'').trim().normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko-KR');
+}
+
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
   const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult]=await Promise.all([
-    supabaseClient.from('orders').select('*').order('created_at',{ascending:true}),
+    fetchAllStatsRows('orders','created_at',true),
     supabaseClient.from('product_groups').select('*'),
     supabaseClient.from('product_categories').select('id,name,main_category_id'),
     supabaseClient.from('product_main_categories').select('id,name'),
-    supabaseClient.from('deleted_order_history').select('*').order('deleted_at',{ascending:true}).limit(5000),
-    supabaseClient.from('order_change_history').select('*').order('changed_at',{ascending:true}).limit(5000)
+    fetchAllStatsRows('deleted_order_history','deleted_at',true),
+    fetchAllStatsRows('order_change_history','changed_at',true)
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
@@ -104,7 +118,7 @@ function calculateStats(){
     const orderAmount=productAmount+Number(order.shippingFee||0);totalAmount+=orderAmount;totalQty+=orderQty;
     if(order.status==='출고완료')doneCount++;else pendingCount++;
     const day=localDateKey(order.createdAt);const d=daily.get(day)||{date:day,amount:0,qty:0,orders:0};d.amount+=orderAmount;d.qty+=orderQty;d.orders++;daily.set(day,d);
-    const customerKey=order.customerId||order.customerName;const c=customers.get(customerKey)||{name:order.customerName||'거래처 미입력',amount:0,qty:0,orders:0};c.amount+=orderAmount;c.qty+=orderQty;c.orders++;customers.set(customerKey,c);
+    const displayCustomerName=String(order.customerName||'').trim()||'거래처 미입력';const customerKey=normalizeStatsCustomerName(displayCustomerName)||order.customerId||'거래처 미입력';const c=customers.get(customerKey)||{name:displayCustomerName,amount:0,qty:0,orders:0};c.amount+=orderAmount;c.qty+=orderQty;c.orders++;customers.set(customerKey,c);
   });
   const inRange=(value)=>{const d=new Date(value);return (!start||d>=start)&&(!end||d<=end)};
   const deleted=deletedOrders.filter(x=>inRange(x.deleted_at));
@@ -147,7 +161,7 @@ function renderCategoryShare(rows){
 }
 
 function renderAll(){
-  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');renderBarChart('salesTrendChart',currentStats.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderRanking('topProductsList',currentStats.products,'product');renderRanking('topCustomersList',currentStats.customers,'customer');renderCategoryShare(currentStats.categories);
+  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');renderBarChart('salesTrendChart',currentStats.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderRanking('topProductsList',currentStats.products,'product');renderRanking('topCustomersList',currentStats.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`선택 기간 전체 ${money(currentStats.customerCount)}곳 중 상위 10곳 · 배송비 포함`;renderCategoryShare(currentStats.categories);
 }
 
 function exportExcel(){if(!currentStats)return;if(!window.XLSX)return alert('엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const period=`${currentStats.start?localDateKey(currentStats.start):'전체'} ~ ${currentStats.end?localDateKey(currentStats.end):'현재'}`;const summary=[['DESIGN SOCKS 운영 통계'],['집계기간',period],[],['핵심지표','값','단위'],['총 주문금액',currentStats.totalAmount,'원'],['총 주문수량',currentStats.totalQty,'죽'],['주문건수',currentStats.orderCount,'건'],['거래처 수',currentStats.customerCount,'곳'],['평균 주문금액',currentStats.average,'원'],['출고완료율',currentStats.completionRate,'%'],[],['주문상태','건수'],['주문접수/출고대기',currentStats.pendingCount],['출고완료',currentStats.doneCount]];const make=(rows,widths)=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=widths.map(w=>({wch:w}));ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};if(rows.length>1)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}})};return ws;};const wb=XLSX.utils.book_new();const wsSummary=XLSX.utils.aoa_to_sheet(summary);wsSummary['!merges']=[XLSX.utils.decode_range('A1:C1')];wsSummary['!cols']=[{wch:24},{wch:22},{wch:12}];XLSX.utils.book_append_sheet(wb,wsSummary,'요약');XLSX.utils.book_append_sheet(wb,make([['날짜','주문금액','수량(죽)','주문건수'],...currentStats.daily.map(x=>[x.date,x.amount,x.qty,x.orders])],[14,18,14,12]),'날짜별');XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...currentStats.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'상품별');XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...currentStats.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'거래처별');XLSX.utils.book_append_sheet(wb,make([['순위','대분류','수량(죽)','주문금액'],...currentStats.categories.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,26,14,18]),'카테고리별');XLSX.utils.book_append_sheet(wb,make([['구분','거래처','주문번호','일시','사유'],...currentStats.changes.map(x=>['변경',x.customer_name||'',x.order_number,x.changed_at,x.change_reason||'주문 품목 수정']),...currentStats.deleted.map(x=>['삭제',x.customer_name||'',x.order_number,x.deleted_at,x.delete_reason||'주문 삭제'])],[10,28,30,22,30]),'변경삭제이력');XLSX.writeFile(wb,`DESIGN_SOCKS_운영통계_${localDateKey(new Date())}.xlsx`);}
