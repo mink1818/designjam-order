@@ -2624,5 +2624,5 @@ html[data-theme="dark"] .order-delivery-preview,html[data-theme="dark"] .order-d
  body[data-session-page="admin"] .order-status-stack .order-status-pill,body[data-session-page="admin"] .order-card-edit-button{font-size:10px!important;padding-left:1px!important;padding-right:1px!important}
  body[data-session-page="admin"] .mobile-order-summary span,body[data-session-page="admin"] .mobile-order-summary strong,body[data-session-page="admin"] .mobile-order-summary b{font-size:12px!important}
 }
-/* V6.5.40 관리자 로그인 화면은 세션 확인 후 한 번만 표시 */
+/* V6.5.42 관리자 로그인 화면은 세션 확인 후 한 번만 표시 */
 body.login-stable.auth-pending{visibility:hidden!important;opacity:0!important}body.login-stable.auth-pending.auth-ready{visibility:visible!important;opacity:1!important}body.login-stable.auth-ready{animation:none!important}body.login-stable #loginBox{animation:none!important;transition:none!important;transform:none!important}
