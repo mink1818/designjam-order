@@ -138,3 +138,12 @@ html[data-theme="dark"] .scan-quantity-control{border-color:#52677f;background:#
 @media print{.scan-quantity-control,.bulk-pick-button,.warehouse-outbound-check,.picking-item-note{display:none!important}}
 .delete-order-btn{background:#7f1d1d!important;color:#fff!important}
 .picking-session-button{border-color:#0b7a43!important;background:#e8fff3!important;color:#075b31!important}.picking-session-button.active{background:#b42318!important;border-color:#b42318!important;color:#fff!important}
+
+/* V6.5.30 피킹 대기 납품처·다중기기 실시간 상태 */
+.order-pick-card.picking-live{border-color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.13)}
+.picking-live-badge{display:inline-flex;margin-left:5px;padding:3px 7px;border-radius:999px;background:#15803d;color:#fff;font-size:10px;font-style:normal;animation:pickingLivePulse 1.8s ease-in-out infinite}
+.pick-delivery-name{display:block!important;margin:5px 0 2px;color:#1e4975!important;font-size:13px!important;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.pick-delivery-name b{color:#173f70}
+html[data-theme="dark"] .pick-delivery-name,html[data-theme="dark"] .pick-delivery-name b{color:#bfdbfe!important}
+@keyframes pickingLivePulse{50%{opacity:.62}}
+@media(max-width:700px){.pick-delivery-name{font-size:12px!important;margin-top:4px}.picking-live-badge{font-size:9px;padding:2px 6px}}
