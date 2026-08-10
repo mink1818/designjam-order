@@ -481,9 +481,6 @@ function renderMainCategories(pushHistory = true) {
 
   catalogList.innerHTML = `
     <section class="customer-main-quick-menu" aria-label="빠른 메뉴">
-      <button class="customer-quick-card bulk-order-home-card" type="button" onclick="renderCustomerBulkOrder()">
-        <span aria-hidden="true">📋</span><strong>붙여넣기 주문</strong>
-      </button>
       <button class="customer-quick-card primary" type="button" onclick="renderAllProducts()">
         <span aria-hidden="true">🧦</span><strong>전체상품</strong>
       </button>
@@ -505,6 +502,11 @@ function renderMainCategories(pushHistory = true) {
           <input id="homeBrandSearch" type="search" placeholder="브랜드 · 상품명 · 품번 검색" value="${escapeHtml(homeBrandSearchKeyword)}" oninput="updateHomeBrandSearch(this.value)" />
         </label>
       </div>
+      <button class="customer-home-bulk-banner" type="button" onclick="renderCustomerBulkOrder()">
+        <span class="customer-home-bulk-icon" aria-hidden="true">📋</span>
+        <span class="customer-home-bulk-copy"><strong>품번·수량 붙여넣기 주문</strong><small>한 줄에 한 품번씩 작성하여 여러 줄을 한 번에 입력할 수 있습니다.</small></span>
+        <b aria-hidden="true">›</b>
+      </button>
       <div class="home-section-heading home-brand-heading">
         <div><h2>전체브랜드</h2><p>여러 브랜드를 함께 선택할 수 있습니다</p></div>
         <strong class="selected-brand-count">선택 ${selectedHomeBrands.size}개</strong>
@@ -1580,6 +1582,16 @@ function renderCustomerBulkOrder() {
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
       <p>문자·카톡 주문 내용을 붙여넣으면 품번과 수량을 장바구니에 한 번에 담을 수 있습니다.</p>
+      <div class="customer-bulk-order-guide">
+        <strong>입력 방법</strong>
+        <ul>
+          <li>한 줄에 한 품번씩 입력하고, 여러 줄을 동시에 붙여넣을 수 있습니다.</li>
+          <li>품번과 수량 사이는 공백 또는 탭으로 띄워주세요.</li>
+          <li>수량을 적지 않은 품번은 1죽으로 입력됩니다.</li>
+          <li><b>5031~5035</b>처럼 범위를 입력하면 포함된 품번을 각각 1죽씩 입력합니다.</li>
+        </ul>
+        <div class="customer-bulk-order-example"><span>입력 예시</span><code>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035</code></div>
+      </div>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="한 줄에 하나씩 입력하세요.\n4001        2죽\n4002        5\n5031~5035\n\n수량을 생략하면 1죽으로 인식합니다.">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
