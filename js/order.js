@@ -17,14 +17,17 @@ async function loadMyOrders() {
   activeOrderResult.innerHTML = "<p>내 주문을 불러오는 중...</p>";
   completedOrderResult.innerHTML = "";
 
-  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-  const sessionUserId = sessionStorage.getItem(CUSTOMER_SESSION_KEY);
-  if (userError || !user || sessionUserId !== user.id) {
+  const { data: sessionData, error: userError } = await supabaseClient.auth.getSession();
+  const user = sessionData?.session?.user || null;
+  if (userError || !user) {
     sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
-    if (user) await supabaseClient.auth.signOut();
+    localStorage.removeItem(CUSTOMER_SESSION_KEY);
     location.replace("login.html");
     return;
   }
+
+  sessionStorage.setItem(CUSTOMER_SESSION_KEY, user.id);
+  localStorage.setItem(CUSTOMER_SESSION_KEY, user.id);
 
   currentOrderUser = user;
   document.body.classList.add("auth-ready");

@@ -12,10 +12,12 @@ const setText = (id,value) => { const el=document.getElementById(id); if(el) el.
 const esc = value => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
 async function guardAdminHome(){
-  const {data:{user}}=await supabaseClient.auth.getUser();
-  const stored=sessionStorage.getItem(ADMIN_SESSION_KEY)||localStorage.getItem(ADMIN_SESSION_KEY);
-  if(!user || (stored && stored!==user.id)){ location.replace("admin.html"); return false; }
-  const {data:profile}=await supabaseClient.from("customers").select("is_admin,blocked").eq("id",user.id).maybeSingle();
+  const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
+  if(sessionError) console.warn("관리자 세션 확인 오류:",sessionError);
+  const user=sessionData?.session?.user||null;
+  if(!user){ location.replace("admin.html"); return false; }
+  const {data:profile,error:profileError}=await supabaseClient.from("customers").select("is_admin,blocked").eq("id",user.id).maybeSingle();
+  if(profileError) console.warn("관리자 권한 조회 오류:",profileError);
   if(!isAdminEmail(user.email) && !(profile?.is_admin===true && profile?.blocked!==true)){ await supabaseClient.auth.signOut(); location.replace("admin.html"); return false; }
   sessionStorage.setItem(ADMIN_SESSION_KEY,user.id); localStorage.setItem(ADMIN_SESSION_KEY,user.id);
   currentAdmin=user;

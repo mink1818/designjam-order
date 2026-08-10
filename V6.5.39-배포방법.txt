@@ -1,4 +1,4 @@
-DESIGN SOCKS V6.5.39 배포 방법
+DESIGN SOCKS V6.5.40 배포 방법
 
 적용 내용
 - 거래처 로그인 화면 반복 깜빡임 방지
@@ -12,7 +12,7 @@ SQL 실행: 불필요
 Supabase Function 재배포: 불필요
 
 git add .
-git commit -m "release v6.5.39 login screen stability"
+git commit -m "release v6.5.40 login screen stability"
 git push
 
 배포 후 로그인 화면에서 Ctrl+F5를 한 번 눌러주세요.

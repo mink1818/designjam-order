@@ -1038,21 +1038,12 @@ async function initializeAdminPage() {
     if (sessionError) console.warn("관리자 세션 확인 오류:", sessionError);
     const user = sessionData?.session?.user || null;
 
-    const sessionUserId = sessionStorage.getItem(ADMIN_SESSION_KEY);
-    const savedUserId = localStorage.getItem(ADMIN_SESSION_KEY);
-    const knownAdminEmail = isDesignjamAdminEmail(user?.email);
-    const hasSavedAdminSession = Boolean(user && (sessionUserId === user.id || savedUserId === user.id));
-
-    if (!user || (!hasSavedAdminSession && !knownAdminEmail)) {
+    if (!user) {
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
       localStorage.removeItem(ADMIN_SESSION_KEY);
-      if (user) await supabaseClient.auth.signOut();
       showLogin();
       return;
     }
-
-    sessionStorage.setItem(ADMIN_SESSION_KEY, user.id);
-    localStorage.setItem(ADMIN_SESSION_KEY, user.id);
 
     const { data: customer, error: profileError } = await supabaseClient
       .from("customers")
@@ -1072,6 +1063,11 @@ async function initializeAdminPage() {
       showLogin();
       return;
     }
+
+    // Supabase 세션이 유효하면 기기 저장값이 없거나 오래됐더라도 현재 사용자로 복구합니다.
+    // 저장값만 먼저 검사하면 정상 관리자도 로그인 화면과 메인 화면을 반복 이동할 수 있습니다.
+    sessionStorage.setItem(ADMIN_SESSION_KEY, user.id);
+    localStorage.setItem(ADMIN_SESSION_KEY, user.id);
 
     // 관리자 기본 진입은 항상 대시보드로 통일합니다.
     // 주문관리 링크에서 status 또는 view=orders를 명시한 경우에만 이 화면을 유지합니다.

@@ -239,11 +239,11 @@ if (catalogSearch) {
 ================================ */
 
 async function checkCustomerAccess() {
-  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  const { data: sessionData, error: userError } = await supabaseClient.auth.getSession();
+  const user = sessionData?.session?.user || null;
 
   if (ADMIN_PREVIEW_MODE) {
-    const adminSessionId = sessionStorage.getItem("designjam_admin_session") || localStorage.getItem("designjam_admin_session");
-    if (userError || !user || adminSessionId !== user.id) {
+    if (userError || !user) {
       location.replace("admin.html");
       return false;
     }
@@ -268,12 +268,9 @@ async function checkCustomerAccess() {
     return true;
   }
 
-  const sessionUserId = sessionStorage.getItem(CUSTOMER_SESSION_KEY) || localStorage.getItem(CUSTOMER_SESSION_KEY);
-
-  if (userError || !user || sessionUserId !== user.id) {
+  if (userError || !user) {
     sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
     localStorage.removeItem(CUSTOMER_SESSION_KEY);
-    if (user) await supabaseClient.auth.signOut();
     location.replace("login.html");
     return false;
   }
@@ -303,6 +300,10 @@ async function checkCustomerAccess() {
     location.href = "login.html";
     return false;
   }
+
+  // 인증 세션을 기준으로 기기 저장값을 복구해 정상 거래처가 로그인 화면으로 되돌아가지 않게 합니다.
+  sessionStorage.setItem(CUSTOMER_SESSION_KEY, user.id);
+  localStorage.setItem(CUSTOMER_SESSION_KEY, user.id);
 
   currentUser = user;
   currentCustomer = customer;
