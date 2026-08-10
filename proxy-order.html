@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>관리자 대신 주문</title>
-<link rel="stylesheet" href="css/admin.css?v=65310">
+<link rel="stylesheet" href="css/admin.css?v=65320">
 <style>
 [hidden]{display:none!important}.proxy-shell{max-width:1200px;margin:auto;padding:20px}.proxy-card{background:#fff;border:1px solid #dbe3ec;border-radius:18px;padding:20px;margin-bottom:16px}.proxy-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.proxy-card label{font-weight:800}.proxy-card input,.proxy-card select,.proxy-card textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border:1px solid #bcc9d6;border-radius:10px}.proxy-line,.proxy-line-head{display:grid;grid-template-columns:1.2fr .55fr .7fr .8fr auto;gap:8px;margin:8px 0;align-items:center}.proxy-line-head{font-weight:900;color:#33485c;padding:0 4px}.proxy-line-head span:nth-child(n+2){text-align:center}.proxy-line button,.proxy-actions button{border:0;border-radius:10px;padding:12px 16px;font-weight:900;cursor:pointer}.remove-line{background:#fee2e2;color:#991b1b}.proxy-actions{display:flex;gap:10px;flex-wrap:wrap}.add-line{background:#e8eef5}.submit-proxy{background:#112437;color:#fff}.proxy-total{font-size:20px;font-weight:900;text-align:right;margin-top:12px}.proxy-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.proxy-summary div{background:#eef5fb;border-radius:14px;padding:14px;text-align:center;min-width:0}.proxy-summary span,.proxy-summary strong{display:block}.proxy-summary strong{font-size:20px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.proxy-line-total{display:flex;align-items:center;justify-content:flex-end;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.proxy-customer-mode{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px}.proxy-customer-mode label{display:flex;align-items:center;gap:7px}.proxy-customer-mode input{width:auto;margin:0}.proxy-help{margin:8px 0 0;color:#526577;font-size:13px}.proxy-error{display:none;margin:0 0 14px;padding:12px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:800}.proxy-error.show{display:block}@media(max-width:700px){.proxy-summary{grid-template-columns:repeat(2,1fr);gap:6px}.proxy-summary div{padding:10px 4px}.proxy-summary strong{font-size:16px}.proxy-shell{padding:10px}.proxy-card{padding:12px}.proxy-grid{grid-template-columns:1fr}.proxy-line,.proxy-line-head{grid-template-columns:minmax(58px,1fr) 38px 58px 62px 38px;gap:3px}.proxy-line-head{font-size:11px;padding:0}.proxy-line-head span{display:block!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.proxy-line input{min-width:0;margin-top:0;padding:9px 4px;font-size:12px}.proxy-line button{min-width:0;padding:9px 2px;font-size:11px}.proxy-line-total{justify-content:flex-end;padding:0;font-size:11px}.proxy-actions button{width:100%}}
 
@@ -41,20 +41,22 @@ html[data-theme="dark"] .proxy-error{background:#56242b!important;color:#ffc0c7!
 <label>주소<input id="proxyDirectAddress" placeholder="배송 주소"></label>
 </div>
 <div class="proxy-grid proxy-delivery-grid">
+<label class="wide">저장된 납품처<select id="proxyDeliverySelect"><option value="">거래처 선택 후 불러오기</option></select></label>
 <label>납품처명<input id="proxyDeliveryName" placeholder="실제로 배송받는 업체명"></label>
 <label>납품처 연락처<input id="proxyDeliveryPhone" placeholder="배송 연락처"></label>
 <label class="wide">납품처 주소<input id="proxyDeliveryAddress" placeholder="실제 배송 주소"></label>
 </div>
+<p class="proxy-help">거래처 등록 주소와 실제 배송지가 다른 경우 납품처 정보를 입력해 주세요. 동일한 주소라면 등록 주소를 선택하세요.</p>
 <p id="proxyRegisteredPriceStatus" class="proxy-help" hidden></p>
 <p id="proxyDirectPriceMatch" class="proxy-help" hidden></p>
 <label>주문 메모<textarea id="proxyMemo" rows="4" maxlength="1000" placeholder="예: 전화 주문, 빠른 출고&#10;Enter를 눌러 다음 줄에 계속 작성할 수 있습니다."></textarea></label>
 <p class="proxy-help">직접 입력한 거래처 정보는 이 주문에만 저장되며 거래처 목록에는 자동 등록되지 않습니다.</p>
 </section>
-<section class="proxy-card"><h2>엑셀·문자·카톡 품번·수량 붙여넣기</h2><textarea id="proxyPasteInput" rows="6" placeholder="엑셀 두 칸을 그대로 복사하세요.&#10;품번        수량&#10;4001        2&#10;4002        5죽&#10;&#10;5031~5035 → 각 1죽"></textarea><div class="proxy-actions"><button id="applyProxyPaste" class="add-line" type="button">품번·수량 2칸 자동 입력</button></div><p id="proxyPasteResult" class="proxy-help" aria-live="polite"></p><p class="proxy-help">엑셀의 품번·수량 두 열을 여러 줄 선택해 그대로 붙여넣을 수 있습니다. 수량 뒤의 ‘죽·족·죽씩·족씩’과 공백·탭·쉼표·마침표·/·:·-·~·한글 ㅡ·괄호를 인식합니다. <b>5031~5035는 끝 번호까지 각각 1죽으로 입력됩니다.</b> 작성 내용은 이 PC에 자동 임시저장됩니다.</p></section>
+<section class="proxy-card"><h2>엑셀·문자·카톡 주문정보 붙여넣기</h2><textarea id="proxyPasteInput" rows="9" placeholder="거래처명: 디자인삭스&#10;납품처명: ○○매장&#10;연락처: 010-0000-0000&#10;주소: 서울시...&#10;메모: 빠른 출고&#10;&#10;품번        수량&#10;4001        2&#10;4002        5죽"></textarea><div class="proxy-actions"><button id="applyProxyPaste" class="add-line" type="button">주문정보·품번·수량 자동 입력</button></div><p id="proxyPasteResult" class="proxy-help" aria-live="polite"></p><p class="proxy-help">거래처명·납품처명·연락처·주소·메모와 품번·수량을 함께 인식합니다. <b>5031~5035는 끝 번호까지 각각 1죽으로 입력됩니다.</b> 작성 내용은 이 PC에 자동 임시저장됩니다.</p></section>
 <section class="proxy-card"><h2>주문 품목</h2><div class="proxy-line-head" aria-hidden="true"><span>품번</span><span>수량</span><span>가격</span><span>금액</span><span>관리</span></div><div id="proxyLines"></div><div class="proxy-actions"><button id="addProxyLine" class="add-line" type="button">+ 품목 추가</button></div><div id="proxyTotal" class="proxy-total">총 0품번 · 0죽 · 0원</div></section>
 <section class="proxy-card proxy-actions"><button id="submitProxyOrder" class="submit-proxy" type="button">대신 주문 접수</button><button type="button" onclick="location.href='admin-home.html'">관리자 메인으로</button></section>
 </main>
 <datalist id="proxyItemList"></datalist>
 <datalist id="proxyCustomerNameList"></datalist>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/ui-preferences.js?v=65310"></script><script src="js/admin-config.js?v=65310"></script><script src="js/proxy-order.js?v=65310"></script><script src="js/session-status.js?v=65310"></script><script src="js/version-badge.js?v=65310"></script><script src="js/admin-mobile-nav.js?v=65310"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=65320"></script><script src="js/ui-preferences.js?v=65320"></script><script src="js/admin-config.js?v=65320"></script><script src="js/proxy-order.js?v=65320"></script><script src="js/session-status.js?v=65320"></script><script src="js/version-badge.js?v=65320"></script><script src="js/admin-mobile-nav.js?v=65320"></script>
 </body></html>

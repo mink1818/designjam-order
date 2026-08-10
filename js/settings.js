@@ -136,13 +136,14 @@ async function loadAdminAccounts(){
   box.innerHTML=rows.length?rows.map(a=>{
     const name=a.business_name||a.owner_name||'관리자';
     const self=a.id===user?.id;
-    const role=a.admin_role==='developer_admin'?'개발관리자':'관리자';
+    const role=a.admin_role==='developer_admin'?'개발관리자':a.admin_role==='employee'?'직원':'관리자';
     const presence=statusOf(a);
-    return `<article class="admin-account-card" data-admin-id="${a.id}"><div><div class="admin-account-title"><strong>${esc(name)} ${self?'<small>(현재 로그인)</small>':''}</strong><span class="admin-presence ${presence.key}">● ${presence.label}</span></div><span>${esc(a.email||'-')} · <b>${role}</b> · ${a.blocked?'사용중지':'사용중'}</span><div class="admin-login-details"><span>최근 로그인: ${dateText(a.last_login_at)}</span><span>마지막 활동: ${dateText(a.admin_last_seen_at)}</span><span>접속 기기: ${esc(a.admin_device||'기록 없음')}</span><span>오늘 로그인: ${Number(a.today_login_count||0)}회</span></div></div><div class="admin-account-actions"><input type="password" minlength="8" data-admin-password="${a.id}" placeholder="새 비밀번호 8자리 이상"><button type="button" onclick="changeAdminPassword('${a.id}',this)">비밀번호 변경</button><select data-admin-role="${a.id}" onchange="changeAdminRole('${a.id}',this.value,this)"><option value="admin" ${a.admin_role!=='developer_admin'?'selected':''}>관리자</option><option value="developer_admin" ${a.admin_role==='developer_admin'?'selected':''}>개발관리자</option></select>${self?'':`<button type="button" class="${a.blocked?'safe':'danger'}" onclick="setAdminBlocked('${a.id}',${!a.blocked},this)">${a.blocked?'사용 재개':'사용중지'}</button>`}</div></article>`;
+    return `<article class="admin-account-card" data-admin-id="${a.id}"><div><div class="admin-account-title"><strong>${esc(name)} ${self?'<small>(현재 로그인)</small>':''}</strong><span class="admin-presence ${presence.key}">● ${presence.label}</span></div><span>${esc(a.email||'-')} · <b>${role}</b> · ${a.blocked?'사용중지':'사용중'}</span><div class="admin-login-details"><span>최근 로그인: ${dateText(a.last_login_at)}</span><span>마지막 활동: ${dateText(a.admin_last_seen_at)}</span><span>접속 기기: ${esc(a.admin_device||'기록 없음')}</span><span>오늘 로그인: ${Number(a.today_login_count||0)}회</span></div></div><div class="admin-account-actions"><input type="password" minlength="8" data-admin-password="${a.id}" placeholder="새 비밀번호 8자리 이상"><button type="button" onclick="changeAdminPassword('${a.id}',this)">비밀번호 변경</button><select data-admin-role="${a.id}" onchange="changeAdminRole('${a.id}',this.value,this)"><option value="employee" ${a.admin_role==='employee'?'selected':''}>직원</option><option value="admin" ${!['developer_admin','employee'].includes(a.admin_role)?'selected':''}>관리자</option><option value="developer_admin" ${a.admin_role==='developer_admin'?'selected':''}>개발관리자</option></select>${self?'':`<button type="button" class="${a.blocked?'safe':'danger'}" onclick="setAdminBlocked('${a.id}',${!a.blocked},this)">${a.blocked?'사용 재개':'사용중지'}</button>`}</div></article>`;
   }).join(''):'<p>등록된 관리자 계정이 없습니다.</p>';
 }
 
 async function createAdminAccount(){
+  try{await window.requireAdminSecurity?.('email');}catch(error){return alert(error.message||error);}
   const name=document.getElementById('newAdminName')?.value.trim()||'';
   const email=document.getElementById('newAdminEmail')?.value.trim()||'';
   const password=document.getElementById('newAdminPassword')?.value||'';
@@ -155,6 +156,7 @@ async function createAdminAccount(){
 }
 
 async function changeAdminPassword(id,button){
+  try{await window.requireAdminSecurity?.('email');}catch(error){return alert(error.message||error);}
   const input=document.querySelector(`[data-admin-password="${id}"]`);const password=input?.value||'';
   if(password.length<8)return alert('새 비밀번호를 8자리 이상 입력하세요.');
   if(!confirm('이 관리자의 비밀번호를 변경할까요?'))return;
@@ -165,6 +167,7 @@ async function changeAdminPassword(id,button){
 }
 
 async function setAdminBlocked(id,blocked,button){
+  try{await window.requireAdminSecurity?.('email');}catch(error){return alert(error.message||error);}
   if(!confirm(blocked?'이 관리자 계정을 사용중지할까요?':'이 관리자 계정을 다시 사용할 수 있게 할까요?'))return;
   button.disabled=true;
   try{await invokeAdminUserAction({action:'set_admin_blocked',target_id:id,blocked});await loadAdminAccounts();}
@@ -173,7 +176,8 @@ async function setAdminBlocked(id,blocked,button){
 
 
 async function changeAdminRole(id,role,select){
-  if(!confirm(`이 계정 권한을 ${role==='developer_admin'?'개발관리자':'관리자'}로 변경할까요?`)){loadAdminAccounts();return;}
+  try{await window.requireAdminSecurity?.('email');}catch(error){loadAdminAccounts();return alert(error.message||error);}
+  const label=role==='developer_admin'?'개발관리자':role==='employee'?'직원':'관리자';if(!confirm(`이 계정 권한을 ${label}로 변경할까요?`)){loadAdminAccounts();return;}
   select.disabled=true;
   try{await invokeAdminUserAction({action:'set_admin_role',target_id:id,role});await loadAdminAccounts();}
   catch(error){alert('권한 변경 실패: '+error.message);select.disabled=false;}

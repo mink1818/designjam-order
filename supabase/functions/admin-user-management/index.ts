@@ -50,6 +50,15 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
+    const protectedActions = new Set(["set_password", "create_admin", "set_admin_role", "set_admin_blocked"]);
+    if (protectedActions.has(action)) {
+      if (!isDeveloper) return json({ error: "이 작업은 개발관리자만 가능합니다." }, 403);
+      const { data: grant } = await admin.from("admin_security_grants").select("password_verified_until,email_verified_until").eq("user_id", caller.id).maybeSingle();
+      const now = Date.now();
+      if (!grant?.password_verified_until || new Date(grant.password_verified_until).getTime() < now || !grant?.email_verified_until || new Date(grant.email_verified_until).getTime() < now) {
+        return json({ error: "현재 비밀번호와 메일 인증을 먼저 완료하세요." }, 403);
+      }
+    }
 
     if (action === "set_password") {
       const targetId = String(body.target_id || "");
@@ -65,7 +74,7 @@ Deno.serve(async (req) => {
       const email = String(body.email || "").trim().toLowerCase();
       const password = String(body.password || "");
       const name = String(body.name || "").trim();
-      const role = body.role === "developer_admin" ? "developer_admin" : "admin";
+      const role = ["developer_admin", "admin", "employee"].includes(String(body.role)) ? String(body.role) : "admin";
       if (!isDeveloper) return json({ error: "개발관리자만 관리자 계정을 추가할 수 있습니다." }, 403);
       if (!/^\S+@\S+\.\S+$/.test(email)) return json({ error: "관리자 이메일을 정확히 입력하세요." }, 400);
       if (password.length < 8) return json({ error: "관리자 비밀번호는 8자리 이상이어야 합니다." }, 400);
@@ -100,10 +109,10 @@ Deno.serve(async (req) => {
     if (action === "set_admin_role") {
       if (!isDeveloper) return json({ error: "개발관리자만 권한을 변경할 수 있습니다." }, 403);
       const targetId = String(body.target_id || "");
-      const role = body.role === "developer_admin" ? "developer_admin" : "admin";
+      const role = ["developer_admin", "admin", "employee"].includes(String(body.role)) ? String(body.role) : "admin";
       if (!targetId) return json({ error: "대상 관리자가 없습니다." }, 400);
       if (targetId === caller.id && role !== "developer_admin") return json({ error: "현재 로그인한 개발관리자 본인의 권한은 낮출 수 없습니다." }, 400);
-      if (role === "admin") {
+      if (role !== "developer_admin") {
         const { count } = await admin.from("customers").select("id", { count: "exact", head: true }).eq("is_admin", true).eq("admin_role", "developer_admin").eq("blocked", false);
         const { data: target } = await admin.from("customers").select("admin_role").eq("id", targetId).maybeSingle();
         if (target?.admin_role === "developer_admin" && (count || 0) <= 1) return json({ error: "마지막 개발관리자는 일반 관리자로 변경할 수 없습니다." }, 400);
