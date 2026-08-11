@@ -763,6 +763,26 @@ button {
   background: #fff;
 }
 .completed-toolbar span { color: #64748b; font-size: 13px; }
+.customer-order-memo-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fff1bf;
+  color: #704c00;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.customer-order-memo {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #f0cf72;
+  border-radius: 11px;
+  background: #fff9e8;
+}
+.customer-order-memo p { margin: 6px 0 0; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .completed-toolbar { align-items: stretch; }
   .completed-toolbar label, .completed-toolbar select, .completed-toolbar span { width: 100%; }

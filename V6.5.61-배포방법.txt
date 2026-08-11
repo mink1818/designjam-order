@@ -1,8 +1,8 @@
-DESIGN SOCKS V6.5.61 배포
+DESIGN SOCKS V6.5.66 배포
 
-1. Supabase SQL Editor에서 SQL/V6.5.61-CUSTOMER-ORDER-CHANGE.sql을 먼저 실행합니다.
+1. Supabase SQL Editor에서 SQL/V6.5.66-CUSTOMER-ORDER-CHANGE.sql을 먼저 실행합니다.
 2. 프로젝트 전체 파일을 배포합니다.
-3. 모바일과 PC에서 새로고침한 뒤 화면 아래 버전이 V6.5.61인지 확인합니다.
+3. 모바일과 PC에서 새로고침한 뒤 화면 아래 버전이 V6.5.66인지 확인합니다.
 
 확인 항목
 - 거래처 주문: 출고완료 전 수정·삭제 가능, 출고완료 후 불가

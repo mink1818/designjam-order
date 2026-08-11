@@ -104,6 +104,8 @@ const requestedCustomerId = adminUrlParams.get("customer") || "";
 if (adminSearch && adminUrlParams.get("search")) adminSearch.value = adminUrlParams.get("search");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 if (adminCompletedPeriod && adminUrlParams.get("period")) adminCompletedPeriod.value = adminUrlParams.get("period");
+const adminCompletedSort = document.getElementById("adminCompletedSort");
+if (adminCompletedSort && adminUrlParams.get("sort")) adminCompletedSort.value = adminUrlParams.get("sort");
 
 let adminFilter = "주문접수";
 let adminPage = 1;
@@ -242,6 +244,7 @@ try {
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
     if(order.delivery_address&&!currentGroup.deliveryAddress)currentGroup.deliveryAddress=order.delivery_address;
+    if(order.memo&&!currentGroup.memo)currentGroup.memo=order.memo;
     currentGroup.completedAt=latestTimestamp(currentGroup.completedAt,order.shipped_at,order.picking_verified_at,order.created_at);
     currentGroup.items.push(order);
     if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[order.order_number].pickingStatus = order.picking_status;
@@ -283,6 +286,10 @@ try {
     })
     .sort((a, b) => {
       if (a.status === b.status) {
+        if (a.status === "출고완료") {
+          const direction = adminCompletedSort?.value === "shipped-asc" ? 1 : -1;
+          return direction * (new Date(a.completedAt || a.createdAt) - new Date(b.completedAt || b.createdAt));
+        }
         return new Date(b.createdAt) - new Date(a.createdAt);
       }
 
@@ -343,6 +350,15 @@ function formatOrderDate(value) {
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("ko-KR", {
     year: "numeric", month: "2-digit", day: "2-digit"
+  });
+}
+
+function formatCompletedDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "출고시간 미기록";
+  return date.toLocaleString("ko-KR", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
   });
 }
 
@@ -554,13 +570,13 @@ summaryTotal += Number(group.shipping_fee || 0);
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}" data-revision-status="${escapeAdminAttr(group.revisionStatus||'')}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${group.memo?'<small class="customer-order-memo-badge">📝 메모</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
     <p class="order-delivery-preview"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}</p>
-    <p class="order-summary-number">${formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
+    <p class="order-summary-number">${isDone ? `출고 ${formatCompletedDateTime(group.completedAt)}` : formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
   <div class="mobile-order-summary" aria-label="주문 요약">
-    <span class="mobile-order-date">${formatMobileOrderDate(group.createdAt)}</span>
+    <span class="mobile-order-date">${isDone ? `출고 ${formatMobileOrderDate(group.completedAt)}` : formatMobileOrderDate(group.createdAt)}</span>
     <strong class="mobile-order-qty">${summaryQty}죽</strong>
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
   </div>
@@ -583,6 +599,7 @@ class="order-detail">
         ${renderOrderItemEditor(group, index)}
 
         <div class="order-party-summary"><p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}</div>
+        ${group.memo ? `<div class="customer-order-memo"><strong>거래처 주문메모</strong><p>${escapeAdminHtml(group.memo).replaceAll("\n", "<br>")}</p></div>` : ""}
         <div class="order-copy-all-row"><span class="copy-button-pair"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event,'kakao')">S·B·I 카톡용 전체복사</button><button type="button" class="warehouse-copy-button all-warehouse-copy-button excel-copy-button" onclick="copyAllWarehouseOrders(this,event,'excel')">S·B·I 엑셀용 전체복사</button><button type="button" class="warehouse-copy-button" onclick="copyOrderDetails(this,event,'kakao')">품번·수량·단가 카톡복사</button><button type="button" class="warehouse-copy-button excel-copy-button" onclick="copyOrderDetails(this,event,'excel')">품번·수량·단가 엑셀복사</button></span><small>상세복사는 품번·출고수량·1죽 단가·금액을 함께 복사합니다.</small></div>
         <div class="pick-list">
           ${itemHtml}
@@ -1068,7 +1085,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65650','js/admin-mobile-nav.js?v=65650'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65660','js/admin-mobile-nav.js?v=65660'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

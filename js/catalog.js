@@ -200,9 +200,21 @@ function clearSavedCart() {
 
 function getCartItemImage(item) {
   if (item.imageUrl) return item.imageUrl;
-  const group = groups.find(groupItem =>
+  let group = groups.find(groupItem =>
     Number(groupItem.id) === Number(item.groupId)
   );
+  if (!group) {
+    const itemKey = customerPriceKey(item.number);
+    const warehouseCode = inferCartWarehouseCode(item);
+    group = groups.find(groupItem => {
+      const groupWarehouse = String(groupItem.warehouse_code || "").trim().toUpperCase();
+      if (warehouseCode && groupWarehouse && warehouseCode !== groupWarehouse) return false;
+      const numbers = Array.isArray(groupItem.item_numbers)
+        ? groupItem.item_numbers
+        : String(groupItem.item_numbers || "").split(/[,\s/]+/);
+      return numbers.some(number => customerPriceKey(number) === itemKey);
+    });
+  }
   return group?.image_url || "";
 }
 
