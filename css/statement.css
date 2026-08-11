@@ -616,3 +616,4 @@ body {
   }
 }
 .soldout-mark{display:inline-block;margin-left:5px;padding:2px 6px;border-radius:999px;background:#fff1d6;color:#8a4b00;font-size:11px;font-weight:900}.soldout-row{background:#fffaf0}.soldout-row td{color:#6b4a16}
+.statement-manual-memo{margin-top:18px;padding:13px 15px;border:1px solid #94a3b8;border-radius:8px;background:#fff}.statement-manual-memo strong{display:block;margin-bottom:7px}.statement-manual-memo [contenteditable=true]{min-height:54px;padding:8px;border:1px dashed #94a3b8;border-radius:6px;white-space:pre-wrap}.statement-manual-memo [contenteditable=true]:empty:before{content:attr(data-placeholder);color:#94a3b8}.statement-manual-memo [contenteditable=true]:focus{outline:2px solid #2563eb;border-color:transparent}@media print{.statement-manual-memo [contenteditable=true]{border:0;padding:0}}

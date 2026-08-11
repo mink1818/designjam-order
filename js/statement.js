@@ -174,7 +174,8 @@ function renderStatement(items, productGroups = []) {
     row.shippedQty += shippedQty;
     row.soldoutQty += soldoutQty;
     row.rowTotal += price * shippedQty;
-    const displayNumber = String(item.item_number || '').replace(/^[SBI]-/i,'');
+    const cleanNumber = String(item.item_number || '').trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i,'');
+    const displayNumber = /A$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 아동`:/M$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 무지`:cleanNumber;
     row.itemNumbers.push(`${displayNumber}-(${orderedQty})${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
   const itemRows = [...compactRows.values()].map((row, index) => {
@@ -281,6 +282,11 @@ function renderStatement(items, productGroups = []) {
           <strong>${finalTotal.toLocaleString()}원</strong>
         </div>
       </section>
+    </section>
+
+    <section class="statement-manual-memo">
+      <strong>수기메모</strong>
+      <div contenteditable="true" role="textbox" aria-label="수기메모" data-placeholder="거래명세서에 추가할 내용을 직접 입력하세요."></div>
     </section>
 
     <footer class="statement-footer">

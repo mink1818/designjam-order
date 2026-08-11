@@ -407,9 +407,11 @@ function fallbackCopyWithoutJump(text) {
 }
 
 function formatOrderCopyRows(rows,mode='excel'){
-  if(mode==='kakao')return rows.map(row=>`${row.dataset.copyItem}            ${row.dataset.copyQty}`).join('\n');
-  return rows.map(row=>`${row.dataset.copyItem}\t${row.dataset.copyQty}`).join('\n');
+  if(mode==='kakao')return rows.map(row=>`${formatCopiedItemNumber(row.dataset.copyItem)}            ${row.dataset.copyQty}`).join('\n');
+  return rows.map(row=>`${formatCopiedItemNumber(row.dataset.copyItem)}\t${row.dataset.copyQty}`).join('\n');
 }
+
+function formatCopiedItemNumber(value){const clean=String(value||'').trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i,'');if(/A$/i.test(clean))return`${clean.slice(0,-1)} 아동`;if(/M$/i.test(clean))return`${clean.slice(0,-1)} 무지`;return clean}
 
 async function copyWarehouseOrder(button, event, mode='excel') {
   event?.preventDefault();
@@ -452,7 +454,7 @@ async function copyAllWarehouseOrders(button, event, mode='excel') {
 
 async function copyOrderDetails(button,event,mode='excel'){
  event?.preventDefault();event?.stopPropagation();const card=button.closest('.order-card');if(!card)return;
- const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map(row=>({item:row.dataset.copyItem,qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0)}));
+ const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map(row=>({item:formatCopiedItemNumber(row.dataset.copyItem),qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0)}));
  if(!rows.length)return alert('복사할 주문 품목이 없습니다.');
  const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
  try{if(!navigator.clipboard?.writeText)throw new Error();await navigator.clipboard.writeText(text)}catch(_){if(!fallbackCopyWithoutJump(text))return alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.')}
@@ -1032,7 +1034,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65560','js/admin-mobile-nav.js?v=65560'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65570','js/admin-mobile-nav.js?v=65570'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

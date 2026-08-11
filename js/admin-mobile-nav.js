@@ -20,7 +20,7 @@
       ['forward', '#forward', '→', '앞으로'],
       ['home', 'admin-home.html', '🏠', '홈'],
       ['orders', 'admin.html?view=orders', '📦', '주문'],
-      ['menu', 'admin-home.html#menu', '☰', '전체메뉴']
+      ['proxy', 'proxy-order.html', '🛒', '대신주문']
     ];
     const nav = document.createElement('nav');
     nav.id = 'adminMobileBottomNav';
