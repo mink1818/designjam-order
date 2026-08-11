@@ -1,0 +1,16 @@
+디자인 삭스 V6.5.69 배포 방법
+
+1. 먼저 Supabase SQL Editor에서 아래 파일 전체를 실행하세요.
+
+SQL/V6.5.69-PROXY-PARTY-DESTINATIONS.sql
+
+이 SQL은 관리자 대신주문의 통합 거래처·납품처 저장목록만 추가합니다.
+상품 단가, 거래처별 단가, 기존 주문의 단가와 금액은 변경하지 않습니다.
+
+2. SQL 실행 성공 후 프로젝트 폴더 터미널에서 아래 명령을 실행하세요.
+
+git add .
+git commit -m "release v6.5.69 unified proxy customer destination management"
+git push
+
+3. Vercel 자동 배포 완료 후 PC와 모바일 브라우저를 완전히 닫았다가 다시 열어주세요.

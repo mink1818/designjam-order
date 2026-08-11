@@ -339,7 +339,7 @@ async function deletePendingOrder(orderNumber, editing=false){
   const {error}=editing
     ? await supabaseClient.rpc('customer_begin_order_revision',{p_order_number:orderNumber})
     : await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:'삭제'});
-  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 ${editing?'V6.5.63':'수정된 V6.5.68'} SQL을 먼저 실행해주세요.`);
+  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 ${editing?'V6.5.63':'수정된 V6.5.69'} SQL을 먼저 실행해주세요.`);
   if(editing){const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;let continuing=false;try{continuing=JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber}catch(_){}if(!continuing)localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));const deliveryDraft={deliveryName:group.deliveryName||group.customerName||'',deliveryPhone:group.deliveryPhone||'',deliveryAddress:group.deliveryAddress||''};localStorage.setItem('designjam_customer_bulk_delivery_draft',JSON.stringify(deliveryDraft));localStorage.setItem(revisionKey,JSON.stringify({orderNumber,startedAt:new Date().toISOString(),...deliveryDraft}));}
   if(editing)location.href='catalog.html';else{const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;try{if(JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber)localStorage.removeItem(revisionKey)}catch(_){}await loadMyOrders()}
 }
