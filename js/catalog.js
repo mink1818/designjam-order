@@ -1532,6 +1532,19 @@ const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
 let pendingCustomerBulkAnalysis = null;
+window.addEventListener("pagehide", () => {
+  localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
+  const input = document.getElementById("customerBulkOrderInput");
+  if (input) input.value = "";
+  pendingCustomerBulkAnalysis = null;
+});
+window.addEventListener("pageshow", event => {
+  if (!event.persisted) return;
+  const input = document.getElementById("customerBulkOrderInput");
+  if (input) input.value = "";
+  localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
+  pendingCustomerBulkAnalysis = null;
+});
 
 function normalizeBulkItemNumber(value) {
   return String(value ?? "").trim().normalize("NFKC").toUpperCase();
@@ -1843,11 +1856,12 @@ function renderCustomerBulkOrder() {
   currentScreen = "bulk-order";
   showSearch(false);
   hideLegacyFilters();
-  const draft = localStorage.getItem(CUSTOMER_BULK_ORDER_DRAFT_KEY) || "";
+  localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
+  const draft = "";
   catalogList.innerHTML = `
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
-      <p>문자·카톡 주문 내용을 붙여넣으면 품번·수량과 납품처 정보를 한 번에 입력할 수 있습니다.</p>
+      <p>카톡 주문·문자 주문 등을 복사해서 그대로 붙여넣어도 인식됩니다. 직접 수기입력도 가능합니다.</p>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="[세로형 예시]\n주문\n4022-1\n4122-1\n694-3\n받는 사람 박하늘 010-0000-0000\n서울시 행복구 새봄로 12 가상빌딩 301호\n보내는 사람 새봄상회 010-1111-1111\n\n[가로형 예시]\n주문 4022-1 4122-1 694-3 · 받는 사람 박하늘 010-0000-0000 서울시 행복구 새봄로 12 가상빌딩 301호 · 보내는 사람 새봄상회 010-1111-1111">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help"><b>안내:</b> 주소 입력은 자동 인식 기능이므로 형식에 따라 정확히 구분되지 않을 수 있습니다. 주소가 잘못 인식되면 품번·수량만 입력한 뒤 주문 화면에서 납품처를 선택해 주세요.</p>
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
@@ -1862,7 +1876,7 @@ function renderCustomerBulkOrder() {
       </div>
     </div>`;
   const input = document.getElementById("customerBulkOrderInput");
-  input?.addEventListener("input", () => { localStorage.setItem(CUSTOMER_BULK_ORDER_DRAFT_KEY, input.value); pendingCustomerBulkAnalysis = null; document.getElementById("customerBulkOrderAnalysis").hidden = true; document.getElementById("confirmCustomerBulkOrder").hidden = true; });
+  input?.addEventListener("input", () => { pendingCustomerBulkAnalysis = null; document.getElementById("customerBulkOrderAnalysis").hidden = true; document.getElementById("confirmCustomerBulkOrder").hidden = true; });
   requestAnimationFrame(() => input?.focus());
 }
 

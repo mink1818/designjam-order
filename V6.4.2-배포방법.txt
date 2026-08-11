@@ -1,0 +1,20 @@
+DESIGN SOCKS V6.4.2 배포 방법
+
+1. Supabase SQL Editor에서 아래 파일의 전체 내용을 실행하세요.
+   SQL/V6.4.2-ADMIN-ORDER-ITEM-EDIT.sql
+
+2. 프로젝트 파일을 V6.4.2 파일로 교체하세요.
+
+3. VS Code 터미널, PowerShell 또는 CMD에서 아래 명령을 순서대로 실행하세요.
+
+git add .
+git commit -m "fix v6.4.2 visible admin order edit button"
+git push
+
+4. Vercel 배포 완료 후 브라우저에서 Ctrl + F5를 누르세요.
+   모바일은 PWA를 완전히 종료한 후 다시 실행하세요.
+
+필수 여부
+- SQL 실행: 필요
+- Supabase Function 재배포: 불필요
+- Git Push: 필요

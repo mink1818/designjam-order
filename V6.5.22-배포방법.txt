@@ -1,0 +1,26 @@
+DESIGN SOCKS V6.5.24 배포 안내
+
+[수정 내용]
+- 주문 접수 시 확정된 거래처별 단가를 피킹 이후에도 그대로 유지
+- 피킹수량, 품절, 최종검증, 출고 상태 갱신 시 orders.price 및 orders.total 변경 차단
+- 과거 단가 트리거를 제거하고 신규 주문 INSERT 시에만 전용단가 적용
+- 거래처 화면, 관리자 주문관리, 피킹결과, 거래명세서가 모두 저장된 주문단가 사용
+
+[필수 SQL]
+Supabase SQL Editor에서 아래 파일을 전체 실행하세요.
+SQL/V6.5.24-ORDER-PRICE-LOCK.sql
+
+[배포]
+git add .
+git commit -m "release v6.5.24 lock order price after picking"
+git push
+
+[불필요]
+- Supabase Function 재배포 불필요
+- 엑셀 단가표 재등록 불필요
+
+배포 후 Ctrl+F5로 새로고침하세요.
+
+[이미 가격이 바뀐 주문]
+보호 SQL은 앞으로의 변동을 차단합니다. 이미 바뀐 주문은 원래 주문단가를 확인한 뒤
+주문관리에서 피킹 초기화 -> 수정 기능으로 단가를 1회 바로잡고 다시 피킹해주세요.

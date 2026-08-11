@@ -1,0 +1,26 @@
+DESIGN SOCKS V6.5.3 배포 방법
+
+1. V6.5.2 SQL을 아직 실행하지 않았다면 Supabase SQL Editor에서 아래 파일 전체 실행
+SQL/V6.5.2-CUSTOMER-PRICE-PICKING-RESULT.sql
+
+2. Git 배포
+git add .
+git commit -m "release v6.5.3 customer-specific price import fix"
+git push
+
+3. Vercel 배포 완료 후 Ctrl+F5
+
+4. 관리자 상품관리에서 아래 엑셀을 다시 업로드하고 실제 적용
+디자인삭스 품번등록 및 거래처별단가 양식 수정본 (1).xlsx
+
+5. 적용 결과 확인
+- 거래처별 단가: 0개가 아니어야 함
+- 단가 연결 거래처: 등록한 거래처 수가 표시되어야 함
+- 등록 거래처 선택으로 대신주문 테스트
+- 전용단가 거래처는 전용단가, 미등록 거래처는 기본단가 표시 확인
+
+배포 체크
+- SQL 실행: V6.5.2 SQL을 이미 실행했으면 불필요
+- Supabase Functions 재배포: 불필요
+- Git Push: 필요
+- 거래처별 단가 엑셀 재업로드: 반드시 필요

@@ -1,0 +1,25 @@
+DESIGN SOCKS V6.4.9 배포 방법
+
+필수 SQL
+SQL/V6.4.9-CUSTOMER-FACTORY-PRICE-STABILIZATION.sql
+
+주요 적용
+- 거래처 모바일 하단 뒤로·앞으로 이동
+- 장바구니 화면에서 장바구니 버튼을 다시 누르면 이전 카테고리 복귀
+- 일부품절 출고수량 기준 상품금액·최종금액 계산
+- 관리자 대신주문 공백·쉼표·점·슬래시·콜론·하이픈 수량 구분
+- 피킹 결과 확인 화면 고정 및 완료 상태 편집 차단
+- 관리자 주문카드 S/B/I 출고지별 상품 합계
+- S/B/I 복사 형식: 품번과 수량 사이 공백 2칸
+- 공장 전체 품번 검색·직접 추가·수량수정·임시 자동저장
+- 일반주문·대신주문 거래처별 전용단가 서버 강제 적용
+- 거래명세서 장문 고해상도 페이지 분할 ZIP 저장
+
+터미널
+git add .
+git commit -m "release v6.4.9 customer factory price and statement stabilization"
+git push
+
+SQL 실행: 필요
+Supabase Functions 재배포: 불필요
+배포 후 Ctrl + F5로 새로고침하세요.

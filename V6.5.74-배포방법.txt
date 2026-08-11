@@ -1,0 +1,7 @@
+디자인 삭스 V6.5.74 배포
+
+추가 SQL 실행은 필요 없습니다.
+
+git add .
+git commit -m "release v6.5.74 stronger smart paste parsing"
+git push

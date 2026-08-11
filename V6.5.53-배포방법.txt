@@ -1,0 +1,22 @@
+DESIGN SOCKS V6.5.53 배포 방법
+
+적용 내용
+- 붙여넣은 납품처 정보가 저장 목록과 같으면 기존 납품처 자동 선택
+- 새로운 납품처면 해당 주문 완료 후 납품처 목록에 저장
+- 관리자 대신주문도 동일하게 동작
+- 거래처명과 납품처명 초성 검색 지원
+- 거래처별 단가 및 가격 계산 코드는 변경하지 않음
+
+1. Supabase SQL Editor에서 다음 파일 전체 실행
+   SQL/V6.5.53-DELIVERY-AUTO-MATCH.sql
+
+2. 터미널에서 배포
+   git add .
+   git commit -m "release v6.5.53 delivery auto match and chosung search"
+   git push
+
+3. 배포 완료 후 브라우저에서 Ctrl + F5
+
+SQL 실행: 필요
+Supabase Function 재배포: 불필요
+Git Push: 필요

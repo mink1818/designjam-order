@@ -1,0 +1,18 @@
+DESIGN SOCKS V6.5.65 배포
+
+[Supabase SQL Editor]
+1. 아직 성공하지 않았다면 SQL/V6.5.63-ORDER-REVISION-SHIPPED-AT.sql 실행
+2. SQL/V6.5.65-DELETED-HISTORY.sql 실행
+
+[VS Code 터미널 복사·붙여넣기]
+git add .
+git commit -m "release v6.5.65 warehouse search history presence fixes"
+git push
+
+[배포 후 확인]
+- 주문수정 주소 유지 및 기존·추가 품번 S/B/I 출고지
+- 대신주문 거래처명·초성 실시간 검색 선택
+- 주문관리 거래처 초성 검색
+- 삭제주문 이력 기간 조회 및 개별 영구삭제
+- 거래처 온라인·오프라인 30초 갱신
+- 저장 납품처 선택 버튼과 거래명세서 단가 정렬
