@@ -1724,34 +1724,44 @@ function normalizeCustomerSmartPhone(value) {
 }
 
 function customerSmartPersonSection(text, label, nextLabel = "") {
-  const source = String(text || "").replace(/\r?\n/g, " ");
+  const source = String(text || "").replace(/\r/g, "");
   const start = source.search(new RegExp(label + "\\s*[:：]?", "i"));
   if (start < 0) return {};
-  const after = source.slice(start).replace(new RegExp("^" + label + "\\s*[:：]?", "i"), "").trim();
+  const after = source.slice(start).replace(new RegExp("^[ㆍ·●○◆◇▪■□★☆*\\s]*" + label + "\\s*[:：]?", "i"), "");
   const end = nextLabel ? after.search(new RegExp(nextLabel + "\\s*[:：]?", "i")) : -1;
   const section = (end >= 0 ? after.slice(0, end) : after).trim();
   const phone = section.match(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/);
-  if (!phone) return { deliveryName: section.replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g, "") };
+  if (!phone) return { deliveryName: section.replace(/^[ㆍ·●○◆◇▪■□★☆*\s]+|[ㆍ·●○◆◇▪■□★☆*\s]+$/g, "") };
+  const before = section.slice(0, phone.index).replace(/^[ㆍ·●○◆◇▪■□★☆*\s]+|[ㆍ·●○◆◇▪■□★☆*\s]+$/g, "").trim();
+  let tail = section.slice(phone.index + phone[0].length).replace(/^[ㆍ·●○◆◇▪■□★☆*,; \t]+/, "");
+  const blankBreak = tail.search(/\n\s*\n/);
+  const memoLabel = tail.search(/(?:메모|요청사항|배송메모)\s*[:：]?/i);
+  const memoPhrase = tail.search(/(?:문\s*앞|문앞|경비실|부재\s*시|놓아\s*주세요|연락\s*(?:바랍니다|주세요)|배송\s*요청)/i);
+  const splitAt = [blankBreak, memoLabel, memoPhrase].filter(index => index >= 0).sort((a,b) => a-b)[0];
+  let address = Number.isInteger(splitAt) ? tail.slice(0, splitAt) : tail;
+  let memo = Number.isInteger(splitAt) ? tail.slice(splitAt).replace(/^[\sㆍ·|]*(?:메모|요청사항|배송메모)?\s*[:：]?\s*/i, "") : "";
+  const clean = value => String(value || "").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, " ").replace(/^[ㆍ·●○◆◇▪■□★☆*\s]+|[ㆍ·●○◆◇▪■□★☆*~\s]+$/g, "").trim();
   return {
-    deliveryName: section.slice(0, phone.index).replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g, "").trim(),
+    deliveryName: clean(before.split(/\n/).filter(Boolean).pop() || before),
     deliveryPhone: normalizeCustomerSmartPhone(phone[0]),
-    deliveryAddress: section.slice(phone.index + phone[0].length).replace(/^[ㆍ·●,;\s]+|[ㆍ·●,;\s]+$/g, "").trim()
+    deliveryAddress: clean(address),
+    memo: clean(memo)
   };
 }
 
 function parseCustomerSmartItems(text, index = getBulkOrderItemIndex()) {
   let orderText = String(text || "");
-  const receiverIndex = orderText.search(/받는\s*사람/i);
+  const receiverIndex = orderText.search(/(?:받는\s*사람|받는\s*분|수령인|수취인|배송받는\s*분)/i);
   if (receiverIndex >= 0) orderText = orderText.slice(0, receiverIndex);
   orderText = orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g, " ");
-  const tokens = orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*[-:/.]\s*\d+\s*(?:죽|족)?)?/gi) || [];
+  const tokens = orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*\d+\s*(?:죽|족)?)?/gi) || [];
   const rows = [];
   tokens.forEach(raw => {
     let token = raw.trim().replace(/\s*(?:죽|족)$/i, "");
     let qty = 1;
     const exact = index.find(row => row.normalized === normalizeBulkItemNumber(token));
     if (!exact) {
-      const quantity = token.match(/^(.+?)\s*[-:/.]\s*(\d+)$/);
+      const quantity = token.match(/^(.+?)\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*(\d+)$/i);
       if (quantity) { token = quantity[1].trim(); qty = Math.max(1, Number(quantity[2])); }
     }
     expandBulkOrderRange(token).forEach(number => {
@@ -1763,8 +1773,10 @@ function parseCustomerSmartItems(text, index = getBulkOrderItemIndex()) {
 
 function analyzeCustomerBulkPaste(text) {
   const source = String(text || "").normalize("NFKC");
-  const receiver = customerSmartPersonSection(source, "받는\\s*사람", "보내는\\s*사람");
-  const legacy = parseCustomerBulkDelivery(source);
+  const receiverLabel = "(?:받는\\s*사람|받는\\s*분|수령인|수취인|배송받는\\s*분)";
+  const senderLabel = "(?:보내는\\s*사람|보내는\\s*분|발송인|주문자)";
+  const receiver = customerSmartPersonSection(source, receiverLabel, senderLabel);
+  const legacy = Object.keys(receiver).length ? {} : parseCustomerBulkDelivery(source);
   const lineRows = parseCustomerBulkOrder(source);
   return { rows: lineRows.length ? lineRows : parseCustomerSmartItems(source), delivery: { ...legacy, ...Object.fromEntries(Object.entries(receiver).filter(([,value]) => value)) } };
 }
@@ -1836,13 +1848,7 @@ function renderCustomerBulkOrder() {
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
       <p>문자·카톡 주문 내용을 붙여넣으면 품번·수량과 납품처 정보를 한 번에 입력할 수 있습니다.</p>
-      <div class="customer-bulk-order-guide">
-        <strong>세로형 예시</strong>
-        <div class="customer-bulk-order-example"><span>세로</span><code>주문<br>4022-1<br>4122-1<br>694-3<br><br>받는 사람<br>박하늘 010-0000-0000<br>서울시 행복구 새봄로 12<br>가상빌딩 301호<br><br>보내는 사람<br>새봄상회 010-1111-1111</code></div>
-        <strong class="customer-bulk-example-title">가로형 예시</strong>
-        <div class="customer-bulk-order-example"><span>가로</span><code>주문 4022-1 4122-1 694-3 · 받는 사람 박하늘 010-0000-0000 서울시 행복구 새봄로 12 가상빌딩 301호 · 보내는 사람 새봄상회 010-1111-1111</code></div>
-      </div>
-      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="세로 또는 가로로 복사한 카톡 주문을 붙여넣으세요.">${escapeHtml(draft)}</textarea>
+      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="10" placeholder="[세로형 예시]\n주문\n4022-1\n4122-1\n694-3\n받는 사람 박하늘 010-0000-0000\n서울시 행복구 새봄로 12 가상빌딩 301호\n보내는 사람 새봄상회 010-1111-1111\n\n[가로형 예시]\n주문 4022-1 4122-1 694-3 · 받는 사람 박하늘 010-0000-0000 서울시 행복구 새봄로 12 가상빌딩 301호 · 보내는 사람 새봄상회 010-1111-1111">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help"><b>안내:</b> 주소 입력은 자동 인식 기능이므로 형식에 따라 정확히 구분되지 않을 수 있습니다. 주소가 잘못 인식되면 품번·수량만 입력한 뒤 주문 화면에서 납품처를 선택해 주세요.</p>
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>

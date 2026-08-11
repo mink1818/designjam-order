@@ -183,27 +183,33 @@ function expandPastedItemRange(line){
 }
 function normalizeSmartPhone(value){const digits=String(value||'').replace(/\D/g,'');return digits.length===11?`${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`:digits.length===10?`${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6)}`:String(value||'').trim()}
 function smartPersonSection(text,label,nextLabel=''){
- const source=String(text||'').replace(/\r?\n/g,' '),start=source.search(new RegExp(label+'\\s*[:：]?','i'));if(start<0)return{};
- const after=source.slice(start).replace(new RegExp('^'+label+'\\s*[:：]?','i'),'').trim(),end=nextLabel?after.search(new RegExp(nextLabel+'\\s*[:：]?','i')):-1,section=(end>=0?after.slice(0,end):after).trim();
- const phoneMatch=section.match(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/);if(!phoneMatch)return{name:section.replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g,'')};
- const before=section.slice(0,phoneMatch.index).replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g,'').trim(),afterPhone=section.slice(phoneMatch.index+phoneMatch[0].length).replace(/^[ㆍ·●,;\s]+|[ㆍ·●,;\s]+$/g,'').trim();
- return{name:before,phone:normalizeSmartPhone(phoneMatch[0]),address:afterPhone};
+ const source=String(text||'').replace(/\r/g,''),labelRe=new RegExp(label+'\\s*[:：]?','i'),start=source.search(labelRe);if(start<0)return{};
+ const after=source.slice(start).replace(new RegExp('^[ㆍ·●○◆◇▪■□★☆*\\s]*'+label+'\\s*[:：]?','i'),'');
+ const end=nextLabel?after.search(new RegExp(nextLabel+'\\s*[:：]?','i')):-1,section=(end>=0?after.slice(0,end):after).trim();
+ const phoneMatch=section.match(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/);if(!phoneMatch)return{name:section.replace(/^[ㆍ·●○◆◇▪■□★☆*\s]+|[ㆍ·●○◆◇▪■□★☆*\s]+$/g,'')};
+ const before=section.slice(0,phoneMatch.index).replace(/^[ㆍ·●○◆◇▪■□★☆*\s]+|[ㆍ·●○◆◇▪■□★☆*\s]+$/g,'').trim();
+ let tail=section.slice(phoneMatch.index+phoneMatch[0].length).replace(/^[ㆍ·●○◆◇▪■□★☆*,; \t]+/,'');let address='',memo='';
+ const blankBreak=tail.search(/\n\s*\n/),memoLabel=tail.search(/(?:메모|요청사항|배송메모)\s*[:：]?/i),memoPhrase=tail.search(/(?:문\s*앞|문앞|경비실|부재\s*시|놓아\s*주세요|연락\s*(?:바랍니다|주세요)|배송\s*요청)/i);
+ const splitAt=[blankBreak,memoLabel,memoPhrase].filter(index=>index>=0).sort((a,b)=>a-b)[0];
+ if(Number.isInteger(splitAt)){address=tail.slice(0,splitAt);memo=tail.slice(splitAt).replace(/^[\sㆍ·|]*(?:메모|요청사항|배송메모)?\s*[:：]?\s*/i,'')}else address=tail;
+ const clean=value=>String(value||'').replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,' ').replace(/^[ㆍ·●○◆◇▪■□★☆*\s]+|[ㆍ·●○◆◇▪■□★☆*~\s]+$/g,'').trim();
+ return{name:clean(before.split(/\n/).filter(Boolean).pop()||before),phone:normalizeSmartPhone(phoneMatch[0]),address:clean(address),memo:clean(memo)};
 }
 function exactProxyRegistered(value){const key=priceKey(value);return items.find(row=>priceKey(row.item_number)===key)||null}
 function smartProxyItems(text){
- let orderText=String(text||'');const receiverIndex=orderText.search(/받는\s*사람/i);if(receiverIndex>=0)orderText=orderText.slice(0,receiverIndex);orderText=orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g,' ');
- const tokens=orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*[-:/.]\s*\d+\s*(?:죽|족)?)?/gi)||[],out=[];
- tokens.forEach(raw=>{let token=raw.trim().replace(/\s*(?:죽|족)$/i,''),qty=1;const exact=exactProxyRegistered(token);if(!exact){const quantity=token.match(/^(.+?)\s*[-:/.]\s*(\d+)$/);if(quantity){token=quantity[1].trim();qty=Math.max(1,Number(quantity[2]))}}const range=expandPastedItemRange(token);if(range.length)range.forEach(item=>out.push({item,qty}));else if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(token)))out.push({item:token,qty})});return out;
+ let orderText=String(text||'');const receiverIndex=orderText.search(/(?:받는\s*사람|받는\s*분|수령인|수취인|배송받는\s*분)/i);if(receiverIndex>=0)orderText=orderText.slice(0,receiverIndex);orderText=orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g,' ');
+ const tokens=orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*\d+\s*(?:죽|족)?)?/gi)||[],out=[];
+ tokens.forEach(raw=>{let token=raw.trim().replace(/\s*(?:죽|족)$/i,''),qty=1;const exact=exactProxyRegistered(token);if(!exact){const quantity=token.match(/^(.+?)\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*(\d+)$/i);if(quantity){token=quantity[1].trim();qty=Math.max(1,Number(quantity[2]))}}const range=expandPastedItemRange(token);if(range.length)range.forEach(item=>out.push({item,qty}));else if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(token)))out.push({item:token,qty})});return out;
 }
 function analyzeProxyPaste(text){
- const source=String(text||'').normalize('NFKC'),receiver=smartPersonSection(source,'받는\\s*사람','보내는\\s*사람'),sender=smartPersonSection(source,'보내는\\s*사람'),fields={customer:sender.name||'',delivery:receiver.name||'',phone:receiver.phone||'',address:receiver.address||'',memo:''};
+ const source=String(text||'').normalize('NFKC'),receiverLabel='(?:받는\\s*사람|받는\\s*분|수령인|수취인|배송받는\\s*분)',senderLabel='(?:보내는\\s*사람|보내는\\s*분|발송인|주문자)',receiver=smartPersonSection(source,receiverLabel,senderLabel),sender=smartPersonSection(source,senderLabel),fields={customer:sender.name||'',delivery:receiver.name||'',phone:receiver.phone||'',address:receiver.address||'',memo:receiver.memo||''};
  const labels=[['customer',/(?:거래처명?|업체명?)\s*[:：]\s*([^\n;|]+)/i],['delivery',/(?:납품처명?|배송처명?)\s*[:：]\s*([^\n;|]+)/i],['phone',/(?:연락처|전화(?:번호)?)\s*[:：]\s*([^\n;|]+)/i],['address',/(?:주소|납품주소|배송주소)\s*[:：]\s*([^\n;|]+)/i],['memo',/(?:메모|요청사항)\s*[:：]\s*([^\n;|]+)/i]];
  labels.forEach(([key,re])=>{const match=source.match(re);if(match)fields[key]=match[1].trim()});const lineItems=[];source.split(/\r?\n/).forEach(line=>{const range=expandPastedItemRange(line);if(range.length)return range.forEach(item=>lineItems.push({item,qty:1}));const parsed=parsePastedItemLine(line);if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(parsed.item)))lineItems.push(parsed)});return{fields,items:lineItems.length?lineItems:smartProxyItems(source)};
 }
 function renderProxyPasteAnalysis(){
  const text=String($('proxyPasteInput')?.value||'').trim();if(!text)return alert('붙여넣을 주문정보를 입력하세요.');pendingProxyPasteAnalysis=analyzeProxyPaste(text);const {fields,items:rows}=pendingProxyPasteAnalysis,box=$('proxyPasteAnalysis');
- const option=(key,label,value,wide='')=>`<label class="${wide}"><input type="checkbox" data-smart-field="${key}" ${value?'checked':''} ${value?'':'disabled'}><span><b>${label}</b><br>${esc(value||'인식 안 됨')}</span></label>`;
- box.innerHTML=`<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="smart-paste-options">${option('items','품번·수량',rows.map(row=>`${row.item} ${row.qty}죽`).join(', '),'smart-paste-items')}${option('customer','거래처명',fields.customer)}${option('delivery','실제 납품처명',fields.delivery)}${option('phone','납품처 연락처',fields.phone)}${option('address','납품처 주소',fields.address)}${option('memo','메모',fields.memo)}</div>${rows.length?'':'<p class="smart-paste-warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;box.hidden=false;$('confirmProxyPaste').hidden=false;$('proxyPasteResult').textContent='분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.';
+ const option=(key,label,value,wide='',defaultChecked=false)=>`<label class="${wide}"><input type="checkbox" data-smart-field="${key}" ${value&&defaultChecked?'checked':''} ${value?'':'disabled'}><span><b>${label}</b><br>${esc(value||'인식 안 됨')}</span></label>`;
+ box.innerHTML=`<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="smart-paste-options">${option('items','품번·수량',rows.map(row=>`${row.item} ${row.qty}죽`).join(', '),'smart-paste-items',true)}${option('customer','거래처명',fields.customer,'',true)}${option('delivery','실제 납품처명',fields.delivery,'',true)}${option('phone','납품처 연락처',fields.phone)}${option('address','납품처 주소',fields.address)}${option('memo','메모',fields.memo)}</div>${rows.length?'':'<p class="smart-paste-warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;box.hidden=false;$('confirmProxyPaste').hidden=false;$('proxyPasteResult').textContent='분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.';
 }
 async function applyPastedOrder(event){
  if(event?.currentTarget?.id==='applyProxyPaste'||!pendingProxyPasteAnalysis)return renderProxyPasteAnalysis();const checked=key=>Boolean($('proxyPasteAnalysis')?.querySelector(`[data-smart-field="${key}"]:checked`)),fields=pendingProxyPasteAnalysis.fields,raw=checked('items')?pendingProxyPasteAnalysis.items:[],merged=new Map(),unmatched=[];
