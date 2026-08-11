@@ -106,7 +106,11 @@ async function loadMyOrders() {
         items: []
       };
     }
-    grouped[order.order_number].items.push(order);
+    const currentGroup=grouped[order.order_number];
+    if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
+    if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
+    if(order.delivery_address&&!currentGroup.deliveryAddress)currentGroup.deliveryAddress=order.delivery_address;
+    currentGroup.items.push(order);
 
     if (order.status === "출고완료") {
       grouped[order.order_number].status = "출고완료";
