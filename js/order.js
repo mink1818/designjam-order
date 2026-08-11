@@ -163,16 +163,20 @@ function getOrderSummary(group) {
   let qtyTotal = 0;
   let productTotal = 0;
   const itemRows = group.items.map(item => {
-    const isSoldout = item.is_soldout;
-    const rowTotal = item.price * item.qty;
-    if (!isSoldout) {
-      qtyTotal += item.qty;
-      productTotal += rowTotal;
-    }
-    return `<div class="cart-item ${isSoldout ? "soldout-item" : ""}">
-      <strong>${escapeHtml(String(item.item_number||'').replace(/^[SBI]-/i,''))}${isSoldout ? " 품절" : ""}</strong>
-      <span>${item.qty}죽 · 단가 ${Number(item.price||0).toLocaleString()}원 / 1죽</span>
-      <span>${isSoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
+    const orderedQty = Math.max(0, Number(item.qty || 0));
+    const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
+    const shippedQty = Math.max(0, orderedQty - soldoutQty);
+    const isFullySoldout = orderedQty > 0 && shippedQty === 0;
+    const isPartiallySoldout = soldoutQty > 0 && shippedQty > 0;
+    const unitPrice = Number(item.price || 0);
+    const rowTotal = unitPrice * shippedQty;
+    qtyTotal += shippedQty;
+    productTotal += rowTotal;
+    const soldoutLabel = isFullySoldout ? "전체품절" : isPartiallySoldout ? `일부품절 ${soldoutQty}죽` : "";
+    return `<div class="cart-item ${isFullySoldout ? "soldout-item" : isPartiallySoldout ? "partial-soldout-item" : ""}">
+      <strong>${escapeHtml(String(item.item_number||'').replace(/^[SBI]-/i,''))}${soldoutLabel ? ` <small class="customer-soldout-label">${soldoutLabel}</small>` : ""}</strong>
+      <span>${soldoutQty > 0 ? `주문 ${orderedQty}죽 · 출고 ${shippedQty}죽 · 품절 ${soldoutQty}죽` : `출고 ${shippedQty}죽`} · 단가 ${unitPrice.toLocaleString()}원 / 1죽</span>
+      <span>${isFullySoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
     </div>`;
   }).join("");
 
@@ -255,7 +259,10 @@ function renderCompletedOrder(group) {
     <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button>${customerShareDocumentAllowed?`<button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button>`:''}</div>
     <div id="${id}" class="completed-order-detail">
       ${summary.itemRows}
+      <p><strong>출고수량:</strong> ${summary.qtyTotal.toLocaleString()}죽</p>
+      <p><strong>상품금액:</strong> ${summary.productTotal.toLocaleString()}원</p>
       <p><strong>배송비:</strong> ${Number(group.shippingFee).toLocaleString()}원</p>
+      <p><strong>최종금액:</strong> ${summary.finalTotal.toLocaleString()}원</p>
       <p><strong>택배사:</strong> ${escapeHtml(group.courier)}</p>
       <p><strong>송장번호:</strong> ${escapeHtml(group.trackingNumber || "입력 전")}</p>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
@@ -332,7 +339,7 @@ async function deletePendingOrder(orderNumber, editing=false){
   const {error}=editing
     ? await supabaseClient.rpc('customer_begin_order_revision',{p_order_number:orderNumber})
     : await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:'삭제'});
-  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 ${editing?'V6.5.63':'수정된 V6.5.66'} SQL을 먼저 실행해주세요.`);
+  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 ${editing?'V6.5.63':'수정된 V6.5.67'} SQL을 먼저 실행해주세요.`);
   if(editing){const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;let continuing=false;try{continuing=JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber}catch(_){}if(!continuing)localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));const deliveryDraft={deliveryName:group.deliveryName||group.customerName||'',deliveryPhone:group.deliveryPhone||'',deliveryAddress:group.deliveryAddress||''};localStorage.setItem('designjam_customer_bulk_delivery_draft',JSON.stringify(deliveryDraft));localStorage.setItem(revisionKey,JSON.stringify({orderNumber,startedAt:new Date().toISOString(),...deliveryDraft}));}
   if(editing)location.href='catalog.html';else{const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;try{if(JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber)localStorage.removeItem(revisionKey)}catch(_){}await loadMyOrders()}
 }
