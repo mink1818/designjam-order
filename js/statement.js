@@ -52,6 +52,30 @@ function formatDate(value, dateOnly = false) {
   return date.toLocaleString("ko-KR");
 }
 
+function cleanStatementItemNumber(value) {
+  return String(value || "").trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i, "");
+}
+
+function resolveStatementCategoryLine(title, itemNumber) {
+  const original = String(title || "개별품번").trim();
+  const segments = original.split(/[,，\n]+/).map(value => value.trim()).filter(Boolean);
+  if (segments.length < 2) return original;
+  const cleanItem = cleanStatementItemNumber(itemNumber).replace(/[AM]$/i, "");
+  const itemNumeric = Number(cleanItem.match(/\d+/)?.[0]);
+  if (!Number.isFinite(itemNumeric)) return original;
+  const matched = segments.find(segment => {
+    const numbers = [...segment.matchAll(/\d+/g)].map(match => Number(match[0]));
+    if (!numbers.length) return false;
+    if (numbers.length >= 2 && /[~～〜-]/.test(segment)) {
+      const start = Math.min(numbers[0], numbers[1]);
+      const end = Math.max(numbers[0], numbers[1]);
+      return itemNumeric >= start && itemNumeric <= end;
+    }
+    return numbers.includes(itemNumeric);
+  });
+  return matched || original;
+}
+
 async function checkStatementAccess() {
   const {
     data: { user },
@@ -159,7 +183,7 @@ function renderStatement(items, productGroups = []) {
   }, 0);
 
   const groupByItem = new Map();
-  productGroups.forEach(group => (group.item_numbers || []).forEach(number => groupByItem.set(String(number).trim(), group.title || "개별품번")));
+  productGroups.forEach(group => (group.item_numbers || []).forEach(number => groupByItem.set(String(number).trim(), resolveStatementCategoryLine(group.title || "개별품번", number))));
   const compactRows = new Map();
   items.forEach(item => {
     const orderedQty = Number(item.qty || 0);
@@ -173,7 +197,7 @@ function renderStatement(items, productGroups = []) {
     row.shippedQty += shippedQty;
     row.soldoutQty += soldoutQty;
     row.rowTotal += price * shippedQty;
-    const cleanNumber = String(item.item_number || '').trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i,'');
+    const cleanNumber = cleanStatementItemNumber(item.item_number);
     const displayNumber = /A$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 아동`:/M$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 무지`:cleanNumber;
     row.itemNumbers.push(`${displayNumber}-(${orderedQty})${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
@@ -181,7 +205,7 @@ function renderStatement(items, productGroups = []) {
     return `
       <tr class="${row.shippedQty === 0 ? "soldout-row" : ""}">
         <td>${index + 1}</td>
-        <td><strong>${escapeHtml(row.category)}</strong></td>
+        <td class="statement-category"><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
         <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
         <td class="statement-unit-price">${row.price.toLocaleString()}원/죽</td>
@@ -318,6 +342,7 @@ async function saveStatementImage(button) {
     const now=new Date(),date=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
     const baseName=`${String(currentStatementCustomerName).replace(/[^0-9A-Za-z가-힣_-]/g, "_")}_${date}_거래명세서`;
     const clone=statementArea.cloneNode(true);
+    clone.classList.add('statement-image-export');
     clone.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;max-width:none;background:#fff;color:#111;z-index:-1';
     document.body.appendChild(clone);
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));

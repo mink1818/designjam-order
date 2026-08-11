@@ -1,0 +1,7 @@
+DESIGN SOCKS V6.5.57 배포
+
+git add .
+git commit -m "release v6.5.57 admin order copy ui"
+git push
+
+Vercel 배포 완료 후 관리자와 거래처 화면에서 Ctrl+F5로 새로고침하세요.

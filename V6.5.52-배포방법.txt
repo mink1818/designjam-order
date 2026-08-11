@@ -1,0 +1,24 @@
+DESIGN SOCKS V6.5.52 배포 방법
+
+1. Supabase SQL Editor에서 아래 파일 전체 실행
+   SQL/V6.5.52-CUSTOMER-SHARE-DOCUMENT.sql
+
+2. 터미널에서 배포
+   git add .
+   git commit -m "release v6.5.52 customer share document and admin statement restore"
+   git push
+
+3. 배포 완료 후 PC: Ctrl+F5, 모바일: 앱/브라우저 완전 종료 후 다시 실행
+
+Supabase Function 재배포: 불필요
+거래처별 단가 로직: 변경 없음
+
+주요 변경
+- 기존 거래처용 거래명세서/인쇄 흐름 제거
+- 거래처 전달용 문서 만들기 전용 페이지 추가
+- 주문 당시 품번·수량·단가·금액 자동 불러오기
+- 문서 안 모든 문구 직접 수정/삭제
+- 납품처별 문서 저장·재선택·수정·삭제
+- 관리자 거래명세서와 완전히 분리
+- 관리자 거래명세서 계좌·택배·송장 정보 복원
+- 관리자 긴 화면 고해상도 PNG 저장 유지

@@ -620,3 +620,78 @@ body {
 }
 .soldout-mark{display:inline-block;margin-left:5px;padding:2px 6px;border-radius:999px;background:#fff1d6;color:#8a4b00;font-size:11px;font-weight:900}.soldout-row{background:#fffaf0}.soldout-row td{color:#6b4a16}
 .statement-manual-memo{margin-top:18px;padding:13px 15px;border:1px solid #94a3b8;border-radius:8px;background:#fff}.statement-manual-memo strong{display:block;margin-bottom:7px}.statement-manual-memo [contenteditable=true]{min-height:54px;padding:8px;border:1px dashed #94a3b8;border-radius:6px;white-space:pre-wrap}.statement-manual-memo [contenteditable=true]:empty:before{content:attr(data-placeholder);color:#94a3b8}.statement-manual-memo [contenteditable=true]:focus{outline:2px solid #2563eb;border-color:transparent}@media print{.statement-manual-memo [contenteditable=true]{border:0;padding:0}}
+
+/* V6.5.70 거래명세서 표 정렬·가독성 통일 */
+.customer-info{
+  grid-template-columns:1fr!important;
+  border-top:1px solid #333!important;
+  border-left:1px solid #333!important;
+}
+.customer-info>div,
+.customer-info .full-row,
+.customer-info .statement-party-row{
+  grid-column:1!important;
+  grid-template-columns:130px minmax(0,1fr)!important;
+  border-right:1px solid #333!important;
+  border-bottom:1px solid #333!important;
+}
+.customer-info>div>strong{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:auto!important;
+  text-align:center!important;
+  white-space:nowrap;
+  border-right:1px solid #333!important;
+}
+.customer-info>div>span{display:flex;align-items:center}
+.statement-table{border-collapse:collapse!important;border-spacing:0!important}
+.statement-table th,
+.statement-table td{
+  border:1px solid #333!important;
+  vertical-align:middle!important;
+  text-align:center!important;
+}
+.statement-table th:nth-child(n),
+.statement-table td:nth-child(n){text-align:center!important}
+.statement-category{
+  font-size:14px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.statement-item-list{
+  font-size:13px!important;
+  line-height:1.55!important;
+  text-align:center!important;
+}
+.bank-transfer-box{
+  font-size:14px!important;
+  line-height:1.45!important;
+}
+.bank-transfer-box>strong{font-size:15px}
+.bank-transfer-box p{font-size:14px}
+
+@media(max-width:680px){
+  .customer-info>div,
+  .customer-info .full-row,
+  .customer-info .statement-party-row{grid-template-columns:92px minmax(0,1fr)!important}
+  .customer-info strong,.customer-info span{font-size:13px!important;padding:8px 7px!important}
+  .statement-table{font-size:11.5px!important}
+  .statement-table th,.statement-table td{padding:8px 3px!important}
+  .statement-category{font-size:12px!important;line-height:1.3!important}
+  .statement-item-list{font-size:11.5px!important;line-height:1.45!important}
+  .statement-unit-price{font-size:11px!important}
+  .bank-transfer-box,.bank-transfer-box p{font-size:13px!important}
+  .bank-transfer-box>strong{font-size:14px!important}
+}
+
+@media print{
+  .customer-info>div,
+  .customer-info .full-row,
+  .customer-info .statement-party-row{grid-template-columns:28mm minmax(0,1fr)!important}
+  .statement-table th,.statement-table td{border:1px solid #333!important;text-align:center!important}
+  .statement-category{font-size:10.5px!important}
+  .statement-item-list{font-size:10px!important;line-height:1.35!important}
+  .bank-transfer-box,.bank-transfer-box p{font-size:11px!important}
+}

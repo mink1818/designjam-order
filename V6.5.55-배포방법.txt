@@ -1,0 +1,20 @@
+DESIGN SOCKS V6.5.55 배포 방법
+
+적용 내용
+- 품번·수량이 납품처 정보 위 또는 아래에 있어도 자동 인식
+- 납품처 정보 내부는 이름·연락처·주소·선택 메모 순서로 인식
+- 예시 주소를 서울시 형식으로 변경
+- 거래처 및 관리자 대신주문 모두 적용
+- 거래처별 단가 및 가격 계산 코드 변경 없음
+
+V6.5.53 SQL을 아직 실행하지 않았다면 Supabase SQL Editor에서 실행
+SQL/V6.5.53-DELIVERY-AUTO-MATCH.sql
+
+터미널 배포
+git add .
+git commit -m "release v6.5.55 paste any order delivery info"
+git push
+
+신규 SQL 실행: 불필요
+Supabase Function 재배포: 불필요
+Git Push: 필요

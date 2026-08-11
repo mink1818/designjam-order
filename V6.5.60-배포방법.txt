@@ -1,0 +1,7 @@
+DESIGN SOCKS V6.5.60 배포
+
+git add .
+git commit -m "release v6.5.60 delivery manual input"
+git push
+
+Vercel 배포 완료 후 관리자 대신주문·주문관리·거래처 주문내역·거래명세서를 새로고침하세요.

@@ -1,0 +1,20 @@
+디자인 삭스 V6.5.70 배포 방법
+
+1. V6.5.69 SQL을 아직 실행하지 않았다면 Supabase SQL Editor에서 먼저 실행하세요.
+
+SQL/V6.5.69-PROXY-PARTY-DESTINATIONS.sql
+
+2. 이어서 아래 SQL을 실행하세요.
+
+SQL/V6.5.70-PROXY-PARTY-DELETE.sql
+
+이미 V6.5.69 SQL을 실행한 경우에는 V6.5.70 SQL만 실행하면 됩니다.
+두 SQL 모두 상품 단가, 거래처별 단가, 기존 주문 단가와 금액을 변경하지 않습니다.
+
+3. SQL 실행 성공 후 프로젝트 폴더 터미널에서 아래 명령을 실행하세요.
+
+git add .
+git commit -m "release v6.5.70 proxy party delete statement table layout"
+git push
+
+4. Vercel 자동 배포 완료 후 PC와 모바일 브라우저를 완전히 닫았다가 다시 열어주세요.

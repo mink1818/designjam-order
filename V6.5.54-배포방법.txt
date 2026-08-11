@@ -1,0 +1,21 @@
+DESIGN SOCKS V6.5.54 배포 방법
+
+적용 내용
+- 거래처 붙여넣기 주문에서 이름·연락처·주소·선택 메모 순서 자동 인식
+- 관리자 대신주문도 동일한 순서 자동 인식
+- 메모를 생략하면 빈 메모로 주문
+- 주소 자동 인식 실패 시 대처 안내 추가
+- 예시 개인정보를 가명과 예시 주소로 교체
+- 거래처별 단가 및 가격 계산 코드 변경 없음
+
+V6.5.53 SQL을 아직 실행하지 않았다면 Supabase SQL Editor에서 다음 파일 전체 실행
+SQL/V6.5.53-DELIVERY-AUTO-MATCH.sql
+
+터미널 배포
+git add .
+git commit -m "release v6.5.54 paste delivery guide"
+git push
+
+신규 SQL 실행: 불필요 (V6.5.53 SQL 미실행 시에만 기존 SQL 실행)
+Supabase Function 재배포: 불필요
+Git Push: 필요

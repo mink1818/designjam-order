@@ -1,0 +1,19 @@
+DESIGN SOCKS V6.5.36 배포 방법
+
+적용 내용
+- 거래처 메인화면 빠른 메뉴에 붙여넣기 주문 바로가기 추가
+- PC에서는 빠른 메뉴 한 줄 배치
+- 모바일에서는 붙여넣기 주문 버튼을 첫 줄 전체 너비로 표시
+- 붙여넣기 주문 안내에서 전용단가 및 적용단가 표현 제거
+- V6.5.35 전체 주문 통계 조회 및 동일 거래처 합산 수정 포함
+- V6.5.34 거래처 품번·수량 붙여넣기 주문 기능 포함
+
+배포 명령
+git add .
+git commit -m "release v6.5.36 customer home bulk order shortcut"
+git push
+
+SQL 실행: 불필요
+Supabase Function 재배포: 불필요
+
+배포 후 브라우저에서 Ctrl+F5를 한 번 누르세요.

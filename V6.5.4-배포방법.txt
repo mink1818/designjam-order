@@ -1,0 +1,21 @@
+DESIGN SOCKS V6.5.4 배포 방법
+
+1. Supabase SQL Editor에서 전체 실행
+SQL/V6.5.4-PROXY-CUSTOMER-PRICE-DIRECT-LOOKUP.sql
+
+2. Git 배포
+git add .
+git commit -m "release v6.5.4 proxy customer price direct lookup"
+git push
+
+3. Vercel 배포 완료 후 Ctrl+F5
+
+4. 관리자 대신주문에서 거래처 선택
+- 거래처명이 같으면 이메일로 계정을 구분합니다.
+- 선택 아래에 전용단가 적용 개수가 표시됩니다.
+- 디자인잠 661은 14,500원, 품번 1은 12,000원으로 표시되어야 합니다.
+
+배포 체크
+- SQL 실행: 필요
+- Supabase Functions 재배포: 불필요
+- Git Push: 필요

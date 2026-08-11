@@ -1,0 +1,12 @@
+디자인 삭스 V6.5.68 배포 방법
+
+이번 버전은 추가 SQL 실행이 필요하지 않습니다.
+기존 가입 거래처와 관리자 대신주문 이력을 이용해 직접입력 거래처 및 거래처별 납품처를 검색합니다.
+
+프로젝트 폴더에서 아래 명령을 차례로 복사해 실행하세요.
+
+git add .
+git commit -m "release v6.5.68 proxy customer destination initial search"
+git push
+
+Vercel 자동 배포가 끝난 뒤 PC와 모바일 브라우저를 완전히 닫았다가 다시 열어주세요.
