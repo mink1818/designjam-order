@@ -64,6 +64,7 @@ function effectiveItemPrice(group, itemNumber) { return Number(customerItemPrice
 function refreshSavedCartPrices() {
   let changed = false;
   cart.forEach(item => {
+    const warehouseCode=inferCartWarehouseCode(item);if(warehouseCode&&item.warehouseCode!==warehouseCode){item.warehouseCode=warehouseCode;changed=true}
     const group = groups.find(groupItem => Number(groupItem.id) === Number(item.groupId));
     if (!group) return;
     const nextPrice = effectiveItemPrice(group, item.number);
@@ -71,6 +72,8 @@ function refreshSavedCartPrices() {
   });
   if (changed) saveCart();
 }
+function inferCartWarehouseCode(item){const saved=String(item?.warehouseCode||item?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(saved))return saved;const prefix=String(item?.number||'').trim().toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/)?.[1];if(prefix)return prefix;const group=groups.find(row=>Number(row.id)===Number(item?.groupId)),groupCode=String(group?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(groupCode))return groupCode;const key=customerPriceKey(item?.number),codes=new Set();groups.forEach(row=>{const numbers=Array.isArray(row.item_numbers)?row.item_numbers:String(row.item_numbers||'').split(/[,\s/]+/);if(numbers.some(number=>customerPriceKey(number)===key)){const code=String(row.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(code))codes.add(code)}});return codes.size===1?[...codes][0]:''}
+function validateCartWarehouseCodes(){const missing=[];cart.forEach(item=>{const code=inferCartWarehouseCode(item);if(code)item.warehouseCode=code;else missing.push(String(item.number||''))});if(missing.length){alert(`출고지가 연결되지 않은 품번은 주문할 수 없습니다: ${[...new Set(missing)].join(', ')}\n\n상품관리에서 해당 품번의 출고지를 S·B·I 중 하나로 지정해주세요.`);return false}saveCart();return true}
 function displayWarehouseItem(group, itemNumber) { const code=String(group?.warehouse_code||'').trim().toUpperCase(); return code?`${code}-${itemNumber}`:String(itemNumber); }
 function formatGroupUnitPrice(group) {
   const prices = [...new Set((group?.item_numbers || []).map(number => effectiveItemPrice(group, number)).filter(Number.isFinite))].sort((a,b)=>a-b);
@@ -2146,15 +2149,17 @@ async function hydrateDeliveryDestinations(){
     const refreshSuggestions=()=>{if(!list)return;const query=nameInput?.value||'';list.innerHTML=destinations.filter(row=>deliverySearchMatches(row.delivery_name,query)).sort((a,b)=>String(a.delivery_name).localeCompare(String(b.delivery_name),'ko')).map(row=>`<option value="${escapeHtml(row.delivery_name)}">${escapeHtml(row.delivery_address||row.delivery_phone||'')}</option>`).join('')};
     nameInput?.addEventListener('input',()=>{refreshSuggestions();const match=findMatchingDeliveryDestination(destinations,{deliveryName:nameInput.value});if(match){select.value=String(match.id);apply(match)}else select.value='new';syncButtons()});refreshSuggestions();
   }
-  if(manager)manager.innerHTML=!advanced?'':destinations.length?`<details><summary>저장된 거래처 정보 수정·삭제 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
+  if(manager)manager.innerHTML=!advanced?'':destinations.length?`<details><summary>저장된 거래처 정보 선택·수정 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><button type="button" class="delivery-destination-select-button" onclick="selectSavedDestination('${row.id}')"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><em>선택</em></button><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
 }
+
+function selectSavedDestination(id){const select=document.getElementById('deliveryDestinationSelect');if(!select)return;select.value=String(id);select.dispatchEvent(new Event('change'));document.getElementById('deliveryName')?.scrollIntoView({behavior:'smooth',block:'center'})}
 
 async function editSavedDestination(id){if(!hasAdvancedCustomerAccess())return;const select=document.getElementById('deliveryDestinationSelect');if(select){select.value=String(id);select.dispatchEvent(new Event('change'));}const name=prompt('수정할 납품처명을 입력하세요.',document.getElementById('deliveryName')?.value||'');if(name===null)return;const phone=prompt('연락처를 입력하세요.',document.getElementById('deliveryPhone')?.value||'');if(phone===null)return;const address=prompt('주소를 입력하세요.',document.getElementById('deliveryAddress')?.value||'');if(address===null)return;const {error}=await supabaseClient.rpc('save_premium_customer_delivery_destination',{p_id:Number(id),p_delivery_name:name,p_delivery_phone:phone,p_delivery_address:address,p_is_default:false});if(error)return alert('납품처 수정 실패: '+error.message);await hydrateDeliveryDestinations();}
 async function deleteSavedDestination(id){if(!hasAdvancedCustomerAccess())return;if(!confirm('이 납품처 정보를 삭제할까요?'))return;const {error}=await supabaseClient.rpc('delete_premium_customer_delivery_destination',{p_id:Number(id)});if(error)return alert('납품처 삭제 실패: '+error.message);await hydrateDeliveryDestinations();}
 function selectedDestinationId(){const value=document.getElementById('deliveryDestinationSelect')?.value||'';return /^\d+$/.test(value)?value:null;}
 function editSelectedDestination(){const id=selectedDestinationId();if(!id)return alert('수정할 저장 납품지를 선택해주세요.');editSavedDestination(id);}
 function deleteSelectedDestination(){const id=selectedDestinationId();if(!id)return alert('삭제할 저장 납품지를 선택해주세요.');deleteSavedDestination(id);}
-window.editSavedDestination=editSavedDestination;window.deleteSavedDestination=deleteSavedDestination;window.editSelectedDestination=editSelectedDestination;window.deleteSelectedDestination=deleteSelectedDestination;
+window.selectSavedDestination=selectSavedDestination;window.editSavedDestination=editSavedDestination;window.deleteSavedDestination=deleteSavedDestination;window.editSelectedDestination=editSelectedDestination;window.deleteSelectedDestination=deleteSelectedDestination;
 
 async function submitOrder() {
   if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
@@ -2162,6 +2167,7 @@ async function submitOrder() {
     alert("장바구니가 비어 있습니다.");
     return;
   }
+  if(!validateCartWarehouseCodes())return;
 
   if (!currentUser || !currentCustomer) {
     alert("로그인이 필요합니다.");

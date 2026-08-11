@@ -144,7 +144,7 @@ body {
 .statement-table th:nth-child(3),
 .statement-table td:nth-child(3) { text-align: left; }
 .statement-item-list { font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
-.statement-unit-price{white-space:nowrap!important;word-break:keep-all!important}
+.statement-unit-price{white-space:nowrap!important;word-break:keep-all!important;text-align:center!important;padding-left:3px!important;padding-right:3px!important}.statement-table th:nth-child(5){text-align:center!important}
 .statement-summary-only{display:block}.statement-summary-only .statement-summary{margin-left:auto}
 .required-mark{color:#c62828;font-size:12px}.field-help{display:block;color:#64748b;font-size:11px;font-weight:400;margin-top:4px}.premium-feature-note{padding:10px;border-radius:8px;background:#fff7dd;color:#8a5a00;font-size:13px}
 

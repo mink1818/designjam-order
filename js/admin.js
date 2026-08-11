@@ -124,6 +124,9 @@ async function fetchCustomerIdentitySnapshot(){
 function inventoryKey(value) {
   return String(value ?? "").trim().toUpperCase();
 }
+const ADMIN_KOREAN_INITIALS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+function adminInitialText(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?ADMIN_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
+function adminLookupMatches(value,query){const normalize=text=>String(text||'').normalize('NFKC').toLowerCase().replace(/\s+/g,'');const needle=normalize(query);return !needle||normalize(value).includes(needle)||normalize(adminInitialText(value)).includes(needle)}
 
 function setAdminInventorySnapshot(rows) {
   adminInventoryMap = new Map();
@@ -276,13 +279,7 @@ try {
 
       if(exactItemSearch)return group.items.some(item=>inventoryKey(item.item_number)===normalizedKeyword);
 
-      return (
-        group.customerName?.includes(keyword) ||
-        group.customerOwnerName?.includes(keyword) ||
-        group.deliveryName?.includes(keyword) ||
-        group.orderNumber?.includes(keyword) ||
-        itemText.includes(keyword)
-      );
+      return adminLookupMatches([group.customerName,group.customerOwnerName,group.deliveryName,group.orderNumber,itemText].join(' '),keyword);
     })
     .sort((a, b) => {
       if (a.status === b.status) {
@@ -931,6 +928,7 @@ async function saveOrderItems(orderNumber, index) {
     };
   });
   if (!items.length || items.some(item => !item.item_number)) return alert("품번을 모두 입력해주세요.");
+  if(items.some(item=>!['S','B','I'].includes(String(item.warehouse_code||'').toUpperCase())))return alert('기타출고지 발생을 막기 위해 모든 품번 앞에 S-, B-, I- 출고지를 입력해주세요.');
   if (items.some(item => !Number.isFinite(item.price) || item.price < 0)) return alert("단가를 확인해주세요.");
   if (!confirm("주문 품목을 저장하면 작업지시서·피킹검증·거래명세서에 반영됩니다.\n계속할까요?")) return;
   const button = editor.querySelector(".order-edit-save");
@@ -1070,7 +1068,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65640','js/admin-mobile-nav.js?v=65640'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65650','js/admin-mobile-nav.js?v=65650'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

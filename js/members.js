@@ -11,6 +11,8 @@ const money=v=>Number(v||0).toLocaleString('ko-KR');
 const date=v=>v?new Date(v).toLocaleDateString('ko-KR'):'-';
 const phone=v=>String(v||'-').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
 const isAdminEmail=e=>ADMIN_EMAILS.has(String(e||'').toLowerCase());
+const MEMBER_KOREAN_INITIALS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+function memberInitialText(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?MEMBER_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
 
 async function checkAdminAccess(){
  const {data:{user}}=await supabaseClient.auth.getUser();
@@ -51,7 +53,7 @@ function renderFilteredCustomers(){
  let rows=allCustomers.filter(c=>{
   const status=memberFilter==='전체'||(memberFilter==='승인대기'&&!c.approved&&!c.blocked)||(memberFilter==='승인완료'&&c.approved&&!c.blocked)||(memberFilter==='차단'&&c.blocked);
   const text=[c.business_name,c.owner_name,c.representative,c.phone,c.email,c.address,c.customer_grade,c.admin_memo].join(' ').toLowerCase().replace(/\s/g,'');
-  return status&&text.includes(q);
+  return status&&(text.includes(q)||memberInitialText(text).replace(/\s/g,'').includes(q));
  });
  const mode=sort.value;
  rows.sort((a,b)=>mode==='sales'?b.total_sales-a.total_sales:mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='seen'?new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
@@ -132,6 +134,7 @@ async function setCustomerPassword(id,button){
 }
 window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.openCustomerOrders=openCustomerOrders;window.openProxyOrder=openProxyOrder;window.setCustomerPassword=setCustomerPassword;
 search.addEventListener('input',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});sort.addEventListener('change',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});
-document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){document.querySelector('[data-filter="전체"]')?.classList.add('active');const f=new URLSearchParams(location.search).get('filter');if(f==='waiting'){memberFilter='승인대기';document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='승인대기'));}loadCustomers();loadLoginStats();setInterval(loadLoginStats,60000);}});
+document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){document.querySelector('[data-filter="전체"]')?.classList.add('active');const f=new URLSearchParams(location.search).get('filter');if(f==='waiting'){memberFilter='승인대기';document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='승인대기'));}await loadCustomers();loadLoginStats();setInterval(loadLoginStats,60000);setInterval(refreshCustomerPresence,30000);supabaseClient.channel('customer-presence-admin-v6565').on('postgres_changes',{event:'UPDATE',schema:'public',table:'customers'},payload=>{if(payload.new?.last_seen_at)refreshCustomerPresence()}).subscribe();}});
 
 async function loadLoginStats(){const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()),yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);const [online,tod,yes]=await Promise.all([supabaseClient.from('customers').select('id',{count:'exact',head:true}).eq('is_admin',false).gte('last_seen_at',new Date(Date.now()-3*60*1000).toISOString()),supabaseClient.from('customer_login_events').select('id',{count:'exact',head:true}).gte('logged_in_at',today.toISOString()),supabaseClient.from('customer_login_events').select('id',{count:'exact',head:true}).gte('logged_in_at',yesterday.toISOString()).lt('logged_in_at',today.toISOString())]);document.getElementById('onlineCount').textContent=online.count||0;document.getElementById('todayLoginCount').textContent=tod.count||0;document.getElementById('yesterdayLoginCount').textContent=yes.count||0;}
+async function refreshCustomerPresence(){const {data,error}=await supabaseClient.from('customers').select('id,last_seen_at').eq('is_admin',false);if(error)return;const map=new Map((data||[]).map(row=>[String(row.id),row.last_seen_at]));allCustomers.forEach(customer=>{if(map.has(String(customer.id)))customer.last_seen_at=map.get(String(customer.id))});document.querySelectorAll('.compact-customer-card[data-id]').forEach(card=>{const customer=allCustomers.find(row=>String(row.id)===card.dataset.id),chip=card.querySelector('.presence-chip'),small=card.querySelector('.customer-meta-info>small');if(!customer||!chip)return;const online=isOnline(customer);chip.className=`presence-chip ${online?'online':'offline'}`;chip.textContent=online?'● 접속중':'○ 오프라인';if(small)small.textContent=lastSeenText(customer)});loadLoginStats()}
