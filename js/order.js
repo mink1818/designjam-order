@@ -190,7 +190,8 @@ function safeOrderId(prefix, orderNumber) {
 function renderCompactActiveOrder(group) {
   const summary = getOrderSummary(group);
   const id = safeOrderId("active", group.orderNumber);
-  const editable = group.items.every(item => Number(item.picked_qty || 0) === 0 && Number(item.soldout_qty || 0) === 0 && !item.is_soldout && ["", "대기"].includes(String(item.picking_status || "대기")));
+  const editable = group.status !== "출고완료";
+  const pickingStarted = group.items.some(item => Number(item.picked_qty || 0) > 0 || Number(item.soldout_qty || 0) > 0 || !["", "대기"].includes(String(item.picking_status || "대기")));
   return `<article class="completed-order-row active-order-row">
     <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
       <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
@@ -201,7 +202,7 @@ function renderCompactActiveOrder(group) {
     </button>
     <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button>${customerShareDocumentAllowed?`<button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button>`:''}</div>
     <div id="${id}" class="completed-order-detail">
-      <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>` : `<span class="order-status-badge">주문확인 진행 중</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
+      <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>${pickingStarted?'<span class="customer-change-warning">피킹 후 변경 시 관리자에게 즉시 알림·재피킹 처리됩니다.</span>':''}` : `<span class="order-status-badge">출고완료 후 수정불가</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
       <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
       ${summary.itemRows}
@@ -209,7 +210,7 @@ function renderCompactActiveOrder(group) {
       <p><strong>배송비:</strong> ${Number(group.shippingFee || 0).toLocaleString()}원</p>
       <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
       ${renderOrderBankBox(group)}
-      ${editable ? `` : `<p><small>주문확인을 시작한 주문은 거래처 화면에서 수정·삭제할 수 없습니다.</small></p>`}
+      ${editable ? `` : `<p><small>출고완료 주문은 수정하거나 삭제할 수 없습니다.</small></p>`}
     </div>
   </article>`;
 }
@@ -321,10 +322,13 @@ window.copyOrderToCart=copyOrderToCart;
 
 async function deletePendingOrder(orderNumber, editing=false){
   const group=myOrderGroups.find(x=>x.orderNumber===orderNumber);if(!group)return;
-  if(!confirm(editing?'현재 주문을 삭제하고 품목을 장바구니로 옮겨 수정할까요?':'피킹 전 주문을 삭제할까요?'))return;
+  if(group.status==='출고완료')return alert('출고완료 주문은 수정하거나 삭제할 수 없습니다.');
+  const pickingStarted=group.items.some(item=>Number(item.picked_qty||0)>0||Number(item.soldout_qty||0)>0||!["","대기"].includes(String(item.picking_status||"대기")));
+  const prompt=editing?'현재 주문을 장바구니로 옮겨 수정할까요?':'이 주문을 삭제할까요?';
+  if(!confirm(`${prompt}${pickingStarted?'\n\n이미 피킹한 주문이므로 피킹·재고가 자동 원복되고 관리자에게 변경 알림이 표시됩니다.':''}`))return;
   if(editing){const cart=group.items.map(x=>({groupId:null,categoryId:null,title:'주문 수정',number:String(x.item_number),qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:''}));localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));}
-  const {error}=await supabaseClient.rpc('customer_delete_pending_order',{p_order_number:orderNumber});
-  if(error)return alert(`주문 삭제 실패: ${error.message}`);
+  const {error}=await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:editing?'수정':'삭제'});
+  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 V6.5.61 SQL을 먼저 실행해주세요.`);
   if(editing)location.href='catalog.html';else await loadMyOrders();
 }
 function editPendingOrder(orderNumber){return deletePendingOrder(orderNumber,true)}

@@ -192,7 +192,7 @@ try {
   return;
 }
 
-  await loadAdminFeatureData(data);
+  await Promise.all([loadAdminFeatureData(data),loadCustomerOrderChangeAlerts()]);
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -297,6 +297,16 @@ try {
   renderOrderCards(pageGroups);
   renderAdminPagination(totalPages);
   syncAdminFilterTabs();
+}
+
+async function loadCustomerOrderChangeAlerts(){
+ const box=document.getElementById('customerOrderChangeAlerts');if(!box)return;
+ const {data:{user}}=await supabaseClient.auth.getUser();if(!user){box.hidden=true;return}
+ const {data,error}=await supabaseClient.from('app_notifications').select('id,title,message,created_at,link_url').eq('recipient_id',user.id).eq('is_read',false).ilike('title','고객 주문%').order('created_at',{ascending:false}).limit(20);
+ if(error||!data?.length){box.hidden=true;box.innerHTML='';return}
+ box.hidden=false;box.innerHTML=`<div class="customer-change-alert-head"><strong>🔔 고객 주문 변경 ${data.length}건</strong><button type="button" id="readAllCustomerChanges">모두 확인</button></div>${data.map(row=>`<button type="button" class="customer-change-alert-item" data-id="${escapeAdminAttr(row.id)}" data-link="${escapeAdminAttr(row.link_url||'admin.html?view=orders')}"><b>${escapeAdminHtml(row.title)}</b><span>${escapeAdminHtml(row.message||'')}</span><small>${new Date(row.created_at).toLocaleString('ko-KR')}</small></button>`).join('')}`;
+ box.querySelectorAll('.customer-change-alert-item').forEach(button=>button.onclick=async()=>{await supabaseClient.from('app_notifications').update({is_read:true}).eq('id',button.dataset.id);location.href=button.dataset.link||'admin.html?view=orders'});
+ box.querySelector('#readAllCustomerChanges').onclick=async()=>{await supabaseClient.from('app_notifications').update({is_read:true}).in('id',data.map(row=>row.id));loadCustomerOrderChangeAlerts()};
 }
 
 function renderAdminPagination(totalPages) {
@@ -1038,7 +1048,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65600','js/admin-mobile-nav.js?v=65600'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65610','js/admin-mobile-nav.js?v=65610'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

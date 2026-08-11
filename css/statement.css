@@ -106,6 +106,7 @@ body {
 .customer-info .full-row {
   grid-column: 1 / -1;
 }
+.customer-info .statement-party-row{grid-template-columns:125px minmax(0,1fr)}.customer-info .statement-party-row strong{white-space:nowrap}.customer-info .statement-party-row span{min-width:0;overflow-wrap:anywhere}@media(max-width:700px){.customer-info .statement-party-row{grid-template-columns:105px minmax(0,1fr)}.customer-info .statement-party-row strong,.customer-info .statement-party-row span{font-size:11px;padding:7px 6px}}
 
 .statement-editable-field{min-height:42px;white-space:pre-wrap}.statement-editable-field:empty:before{content:attr(data-placeholder);color:#94a3b8}.statement-editable-field:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#eff6ff}
 

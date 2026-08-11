@@ -136,7 +136,6 @@ function renderStatement(items, productGroups = []) {
   const first = items[0];
   const customerName = first.customer_name || "거래처";
   const actualDeliveryName = first.delivery_name || "-";
-  const ownerName = first.customer_owner_name || "-";
   const brandName = "디자인 삭스", footerName = brandName, statementTitle = "거래명세서", confirmationText = "상기 내용과 같이 거래하였음을 확인합니다.";
   currentStatementCustomerName = customerName;
 
@@ -205,21 +204,14 @@ function renderStatement(items, productGroups = []) {
     </header>
 
     <section class="customer-info">
-      <div>
+      <div class="statement-party-row">
         <strong>거래처명</strong>
         <span data-profile-field="customer_name">${escapeHtml(customerName)}</span>
       </div>
 
-      <div>
-        <strong>실제 납품처명</strong>
+      <div class="statement-party-row">
+        <strong>실제납품처</strong>
         <span data-profile-field="delivery_name">${escapeHtml(actualDeliveryName)}</span>
-      </div>
-
-      <div><strong>납품주소</strong><span class="statement-editable-field" contenteditable="true" role="textbox" aria-label="납품주소"></span></div>
-
-      <div>
-        <strong>대표자</strong>
-        <span data-profile-field="owner_name">${escapeHtml(ownerName)}</span>
       </div>
 
       <div>
