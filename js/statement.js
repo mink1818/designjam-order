@@ -207,9 +207,9 @@ function renderStatement(items, productGroups = []) {
         <td>${index + 1}</td>
         <td class="statement-category"><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
-        <td>${row.shippedQty.toLocaleString()}죽${row.soldoutQty ? ` / 품절 ${row.soldoutQty}죽` : ""}</td>
-        <td class="statement-unit-price">${row.price.toLocaleString()}원/죽</td>
-        <td>${row.shippedQty > 0 ? row.rowTotal.toLocaleString() + "원" : "-"}</td>
+        <td class="statement-qty"><span>${row.shippedQty.toLocaleString()}죽</span>${row.soldoutQty ? `<small>품절 ${row.soldoutQty}죽</small>` : ""}</td>
+        <td class="statement-unit-price"><span>${row.price.toLocaleString()}원</span><small>/죽</small></td>
+        <td class="statement-row-total">${row.shippedQty > 0 ? `<span>${row.rowTotal.toLocaleString()}</span><small>원</small>` : "-"}</td>
       </tr>
     `;
   }).join("");
@@ -227,33 +227,33 @@ function renderStatement(items, productGroups = []) {
       </div>
     </header>
 
-    <section class="customer-info">
-      <div class="statement-party-row">
+    <section class="customer-info statement-info-grid">
+      <div class="statement-party-row info-customer">
         <strong>거래처명</strong>
         <span data-profile-field="customer_name">${escapeHtml(customerName)}</span>
       </div>
 
-      <div class="statement-party-row">
-        <strong>실제납품처</strong>
-        <span data-profile-field="delivery_name">${escapeHtml(actualDeliveryName)}</span>
-      </div>
-
-      <div>
-        <strong>주문번호</strong>
-        <span>${escapeHtml(first.order_number)}</span>
-      </div>
-
-      <div>
+      <div class="info-order-date">
         <strong>주문일</strong>
         <span>${formatDate(first.created_at, true)}</span>
       </div>
 
-      <div>
+      <div class="statement-party-row info-delivery">
+        <strong>실제납품처</strong>
+        <span data-profile-field="delivery_name">${escapeHtml(actualDeliveryName)}</span>
+      </div>
+
+      <div class="info-order-status">
         <strong>주문상태</strong>
         <span>${escapeHtml(first.status || "-")}</span>
       </div>
 
-      <div class="full-row">
+      <div class="full-row info-order-number">
+        <strong>주문번호</strong>
+        <span>${escapeHtml(first.order_number)}</span>
+      </div>
+
+      <div class="full-row info-memo">
         <strong>메모</strong>
         <span>${escapeHtml(first.memo || "-")}</span>
       </div>

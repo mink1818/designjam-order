@@ -695,3 +695,71 @@ body {
   .statement-item-list{font-size:10px!important;line-height:1.35!important}
   .bank-transfer-box,.bank-transfer-box p{font-size:11px!important}
 }
+
+/* V6.5.71 PC 상단 4열·모바일 표 넘침 방지 */
+.customer-info.statement-info-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+}
+.customer-info.statement-info-grid>div{
+  grid-column:auto!important;
+  grid-template-columns:112px minmax(0,1fr)!important;
+}
+.customer-info.statement-info-grid>.full-row{
+  grid-column:1/-1!important;
+  grid-template-columns:112px minmax(0,1fr)!important;
+}
+.statement-info-grid>div>span{
+  min-width:0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.statement-category{
+  white-space:nowrap!important;
+  word-break:keep-all!important;
+  overflow-wrap:normal!important;
+  letter-spacing:-.25px;
+}
+.statement-category strong{white-space:inherit}
+.statement-qty span,.statement-qty small,
+.statement-unit-price span,.statement-unit-price small,
+.statement-row-total span,.statement-row-total small{white-space:nowrap}
+.statement-qty small{display:block;margin-top:3px;font-size:10px;color:#9a4c16}
+.statement-unit-price small,.statement-row-total small{font-size:inherit}
+
+@media(max-width:680px){
+  .customer-info.statement-info-grid{grid-template-columns:1fr!important}
+  .customer-info.statement-info-grid>div,
+  .customer-info.statement-info-grid>.full-row{
+    grid-column:1!important;
+    grid-template-columns:92px minmax(0,1fr)!important;
+  }
+  .statement-table th:nth-child(1),.statement-table td:nth-child(1){width:7%!important}
+  .statement-table th:nth-child(2),.statement-table td:nth-child(2){width:21%!important}
+  .statement-table th:nth-child(3),.statement-table td:nth-child(3){width:29%!important}
+  .statement-table th:nth-child(4),.statement-table td:nth-child(4){width:13%!important}
+  .statement-table th:nth-child(5),.statement-table td:nth-child(5){width:14%!important}
+  .statement-table th:nth-child(6),.statement-table td:nth-child(6){width:16%!important}
+  .statement-table th,.statement-table td{
+    padding:8px 2px!important;
+    overflow:hidden!important;
+    overflow-wrap:anywhere!important;
+  }
+  .statement-category{
+    font-size:clamp(9px,2.55vw,11.5px)!important;
+    letter-spacing:-.45px;
+  }
+  .statement-item-list{font-size:clamp(9.5px,2.65vw,11.5px)!important}
+  .statement-unit-price,.statement-row-total{font-size:clamp(9.5px,2.65vw,11px)!important;line-height:1.25!important}
+  .statement-unit-price span,.statement-unit-price small,
+  .statement-row-total span,.statement-row-total small{display:block!important}
+  .statement-qty{font-size:clamp(10px,2.7vw,11.5px)!important}
+}
+
+@media print{
+  .customer-info.statement-info-grid{grid-template-columns:1fr 1fr!important}
+  .customer-info.statement-info-grid>div{grid-column:auto!important;grid-template-columns:25mm minmax(0,1fr)!important}
+  .customer-info.statement-info-grid>.full-row{grid-column:1/-1!important;grid-template-columns:25mm minmax(0,1fr)!important}
+  .statement-unit-price span,.statement-unit-price small,
+  .statement-row-total span,.statement-row-total small{display:inline!important}
+}
