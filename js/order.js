@@ -91,6 +91,7 @@ async function loadMyOrders() {
         deliveryAddress: order.delivery_address || '',
         memo: order.memo,
         status: order.status,
+        revisionStatus: order.customer_revision_status || '',
         shippingFee: order.shipping_fee || 0,
         courier: order.courier || "로젠택배",
         trackingNumber: order.tracking_number || "",
@@ -102,11 +103,12 @@ async function loadMyOrders() {
           holder: order.payment_account_holder || ""
         },
         createdAt: order.created_at,
-        completedAt: order.status === "출고완료" ? (order.completed_at || order.shipped_at || order.updated_at || order.created_at) : null,
+        completedAt: order.status === "출고완료" ? (order.shipped_at || order.completed_at || order.picking_verified_at || order.created_at) : null,
         items: []
       };
     }
     const currentGroup=grouped[order.order_number];
+    if(order.customer_revision_status)currentGroup.revisionStatus=order.customer_revision_status;
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
     if(order.delivery_address&&!currentGroup.deliveryAddress)currentGroup.deliveryAddress=order.delivery_address;
@@ -114,7 +116,7 @@ async function loadMyOrders() {
 
     if (order.status === "출고완료") {
       grouped[order.order_number].status = "출고완료";
-      const completedAt = order.completed_at || order.shipped_at || order.updated_at || order.created_at;
+      const completedAt = order.shipped_at || order.completed_at || order.picking_verified_at || order.created_at;
       if (!grouped[order.order_number].completedAt || new Date(completedAt) > new Date(grouped[order.order_number].completedAt)) grouped[order.order_number].completedAt = completedAt;
     } else if (grouped[order.order_number].status !== "출고완료" && order.status) {
       grouped[order.order_number].status = order.status;
@@ -190,19 +192,19 @@ function safeOrderId(prefix, orderNumber) {
 function renderCompactActiveOrder(group) {
   const summary = getOrderSummary(group);
   const id = safeOrderId("active", group.orderNumber);
-  const editable = group.status !== "출고완료";
+  const editable = group.status !== "출고완료" && group.revisionStatus !== '수정완료';
   const pickingStarted = group.items.some(item => Number(item.picked_qty || 0) > 0 || Number(item.soldout_qty || 0) > 0 || !["", "대기"].includes(String(item.picking_status || "대기")));
   return `<article class="completed-order-row active-order-row">
     <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
       <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
-      <span class="order-status-badge">${escapeHtml(group.status || "주문접수")}</span>
+      <span class="order-status-badge ${group.revisionStatus?'revision':''}">${escapeHtml(group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'수정완료·관리자 확인중':group.status||"주문접수")}</span>
       <span>${summary.qtyTotal}죽</span>
       <span>${summary.finalTotal.toLocaleString()}원</span>
       <span class="completed-toggle">상세보기 ▼</span>
     </button>
     <div class="order-quick-actions"><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','kakao',this)">카톡복사</button><button class="reorder-btn" type="button" onclick="event.stopPropagation();copyCustomerOrderDetails('${group.orderNumber}','excel',this)">엑셀복사</button>${customerShareDocumentAllowed?`<button class="reorder-btn" type="button" onclick="event.stopPropagation();openCustomerShareDocument('${group.orderNumber}')">전달용 문서 만들기</button>`:''}</div>
     <div id="${id}" class="completed-order-detail">
-      <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">수정하기</button>${pickingStarted?'<span class="customer-change-warning">피킹 후 변경 시 관리자에게 즉시 알림·재피킹 처리됩니다.</span>':''}` : `<span class="order-status-badge">출고완료 후 수정불가</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
+      <div class="expanded-order-actions">${editable ? `<button class="reorder-btn danger-btn" type="button" onclick="deletePendingOrder('${group.orderNumber}')">주문 삭제</button><button class="reorder-btn" type="button" onclick="editPendingOrder('${group.orderNumber}')">${group.revisionStatus==='수정중'?'수정 계속하기':'수정하기'}</button>${pickingStarted?'<span class="customer-change-warning">피킹 후 변경 시 관리자에게 즉시 알림·재피킹 처리됩니다.</span>':''}` : `<span class="order-status-badge">${group.status==='출고완료'?'출고완료 후 수정불가':'수정완료·관리자 확인중'}</span>`}<button class="reorder-btn" type="button" onclick="copyOrderToCart('${group.orderNumber}')">이 주문 한 번에 다시 담기</button></div>
       <div class="order-party-summary"><p><strong>거래처:</strong> ${escapeHtml(group.customerName||'-')} · <strong>대표자:</strong> ${escapeHtml(group.customerOwnerName||'-')}</p><p><strong>납품처:</strong> ${escapeHtml(group.deliveryName||'-')}${group.deliveryAddress?` · ${escapeHtml(group.deliveryAddress)}`:''}</p></div>
       ${group.memo ? `<p><strong>메모:</strong> ${escapeHtml(group.memo)}</p>` : ""}
       ${summary.itemRows}
@@ -210,7 +212,7 @@ function renderCompactActiveOrder(group) {
       <p><strong>배송비:</strong> ${Number(group.shippingFee || 0).toLocaleString()}원</p>
       <p><strong>배송정보:</strong> 출고 준비 중입니다</p>
       ${renderOrderBankBox(group)}
-      ${editable ? `` : `<p><small>출고완료 주문은 수정하거나 삭제할 수 없습니다.</small></p>`}
+      ${editable ? `` : `<p><small>${group.status==='출고완료'?'출고완료 주문은 수정하거나 삭제할 수 없습니다.':'관리자가 변경사항을 확인하면 다시 주문 상태가 표시됩니다.'}</small></p>`}
     </div>
   </article>`;
 }
@@ -326,10 +328,13 @@ async function deletePendingOrder(orderNumber, editing=false){
   const pickingStarted=group.items.some(item=>Number(item.picked_qty||0)>0||Number(item.soldout_qty||0)>0||!["","대기"].includes(String(item.picking_status||"대기")));
   const prompt=editing?'현재 주문을 장바구니로 옮겨 수정할까요?':'이 주문을 삭제할까요?';
   if(!confirm(`${prompt}${pickingStarted?'\n\n이미 피킹한 주문이므로 피킹·재고가 자동 원복되고 관리자에게 변경 알림이 표시됩니다.':''}`))return;
-  if(editing){const cart=group.items.map(x=>({groupId:null,categoryId:null,title:'주문 수정',number:String(x.item_number),qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:''}));localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));}
-  const {error}=await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:editing?'수정':'삭제'});
-  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 수정된 V6.5.61 SQL을 다시 실행해주세요.`);
-  if(editing)location.href='catalog.html';else await loadMyOrders();
+  const cart=group.items.map(x=>({groupId:null,categoryId:null,title:'주문 수정',number:String(x.item_number),warehouseCode:x.warehouse_code||null,qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:''}));
+  const {error}=editing
+    ? await supabaseClient.rpc('customer_begin_order_revision',{p_order_number:orderNumber})
+    : await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:'삭제'});
+  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 ${editing?'V6.5.63':'수정된 V6.5.61'} SQL을 먼저 실행해주세요.`);
+  if(editing){const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;let continuing=false;try{continuing=JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber}catch(_){}if(!continuing)localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));localStorage.setItem(revisionKey,JSON.stringify({orderNumber,startedAt:new Date().toISOString()}));}
+  if(editing)location.href='catalog.html';else{const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;try{if(JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber)localStorage.removeItem(revisionKey)}catch(_){}await loadMyOrders()}
 }
 function editPendingOrder(orderNumber){return deletePendingOrder(orderNumber,true)}
 window.deletePendingOrder=deletePendingOrder;window.editPendingOrder=editPendingOrder;

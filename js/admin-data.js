@@ -30,18 +30,11 @@ async function updateOrderStatus(orderNumber, currentStatus, shippingFee, courie
     throw new Error("출고완료 취소는 재고복원 기능을 사용해야 합니다.");
   }
 
-  const { error } = await supabaseClient
-    .from("orders")
-    .update({
-      status: "출고완료",
-      shipping_fee: shippingFee,
-      courier,
-      tracking_number: trackingNumber,
-      updated_at: new Date().toISOString()
-    })
-    .eq("order_number", orderNumber);
+  const { error } = await supabaseClient.rpc('complete_order_shipping',{
+    p_order_number:orderNumber,p_shipping_fee:shippingFee,p_courier:courier,p_tracking_number:trackingNumber
+  });
 
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} (V6.5.63 SQL 실행 필요)`);
 }
 
 async function undoCompletedOrder(orderNumber) {

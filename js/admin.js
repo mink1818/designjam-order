@@ -111,6 +111,7 @@ const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
 if (["전체", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
+let orderRevisionMap = {};
 let paymentAccounts = [];
 let adminInventoryMap = new Map();
 let adminInventoryAvailable = false;
@@ -216,8 +217,9 @@ try {
         customerId: order.customer_id,
         memo: order.memo,
         status: order.status,
+        revisionStatus: order.customer_revision_status || '',
         createdAt: order.created_at,
-        completedAt: latestTimestamp(order.updated_at,order.picking_verified_at,order.created_at),
+        completedAt: order.shipped_at || latestTimestamp(order.picking_verified_at,order.created_at),
         shipping_fee: order.shipping_fee || 0,
         courier: order.courier || "로젠택배",
         tracking_number: order.tracking_number || "",
@@ -233,10 +235,11 @@ try {
     }
 
     const currentGroup=grouped[order.order_number];
+    if(order.customer_revision_status)currentGroup.revisionStatus=order.customer_revision_status;
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
     if(order.delivery_address&&!currentGroup.deliveryAddress)currentGroup.deliveryAddress=order.delivery_address;
-    currentGroup.completedAt=latestTimestamp(currentGroup.completedAt,order.updated_at,order.picking_verified_at,order.created_at);
+    currentGroup.completedAt=latestTimestamp(currentGroup.completedAt,order.shipped_at,order.picking_verified_at,order.created_at);
     currentGroup.items.push(order);
     if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[order.order_number].pickingStatus = order.picking_status;
     else if (order.picking_status === '피킹중' && !String(grouped[order.order_number].pickingStatus).includes('검증완료')) grouped[order.order_number].pickingStatus = '피킹중';
@@ -358,10 +361,20 @@ function formatMobileOrderDate(value) {
 
 function canEditOrderItems(group) {
   return group.status !== "출고완료" &&
+    !group.revisionStatus &&
     !String(group.pickingStatus || "").includes("검증완료") &&
     group.pickingStatus !== "피킹중" &&
     group.items.every(item => Number(item.picked_qty || 0) === 0 && Number(item.soldout_qty || 0) === 0 && !item.is_soldout);
 }
+
+function revisionSnapshotMap(snapshot){const map=new Map();(Array.isArray(snapshot)?snapshot:[]).forEach(item=>{const warehouse=String(item.warehouse_code||'').toUpperCase(),number=String(item.item_number||'').trim();map.set(`${warehouse}|${number}`,{warehouse,number,qty:Number(item.qty||0)})});return map}
+function renderOrderRevisionPanel(group){
+ const state=group.revisionStatus;if(!state)return'';const revision=group.revisionRecord||{},before=revisionSnapshotMap(revision.original_snapshot),after=revisionSnapshotMap(revision.revised_snapshot),keys=[...new Set([...before.keys(),...after.keys()])].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
+ const changes=keys.map(key=>{const oldItem=before.get(key),newItem=after.get(key),label=`${newItem?.warehouse||oldItem?.warehouse?`${newItem?.warehouse||oldItem?.warehouse}-`:''}${newItem?.number||oldItem?.number||'-'}`;if(!oldItem)return`<li class="revision-added"><b>${escapeAdminHtml(label)}</b> 신규 ${newItem.qty}죽</li>`;if(!newItem)return`<li class="revision-deleted"><b>${escapeAdminHtml(label)}</b> ${oldItem.qty}죽 → 삭제</li>`;if(oldItem.qty!==newItem.qty)return`<li class="revision-changed"><b>${escapeAdminHtml(label)}</b> ${oldItem.qty}죽 → ${newItem.qty}죽</li>`;return''}).filter(Boolean).join('');
+ return `<section class="customer-revision-panel ${state==='수정완료'?'complete':'editing'}"><h3>${state==='수정중'?'✏️ 고객이 주문 수정중입니다':'🔔 고객 주문 수정완료·변경확인 필요'}</h3>${state==='수정완료'?`<ul>${changes||'<li>수량 변경 없이 주문정보를 수정했습니다.</li>'}</ul><button type="button" class="cart-btn revision-confirm-button" onclick="confirmCustomerOrderRevision('${escapeAdminAttr(group.orderNumber)}')">변경사항 확인·재피킹 허용</button>`:'<p>고객이 수정 완료할 때까지 피킹할 수 없습니다.</p>'}</section>`;
+}
+async function confirmCustomerOrderRevision(orderNumber){if(!confirm('변경사항을 확인했습니까?\n확인 후 이 주문을 다시 피킹할 수 있습니다.'))return;const {error}=await supabaseClient.rpc('admin_confirm_order_revision',{p_order_number:orderNumber});if(error)return alert('변경확인 실패: '+error.message+'\n\nV6.5.63 SQL 실행 여부를 확인해주세요.');alert('변경사항 확인완료\n이제 다시 피킹할 수 있습니다.');await loadOrders()}
+window.confirmCustomerOrderRevision=confirmCustomerOrderRevision;
 
 function renderOrderItemEditor(group, index) {
   if (!canEditOrderItems(group)) return `<p class="order-edit-locked">피킹을 시작하거나 검증한 주문은 피킹 초기화 후 품목을 수정할 수 있습니다.</p>`;
@@ -488,6 +501,7 @@ function renderOrderCards(groups) {
   let html = "";
 
   groups.forEach((group, index) => {
+    group.revisionRecord=orderRevisionMap[group.orderNumber]||null;
     const isDone = group.status === "출고완료";
     let itemHtml = "";
     let summaryQty = 0;
@@ -540,7 +554,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     });
 
     html += `
-      <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}">
+      <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}" data-revision-status="${escapeAdminAttr(group.revisionStatus||'')}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
@@ -554,7 +568,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
   </div>
   <div class="order-status-stack">
-    <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.status}</span>
+    <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     <button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},${isDone})">${isDone ? "수정불가" : "주문수정"}</button>
   </div>
@@ -565,6 +579,8 @@ summaryTotal += Number(group.shipping_fee || 0);
 <div
 id="detail-${index}"
 class="order-detail">
+
+        ${renderOrderRevisionPanel(group)}
 
         ${canEditOrderItems(group) ? `<button class="cart-btn order-items-edit-toggle" type="button" onclick="toggleOrderItemEditor(${index})">품번·수량·단가 수정</button>` : ""}
         ${renderOrderItemEditor(group, index)}
@@ -638,7 +654,7 @@ class="order-detail">
           ${group.status === "출고완료" ? "출고취소·재고복원" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
         </button>
 
-        <button class="cart-btn picking-btn" type="button" onclick="event.stopPropagation();location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
+        <button class="cart-btn picking-btn" type="button" ${group.revisionStatus?'disabled title="고객 주문변경 확인을 먼저 완료해주세요"':''} onclick="event.stopPropagation();location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'변경확인 후 피킹가능':String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작'}</button>
         ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
         <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">출고지별 작업지시서 출력</button>
 
@@ -957,10 +973,11 @@ window.openWorkSheet = openWorkSheet;
 let adminRealtimeTimer = null;
 let adminRealtimeBusy = false;
 
-function updateAdminOrderCardStatus(orderNumber, status, pickingStatus) {
+function updateAdminOrderCardStatus(orderNumber, status, pickingStatus, revisionStatus='') {
   const card = Array.from(document.querySelectorAll('.order-card[data-order-number]'))
     .find(el => el.dataset.orderNumber === String(orderNumber));
   if (!card) return;
+  card.dataset.revisionStatus=revisionStatus||'';
 
   const isDone = status === '출고완료';
   const isVerified = String(pickingStatus || '').includes('검증완료');
@@ -968,7 +985,7 @@ function updateAdminOrderCardStatus(orderNumber, status, pickingStatus) {
 
   const mainPill = card.querySelector('.order-main-status');
   if (mainPill) {
-    mainPill.textContent = status || '주문접수';
+    mainPill.textContent = revisionStatus==='수정중'?'고객 수정중':revisionStatus==='수정완료'?'고객 수정완료':status||'주문접수';
     mainPill.classList.toggle('done', isDone);
     mainPill.classList.toggle('pending', !isDone);
   }
@@ -994,8 +1011,8 @@ function updateAdminOrderCardStatus(orderNumber, status, pickingStatus) {
   if (shippingBtn) {
     shippingBtn.dataset.currentStatus = status || '주문접수';
     shippingBtn.dataset.pickingStatus = pickingStatus || '대기';
-    shippingBtn.disabled = !isDone && !isVerified;
-    shippingBtn.title = shippingBtn.disabled ? '피킹 최종검증 후 출고완료할 수 있습니다' : '';
+    shippingBtn.disabled = Boolean(revisionStatus)||(!isDone&&!isVerified);
+    shippingBtn.title = revisionStatus?'고객 주문변경 확인을 먼저 완료해주세요':shippingBtn.disabled?'피킹 최종검증 후 출고완료할 수 있습니다':'';
     shippingBtn.textContent = isDone ? '출고취소·재고복원' : isVerified ? '출고완료' : '피킹검증 후 출고가능';
     shippingBtn.classList.toggle('undo-btn', isDone);
     shippingBtn.onclick = () => toggleOrderStatus(orderNumber, status || '주문접수', pickingStatus || '대기');
@@ -1011,18 +1028,19 @@ async function refreshAdminOrderStatuses() {
   try {
     const { data, error } = await supabaseClient
       .from('orders')
-      .select('order_number,status,picking_status')
+      .select('order_number,status,picking_status,customer_revision_status')
       .in('order_number', orderNumbers);
     if (error) throw error;
     const latest = new Map();
     (data || []).forEach(row => {
-      const current = latest.get(row.order_number) || { status: row.status || '주문접수', pickingStatus: '대기' };
+      const current = latest.get(row.order_number) || { status: row.status || '주문접수', pickingStatus: '대기', revisionStatus:row.customer_revision_status||'' };
       current.status = row.status || current.status;
+      if(row.customer_revision_status)current.revisionStatus=row.customer_revision_status;
       if (String(row.picking_status || '').includes('검증완료')) current.pickingStatus = row.picking_status;
       else if (row.picking_status === '피킹중' && !String(current.pickingStatus).includes('검증완료')) current.pickingStatus = '피킹중';
       latest.set(row.order_number, current);
     });
-    latest.forEach((value, key) => updateAdminOrderCardStatus(key, value.status, value.pickingStatus));
+    let revisionChanged=false;latest.forEach((value,key)=>{const card=Array.from(document.querySelectorAll('.order-card[data-order-number]')).find(el=>el.dataset.orderNumber===String(key));if(card&&String(card.dataset.revisionStatus||'')!==String(value.revisionStatus||''))revisionChanged=true;updateAdminOrderCardStatus(key,value.status,value.pickingStatus,value.revisionStatus)});if(revisionChanged)setTimeout(()=>loadOrders(),0);
   } catch (error) {
     console.warn('주문 상태 자동 확인 실패:', error);
   } finally {
@@ -1052,7 +1070,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65620','js/admin-mobile-nav.js?v=65620'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65640','js/admin-mobile-nav.js?v=65640'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {
@@ -1141,6 +1159,10 @@ async function loadAdminFeatureData(orderRows=[]){
       customerNotes=Object.fromEntries((data||[]).map(x=>[x.order_number,x.note||""]));
     }
   }catch(e){console.warn("주문별 관리자 메모 불러오기 실패",e)}
+  try{
+    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderRevisionMap={};
+    if(orderNumbers.length){const {data,error}=await supabaseClient.from('order_revision_history').select('order_number,original_snapshot,revised_snapshot,revision_status,started_at,completed_at').in('order_number',orderNumbers).order('started_at',{ascending:false});if(error)throw error;(data||[]).forEach(row=>{if(!orderRevisionMap[row.order_number])orderRevisionMap[row.order_number]=row})}
+  }catch(e){console.warn('고객 주문변경 이력 불러오기 실패',e);orderRevisionMap={}}
   try{
     const {data,error}=await supabaseClient.from("payment_accounts").select("*").eq("is_active",true).order("is_default",{ascending:false}).order("created_at",{ascending:true});
     if(error) throw error;

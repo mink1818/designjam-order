@@ -165,6 +165,10 @@ function getCartStorageKey() {
     : null;
 }
 
+function getOrderRevisionStorageKey(){return currentUser?.id?`designjam_order_revision_${currentUser.id}`:null}
+function getOrderRevisionContext(){const key=getOrderRevisionStorageKey();if(!key)return null;try{const value=JSON.parse(localStorage.getItem(key)||'null');return value?.orderNumber?value:null}catch(_){return null}}
+function clearOrderRevisionContext(){const key=getOrderRevisionStorageKey();if(key)localStorage.removeItem(key)}
+
 function loadSavedCart() {
   const key = getCartStorageKey();
   if (!key) return;
@@ -2177,7 +2181,8 @@ async function submitOrder() {
   if(!deliveryName)return alert('납품처명을 입력해주세요.');
   if(!deliveryAddress)return alert('납품처 주소를 입력해주세요.');
 
-  const orderNumber = makeOrderNumber();
+  const revisionContext=getOrderRevisionContext();
+  const orderNumber = revisionContext?.orderNumber || makeOrderNumber();
 
   const orderRows = cart.map(item => ({
     order_number: orderNumber,
@@ -2203,9 +2208,13 @@ async function submitOrder() {
     submitButton.textContent = "주문 저장 중...";
   }
 
-  const { error } = await supabaseClient
-    .from("orders")
-    .insert(orderRows);
+  const revisionItems=cart.map(item=>({item_number:String(item.number),warehouse_code:item.warehouseCode||null,qty:Number(item.qty),price:Number(item.price)}));
+  const { error } = revisionContext
+    ? await supabaseClient.rpc('customer_complete_order_revision',{
+        p_order_number:orderNumber,p_items:revisionItems,p_memo:memo,p_delivery_name:deliveryName,
+        p_delivery_phone:deliveryPhone,p_delivery_address:deliveryAddress
+      })
+    : await supabaseClient.from("orders").insert(orderRows);
 
   if (error) {
     if (submitButton) {
@@ -2213,7 +2222,7 @@ async function submitOrder() {
       submitButton.textContent = "주문 접수하기";
     }
 
-    alert("주문 저장 실패: " + error.message);
+    alert(`${revisionContext?'주문 수정완료':'주문 저장'} 실패: ${error.message}${revisionContext?'\n\nSupabase에서 V6.5.63 SQL을 먼저 실행해주세요.':''}`);
     return;
   }
 
@@ -2233,6 +2242,7 @@ async function submitOrder() {
     if(destinationSave.error)console.warn('새 납품처 자동 저장 실패:',destinationSave.error.message);
   }
   localStorage.removeItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY);
+  if(revisionContext)clearOrderRevisionContext();
 
   let totalQty = 0;
   let totalPrice = 0;
@@ -2257,7 +2267,7 @@ async function submitOrder() {
 
   catalogList.innerHTML = `
     <div class="product-card">
-      <h2>✅ 주문이 접수되었습니다</h2>
+      <h2>✅ ${revisionContext?'주문 수정이 완료되었습니다':'주문이 접수되었습니다'}</h2>
 
       <p>
         <strong>주문번호:</strong>
