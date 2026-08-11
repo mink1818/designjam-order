@@ -231,7 +231,11 @@ try {
       };
     }
 
-    grouped[order.order_number].items.push(order);
+    const currentGroup=grouped[order.order_number];
+    if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
+    if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
+    if(order.delivery_address&&!currentGroup.deliveryAddress)currentGroup.deliveryAddress=order.delivery_address;
+    currentGroup.items.push(order);
     if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[order.order_number].pickingStatus = order.picking_status;
     else if (order.picking_status === '피킹중' && !String(grouped[order.order_number].pickingStatus).includes('검증완료')) grouped[order.order_number].pickingStatus = '피킹중';
   });
@@ -1034,7 +1038,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65580','js/admin-mobile-nav.js?v=65580'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65590','js/admin-mobile-nav.js?v=65590'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

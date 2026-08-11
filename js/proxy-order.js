@@ -215,6 +215,8 @@ async function submit(){
   const ownerName=mode==='direct'?safeDirectOwnerName():(customer?.owner_name||'');
   const deliverySave=await supabaseClient.rpc('save_order_delivery_info',{p_order_number:order,p_owner_name:ownerName,p_delivery_name:deliveryName,p_delivery_phone:deliveryPhone,p_delivery_address:deliveryAddress});
   if(deliverySave.error)throw new Error(`납품처 저장 실패: ${deliverySave.error.message}`);
+  const deliveryConfirm=await supabaseClient.from('orders').update({customer_owner_name:ownerName||null,delivery_name:deliveryName,delivery_phone:deliveryPhone||null,delivery_address:deliveryAddress||null}).eq('order_number',order);
+  if(deliveryConfirm.error){const check=await supabaseClient.from('orders').select('delivery_name').eq('order_number',order).limit(1).maybeSingle();if(check.error||String(check.data?.delivery_name||'').trim()!==deliveryName)throw new Error(`실제 납품처 최종저장 실패: ${deliveryConfirm.error.message}`)}
   if(selectedCustomerId()&&$('proxyDeliverySelect')?.value==='new'){
    const saved=await supabaseClient.rpc('save_admin_customer_delivery_destination',{p_customer_id:selectedCustomerId(),p_delivery_name:deliveryName,p_delivery_phone:deliveryPhone,p_delivery_address:deliveryAddress});
    if(saved.error)throw new Error(`새 납품처 목록 저장 실패: ${saved.error.message}`);
