@@ -217,6 +217,7 @@ try {
         memo: order.memo,
         status: order.status,
         createdAt: order.created_at,
+        completedAt: latestTimestamp(order.updated_at,order.picking_verified_at,order.created_at),
         shipping_fee: order.shipping_fee || 0,
         courier: order.courier || "로젠택배",
         tracking_number: order.tracking_number || "",
@@ -235,6 +236,7 @@ try {
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
     if(order.delivery_address&&!currentGroup.deliveryAddress)currentGroup.deliveryAddress=order.delivery_address;
+    currentGroup.completedAt=latestTimestamp(currentGroup.completedAt,order.updated_at,order.picking_verified_at,order.created_at);
     currentGroup.items.push(order);
     if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[order.order_number].pickingStatus = order.picking_status;
     else if (order.picking_status === '피킹중' && !String(grouped[order.order_number].pickingStatus).includes('검증완료')) grouped[order.order_number].pickingStatus = '피킹중';
@@ -261,7 +263,7 @@ try {
       if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified)) return false;
       if (!["전체","주문접수","출고대기"].includes(adminFilter) && group.status !== adminFilter) return false;
 
-      if (group.status === "출고완료" && !isWithinCompletedPeriod(group.createdAt)) {
+      if (group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
         return false;
       }
 
@@ -321,17 +323,19 @@ function renderAdminPagination(totalPages) {
   nav.innerHTML = html;
 }
 
-function isWithinCompletedPeriod(createdAt) {
+function latestTimestamp(...values){return values.filter(Boolean).sort((a,b)=>new Date(b)-new Date(a))[0]||''}
+function isWithinCompletedPeriod(completedAt) {
   const value = adminCompletedPeriod?.value || "30";
   if (value === "all") return true;
 
-  const created = new Date(createdAt);
-  if (Number.isNaN(created.getTime())) return true;
+  const completed = new Date(completedAt);
+  if (Number.isNaN(completed.getTime())) return true;
 
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
+  if(value === "today") return completed >= cutoff;
   cutoff.setDate(cutoff.getDate() - Number(value));
-  return created >= cutoff;
+  return completed >= cutoff;
 }
 
 function formatOrderDate(value) {
@@ -1048,7 +1052,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65610','js/admin-mobile-nav.js?v=65610'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65620','js/admin-mobile-nav.js?v=65620'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

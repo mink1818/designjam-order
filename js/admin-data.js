@@ -36,7 +36,8 @@ async function updateOrderStatus(orderNumber, currentStatus, shippingFee, courie
       status: "출고완료",
       shipping_fee: shippingFee,
       courier,
-      tracking_number: trackingNumber
+      tracking_number: trackingNumber,
+      updated_at: new Date().toISOString()
     })
     .eq("order_number", orderNumber);
 

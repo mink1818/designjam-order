@@ -36,7 +36,7 @@ async function loadDashboard(){
   const [todayOrders,pending,doneToday,customers,waiting,products]=await Promise.all([
     supabaseClient.from("orders").select("order_number").gte("created_at",start),
     supabaseClient.from("orders").select("order_number,status").neq("status","출고완료"),
-    supabaseClient.from("orders").select("order_number").eq("status","출고완료").gte("updated_at",start),
+    supabaseClient.from("orders").select("order_number").eq("status","출고완료").or(`updated_at.gte.${start},picking_verified_at.gte.${start}`),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     supabaseClient.from("product_groups").select("id,sold_out")

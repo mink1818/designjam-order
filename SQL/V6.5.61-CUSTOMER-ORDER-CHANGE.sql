@@ -77,8 +77,8 @@ begin
     p_order_number,auth.uid(),v_name,auth.uid(),'거래처','거래처 출고완료 전 주문'||v_change_type,v_rows
   );
 
-  insert into public.app_notifications(recipient_id,title,message,is_read,link_url)
-  select c.id,'고객 주문 '||v_change_type,
+  insert into public.app_notifications(recipient_id,notification_type,title,message,is_read,link_url)
+  select c.id,'customer_order_change','고객 주문 '||v_change_type,
          format('%s · 주문번호 %s · %s%s',coalesce(v_name,'거래처 미입력'),p_order_number,
            case when coalesce(v_picking_started,false) then '피킹 후 ' else '' end,
            case when v_change_type='삭제' then '주문을 삭제했습니다.' else '주문을 수정하여 재접수합니다.' end),

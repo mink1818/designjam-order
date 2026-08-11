@@ -328,7 +328,7 @@ async function deletePendingOrder(orderNumber, editing=false){
   if(!confirm(`${prompt}${pickingStarted?'\n\n이미 피킹한 주문이므로 피킹·재고가 자동 원복되고 관리자에게 변경 알림이 표시됩니다.':''}`))return;
   if(editing){const cart=group.items.map(x=>({groupId:null,categoryId:null,title:'주문 수정',number:String(x.item_number),qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:''}));localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));}
   const {error}=await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:editing?'수정':'삭제'});
-  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 V6.5.61 SQL을 먼저 실행해주세요.`);
+  if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 수정된 V6.5.61 SQL을 다시 실행해주세요.`);
   if(editing)location.href='catalog.html';else await loadMyOrders();
 }
 function editPendingOrder(orderNumber){return deletePendingOrder(orderNumber,true)}
