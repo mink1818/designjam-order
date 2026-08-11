@@ -1,7 +1,0 @@
-DESIGN SOCKS V6.5.58 배포
-
-git add .
-git commit -m "release v6.5.58 warehouse proxy statement"
-git push
-
-Vercel 배포 완료 후 관리자 PC와 모바일에서 Ctrl+F5 또는 새로고침하세요.

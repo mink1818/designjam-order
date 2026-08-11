@@ -1,7 +1,0 @@
-DESIGN SOCKS V6.5.59 배포
-
-git add .
-git commit -m "release v6.5.59 proxy delivery picking entry"
-git push
-
-Vercel 배포 완료 후 관리자 주문관리와 피킹 화면을 새로고침하세요.
