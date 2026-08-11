@@ -1837,19 +1837,12 @@ function renderCustomerBulkOrder() {
       <h2>📋 품번·수량 한번에 주문</h2>
       <p>문자·카톡 주문 내용을 붙여넣으면 품번·수량과 납품처 정보를 한 번에 입력할 수 있습니다.</p>
       <div class="customer-bulk-order-guide">
-        <strong>입력 방법</strong>
-        <ul>
-          <li>한 줄에 한 품번씩 입력하고, 여러 줄을 동시에 붙여넣을 수 있습니다.</li>
-          <li>품번과 수량 사이는 공백 또는 탭으로 띄워주세요.</li>
-          <li>수량을 적지 않은 품번은 1죽으로 입력됩니다.</li>
-          <li><b>5031~5035</b>처럼 범위를 입력하면 포함된 품번을 각각 1죽씩 입력합니다.</li>
-          <li>품번·수량과 납품처 정보는 위·아래 어느 위치에 있어도 자동으로 구분합니다.</li>
-          <li>납품처 정보 안에서는 이름·연락처·주소 순서로 적어주세요.</li>
-          <li>메모는 주소 다음 줄에 적을 수 있으며, 적지 않으면 메모 없이 주문됩니다.</li>
-        </ul>
-        <div class="customer-bulk-order-example"><span>입력 예시</span><code>4001&nbsp;&nbsp;&nbsp;&nbsp;2죽<br>4002&nbsp;&nbsp;&nbsp;&nbsp;5<br>S-1051&nbsp;&nbsp;1<br>5031~5035<br><br>행복양말<br>010-1234-5678<br>서울시 강남구 테헤란로 123<br>문 앞에 놓아주세요&nbsp;&nbsp;(메모 선택)</code></div>
+        <strong>세로형 예시</strong>
+        <div class="customer-bulk-order-example"><span>세로</span><code>주문<br>4022-1<br>4122-1<br>694-3<br><br>받는 사람<br>박하늘 010-0000-0000<br>서울시 행복구 새봄로 12<br>가상빌딩 301호<br><br>보내는 사람<br>새봄상회 010-1111-1111</code></div>
+        <strong class="customer-bulk-example-title">가로형 예시</strong>
+        <div class="customer-bulk-order-example"><span>가로</span><code>주문 4022-1 4122-1 694-3 · 받는 사람 박하늘 010-0000-0000 서울시 행복구 새봄로 12 가상빌딩 301호 · 보내는 사람 새봄상회 010-1111-1111</code></div>
       </div>
-      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="4001        2죽\n4002        5\n5031~5035\n\n행복양말\n010-1234-5678\n서울시 강남구 테헤란로 123\n문 앞에 놓아주세요 (메모는 선택)\n\n품번과 납품처 정보는 위·아래 어느 위치에 있어도 됩니다.">${escapeHtml(draft)}</textarea>
+      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="12" placeholder="세로 또는 가로로 복사한 카톡 주문을 붙여넣으세요.">${escapeHtml(draft)}</textarea>
       <p class="customer-bulk-order-help"><b>안내:</b> 주소 입력은 자동 인식 기능이므로 형식에 따라 정확히 구분되지 않을 수 있습니다. 주소가 잘못 인식되면 품번·수량만 입력한 뒤 주문 화면에서 납품처를 선택해 주세요.</p>
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
