@@ -136,7 +136,6 @@ function renderStatement(items, productGroups = []) {
   const first = items[0];
   const customerName = first.customer_name || "거래처";
   const ownerName = first.customer_owner_name || "-";
-  const deliveryAddress = first.delivery_address || "-";
   const brandName = "디자인 삭스", footerName = brandName, statementTitle = "거래명세서", confirmationText = "상기 내용과 같이 거래하였음을 확인합니다.";
   currentStatementCustomerName = customerName;
 
@@ -215,7 +214,7 @@ function renderStatement(items, productGroups = []) {
         <span data-profile-field="owner_name">${escapeHtml(ownerName)}</span>
       </div>
 
-      <div><strong>납품주소</strong><span data-profile-field="delivery_address">${escapeHtml(deliveryAddress)}</span></div>
+      <div><strong>납품주소</strong><span class="statement-editable-field" contenteditable="true" role="textbox" aria-label="납품주소"></span></div>
 
       <div>
         <strong>주문번호</strong>

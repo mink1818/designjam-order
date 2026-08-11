@@ -107,6 +107,8 @@ body {
   grid-column: 1 / -1;
 }
 
+.statement-editable-field{min-height:42px;white-space:pre-wrap}.statement-editable-field:empty:before{content:attr(data-placeholder);color:#94a3b8}.statement-editable-field:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#eff6ff}
+
 .statement-table {
   width: 100%;
   margin-top: 28px;
