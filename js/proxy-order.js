@@ -4,6 +4,7 @@ const $=id=>document.getElementById(id);
 const ADMIN_SESSION_KEY='designjam_admin_session';
 let customers=[],items=[],proxyPartyHistory=[],proxySavedParties=[],proxySavedDestinations=[],currentAdminId=null,activeCustomerPrices=new Map(),selectedPriceLoadToken=0,directPriceTimer=null;
 let draftSaveTimer=null,draftSubmissionComplete=false;
+let pendingProxyPasteAnalysis=null;
 const PROXY_ITEM_CHOICE_KEY='designjam_proxy_item_choices_v1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalizeItem=v=>String(v||'').trim().normalize('NFKC').toUpperCase();
@@ -180,19 +181,36 @@ function expandPastedItemRange(line){
  for(let number=start;number<=end;number++)items.push(`${startPrefix}${String(number).padStart(width,'0')}${startSuffix}`);
  return items;
 }
-async function applyPastedOrder(){
- const text=String($('proxyPasteInput')?.value||'').trim();if(!text)return alert('붙여넣을 주문정보를 입력하세요.');
- const rows=text.split(/\r?\n|[;|]/).map(line=>line.trim()).filter(Boolean),raw=[],merged=new Map(),unmatched=[],fields={},unlabeled=[];
- const labels=[['customer',/^(?:거래처명?|업체명?)\s*[:：]\s*(.+)$/i],['delivery',/^(?:납품처명?|배송처명?)\s*[:：]\s*(.+)$/i],['phone',/^(?:연락처|전화(?:번호)?)\s*[:：]\s*(.+)$/i],['address',/^(?:주소|납품주소|배송주소)\s*[:：]\s*(.+)$/i],['memo',/^(?:메모|요청사항)\s*[:：]\s*(.+)$/i]];
- for(const line of rows){let handled=false;for(const [key,re] of labels){const match=line.match(re);if(match){fields[key]=match[1].trim();handled=true;break}}if(handled)continue;const cells=line.split(/\t+/).map(v=>v.trim()).filter(Boolean);if(cells.length>=2&&/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(cells[0]))){raw.push({item:cells[0],qty:Math.max(1,Number(String(cells[1]).replace(/[^0-9]/g,'')||1))});continue}const range=expandPastedItemRange(line);if(range.length){range.forEach(item=>raw.push({item,qty:1}));continue}const parsed=parsePastedItemLine(line);if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(parsed.item))){raw.push(parsed);continue}unlabeled.push(line)}
- const phoneIndex=unlabeled.findIndex(line=>/0\d{1,2}[\s-]?\d{3,4}[\s-]?\d{4}/.test(line.replace(/\s+/g,'')));if(!fields.phone&&phoneIndex>=0)fields.phone=unlabeled.splice(phoneIndex,1)[0];
- const addressIndex=unlabeled.findIndex(line=>/(?:특별시|광역시|특별자치|[가-힣]+[시도군구읍면동로길])/.test(line)&&/\d/.test(line));if(!fields.address&&addressIndex>=0)fields.address=unlabeled.splice(addressIndex,1)[0];
- if(!fields.delivery&&unlabeled.length)fields.delivery=unlabeled.shift();if(!fields.memo&&unlabeled.length)fields.memo=unlabeled.join(' / ');
+function normalizeSmartPhone(value){const digits=String(value||'').replace(/\D/g,'');return digits.length===11?`${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`:digits.length===10?`${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6)}`:String(value||'').trim()}
+function smartPersonSection(text,label,nextLabel=''){
+ const source=String(text||'').replace(/\r?\n/g,' '),start=source.search(new RegExp(label+'\\s*[:：]?','i'));if(start<0)return{};
+ const after=source.slice(start).replace(new RegExp('^'+label+'\\s*[:：]?','i'),'').trim(),end=nextLabel?after.search(new RegExp(nextLabel+'\\s*[:：]?','i')):-1,section=(end>=0?after.slice(0,end):after).trim();
+ const phoneMatch=section.match(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/);if(!phoneMatch)return{name:section.replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g,'')};
+ const before=section.slice(0,phoneMatch.index).replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g,'').trim(),afterPhone=section.slice(phoneMatch.index+phoneMatch[0].length).replace(/^[ㆍ·●,;\s]+|[ㆍ·●,;\s]+$/g,'').trim();
+ return{name:before,phone:normalizeSmartPhone(phoneMatch[0]),address:afterPhone};
+}
+function exactProxyRegistered(value){const key=priceKey(value);return items.find(row=>priceKey(row.item_number)===key)||null}
+function smartProxyItems(text){
+ let orderText=String(text||'');const receiverIndex=orderText.search(/받는\s*사람/i);if(receiverIndex>=0)orderText=orderText.slice(0,receiverIndex);orderText=orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g,' ');
+ const tokens=orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*[-:/.]\s*\d+\s*(?:죽|족)?)?/gi)||[],out=[];
+ tokens.forEach(raw=>{let token=raw.trim().replace(/\s*(?:죽|족)$/i,''),qty=1;const exact=exactProxyRegistered(token);if(!exact){const quantity=token.match(/^(.+?)\s*[-:/.]\s*(\d+)$/);if(quantity){token=quantity[1].trim();qty=Math.max(1,Number(quantity[2]))}}const range=expandPastedItemRange(token);if(range.length)range.forEach(item=>out.push({item,qty}));else if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(token)))out.push({item:token,qty})});return out;
+}
+function analyzeProxyPaste(text){
+ const source=String(text||'').normalize('NFKC'),receiver=smartPersonSection(source,'받는\\s*사람','보내는\\s*사람'),sender=smartPersonSection(source,'보내는\\s*사람'),fields={customer:sender.name||'',delivery:receiver.name||'',phone:receiver.phone||'',address:receiver.address||'',memo:''};
+ const labels=[['customer',/(?:거래처명?|업체명?)\s*[:：]\s*([^\n;|]+)/i],['delivery',/(?:납품처명?|배송처명?)\s*[:：]\s*([^\n;|]+)/i],['phone',/(?:연락처|전화(?:번호)?)\s*[:：]\s*([^\n;|]+)/i],['address',/(?:주소|납품주소|배송주소)\s*[:：]\s*([^\n;|]+)/i],['memo',/(?:메모|요청사항)\s*[:：]\s*([^\n;|]+)/i]];
+ labels.forEach(([key,re])=>{const match=source.match(re);if(match)fields[key]=match[1].trim()});const lineItems=[];source.split(/\r?\n/).forEach(line=>{const range=expandPastedItemRange(line);if(range.length)return range.forEach(item=>lineItems.push({item,qty:1}));const parsed=parsePastedItemLine(line);if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(parsed.item)))lineItems.push(parsed)});return{fields,items:lineItems.length?lineItems:smartProxyItems(source)};
+}
+function renderProxyPasteAnalysis(){
+ const text=String($('proxyPasteInput')?.value||'').trim();if(!text)return alert('붙여넣을 주문정보를 입력하세요.');pendingProxyPasteAnalysis=analyzeProxyPaste(text);const {fields,items:rows}=pendingProxyPasteAnalysis,box=$('proxyPasteAnalysis');
+ const option=(key,label,value,wide='')=>`<label class="${wide}"><input type="checkbox" data-smart-field="${key}" ${value?'checked':''} ${value?'':'disabled'}><span><b>${label}</b><br>${esc(value||'인식 안 됨')}</span></label>`;
+ box.innerHTML=`<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="smart-paste-options">${option('items','품번·수량',rows.map(row=>`${row.item} ${row.qty}죽`).join(', '),'smart-paste-items')}${option('customer','거래처명',fields.customer)}${option('delivery','실제 납품처명',fields.delivery)}${option('phone','납품처 연락처',fields.phone)}${option('address','납품처 주소',fields.address)}${option('memo','메모',fields.memo)}</div>${rows.length?'':'<p class="smart-paste-warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;box.hidden=false;$('confirmProxyPaste').hidden=false;$('proxyPasteResult').textContent='분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.';
+}
+async function applyPastedOrder(event){
+ if(event?.currentTarget?.id==='applyProxyPaste'||!pendingProxyPasteAnalysis)return renderProxyPasteAnalysis();const checked=key=>Boolean($('proxyPasteAnalysis')?.querySelector(`[data-smart-field="${key}"]:checked`)),fields=pendingProxyPasteAnalysis.fields,raw=checked('items')?pendingProxyPasteAnalysis.items:[],merged=new Map(),unmatched=[];
  for(const row of raw){const resolution=resolveProxyItem(row.item);let found=resolution.item;if(!found&&resolution.candidates.length>1)found=await chooseProxyItem(row.item,resolution.candidates,resolution.remembered);const itemNumber=found?.item_number||row.item;if(!found)unmatched.push(row.item);const key=normalizeItem(itemNumber),current=merged.get(key)||{item_number:itemNumber,qty:0};current.qty+=row.qty;merged.set(key,current)}
- if(fields.customer){const matched=customers.find(c=>normalizeCustomer(c.business_name)===normalizeCustomer(fields.customer));if(matched)selectUnifiedProxyParty({name:matched.business_name||matched.owner_name||matched.email,customerId:String(matched.id),owner:matched.owner_name||'',phone:matched.phone||'',kind:'가입 거래처'});else{document.querySelector('input[name="proxyCustomerMode"][value="direct"]').checked=true;$('proxyDirectName').value=fields.customer;$('proxyCustomerSearch').value=fields.customer;$('proxySelectedCustomerLabel').textContent=`새 미가입 거래처: ${fields.customer}`}updateCustomerMode();await loadProxyDestinations();await reloadSelectedCustomerPrices()}
- if(fields.delivery)$('proxyDeliveryName').value=fields.delivery;if(fields.phone)$('proxyDeliveryPhone').value=fields.phone;if(fields.address)$('proxyDeliveryAddress').value=fields.address;if(fields.memo)$('proxyMemo').value=fields.memo;
- if(selectedCustomerId())await loadProxyDestinations({deliveryName:fields.delivery||'',deliveryPhone:fields.phone||'',deliveryAddress:fields.address||''});
- const parsed=[...merged.values()];if(parsed.length){$('proxyLines').innerHTML='';parsed.forEach(row=>addLine(row));refreshAllLinePrices()}$('proxyPasteInput').value='';const result=$('proxyPasteResult');if(result)result.textContent=`주문정보 적용 완료 · ${parsed.length.toLocaleString()}품번${unmatched.length?` · 상품 미등록 확인 ${[...new Set(unmatched)].length}개`:''}`;calc();scheduleProxyDraftSave();
+ if(checked('customer')&&fields.customer){const matched=customers.find(c=>normalizeCustomer(c.business_name)===normalizeCustomer(fields.customer));if(matched)selectUnifiedProxyParty({name:matched.business_name||matched.owner_name||matched.email,customerId:String(matched.id),owner:matched.owner_name||'',phone:matched.phone||'',kind:'가입 거래처'});else{document.querySelector('input[name="proxyCustomerMode"][value="direct"]').checked=true;$('proxyDirectName').value=fields.customer;$('proxyCustomerSearch').value=fields.customer;$('proxySelectedCustomerLabel').textContent=`새 미가입 거래처: ${fields.customer}`}updateCustomerMode();await loadProxyDestinations();await reloadSelectedCustomerPrices()}
+ if(checked('delivery')&&fields.delivery)$('proxyDeliveryName').value=fields.delivery;if(checked('phone')&&fields.phone)$('proxyDeliveryPhone').value=fields.phone;if(checked('address')&&fields.address)$('proxyDeliveryAddress').value=fields.address;if(checked('memo')&&fields.memo)$('proxyMemo').value=fields.memo;
+ if(selectedCustomerId())await loadProxyDestinations({deliveryName:checked('delivery')?fields.delivery:'',deliveryPhone:checked('phone')?fields.phone:'',deliveryAddress:checked('address')?fields.address:''});const parsed=[...merged.values()];if(parsed.length){$('proxyLines').innerHTML='';parsed.forEach(row=>addLine(row));refreshAllLinePrices()}$('proxyPasteResult').textContent=`선택 항목 적용 완료${parsed.length?` · ${parsed.length.toLocaleString()}품번`:''}${unmatched.length?` · 상품 미등록 확인 ${[...new Set(unmatched)].length}개`:''}`;pendingProxyPasteAnalysis=null;$('proxyPasteAnalysis').hidden=true;$('confirmProxyPaste').hidden=true;calc();scheduleProxyDraftSave();
 }
 
 async function loadProxyDestinations(preferredFields=null){
@@ -309,4 +327,6 @@ $('proxyDeliveryName')?.addEventListener('blur',()=>setTimeout(()=>{$('proxyDeli
 $('proxyDeliveryName')?.addEventListener('change',event=>{const query=String(event.target.value||'').trim();const exact=proxyDestinations.find(row=>normalizeCustomer(row.delivery_name)===normalizeCustomer(query));const initialMatches=proxyDestinations.filter(row=>lookupMatches(row.delivery_name,query));const matched=exact||(initialMatches.length===1?initialMatches[0]:null);if(matched){proxyDeliveryManuallyEdited=false;$('proxyDeliverySelect').value=String(matched.id);$('proxyDeliverySelect').dispatchEvent(new Event('change'))}else{$('proxyDeliverySelect').value='new';$('proxyDeliveryPhone').value='';$('proxyDeliveryAddress').value='';scheduleProxyDraftSave()}});
 $('editProxyDestination')?.addEventListener('click',editSelectedProxyDestination);
 $('deleteProxyDestination')?.addEventListener('click',deleteSelectedProxyDestination);
+$('confirmProxyPaste')?.addEventListener('click',applyPastedOrder);
+$('proxyPasteInput')?.addEventListener('input',()=>{pendingProxyPasteAnalysis=null;$('proxyPasteAnalysis').hidden=true;$('confirmProxyPaste').hidden=true});
 })();

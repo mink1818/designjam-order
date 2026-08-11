@@ -1531,6 +1531,7 @@ const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
 // 새 키에서는 사용자가 팝업의 "다음 주문에도 기억"을 직접 체크한 경우만 저장됩니다.
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
+let pendingCustomerBulkAnalysis = null;
 
 function normalizeBulkItemNumber(value) {
   return String(value ?? "").trim().normalize("NFKC").toUpperCase();
@@ -1668,7 +1669,8 @@ function parseCustomerBulkOrder(text) {
       .replace(/(죽씩|족씩|죽|족)/gi, " ")
       .trim();
     const separated = cleaned.match(/^(.+?)(?:[\t ,;|/.:ㅡ]+|-)(\d+)$/);
-    const canUseSeparated = separated && !/^[SBI]$/i.test(separated[1].trim());
+    const exactRegistered = getBulkOrderItemIndex().some(row => row.normalized === normalizeBulkItemNumber(cleaned));
+    const canUseSeparated = separated && !exactRegistered && !/^[SBI]$/i.test(separated[1].trim());
     const parts = cleaned
       .split(/[\t,;|/.:\sㅡ]+/)
       .map(value => value.trim())
@@ -1712,6 +1714,73 @@ function parseCustomerBulkDelivery(text) {
   if (!fields.deliveryName && remaining.length) fields.deliveryName = remaining.shift();
   if (!fields.memo && remaining.length) fields.memo = remaining.join(" / ");
   return fields;
+}
+
+function normalizeCustomerSmartPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 11) return `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6)}`;
+  return String(value || "").trim();
+}
+
+function customerSmartPersonSection(text, label, nextLabel = "") {
+  const source = String(text || "").replace(/\r?\n/g, " ");
+  const start = source.search(new RegExp(label + "\\s*[:：]?", "i"));
+  if (start < 0) return {};
+  const after = source.slice(start).replace(new RegExp("^" + label + "\\s*[:：]?", "i"), "").trim();
+  const end = nextLabel ? after.search(new RegExp(nextLabel + "\\s*[:：]?", "i")) : -1;
+  const section = (end >= 0 ? after.slice(0, end) : after).trim();
+  const phone = section.match(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/);
+  if (!phone) return { deliveryName: section.replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g, "") };
+  return {
+    deliveryName: section.slice(0, phone.index).replace(/^[ㆍ·●\s]+|[ㆍ·●\s]+$/g, "").trim(),
+    deliveryPhone: normalizeCustomerSmartPhone(phone[0]),
+    deliveryAddress: section.slice(phone.index + phone[0].length).replace(/^[ㆍ·●,;\s]+|[ㆍ·●,;\s]+$/g, "").trim()
+  };
+}
+
+function parseCustomerSmartItems(text, index = getBulkOrderItemIndex()) {
+  let orderText = String(text || "");
+  const receiverIndex = orderText.search(/받는\s*사람/i);
+  if (receiverIndex >= 0) orderText = orderText.slice(0, receiverIndex);
+  orderText = orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g, " ");
+  const tokens = orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*[-:/.]\s*\d+\s*(?:죽|족)?)?/gi) || [];
+  const rows = [];
+  tokens.forEach(raw => {
+    let token = raw.trim().replace(/\s*(?:죽|족)$/i, "");
+    let qty = 1;
+    const exact = index.find(row => row.normalized === normalizeBulkItemNumber(token));
+    if (!exact) {
+      const quantity = token.match(/^(.+?)\s*[-:/.]\s*(\d+)$/);
+      if (quantity) { token = quantity[1].trim(); qty = Math.max(1, Number(quantity[2])); }
+    }
+    expandBulkOrderRange(token).forEach(number => {
+      if (/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeBulkItemNumber(number))) rows.push({ number, qty });
+    });
+  });
+  return rows;
+}
+
+function analyzeCustomerBulkPaste(text) {
+  const source = String(text || "").normalize("NFKC");
+  const receiver = customerSmartPersonSection(source, "받는\\s*사람", "보내는\\s*사람");
+  const legacy = parseCustomerBulkDelivery(source);
+  const lineRows = parseCustomerBulkOrder(source);
+  return { rows: lineRows.length ? lineRows : parseCustomerSmartItems(source), delivery: { ...legacy, ...Object.fromEntries(Object.entries(receiver).filter(([,value]) => value)) } };
+}
+
+function renderCustomerBulkAnalysis() {
+  const input = document.getElementById("customerBulkOrderInput");
+  const source = input?.value?.trim() || "";
+  if (!source) return;
+  pendingCustomerBulkAnalysis = analyzeCustomerBulkPaste(source);
+  const { rows, delivery } = pendingCustomerBulkAnalysis;
+  const box = document.getElementById("customerBulkOrderAnalysis");
+  const option = (key, label, value, wide = "") => `<label class="${wide}"><input type="checkbox" data-customer-smart-field="${key}" ${value ? "checked" : ""} ${value ? "" : "disabled"}><span><b>${label}</b><br>${escapeHtml(value || "인식 안 됨")}</span></label>`;
+  box.innerHTML = `<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="customer-smart-paste-options">${option("items", "품번·수량", rows.map(row => `${row.number} ${row.qty}죽`).join(", "), "customer-smart-paste-items")}${option("deliveryName", "실제 납품처명", delivery.deliveryName)}${option("deliveryPhone", "연락처", delivery.deliveryPhone)}${option("deliveryAddress", "주소", delivery.deliveryAddress)}${option("memo", "메모", delivery.memo)}</div>${rows.length ? "" : '<p class="warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;
+  box.hidden = false;
+  document.getElementById("confirmCustomerBulkOrder").hidden = false;
+  document.getElementById("customerBulkOrderResult").textContent = "분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.";
 }
 
 function hasAdvancedCustomerAccess(){
@@ -1784,15 +1853,17 @@ function renderCustomerBulkOrder() {
       <p class="customer-bulk-order-help"><b>안내:</b> 주소 입력은 자동 인식 기능이므로 형식에 따라 정확히 구분되지 않을 수 있습니다. 주소가 잘못 인식되면 품번·수량만 입력한 뒤 주문 화면에서 납품처를 선택해 주세요.</p>
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
+      <div id="customerBulkOrderAnalysis" class="customer-smart-paste-preview" hidden></div>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
       <div class="customer-bulk-order-actions">
-        <button class="cart-btn" type="button" onclick="applyCustomerBulkOrder()">장바구니에 한번에 담기</button>
+        <button class="cart-btn" type="button" onclick="renderCustomerBulkAnalysis()">자동 분석</button>
+        <button id="confirmCustomerBulkOrder" class="cart-btn green-btn" type="button" onclick="applyCustomerBulkOrder()" hidden>선택 항목 적용</button>
         <button class="cart-btn gray-btn" type="button" onclick="renderCart()">장바구니 확인</button>
         <button class="cart-btn gray-btn" type="button" onclick="continueShopping()">상품 목록으로</button>
       </div>
     </div>`;
   const input = document.getElementById("customerBulkOrderInput");
-  input?.addEventListener("input", () => localStorage.setItem(CUSTOMER_BULK_ORDER_DRAFT_KEY, input.value));
+  input?.addEventListener("input", () => { localStorage.setItem(CUSTOMER_BULK_ORDER_DRAFT_KEY, input.value); pendingCustomerBulkAnalysis = null; document.getElementById("customerBulkOrderAnalysis").hidden = true; document.getElementById("confirmCustomerBulkOrder").hidden = true; });
   requestAnimationFrame(() => input?.focus());
 }
 
@@ -1800,9 +1871,11 @@ async function applyCustomerBulkOrder() {
   const input = document.getElementById("customerBulkOrderInput");
   const resultBox = document.getElementById("customerBulkOrderResult");
   const pastedText = input?.value || "";
-  const rows = parseCustomerBulkOrder(pastedText);
-  const deliveryFields = parseCustomerBulkDelivery(pastedText);
-  if (!rows.length) { if (resultBox) resultBox.textContent = "품번과 수량을 입력해 주세요."; return; }
+  if (!pendingCustomerBulkAnalysis) { renderCustomerBulkAnalysis(); return; }
+  const checked = key => Boolean(document.querySelector(`[data-customer-smart-field="${key}"]:checked`));
+  const rows = checked("items") ? pendingCustomerBulkAnalysis.rows : [];
+  const deliveryFields = Object.fromEntries(Object.entries(pendingCustomerBulkAnalysis.delivery).filter(([key, value]) => checked(key) && value));
+  if (!rows.length && !Object.keys(deliveryFields).length) { if (resultBox) resultBox.textContent = "적용할 항목을 하나 이상 선택해 주세요."; return; }
 
   const index = getBulkOrderItemIndex();
   const totals = new Map();
@@ -1845,12 +1918,14 @@ async function applyCustomerBulkOrder() {
   if (resultBox) {
     resultBox.innerHTML = messages.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("");
   }
+  pendingCustomerBulkAnalysis = null;
   if (addedQty && !missing.length) {
     localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
     setTimeout(showOrderForm, 350);
   }
 }
 window.renderCustomerBulkOrder = renderCustomerBulkOrder;
+window.renderCustomerBulkAnalysis = renderCustomerBulkAnalysis;
 window.applyCustomerBulkOrder = applyCustomerBulkOrder;
 
 function addGroupToCart(groupId, nextAction = "cart") {
