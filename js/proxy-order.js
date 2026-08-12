@@ -5,6 +5,7 @@ const ADMIN_SESSION_KEY='designjam_admin_session';
 let customers=[],items=[],proxyPartyHistory=[],proxySavedParties=[],proxySavedDestinations=[],currentAdminId=null,activeCustomerPrices=new Map(),selectedPriceLoadToken=0,directPriceTimer=null;
 let draftSaveTimer=null,draftSubmissionComplete=false;
 let pendingProxyPasteAnalysis=null;
+let selectedProxyPhotoFiles=[];
 const PROXY_ITEM_CHOICE_KEY='designjam_proxy_item_choices_v1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalizeItem=v=>String(v||'').trim().normalize('NFKC').toUpperCase();
@@ -133,7 +134,8 @@ function scheduleProxyDraftSave(){clearTimeout(draftSaveTimer);draftSaveTimer=se
 function clearProxyDraft(){const key=proxyDraftKey();if(key)localStorage.removeItem(key)}
 function clearProxyPartyFields(){['proxyCustomer','proxyDirectName','proxyDirectOwner','proxyDirectPhone','proxyDirectAddress','proxyDeliveryName','proxyDeliveryPhone','proxyDeliveryAddress','proxyCustomerSearch','proxyDeliverySearch'].forEach(id=>{if($(id))$(id).value=''});if($('proxyDeliverySelect'))$('proxyDeliverySelect').innerHTML='<option value="">거래처 선택 후 불러오기</option>';proxyDestinations=[];proxyDeliveryManuallyEdited=false;activeCustomerPrices.clear();selectedPriceLoadToken++;updateRegisteredPriceStatus('');if($('proxyDirectPriceMatch'))$('proxyDirectPriceMatch').hidden=true}
 function resetProxyParties(){if($('proxySelectedCustomerLabel'))$('proxySelectedCustomerLabel').textContent='거래처명을 검색하거나 새로 입력하세요';const selectMode=document.querySelector('input[name="proxyCustomerMode"][value="select"]');if(selectMode)selectMode.checked=true;clearProxyPartyFields();updateProxyDestinationActions()}
-function resetProxyPasteWorkspace(){pendingProxyPasteAnalysis=null;if($('proxyPasteInput'))$('proxyPasteInput').value='';if($('proxyPasteAnalysis')){$('proxyPasteAnalysis').hidden=true;$('proxyPasteAnalysis').innerHTML=''}if($('confirmProxyPaste'))$('confirmProxyPaste').hidden=true;if($('proxyPasteResult'))$('proxyPasteResult').textContent='';const photo=$('proxyOrderPhoto'),preview=$('proxyOrderPhotoPreview'),status=$('proxyPhotoStatus');if(photo)photo.value='';if(preview){if(preview.dataset.url)URL.revokeObjectURL(preview.dataset.url);preview.dataset.url='';preview.removeAttribute('src');preview.classList.remove('show')}if(status){status.textContent='카톡에서 사진을 저장한 뒤 여기서 선택하세요.';status.classList.remove('error')}}
+function renderSelectedProxyPhotos(){const list=$('proxySelectedPhotoList'),clear=$('clearProxyPhotos'),preview=$('proxyOrderPhotoPreview'),status=$('proxyPhotoStatus');if(list)list.innerHTML=selectedProxyPhotoFiles.map((file,index)=>`<div class="proxy-selected-photo-row"><span>${esc(file.name)} · ${(file.size/1024).toFixed(0)}KB</span><button type="button" data-remove-proxy-photo="${index}">삭제</button></div>`).join('');list?.querySelectorAll('[data-remove-proxy-photo]').forEach(button=>button.onclick=()=>{selectedProxyPhotoFiles.splice(Number(button.dataset.removeProxyPhoto),1);renderSelectedProxyPhotos()});if(clear)clear.hidden=!selectedProxyPhotoFiles.length;if(preview?.dataset.url)URL.revokeObjectURL(preview.dataset.url);if(preview){preview.dataset.url='';preview.removeAttribute('src');preview.classList.remove('show');if(selectedProxyPhotoFiles[0]){const url=URL.createObjectURL(selectedProxyPhotoFiles[0]);preview.dataset.url=url;preview.src=url;preview.classList.add('show')}}if(status)status.textContent=selectedProxyPhotoFiles.length?`사진 ${selectedProxyPhotoFiles.length}장이 선택되었습니다. 분석 전 필요 없는 사진은 삭제할 수 있습니다.`:'카톡에서 사진을 저장한 뒤 여기서 선택하세요.'}
+function resetProxyPasteWorkspace(){pendingProxyPasteAnalysis=null;if($('proxyPasteInput'))$('proxyPasteInput').value='';if($('proxyPasteAnalysis')){$('proxyPasteAnalysis').hidden=true;$('proxyPasteAnalysis').innerHTML=''}if($('confirmProxyPaste'))$('confirmProxyPaste').hidden=true;if($('proxyPasteResult'))$('proxyPasteResult').textContent='';const photo=$('proxyOrderPhoto'),status=$('proxyPhotoStatus');if(photo)photo.value='';selectedProxyPhotoFiles=[];renderSelectedProxyPhotos();if(status)status.classList.remove('error')}
 function restoreProxyDraft(){const key=proxyDraftKey();if(!key)return false;let draft=null;try{draft=JSON.parse(localStorage.getItem(key)||'null')}catch{}if(!draft)return false;resetProxyParties();resetProxyPasteWorkspace();$('proxyMemo').value=draft.memo||'';$('proxyLines').innerHTML='';(Array.isArray(draft.rows)?draft.rows:[]).forEach(addLine);if(!document.querySelector('.proxy-line'))addLine();updateCustomerMode();calc();return true}
 function effectiveProxyPrice(itemNumber,basePrice=0){return Number(activeCustomerPrices.get(priceKey(itemNumber))??basePrice??0)}
 function updateRegisteredPriceStatus(message='',isError=false){const box=$('proxyRegisteredPriceStatus');if(!box)return;box.hidden=!message;box.textContent=message;box.classList.toggle('auth-error',Boolean(isError));}
@@ -222,21 +224,17 @@ async function preprocessProxyOrderPhoto(file){
  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sourceWidth*scale));canvas.height=Math.max(1,Math.round(sourceHeight*scale));const context=canvas.getContext('2d');context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();return canvas.toDataURL('image/jpeg',.88);
 }
 async function analyzeProxyOrderPhoto(){
- const input=$('proxyOrderPhoto'),files=[...(input?.files||[])],status=$('proxyPhotoStatus'),button=$('analyzeProxyPhoto');
+ const files=[...selectedProxyPhotoFiles],status=$('proxyPhotoStatus'),button=$('analyzeProxyPhoto');
  if(!files.length)return alert('분석할 주문 사진을 먼저 선택하세요.');
  try{
-  button.disabled=true;status.classList.remove('error');const images=[];
-  for(let index=0;index<files.length;index++){
-   status.textContent=`${index+1}/${files.length} 사진 준비 중…`;images.push(await preprocessProxyOrderPhoto(files[index]));
-  }
-  status.textContent='AI가 손글씨 품번과 수량을 분석하고 있습니다…';
+  button.disabled=true;status.classList.remove('error');
+  if(!window.FreeHandwritingOCR)throw new Error('무료 손글씨 분석기를 불러오지 못했습니다. 인터넷 연결 후 새로고침해 주세요.');
   const knownItems=[...new Set(items.map(row=>normalizeItem(row.item_number)).filter(Boolean))];
-  const {data,error}=await supabaseClient.functions.invoke('analyze-handwritten-order',{body:{images,known_items:knownItems}});
-  if(error)throw new Error(data?.error||error.message||'AI 사진분석 요청에 실패했습니다.');if(data?.error)throw new Error(data.error);
-  const rows=Array.isArray(data?.items)?data.items:[],accepted=rows.filter(row=>row.registered&&!row.needs_review),review=rows.filter(row=>!row.registered||row.needs_review);
+  const rows=await window.FreeHandwritingOCR.analyze(files,knownItems,message=>{status.textContent=message});
+  const accepted=rows.filter(row=>row.registered&&!row.needs_review),review=rows.filter(row=>!row.registered||row.needs_review);
   if(!rows.length)throw new Error('사진에서 주문 품번을 찾지 못했습니다. 사진을 더 가까이 잘라서 다시 선택해주세요.');
   const lines=accepted.map(row=>`${row.item_number} - ${Math.max(1,Number(row.qty||1))}`),reviewLines=review.map(row=>`확인필요: ${row.observed_text||row.item_number} → ${row.item_number||'?'} / ${Math.round(Number(row.confidence||0)*100)}%`);
-  $('proxyPasteInput').value=[...lines,...reviewLines].join('\n');pendingProxyPasteAnalysis={fields:{customer:'',delivery:'',phone:'',address:'',memo:''},items:accepted.map(row=>({item:row.item_number,qty:Math.max(1,Number(row.qty||1))}))};renderProxyPasteAnalysis();scheduleProxyDraftSave();status.textContent=`AI 분석 완료 · 자동확인 ${accepted.length}품번${review.length?` · 직접확인 필요 ${review.length}품번`:''}`;status.classList.toggle('error',Boolean(review.length));
+  $('proxyPasteInput').value=[...lines,...reviewLines].join('\n');pendingProxyPasteAnalysis={fields:{customer:'',delivery:'',phone:'',address:'',memo:''},items:accepted.map(row=>({item:row.item_number,qty:Math.max(1,Number(row.qty||1))}))};renderProxyPasteAnalysis();scheduleProxyDraftSave();status.textContent=`무료 분석 완료 · 자동확인 ${accepted.length}품번${review.length?` · 직접확인 필요 ${review.length}품번`:''}`;status.classList.toggle('error',Boolean(review.length));
  }catch(error){status.textContent='사진 분석 실패: '+(error?.message||error);status.classList.add('error')}
  finally{button.disabled=false}
 }
@@ -364,6 +362,7 @@ $('editProxyDestination')?.addEventListener('click',editSelectedProxyDestination
 $('deleteProxyDestination')?.addEventListener('click',deleteSelectedProxyDestination);
 $('confirmProxyPaste')?.addEventListener('click',applyPastedOrder);
 $('proxyPasteInput')?.addEventListener('input',()=>{pendingProxyPasteAnalysis=null;$('proxyPasteAnalysis').hidden=true;$('confirmProxyPaste').hidden=true});
-$('proxyOrderPhoto')?.addEventListener('change',event=>{const files=[...(event.target.files||[])],file=files[0],preview=$('proxyOrderPhotoPreview'),status=$('proxyPhotoStatus');if(preview.dataset.url)URL.revokeObjectURL(preview.dataset.url);if(!file){preview.classList.remove('show');preview.removeAttribute('src');return}const url=URL.createObjectURL(file);preview.dataset.url=url;preview.src=url;preview.classList.add('show');status.classList.remove('error');status.textContent=`사진 ${files.length}장이 선택되었습니다. “사진에서 품번·수량 읽기”를 눌러주세요.`});
+$('proxyOrderPhoto')?.addEventListener('change',event=>{selectedProxyPhotoFiles=[...(event.target.files||[])].slice(0,5);event.target.value='';$('proxyPhotoStatus')?.classList.remove('error');renderSelectedProxyPhotos()});
+$('clearProxyPhotos')?.addEventListener('click',()=>{selectedProxyPhotoFiles=[];renderSelectedProxyPhotos()});
 $('analyzeProxyPhoto')?.addEventListener('click',analyzeProxyOrderPhoto);
 })();

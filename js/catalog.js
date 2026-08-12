@@ -1814,11 +1814,11 @@ function analyzeCustomerBulkPaste(text) {
   return { rows: lineRows.length ? lineRows : parseCustomerSmartItems(source), delivery: { ...legacy, ...Object.fromEntries(Object.entries(receiver).filter(([,value]) => value)) } };
 }
 
-function renderCustomerBulkAnalysis() {
+function renderCustomerBulkAnalysis(usePending = false) {
   const input = document.getElementById("customerBulkOrderInput");
   const source = input?.value?.trim() || "";
   if (!source) return;
-  pendingCustomerBulkAnalysis = analyzeCustomerBulkPaste(source);
+  if (!usePending || !pendingCustomerBulkAnalysis) pendingCustomerBulkAnalysis = analyzeCustomerBulkPaste(source);
   const { rows, delivery } = pendingCustomerBulkAnalysis;
   const vipPaste = hasVipPasteAccess();
   const box = document.getElementById("customerBulkOrderAnalysis");
@@ -1874,6 +1874,14 @@ function deliverySearchMatches(label, query) {
   return !q || normalizeDeliveryLookup(label).includes(q) || normalizeDeliveryLookup(koreanInitialText(label)).includes(q);
 }
 
+let customerOrderPhotoFiles=[];
+async function customerOrderPhotoData(file){let bitmap;try{bitmap=await createImageBitmap(file)}catch{bitmap=await new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(file);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=reject;image.src=url})}const width=bitmap.width||bitmap.naturalWidth,height=bitmap.height||bitmap.naturalHeight,scale=Math.min(1,1800/Math.max(width,height));const canvas=document.createElement('canvas');canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();return canvas.toDataURL('image/jpeg',.88)}
+function renderCustomerOrderPhotos(){const list=document.getElementById('customerOrderPhotoList'),clear=document.getElementById('clearCustomerOrderPhotos'),status=document.getElementById('customerOrderPhotoStatus');if(list){list.innerHTML=customerOrderPhotoFiles.map((file,index)=>`<div class="customer-order-photo-row"><span>${escapeHtml(file.name)}</span><button type="button" onclick="removeCustomerOrderPhoto(${index})">삭제</button></div>`).join('')}if(clear)clear.hidden=!customerOrderPhotoFiles.length;if(status)status.textContent=customerOrderPhotoFiles.length?`사진 ${customerOrderPhotoFiles.length}장 선택됨`:'카톡에서 저장한 주문 사진을 선택하세요.'}
+function selectCustomerOrderPhotos(input){customerOrderPhotoFiles=[...(input.files||[])].slice(0,5);input.value='';renderCustomerOrderPhotos()}
+function removeCustomerOrderPhoto(index){customerOrderPhotoFiles.splice(index,1);renderCustomerOrderPhotos()}
+function clearCustomerOrderPhotos(){customerOrderPhotoFiles=[];renderCustomerOrderPhotos()}
+async function analyzeCustomerOrderPhotos(){if(!hasVipPasteAccess())return alert('사진 주문분석은 VIP 이상 거래처만 사용할 수 있습니다.');if(!customerOrderPhotoFiles.length)return alert('분석할 사진을 선택하세요.');const status=document.getElementById('customerOrderPhotoStatus'),button=document.getElementById('analyzeCustomerOrderPhotos');try{button.disabled=true;if(!window.FreeHandwritingOCR)throw new Error('무료 손글씨 분석기를 불러오지 못했습니다. 인터넷 연결 후 새로고침해 주세요.');const knownItems=[...new Set(getBulkOrderItemIndex().map(row=>normalizeBulkItemNumber(row.number)))];const rows=await window.FreeHandwritingOCR.analyze(customerOrderPhotoFiles,knownItems,message=>{status.textContent=message}),accepted=rows.filter(row=>row.registered&&!row.needs_review),review=rows.filter(row=>!row.registered||row.needs_review);if(!rows.length)throw new Error('사진에서 주문 품번을 찾지 못했습니다. 사진을 더 가까이 잘라서 다시 선택해주세요.');document.getElementById('customerBulkOrderInput').value=[...accepted.map(row=>`${row.item_number} - ${row.qty}`),...review.map(row=>`확인필요: ${row.observed_text||row.item_number} → ${row.item_number||'?'}`)].join('\n');pendingCustomerBulkAnalysis={rows:accepted.map(row=>({number:row.item_number,qty:Math.max(1,Number(row.qty||1))})),delivery:{}};renderCustomerBulkAnalysis(true);status.textContent=`무료 분석 완료 · 자동확인 ${accepted.length}품번${review.length?` · 확인 필요 ${review.length}품번`:''}`}catch(error){status.textContent='사진 분석 실패: '+(error?.message||error)}finally{button.disabled=false}}
+
 function renderCustomerBulkOrder() {
   if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
   rememberCartReturnState();
@@ -1881,6 +1889,7 @@ function renderCustomerBulkOrder() {
   showSearch(false);
   hideLegacyFilters();
   localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
+  customerOrderPhotoFiles=[];
   if (!hasVipPasteAccess()) localStorage.removeItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY);
   const draft = "";
   catalogList.innerHTML = `
@@ -1888,6 +1897,7 @@ function renderCustomerBulkOrder() {
       <h2>📋 품번·수량 한번에 주문</h2>
       <p>${hasVipPasteAccess()?"카톡·문자 주문의 품번·수량과 납품정보를 붙여넣어 자동 입력할 수 있습니다.":"품번과 수량만 복사해 붙여넣거나 직접 입력할 수 있습니다."}</p>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="8" placeholder="카톡·문자 주문 내용을 붙여넣거나 직접 입력하세요.">${escapeHtml(draft)}</textarea>
+      ${hasVipPasteAccess()?`<div class="customer-order-photo-box"><strong>VIP 무료 주문사진 분석</strong><input type="file" accept="image/*" multiple onchange="selectCustomerOrderPhotos(this)"><div id="customerOrderPhotoList"></div><div class="customer-order-photo-actions"><button id="analyzeCustomerOrderPhotos" type="button" onclick="analyzeCustomerOrderPhotos()">사진에서 품번·수량 읽기</button><button id="clearCustomerOrderPhotos" type="button" onclick="clearCustomerOrderPhotos()" hidden>선택파일 전체삭제</button></div><small id="customerOrderPhotoStatus">카톡에서 저장한 주문 사진을 선택하세요. 첫 사용 때만 무료 모델을 내려받습니다.</small></div>`:''}
       ${hasVipPasteAccess()?'<p class="customer-bulk-order-help"><b>VIP 안내:</b> 납품처명·연락처·주소·메모까지 선택 적용할 수 있습니다. 인식 결과를 확인한 뒤 적용해 주세요.</p>':'<p class="customer-bulk-order-help"><b>안내:</b> 품번·수량만 자동 적용됩니다. 납품정보는 다음 주문 화면에서 입력해 주세요.</p>'}
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
@@ -1968,6 +1978,7 @@ async function applyCustomerBulkOrder() {
 window.renderCustomerBulkOrder = renderCustomerBulkOrder;
 window.renderCustomerBulkAnalysis = renderCustomerBulkAnalysis;
 window.applyCustomerBulkOrder = applyCustomerBulkOrder;
+window.selectCustomerOrderPhotos=selectCustomerOrderPhotos;window.removeCustomerOrderPhoto=removeCustomerOrderPhoto;window.clearCustomerOrderPhotos=clearCustomerOrderPhotos;window.analyzeCustomerOrderPhotos=analyzeCustomerOrderPhotos;
 
 function addGroupToCart(groupId, nextAction = "cart") {
   if (ADMIN_PREVIEW_MODE) { alert("관리자 미리보기에서는 주문 기능을 사용할 수 없습니다."); return; }
