@@ -55,6 +55,9 @@ function formatDate(value, dateOnly = false) {
 function cleanStatementItemNumber(value) {
   return String(value || "").trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i, "");
 }
+function compareStatementItemNumber(a,b){
+  return cleanStatementItemNumber(a).localeCompare(cleanStatementItemNumber(b),"ko",{numeric:true,sensitivity:"base"});
+}
 
 function resolveStatementCategoryLine(title, itemNumber) {
   const original = String(title || "개별품번").trim();
@@ -185,7 +188,7 @@ function renderStatement(items, productGroups = []) {
   const groupByItem = new Map();
   productGroups.forEach(group => (group.item_numbers || []).forEach(number => groupByItem.set(String(number).trim(), resolveStatementCategoryLine(group.title || "개별품번", number))));
   const compactRows = new Map();
-  items.forEach(item => {
+  [...items].sort((a,b)=>compareStatementItemNumber(a.item_number,b.item_number)).forEach(item => {
     const orderedQty = Number(item.qty || 0);
     const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
     const shippedQty = Math.max(0, orderedQty - soldoutQty);
@@ -201,7 +204,8 @@ function renderStatement(items, productGroups = []) {
     const displayNumber = /A$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 아동`:/M$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 무지`:cleanNumber;
     row.itemNumbers.push(`${displayNumber}-(${orderedQty})${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
   });
-  const itemRows = [...compactRows.values()].map((row, index) => {
+  const sortedCompactRows=[...compactRows.values()].map(row=>({...row,itemNumbers:row.itemNumbers.sort(compareStatementItemNumber)})).sort((a,b)=>compareStatementItemNumber(a.itemNumbers[0],b.itemNumbers[0]));
+  const itemRows = sortedCompactRows.map((row, index) => {
     return `
       <tr class="${row.shippedQty === 0 ? "soldout-row" : ""}">
         <td>${index + 1}</td>

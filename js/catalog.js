@@ -1800,9 +1800,10 @@ function renderCustomerBulkAnalysis() {
   if (!source) return;
   pendingCustomerBulkAnalysis = analyzeCustomerBulkPaste(source);
   const { rows, delivery } = pendingCustomerBulkAnalysis;
+  const vipPaste = hasVipPasteAccess();
   const box = document.getElementById("customerBulkOrderAnalysis");
   const option = (key, label, value, wide = "") => `<label class="${wide}"><input type="checkbox" data-customer-smart-field="${key}" ${value ? "checked" : ""} ${value ? "" : "disabled"}><span><b>${label}</b><br>${escapeHtml(value || "인식 안 됨")}</span></label>`;
-  box.innerHTML = `<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="customer-smart-paste-options">${option("items", "품번·수량", rows.map(row => `${row.number} ${row.qty}죽`).join(", "), "customer-smart-paste-items")}${option("deliveryName", "실제 납품처명", delivery.deliveryName)}${option("deliveryPhone", "연락처", delivery.deliveryPhone)}${option("deliveryAddress", "주소", delivery.deliveryAddress)}${option("memo", "메모", delivery.memo)}</div>${rows.length ? "" : '<p class="warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;
+  box.innerHTML = `<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="customer-smart-paste-options">${option("items", "품번·수량", rows.map(row => `${row.number} ${row.qty}죽`).join(", "), "customer-smart-paste-items")}${vipPaste?option("deliveryName", "실제 납품처명", delivery.deliveryName)+option("deliveryPhone", "연락처", delivery.deliveryPhone)+option("deliveryAddress", "주소", delivery.deliveryAddress)+option("memo", "메모", delivery.memo):""}</div>${rows.length ? "" : '<p class="warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;
   box.hidden = false;
   document.getElementById("confirmCustomerBulkOrder").hidden = false;
   document.getElementById("customerBulkOrderResult").textContent = "분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.";
@@ -1810,6 +1811,9 @@ function renderCustomerBulkAnalysis() {
 
 function hasAdvancedCustomerAccess(){
   return ["우수","우수고객","VIP","VVIP"].includes(String(currentCustomer?.customer_grade || "일반"));
+}
+function hasVipPasteAccess(){
+  return ["VIP","VVIP"].includes(String(currentCustomer?.customer_grade || "일반").toUpperCase());
 }
 
 async function saveCustomerBulkDeliveryDraft(fields) {
@@ -1857,13 +1861,14 @@ function renderCustomerBulkOrder() {
   showSearch(false);
   hideLegacyFilters();
   localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
+  if (!hasVipPasteAccess()) localStorage.removeItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY);
   const draft = "";
   catalogList.innerHTML = `
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
-      <p>카톡 주문·문자 주문 등을 복사해서 그대로 붙여넣어도 인식됩니다. 직접 수기입력과 장문 메시지도 가능합니다.</p>
+      <p>${hasVipPasteAccess()?"카톡·문자 주문의 품번·수량과 납품정보를 붙여넣어 자동 입력할 수 있습니다.":"품번과 수량만 복사해 붙여넣거나 직접 입력할 수 있습니다."}</p>
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="8" placeholder="카톡·문자 주문 내용을 붙여넣거나 직접 입력하세요.">${escapeHtml(draft)}</textarea>
-      <p class="customer-bulk-order-help"><b>안내:</b> 주소 입력은 자동 인식 기능이므로 형식에 따라 정확히 구분되지 않을 수 있습니다. 주소가 잘못 인식되면 품번·수량만 입력한 뒤 주문 화면에서 납품처를 선택해 주세요.</p>
+      ${hasVipPasteAccess()?'<p class="customer-bulk-order-help"><b>VIP 안내:</b> 납품처명·연락처·주소·메모까지 선택 적용할 수 있습니다. 인식 결과를 확인한 뒤 적용해 주세요.</p>':'<p class="customer-bulk-order-help"><b>안내:</b> 품번·수량만 자동 적용됩니다. 납품정보는 다음 주문 화면에서 입력해 주세요.</p>'}
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderAnalysis" class="customer-smart-paste-preview" hidden></div>
@@ -1887,7 +1892,7 @@ async function applyCustomerBulkOrder() {
   if (!pendingCustomerBulkAnalysis) { renderCustomerBulkAnalysis(); return; }
   const checked = key => Boolean(document.querySelector(`[data-customer-smart-field="${key}"]:checked`));
   const rows = checked("items") ? pendingCustomerBulkAnalysis.rows : [];
-  const deliveryFields = Object.fromEntries(Object.entries(pendingCustomerBulkAnalysis.delivery).filter(([key, value]) => checked(key) && value));
+  const deliveryFields = hasVipPasteAccess()?Object.fromEntries(Object.entries(pendingCustomerBulkAnalysis.delivery).filter(([key, value]) => checked(key) && value)):{};
   if (!rows.length && !Object.keys(deliveryFields).length) { if (resultBox) resultBox.textContent = "적용할 항목을 하나 이상 선택해 주세요."; return; }
 
   const index = getBulkOrderItemIndex();

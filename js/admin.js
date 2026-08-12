@@ -427,7 +427,7 @@ function getOrderWarehouseSections(items) {
   const order = ["S", "B", "I", "기타"];
   const map = new Map(order.map(code => [code, []]));
   (items || []).forEach(item => (map.get(getOrderWarehouseCode(item)) || map.get("기타")).push(item));
-  return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code) })).filter(section => section.items.length);
+  return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code).sort((a,b)=>String(a.item_number||'').localeCompare(String(b.item_number||''),'ko',{numeric:true,sensitivity:'base'})) })).filter(section => section.items.length);
 }
 
 function fallbackCopyWithoutJump(text) {
@@ -450,9 +450,14 @@ function fallbackCopyWithoutJump(text) {
   return copied;
 }
 
-function formatOrderCopyRows(rows,mode='excel'){
-  if(mode==='kakao')return rows.map(row=>`${formatCopiedItemNumber(row.dataset.copyItem)}            ${row.dataset.copyQty}`).join('\n');
-  return rows.map(row=>`${formatCopiedItemNumber(row.dataset.copyItem)}\t${row.dataset.copyQty}`).join('\n');
+let orderCopyGroupIndex=null;
+function copyItemKey(value){return String(value||'').trim().toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'')}
+function copyGroupNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
+async function getOrderCopyGroupIndex(){if(orderCopyGroupIndex)return orderCopyGroupIndex;const index=new Map();try{const {data}=await supabaseClient.from('product_groups').select('title,item_numbers');(data||[]).forEach((group,groupOrder)=>copyGroupNumbers(group.item_numbers).forEach(number=>index.set(copyItemKey(number),{title:String(group.title||'개별품번').trim(),groupOrder}))) }catch(_){}orderCopyGroupIndex=index;return index}
+async function formatOrderCopyRows(rows,mode='excel'){
+  const index=await getOrderCopyGroupIndex(),entries=rows.map((row,rowOrder)=>{const item=formatCopiedItemNumber(row.dataset.copyItem),match=index.get(copyItemKey(row.dataset.copyItem));return{row,item,qty:row.dataset.copyQty,title:match?.title||'개별품번',groupOrder:match?.groupOrder??999999,rowOrder}}).sort((a,b)=>a.groupOrder-b.groupOrder||a.title.localeCompare(b.title,'ko',{numeric:true})||copyItemKey(a.item).localeCompare(copyItemKey(b.item),'ko',{numeric:true})||a.rowOrder-b.rowOrder);
+  const groups=new Map();entries.forEach(entry=>{if(!groups.has(entry.title))groups.set(entry.title,[]);groups.get(entry.title).push(entry)});
+  return [...groups.entries()].map(([title,groupRows])=>{const heading=`[${title}]`;const body=groupRows.map(entry=>mode==='kakao'?`${entry.item}            ${entry.qty}`:`${entry.item}\t${entry.qty}`).join('\n');return`${heading}\n${body}`}).join('\n\n');
 }
 
 function formatCopiedItemNumber(value){const clean=String(value||'').trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i,'');if(/A$/i.test(clean))return`${clean.slice(0,-1)} 아동`;if(/M$/i.test(clean))return`${clean.slice(0,-1)} 무지`;return clean}
@@ -462,7 +467,7 @@ async function copyWarehouseOrder(button, event, mode='excel') {
   event?.stopPropagation();
   const section = button.closest(".admin-warehouse-section");
   const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
-  const text = formatOrderCopyRows(rows,mode);
+  const text = await formatOrderCopyRows(rows,mode);
   if (!text) return alert("복사할 품번이 없습니다.");
   try {
     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
@@ -483,7 +488,7 @@ async function copyAllWarehouseOrders(button, event, mode='excel') {
   if (!card) return;
   const rows = [...card.querySelectorAll('.admin-warehouse-section .pick-row[data-copy-item]')];
   if (!rows.length) return alert('복사할 S·B·I 주문이 없습니다.');
-  const text = formatOrderCopyRows(rows,mode);
+  const text = await formatOrderCopyRows(rows,mode);
   try {
     if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
     await navigator.clipboard.writeText(text);
@@ -498,9 +503,9 @@ async function copyAllWarehouseOrders(button, event, mode='excel') {
 
 async function copyOrderDetails(button,event,mode='excel'){
  event?.preventDefault();event?.stopPropagation();const card=button.closest('.order-card');if(!card)return;
- const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map(row=>({item:formatCopiedItemNumber(row.dataset.copyItem),qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0)}));
+ const index=await getOrderCopyGroupIndex();const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map((row,rowOrder)=>{const match=index.get(copyItemKey(row.dataset.copyItem));return{item:formatCopiedItemNumber(row.dataset.copyItem),rawItem:row.dataset.copyItem,qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0),title:match?.title||'개별품번',groupOrder:match?.groupOrder??999999,rowOrder}}).sort((a,b)=>a.groupOrder-b.groupOrder||a.title.localeCompare(b.title,'ko',{numeric:true})||copyItemKey(a.rawItem).localeCompare(copyItemKey(b.rawItem),'ko',{numeric:true})||a.rowOrder-b.rowOrder);
  if(!rows.length)return alert('복사할 주문 품목이 없습니다.');
- const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
+ const grouped=new Map();rows.forEach(row=>{if(!grouped.has(row.title))grouped.set(row.title,[]);grouped.get(row.title).push(row)});const blocks=[...grouped.entries()].map(([title,groupRows])=>mode==='kakao'?`[${title}]\n${groupRows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n')}`:`[${title}]\n품번\t수량(죽)\t단가(1죽)\t금액\n${groupRows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`).join('\n')}`);const text=blocks.join('\n\n');
  try{if(!navigator.clipboard?.writeText)throw new Error();await navigator.clipboard.writeText(text)}catch(_){if(!fallbackCopyWithoutJump(text))return alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.')}
  const original=button.textContent;button.textContent='상세 복사완료';setTimeout(()=>button.textContent=original,1600);
 }
@@ -1085,7 +1090,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65760','js/admin-mobile-nav.js?v=65760'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65770','js/admin-mobile-nav.js?v=65770'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {
