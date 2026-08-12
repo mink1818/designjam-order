@@ -233,8 +233,6 @@
     });
     const activityKey=`designjam_admin_activity_${new Date().toISOString().slice(0,10)}_${location.pathname}`;
     if(!sessionStorage.getItem(activityKey)){sessionStorage.setItem(activityKey,'1');sb.rpc('record_admin_activity',{p_activity_type:'page',p_page_path:location.pathname+location.search,p_device_info:adminDeviceInfo(),p_latitude:null,p_longitude:null,p_accuracy_m:null}).catch(()=>{});}
-    const locationKey=`designjam_admin_location_${new Date().toISOString().slice(0,10)}`;
-    if(!localStorage.getItem(locationKey)&&navigator.geolocation){navigator.geolocation.getCurrentPosition(pos=>{localStorage.setItem(locationKey,'1');sb.rpc('record_admin_activity',{p_activity_type:'location',p_page_path:location.pathname,p_device_info:adminDeviceInfo(),p_latitude:pos.coords.latitude,p_longitude:pos.coords.longitude,p_accuracy_m:pos.coords.accuracy}).catch(()=>{})},()=>{}, {enableHighAccuracy:false,timeout:8000,maximumAge:3600000});}
   }
 
   async function render() {
