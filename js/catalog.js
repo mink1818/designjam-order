@@ -74,7 +74,8 @@ function refreshSavedCartPrices() {
 }
 function inferCartWarehouseCode(item){const saved=String(item?.warehouseCode||item?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(saved))return saved;const prefix=String(item?.number||'').trim().toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/)?.[1];if(prefix)return prefix;const group=groups.find(row=>Number(row.id)===Number(item?.groupId)),groupCode=String(group?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(groupCode))return groupCode;const key=customerPriceKey(item?.number),codes=new Set();groups.forEach(row=>{const numbers=Array.isArray(row.item_numbers)?row.item_numbers:String(row.item_numbers||'').split(/[,\s/]+/);if(numbers.some(number=>customerPriceKey(number)===key)){const code=String(row.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(code))codes.add(code)}});return codes.size===1?[...codes][0]:''}
 function validateCartWarehouseCodes(){const missing=[];cart.forEach(item=>{const code=inferCartWarehouseCode(item);if(code)item.warehouseCode=code;else missing.push(String(item.number||''))});if(missing.length){alert(`출고지가 연결되지 않은 품번은 주문할 수 없습니다: ${[...new Set(missing)].join(', ')}\n\n상품관리에서 해당 품번의 출고지를 S·B·I 중 하나로 지정해주세요.`);return false}saveCart();return true}
-function displayWarehouseItem(group, itemNumber) { const code=String(group?.warehouse_code||'').trim().toUpperCase(); return code?`${code}-${itemNumber}`:String(itemNumber); }
+function customerDisplayItemNumber(value){return String(value??'').trim().replace(/^[SBI](?:[-_\s]+|(?=\d))/i,'');}
+function displayWarehouseItem(group, itemNumber) { return customerDisplayItemNumber(itemNumber); }
 function formatGroupUnitPrice(group) {
   const prices = [...new Set((group?.item_numbers || []).map(number => effectiveItemPrice(group, number)).filter(Number.isFinite))].sort((a,b)=>a-b);
   if (!prices.length) return `${formatWon(group?.price || 0)} / 1죽`;
@@ -961,7 +962,7 @@ function renderGlobalSearchResults() {
 
             <p class="catalog-item-numbers">
               ${(group.item_numbers || [])
-                .map(escapeHtml)
+                .map(number=>escapeHtml(customerDisplayItemNumber(number)))
                 .join(", ")}
             </p>
 
@@ -1196,7 +1197,7 @@ function renderGroupCard(group) {
       }
 
       <span class="catalog-item-numbers">
-        ${itemNumbers.map(escapeHtml).join(", ")}
+        ${itemNumbers.map(number=>escapeHtml(customerDisplayItemNumber(number))).join(", ")}
       </span>
 
       <span class="price-text">
@@ -1823,7 +1824,7 @@ function renderCustomerBulkAnalysis(usePending = false) {
   const vipPaste = hasVipPasteAccess();
   const box = document.getElementById("customerBulkOrderAnalysis");
   const option = (key, label, value, wide = "") => `<label class="${wide}"><input type="checkbox" data-customer-smart-field="${key}" ${value ? "checked" : ""} ${value ? "" : "disabled"}><span><b>${label}</b><br>${escapeHtml(value || "인식 안 됨")}</span></label>`;
-  box.innerHTML = `<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="customer-smart-paste-options">${option("items", "품번·수량", rows.map(row => `${row.number} ${row.qty}죽`).join(", "), "customer-smart-paste-items")}${vipPaste?option("deliveryName", "실제 납품처명", delivery.deliveryName)+option("deliveryPhone", "연락처", delivery.deliveryPhone)+option("deliveryAddress", "주소", delivery.deliveryAddress)+option("memo", "메모", delivery.memo):""}</div>${rows.length ? "" : '<p class="warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;
+  box.innerHTML = `<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="customer-smart-paste-options">${option("items", "품번·수량", rows.map(row => `${customerDisplayItemNumber(row.number)} ${row.qty}죽`).join(", "), "customer-smart-paste-items")}${vipPaste?option("deliveryName", "실제 납품처명", delivery.deliveryName)+option("deliveryPhone", "연락처", delivery.deliveryPhone)+option("deliveryAddress", "주소", delivery.deliveryAddress)+option("memo", "메모", delivery.memo):""}</div>${rows.length ? "" : '<p class="warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;
   box.hidden = false;
   document.getElementById("confirmCustomerBulkOrder").hidden = false;
   document.getElementById("customerBulkOrderResult").textContent = "분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.";
@@ -2096,7 +2097,7 @@ function renderCart() {
               : `<div class="cart-thumb cart-thumb-empty">사진 없음</div>`
             }
             <div>
-              <strong>${escapeHtml(item.number)} ${addedAt === newestAddedAt ? '<em class="cart-latest-badge">최신 담음</em>' : ''}</strong>
+              <strong>${escapeHtml(customerDisplayItemNumber(item.number))} ${addedAt === newestAddedAt ? '<em class="cart-latest-badge">최신 담음</em>' : ''}</strong>
               <small>${escapeHtml(item.title)}</small>
               <small class="cart-unit-price">단가 ${Number(item.price).toLocaleString()}원 / 1죽</small>
             </div>
@@ -2396,6 +2397,11 @@ async function submitOrder() {
     return;
   }
 
+  if(revisionContext){
+    const finalized=await supabaseClient.rpc('customer_finalize_unpicked_revision',{p_order_number:orderNumber});
+    if(finalized.error)console.warn('주문 수정상태 정리 실패:',finalized.error.message);
+  }
+
   const deliverySave=await supabaseClient.rpc('save_order_delivery_info',{
     p_order_number:orderNumber,
     p_owner_name:currentCustomer.owner_name||currentCustomer.representative||'',
@@ -2427,7 +2433,7 @@ async function submitOrder() {
 
       return `
         <div class="cart-item">
-          <strong>${escapeHtml(item.number)}</strong>
+          <strong>${escapeHtml(customerDisplayItemNumber(item.number))}</strong>
           <span>${Number(item.qty).toLocaleString()}죽 · 단가 ${Number(item.price).toLocaleString()}원 / 1죽</span>
           <span>${itemTotal.toLocaleString()}원</span>
         </div>
@@ -2880,7 +2886,7 @@ function renderFrequentProducts(){
                 : `<span class="frequent-no-image" aria-hidden="true">🧦</span>`}
             </span>
             <strong>${escapeHtml(g.title)}</strong>
-            <small>${(g.item_numbers||[]).map(escapeHtml).join(", ")}</small>
+            <small>${(g.item_numbers||[]).map(number=>escapeHtml(customerDisplayItemNumber(number))).join(", ")}</small>
           </button>`).join("")}
       </div>
       ${moreButton}

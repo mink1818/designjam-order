@@ -25,6 +25,7 @@ async function checkAdminAccess(){
 }
 
 async function withTimeout(promise,ms=15000){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인한 뒤 새로고침해 주세요.')),ms)})]);}finally{clearTimeout(timer)}}
+async function fetchAllMemberOrderStats(){const rows=[];for(let from=0;;from+=1000){const result=await withTimeout(supabaseClient.from('orders').select('customer_id,total,qty,price,soldout_qty,is_soldout,created_at,order_number').order('created_at',{ascending:false}).range(from,from+999),18000);if(result.error)throw result.error;rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)break}return rows}
 async function loadCustomers(){
  list.innerHTML='<p class="customer-loading">거래처 정보를 불러오는 중...</p>';
  try{
@@ -33,11 +34,11 @@ async function loadCustomers(){
  const customers=(data||[]).filter(c=>!c.is_admin);
  let orders=[];
  try{
-   const result=await withTimeout(supabaseClient.from('orders').select('customer_id,total,qty,created_at,order_number').order('created_at',{ascending:false}).limit(10000),18000);
-   if(!result.error)orders=(result.data||[]).filter(o=>customers.some(c=>c.id===o.customer_id));
+   const result=await fetchAllMemberOrderStats();
+   const customerIds=new Set(customers.map(c=>String(c.id)));orders=result.filter(o=>customerIds.has(String(o.customer_id)));
  }catch(statsError){console.warn('거래처 주문통계 생략:',statsError);}
  const stats={};
- orders.forEach(o=>{const s=stats[o.customer_id]||(stats[o.customer_id]={total:0,last:null,orders:new Set()});s.total+=Number(o.total||0);s.orders.add(o.order_number);if(!s.last||new Date(o.created_at)>new Date(s.last))s.last=o.created_at;});
+ orders.forEach(o=>{const s=stats[o.customer_id]||(stats[o.customer_id]={total:0,last:null,orders:new Set()}),ordered=Math.max(0,Number(o.qty||0)),soldout=Math.min(ordered,Math.max(0,Number(o.soldout_qty||(o.is_soldout?ordered:0)))),shipped=Math.max(0,ordered-soldout);s.total+=shipped*Number(o.price||0);s.orders.add(o.order_number);if(!s.last||new Date(o.created_at)>new Date(s.last))s.last=o.created_at;});
  allCustomers=customers.map(c=>({...c,total_sales:stats[c.id]?.total||0,order_count:stats[c.id]?.orders.size||0,last_order_at:stats[c.id]?.last||c.last_order_at||null}));
  visibleCount=PAGE_SIZE;updateCounts();renderFilteredCustomers();
  }catch(error){list.innerHTML=`<div class="product-card"><h2>거래처 불러오기 실패</h2><p>${esc(error.message||'알 수 없는 오류')}</p><button class="cart-btn" type="button" onclick="loadCustomers()">다시 불러오기</button></div>`;}
@@ -57,7 +58,7 @@ function renderFilteredCustomers(){
   return status&&(text.includes(q)||memberInitialText(text).replace(/\s/g,'').includes(q));
  });
  const mode=sort.value;
- rows.sort((a,b)=>mode==='grade-desc'?memberGradeRank(b.customer_grade)-memberGradeRank(a.customer_grade)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='grade-asc'?memberGradeRank(a.customer_grade)-memberGradeRank(b.customer_grade)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='sales'?b.total_sales-a.total_sales:mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='seen'?new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
+ rows.sort((a,b)=>mode==='grade-desc'?memberGradeRank(b.customer_grade)-memberGradeRank(a.customer_grade)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='grade-asc'?memberGradeRank(a.customer_grade)-memberGradeRank(b.customer_grade)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='sales'?Number(b.total_sales||0)-Number(a.total_sales||0)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='seen'?new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
  currentRows=rows;renderCustomers();
 }
 function customerState(c){return c.blocked?{text:'차단',cls:'blocked'}:c.approved?{text:'승인',cls:'done'}:{text:'대기',cls:'pending'};}
@@ -87,7 +88,7 @@ function renderCustomerRow(c){
     <label>대표자명<input data-field="owner_name" maxlength="100" value="${esc(c.owner_name||c.representative||'')}"></label>
     <label>연락처<input data-field="phone" maxlength="50" value="${esc(c.phone||'')}"></label>
     <label class="wide">가입 주소<input data-field="address" maxlength="300" value="${esc(c.address||'')}"></label>
-    <label>등급<select data-field="customer_grade"><option ${grade==='일반'?'selected':''}>일반</option><option ${grade==='우수'?'selected':''}>우수</option><option ${grade==='VIP'?'selected':''}>VIP</option></select></label>
+    <label>등급<select data-field="customer_grade"><option ${grade==='일반'?'selected':''}>일반</option><option ${grade==='우수'?'selected':''}>우수</option><option ${grade==='VIP'?'selected':''}>VIP</option><option ${String(grade).toUpperCase()==='VVIP'?'selected':''}>VVIP</option></select></label>
     <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>

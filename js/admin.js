@@ -198,7 +198,7 @@ try {
   return;
 }
 
-  await Promise.all([loadAdminFeatureData(data),loadCustomerOrderChangeAlerts()]);
+  await loadAdminFeatureData(data);
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -260,7 +260,6 @@ try {
     groups.filter(g => g.status === "주문접수" && String(g.pickingStatus || "").includes("검증완료")).length;
   document.getElementById("doneCount").textContent =
     groups.filter(g => g.status === "출고완료").length;
-  const revisionEditing=groups.filter(g=>g.revisionStatus==='수정중').length,revisionComplete=groups.filter(g=>g.revisionStatus==='수정완료').length,editingBadge=document.getElementById('revisionEditingCount'),completeBadge=document.getElementById('revisionCompleteCount');if(editingBadge){editingBadge.hidden=!revisionEditing;editingBadge.textContent=`수정중 ${revisionEditing}`}if(completeBadge){completeBadge.hidden=!revisionComplete;completeBadge.textContent=`확인필요 ${revisionComplete}`}
 
   const keyword = adminSearch?.value?.trim() || "";
   const normalizedKeyword=inventoryKey(keyword);const exactItemSearch=Boolean(keyword)&&groups.some(group=>group.items.some(item=>inventoryKey(item.item_number)===normalizedKeyword));
@@ -1090,7 +1089,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65840','js/admin-mobile-nav.js?v=65840'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65850','js/admin-mobile-nav.js?v=65850'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

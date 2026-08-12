@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/admin.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=6310">
 <title>디자인 삭스 주문관리 (관리자)</title>
-  <link rel="stylesheet" href="css/admin.css?v=65840">
+  <link rel="stylesheet" href="css/admin.css?v=65850">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인 삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=65840">
-  <link rel="icon" href="icons/admin-192.png?v=65840">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=65840">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=65850">
+  <link rel="icon" href="icons/admin-192.png?v=65850">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=65850">
 </head>
-<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.5.84">
+<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.5.85">
 
 <header>
   <h1>🧦 디자인 삭스 관리자</h1>
@@ -63,11 +63,10 @@
 </div>
 
 <div id="adminContent" style="display:none;">
-  <section id="customerOrderChangeAlerts" class="customer-order-change-alerts" hidden></section>
   <section class="order-admin-toolbar product-card">
     <div class="order-status-tabs" role="tablist" aria-label="주문 상태">
       <button id="tabPending" class="order-status-tab active pending" type="button" onclick="setAdminFilter('주문접수')">주문접수 <b id="pendingCount">0</b></button>
-<button id="tabReady" class="order-status-tab ready" type="button" onclick="setAdminFilter('출고대기')">출고대기 <b id="readyCount">0</b> <em id="revisionEditingCount" class="revision-tab-count" hidden>수정중 0</em> <em id="revisionCompleteCount" class="revision-tab-count complete" hidden>확인필요 0</em></button>
+<button id="tabReady" class="order-status-tab ready" type="button" onclick="setAdminFilter('출고대기')">출고대기 <b id="readyCount">0</b></button>
       <button id="tabDone" class="order-status-tab done" type="button" onclick="setAdminFilter('출고완료')">출고완료 <b id="doneCount">0</b></button>
       <button id="tabAll" class="order-status-tab" type="button" onclick="setAdminFilter('전체')">전체 <b id="totalCount">0</b></button>
     </div>
@@ -102,13 +101,13 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/admin-config.js?v=65840"></script>
-<script src="js/admin-data.js?v=65840"></script>
-<script src="js/admin-ui.js?v=65840"></script>
-<script src="js/admin.js?v=65840"></script>
+<script src="js/admin-config.js?v=65850"></script>
+<script src="js/admin-data.js?v=65850"></script>
+<script src="js/admin-ui.js?v=65850"></script>
+<script src="js/admin.js?v=65850"></script>
 
-<script src="js/pwa.js?v=65840"></script>
-<script src="js/version-badge.js?v=65840"></script>
-<script src="js/ui-preferences.js?v=65840"></script>
+<script src="js/pwa.js?v=65850"></script>
+<script src="js/version-badge.js?v=65850"></script>
+<script src="js/ui-preferences.js?v=65850"></script>
 </body>
 </html>

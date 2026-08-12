@@ -42,17 +42,18 @@ async function loadDashboard(){
     supabaseClient.from("orders").select("order_number").eq("status","출고완료").gte("shipped_at",start),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
-    supabaseClient.from("product_groups").select("id,sold_out")
+    supabaseClient.from("product_groups").select("id,item_numbers,soldout_items")
   ]);
   setText("todayOrderCount",uniqueOrders(todayOrders.data));
   setText("pendingOrderCount",uniqueOrders(pending.data));
   setText("todayDoneCount",uniqueOrders(doneToday.data));
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);
-  setText("soldoutCount",(products.data||[]).filter(p=>p.sold_out===true).length);
+  const soldoutItems=new Set();
+  (products.data||[]).forEach(group=>(Array.isArray(group.soldout_items)?group.soldout_items:[]).forEach(item=>soldoutItems.add(String(item).trim().toUpperCase())));
+  setText("soldoutCount",soldoutItems.size);
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
   await loadNotifications();
-  await loadRevisionAlerts();
   await loadHandwritingTrainingStatus();
 }
 
@@ -75,7 +76,7 @@ async function loadRevisionAlerts(){
 
 async function loadNotifications(){
   const box=document.getElementById("dashboardNotificationList");
-  const {data,error}=await supabaseClient.from("app_notifications").select("id,title,message,is_read,created_at,link_url").eq("recipient_id",currentAdmin.id).order("created_at",{ascending:false}).limit(8);
+  const {data,error}=await supabaseClient.from("app_notifications").select("id,title,message,is_read,created_at,link_url,notification_type").eq("recipient_id",currentAdmin.id).neq("notification_type","customer_order_change").order("created_at",{ascending:false}).limit(8);
   if(error){ box.innerHTML='<p class="empty-copy">알림 테이블 설치 후 표시됩니다.</p>'; return; }
   if(!data?.length){ box.innerHTML='<p class="empty-copy">새 알림이 없습니다.</p>'; return; }
   box.innerHTML=data.map(n=>`<button class="v3-notification-item ${n.is_read?'':'unread'}" data-id="${n.id}" data-link="${esc(n.link_url||'')}"><span>${n.is_read?'':'● '}${esc(n.title)}</span><small>${esc(n.message||'')} · ${new Date(n.created_at).toLocaleString('ko-KR')}</small></button>`).join('');
@@ -108,8 +109,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('refreshDashboardBtn')?.addEventListener('click',loadDashboard);
   document.getElementById('markAllReadBtn')?.addEventListener('click',markAllRead);
   await loadDashboard();
-  const revisionChannel=supabaseClient.channel('admin-home-revision-v65840').on('postgres_changes',{event:'*',schema:'public',table:'orders'},payload=>{if(payload.new?.customer_revision_status||payload.old?.customer_revision_status)loadRevisionAlerts()}).subscribe();
-  setInterval(loadRevisionAlerts,15000);
 });
 
 let adminSearchTimer=null;
