@@ -13,6 +13,7 @@ const phone=v=>String(v||'-').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
 const isAdminEmail=e=>ADMIN_EMAILS.has(String(e||'').toLowerCase());
 const MEMBER_KOREAN_INITIALS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
 function memberInitialText(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?MEMBER_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
+function memberGradeRank(value){const grade=String(value||'일반').trim().toUpperCase();return grade==='VVIP'?4:grade==='VIP'?3:['우수','우수고객'].includes(grade)?2:1}
 
 async function checkAdminAccess(){
  const {data:{user}}=await supabaseClient.auth.getUser();
@@ -56,7 +57,7 @@ function renderFilteredCustomers(){
   return status&&(text.includes(q)||memberInitialText(text).replace(/\s/g,'').includes(q));
  });
  const mode=sort.value;
- rows.sort((a,b)=>mode==='sales'?b.total_sales-a.total_sales:mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='seen'?new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
+ rows.sort((a,b)=>mode==='grade-desc'?memberGradeRank(b.customer_grade)-memberGradeRank(a.customer_grade)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='grade-asc'?memberGradeRank(a.customer_grade)-memberGradeRank(b.customer_grade)||String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):mode==='sales'?b.total_sales-a.total_sales:mode==='order'?new Date(b.last_order_at||0)-new Date(a.last_order_at||0):mode==='seen'?new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0):mode==='name'?String(a.business_name||'').localeCompare(String(b.business_name||''),'ko'):new Date(b.created_at||0)-new Date(a.created_at||0));
  currentRows=rows;renderCustomers();
 }
 function customerState(c){return c.blocked?{text:'차단',cls:'blocked'}:c.approved?{text:'승인',cls:'done'}:{text:'대기',cls:'pending'};}
