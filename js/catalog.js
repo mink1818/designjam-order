@@ -2280,7 +2280,7 @@ function showOrderForm() {
         rows="5"
         maxlength="1000"
         placeholder="예: 빠른출고, 오후배송"
-      >${escapeHtml(pastedDelivery.memo || '')}</textarea>
+      >${escapeHtml(pastedDelivery.memo || getOrderRevisionContext()?.memo || '')}</textarea>
 
       <button
         id="submitOrderButton"

@@ -260,6 +260,7 @@ try {
     groups.filter(g => g.status === "주문접수" && String(g.pickingStatus || "").includes("검증완료")).length;
   document.getElementById("doneCount").textContent =
     groups.filter(g => g.status === "출고완료").length;
+  const revisionEditing=groups.filter(g=>g.revisionStatus==='수정중').length,revisionComplete=groups.filter(g=>g.revisionStatus==='수정완료').length,editingBadge=document.getElementById('revisionEditingCount'),completeBadge=document.getElementById('revisionCompleteCount');if(editingBadge){editingBadge.hidden=!revisionEditing;editingBadge.textContent=`수정중 ${revisionEditing}`}if(completeBadge){completeBadge.hidden=!revisionComplete;completeBadge.textContent=`확인필요 ${revisionComplete}`}
 
   const keyword = adminSearch?.value?.trim() || "";
   const normalizedKeyword=inventoryKey(keyword);const exactItemSearch=Boolean(keyword)&&groups.some(group=>group.items.some(item=>inventoryKey(item.item_number)===normalizedKeyword));
@@ -617,7 +618,7 @@ class="order-detail">
 
         <label class="shipping-label">배송비</label>
 <div class="shipping-fee-control">
-  <button type="button" class="shipping-step-btn" onclick="adjustShippingFee(this,-500)" ${isDone ? "disabled" : ""}>-500원</button>
+  <button type="button" class="shipping-step-btn" onclick="adjustShippingFee(this,-500)">-500원</button>
   <input
     class="shipping-input"
     type="number"
@@ -626,9 +627,8 @@ class="order-detail">
     min="0"
     data-order="${group.orderNumber}"
     oninput="recalcOrderCard('order-${index}'); queueShippingSave('${escapeAdminAttr(group.orderNumber)}', this.closest('.order-detail'))"
-    ${group.status === "출고완료" ? "disabled" : ""}
   >
-  <button type="button" class="shipping-step-btn" onclick="adjustShippingFee(this,500)" ${isDone ? "disabled" : ""}>+500원</button>
+  <button type="button" class="shipping-step-btn" onclick="adjustShippingFee(this,500)">+500원</button>
 </div>
 
 <label class="shipping-label">택배사</label>
@@ -1090,7 +1090,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65830','js/admin-mobile-nav.js?v=65830'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65840','js/admin-mobile-nav.js?v=65840'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {
@@ -1200,17 +1200,17 @@ function renderPaymentAccountEditor(group,index,isDone){
   const holder=hasManual?group.paymentAccountHolder:(group.paymentAccountHolder||selectedAccount?.account_holder||"");
   return `<section class="order-payment-account" data-order-account="${escapeAdminAttr(group.orderNumber)}">
     <label class="shipping-label">입금계좌</label>
-    <select class="payment-account-select" onchange="changePaymentAccountMode(${index},this.value)" ${isDone?"disabled":""}>
+    <select class="payment-account-select" onchange="changePaymentAccountMode(${index},this.value)">
       ${options||'<option value="">등록된 계좌 없음</option>'}
       <option value="__manual__" ${hasManual?"selected":""}>직접 입력</option>
     </select>
     <div id="manual-account-${index}" class="manual-account-fields ${hasManual?'show':''}">
-      <input class="manual-bank-name" value="${escapeAdminAttr(bank)}" placeholder="은행명" oninput="updatePaymentAccountPreview(${index})" ${isDone?"disabled":""}>
-      <input class="manual-account-number" value="${escapeAdminAttr(number)}" placeholder="계좌번호" oninput="updatePaymentAccountPreview(${index})" ${isDone?"disabled":""}>
-      <input class="manual-account-holder" value="${escapeAdminAttr(holder)}" placeholder="예금주" oninput="updatePaymentAccountPreview(${index})" ${isDone?"disabled":""}>
+      <input class="manual-bank-name" value="${escapeAdminAttr(bank)}" placeholder="은행명" oninput="updatePaymentAccountPreview(${index})">
+      <input class="manual-account-number" value="${escapeAdminAttr(number)}" placeholder="계좌번호" oninput="updatePaymentAccountPreview(${index})">
+      <input class="manual-account-holder" value="${escapeAdminAttr(holder)}" placeholder="예금주" oninput="updatePaymentAccountPreview(${index})">
     </div>
     <div class="selected-account-preview">${number?`현재 표시: ${escapeAdminHtml(bank)} ${escapeAdminHtml(number)} / ${escapeAdminHtml(holder)}`:'표시할 계좌를 선택하세요.'}</div>
-    ${isDone?'':`<button type="button" class="cart-btn account-save-btn" onclick="saveOrderPaymentAccount('${escapeAdminAttr(group.orderNumber)}',${index})">이 주문에 계좌 저장</button>`}
+    <button type="button" class="cart-btn account-save-btn" onclick="saveOrderPaymentAccount('${escapeAdminAttr(group.orderNumber)}',${index},${isDone})">${isDone?'출고완료 배송비·계좌 수정':'이 주문에 계좌 저장'}</button>
   </section>`;
 }
 function updatePaymentAccountPreview(index){
@@ -1240,7 +1240,7 @@ function changePaymentAccountMode(index,value){
   }
   updatePaymentAccountPreview(index);
 }
-async function saveOrderPaymentAccount(orderNumber,index){
+async function saveOrderPaymentAccount(orderNumber,index,isDone=false){
   const detail=document.getElementById(`detail-${index}`);if(!detail)return;
   const select=detail.querySelector('.payment-account-select');
   const manual=select?.value==='__manual__';
@@ -1265,7 +1265,8 @@ async function saveOrderPaymentAccount(orderNumber,index){
   payload.courier=getCourierValue(detail)||'로젠택배';
   payload.tracking_number=trackingInput?.value.trim()||'';
 
-  const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
+  if(isDone&&!confirm(`출고완료 주문의 배송비와 표시 계좌를 수정할까요?\n\n주문번호: ${orderNumber}\n출고상태와 재고이력은 변경되지 않습니다.`))return;
+  const result=isDone?await supabaseClient.rpc('update_shipped_order_billing',{p_order_number:orderNumber,p_shipping_fee:payload.shipping_fee,p_payment_account_id:payload.payment_account_id||null,p_payment_account_label:payload.payment_account_label,p_payment_bank_name:payload.payment_bank_name,p_payment_account_number:payload.payment_account_number,p_payment_account_holder:payload.payment_account_holder}):await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);const error=result.error;
   if(error){alert('주문 계좌 저장 실패: V3-1-ORDER-ACCOUNT-SETUP.sql을 먼저 실행해주세요.\n'+error.message);return;}
   const preview=detail.querySelector('.selected-account-preview');
   if(preview){

@@ -334,6 +334,8 @@ async function deletePendingOrder(orderNumber, editing=false){
   const group=myOrderGroups.find(x=>x.orderNumber===orderNumber);if(!group)return;
   if(group.status==='출고완료')return alert('출고완료 주문은 수정하거나 삭제할 수 없습니다.');
   const pickingStarted=group.items.some(item=>Number(item.picked_qty||0)>0||Number(item.soldout_qty||0)>0||!["","대기"].includes(String(item.picking_status||"대기")));
+  if(editing&&pickingStarted)return alert('피킹을 시작했거나 피킹완료된 주문은 수정할 수 없습니다. 관리자에게 문의해주세요.');
+  if(editing){const allowed=await supabaseClient.rpc('assert_customer_order_revision_allowed',{p_order_number:orderNumber});if(allowed.error)return alert(allowed.error.message)}
   const prompt=editing?'현재 주문을 장바구니로 옮겨 수정할까요?':'이 주문을 삭제할까요?';
   if(!confirm(`${prompt}${pickingStarted?'\n\n이미 피킹한 주문이므로 피킹·재고가 자동 원복되고 관리자에게 변경 알림이 표시됩니다.':''}`))return;
   const cart=group.items.map(x=>({groupId:null,categoryId:null,title:'주문 수정',number:String(x.item_number),warehouseCode:x.warehouse_code||null,qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:''}));
@@ -341,7 +343,7 @@ async function deletePendingOrder(orderNumber, editing=false){
     ? await supabaseClient.rpc('customer_begin_order_revision',{p_order_number:orderNumber})
     : await supabaseClient.rpc('customer_reopen_order_for_change',{p_order_number:orderNumber,p_change_type:'삭제'});
   if(error)return alert(`주문 ${editing?'수정':'삭제'} 준비 실패: ${error.message}\n\nSupabase에서 ${editing?'V6.5.63':'수정된 V6.5.70'} SQL을 먼저 실행해주세요.`);
-  if(editing){const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;let continuing=false;try{continuing=JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber}catch(_){}if(!continuing)localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));const deliveryDraft={deliveryName:group.deliveryName||group.customerName||'',deliveryPhone:group.deliveryPhone||'',deliveryAddress:group.deliveryAddress||''};localStorage.setItem('designjam_customer_bulk_delivery_draft',JSON.stringify(deliveryDraft));localStorage.setItem(revisionKey,JSON.stringify({orderNumber,startedAt:new Date().toISOString(),...deliveryDraft}));}
+  if(editing){const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;let continuing=false;try{continuing=JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber}catch(_){}if(!continuing)localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));const deliveryDraft={deliveryName:group.deliveryName||group.customerName||'',deliveryPhone:group.deliveryPhone||'',deliveryAddress:group.deliveryAddress||''};localStorage.setItem('designjam_customer_bulk_delivery_draft',JSON.stringify(deliveryDraft));localStorage.setItem(revisionKey,JSON.stringify({orderNumber,startedAt:new Date().toISOString(),memo:group.memo||'',...deliveryDraft}));}
   if(editing)location.href='catalog.html';else{const revisionKey=`designjam_order_revision_${currentOrderUser.id}`;try{if(JSON.parse(localStorage.getItem(revisionKey)||'null')?.orderNumber===orderNumber)localStorage.removeItem(revisionKey)}catch(_){}await loadMyOrders()}
 }
 function editPendingOrder(orderNumber){return deletePendingOrder(orderNumber,true)}

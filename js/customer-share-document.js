@@ -4,7 +4,7 @@ const area=document.getElementById('shareDocument'),recipientSelect=document.get
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 const keyFor=(n,a)=>`${String(n||'').trim().toLowerCase().replace(/\s+/g,'')}|${String(a||'').trim().toLowerCase().replace(/\s+/g,'')}`;
 const field=n=>area.querySelector(`[data-field="${n}"]`)?.textContent?.trim()||'';
-function editAll(){area.querySelectorAll('[data-field]').forEach(n=>{n.contentEditable='true';n.spellcheck=false})}
+function editAll(){area.querySelectorAll('[data-field]').forEach(n=>{const locked=/^(?:total_qty|total_amount|row_\d+_amount)$/.test(n.dataset.field||'');n.contentEditable=locked?'false':'true';n.spellcheck=false;n.classList.toggle('calculated-field',locked)})}
 const editableNumber=value=>Number(String(value||'').replace(/[^0-9.-]/g,''))||0;
 function recalculateShareAmounts(){let totalQty=0,totalAmount=0;items.forEach((_,index)=>{const qty=Math.max(0,editableNumber(field(`row_${index}_qty`))),price=Math.max(0,editableNumber(field(`row_${index}_price`))),amount=qty*price;totalQty+=qty;totalAmount+=amount;const amountCell=area.querySelector(`[data-field="row_${index}_amount"]`);if(amountCell)amountCell.textContent=`${amount.toLocaleString()}원`});const qtyCell=area.querySelector('[data-field="total_qty"]'),amountCell=area.querySelector('[data-field="total_amount"]');if(qtyCell)qtyCell.textContent=`${totalQty.toLocaleString()}죽`;if(amountCell)amountCell.textContent=`${totalAmount.toLocaleString()}원`}
 area.addEventListener('input',event=>{const key=event.target?.dataset?.field||'';if(/^row_\d+_(?:qty|price)$/.test(key))recalculateShareAmounts()});

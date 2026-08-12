@@ -120,6 +120,10 @@ async function signupCustomer() {
     "회원가입 처리 중...";
 
   try {
+    const duplicateCheck=await supabaseClient.rpc('check_customer_signup_duplicate',{p_business_name:businessName,p_phone:phone});
+    if(duplicateCheck.error)throw new Error('가입정보 중복 확인 실패: '+duplicateCheck.error.message+'\n관리자에게 문의해주세요.');
+    if(duplicateCheck.data?.business_name_exists)throw new Error('이미 등록된 거래처명입니다. 기존 계정 확인 또는 관리자에게 문의해주세요.');
+    if(duplicateCheck.data?.phone_exists)throw new Error('이미 가입된 휴대폰번호입니다. 로그인하거나 관리자에게 문의해주세요.');
     const { data, error } =
       await supabaseClient.auth.signUp({
         email: authEmail,

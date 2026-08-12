@@ -1,6 +1,8 @@
 const supabaseUrl = "https://dtjhuejmxrjkcxzvilgw.supabase.co";
 const supabaseKey = "sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87";
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
 const ADMIN_SESSION_KEY = "designjam_admin_session";
 const DESIGNJAM_ADMIN_EMAILS = new Set(["900smk@naver.com","sm0727sm@hanmail.net","p1028p@naver.com"]);
 let currentAdmin = null;
@@ -16,11 +18,12 @@ async function guardAdminHome(){
   if(sessionError) console.warn("관리자 세션 확인 오류:",sessionError);
   const user=sessionData?.session?.user||null;
   if(!user){ location.replace("admin.html"); return false; }
-  const {data:profile,error:profileError}=await supabaseClient.from("customers").select("is_admin,blocked").eq("id",user.id).maybeSingle();
+  const {data:profile,error:profileError}=await supabaseClient.from("customers").select("is_admin,blocked,admin_role").eq("id",user.id).maybeSingle();
   if(profileError) console.warn("관리자 권한 조회 오류:",profileError);
   if(!isAdminEmail(user.email) && !(profile?.is_admin===true && profile?.blocked!==true)){ await supabaseClient.auth.signOut(); location.replace("admin.html"); return false; }
   sessionStorage.setItem(ADMIN_SESSION_KEY,user.id); localStorage.setItem(ADMIN_SESSION_KEY,user.id);
   currentAdmin=user;
+  if(['employee','manager'].includes(profile?.admin_role)){const allowed=['picking.html','proxy-order.html','scanner.html'];document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page)))button.hidden=true});document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search').forEach(element=>element.hidden=true)}
   document.body.classList.add("auth-ready");
   requestAnimationFrame(()=>{
     document.body.classList.remove("auth-pending");
@@ -50,6 +53,15 @@ async function loadDashboard(){
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
   await loadNotifications();
   await loadRevisionAlerts();
+  await loadHandwritingTrainingStatus();
+}
+
+async function loadHandwritingTrainingStatus(){
+  const panel=document.getElementById('handwritingTrainingPanel'),text=document.getElementById('handwritingTrainingStatus');if(!panel||!text)return;
+  const {data,error}=await supabaseClient.from('handwriting_training_samples').select('confirmed_items').limit(1000);
+  if(error){panel.hidden=true;return}
+  const photos=(data||[]).length,items=(data||[]).reduce((sum,row)=>sum+(Array.isArray(row.confirmed_items)?row.confirmed_items.length:0),0);
+  panel.hidden=false;text.textContent=items>=300?`교정 ${items}품번(${photos}장) 누적 · 전용모델 학습자료 준비 기준에 도달했습니다.`:`교정 ${items}품번(${photos}장) 누적 · 300품번 이상부터 전용모델 학습자료로 활용하기 좋습니다.`;
 }
 
 async function loadRevisionAlerts(){
@@ -96,7 +108,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('refreshDashboardBtn')?.addEventListener('click',loadDashboard);
   document.getElementById('markAllReadBtn')?.addEventListener('click',markAllRead);
   await loadDashboard();
-  const revisionChannel=supabaseClient.channel('admin-home-revision-v65830').on('postgres_changes',{event:'*',schema:'public',table:'orders'},payload=>{if(payload.new?.customer_revision_status||payload.old?.customer_revision_status)loadRevisionAlerts()}).subscribe();
+  const revisionChannel=supabaseClient.channel('admin-home-revision-v65840').on('postgres_changes',{event:'*',schema:'public',table:'orders'},payload=>{if(payload.new?.customer_revision_status||payload.old?.customer_revision_status)loadRevisionAlerts()}).subscribe();
   setInterval(loadRevisionAlerts,15000);
 });
 

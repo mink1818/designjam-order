@@ -17,7 +17,9 @@
   function getClient() {
     if (client) return client;
     if (!window.supabase?.createClient) return null;
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
     return client;
   }
 

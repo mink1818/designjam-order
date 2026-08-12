@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       const email = String(body.email || "").trim().toLowerCase();
       const password = String(body.password || "");
       const name = String(body.name || "").trim();
-      const role = ["developer_admin", "admin", "employee"].includes(String(body.role)) ? String(body.role) : "admin";
+      const role = ["developer_admin", "admin", "manager"].includes(String(body.role)) ? String(body.role) : "admin";
       if (!isDeveloper) return json({ error: "개발관리자만 관리자 계정을 추가할 수 있습니다." }, 403);
       if (!/^\S+@\S+\.\S+$/.test(email)) return json({ error: "관리자 이메일을 정확히 입력하세요." }, 400);
       if (password.length < 8) return json({ error: "관리자 비밀번호는 8자리 이상이어야 합니다." }, 400);
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     if (action === "set_admin_role") {
       if (!isDeveloper) return json({ error: "개발관리자만 권한을 변경할 수 있습니다." }, 403);
       const targetId = String(body.target_id || "");
-      const role = ["developer_admin", "admin", "employee"].includes(String(body.role)) ? String(body.role) : "admin";
+      const role = ["developer_admin", "admin", "manager"].includes(String(body.role)) ? String(body.role) : "admin";
       if (!targetId) return json({ error: "대상 관리자가 없습니다." }, 400);
       if (targetId === caller.id && role !== "developer_admin") return json({ error: "현재 로그인한 개발관리자 본인의 권한은 낮출 수 없습니다." }, 400);
       if (role !== "developer_admin") {
