@@ -590,7 +590,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div class="order-status-stack">
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
-    ${isDone?`<button class="order-card-edit-button undo-top-button" type="button" onclick="event.stopPropagation();toggleOrderStatus('${escapeAdminAttr(group.orderNumber)}','출고완료','${escapeAdminAttr(group.pickingStatus||'검증완료')}')">출고취소·재고복원</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
+    ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="출고완료 주문은 상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">출고완료 · 주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
