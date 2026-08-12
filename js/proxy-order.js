@@ -214,14 +214,24 @@ function renderProxyPasteAnalysis(){
 function normalizeProxyPhotoText(value){
  return String(value||'').normalize('NFKC').replace(/\b[0-9OQIL|]{2,8}[AM]?\b/gi,token=>{if(!/\d/.test(token))return token;const suffix=/[AM]$/i.test(token)?token.slice(-1).toUpperCase():'';const body=suffix?token.slice(0,-1):token;return body.replace(/[OQ]/gi,'0').replace(/[IL|]/gi,'1')+suffix}).replace(/[‐‑‒–—]/g,'-').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
 }
+async function preprocessProxyOrderPhoto(file){
+ let bitmap;
+ try{bitmap=await createImageBitmap(file)}catch{bitmap=await new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(file);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('사진을 열 수 없습니다.'))};image.src=url})}
+ const sourceWidth=bitmap.width||bitmap.naturalWidth,sourceHeight=bitmap.height||bitmap.naturalHeight,maxSide=Math.max(sourceWidth,sourceHeight),scale=Math.min(2.2,2400/Math.max(1,maxSide));
+ const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sourceWidth*scale));canvas.height=Math.max(1,Math.round(sourceHeight*scale));const context=canvas.getContext('2d',{willReadFrequently:true});context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();
+ const image=context.getImageData(0,0,canvas.width,canvas.height),pixels=image.data;for(let i=0;i<pixels.length;i+=4){const gray=.299*pixels[i]+.587*pixels[i+1]+.114*pixels[i+2],contrasted=Math.max(0,Math.min(255,(gray-128)*1.45+150));pixels[i]=pixels[i+1]=pixels[i+2]=contrasted}context.putImageData(image,0,0);return canvas.toDataURL('image/jpeg',.92);
+}
 async function analyzeProxyOrderPhoto(){
- const input=$('proxyOrderPhoto'),file=input?.files?.[0],status=$('proxyPhotoStatus'),button=$('analyzeProxyPhoto');
- if(!file)return alert('분석할 주문 사진을 먼저 선택하세요.');
+ const input=$('proxyOrderPhoto'),files=[...(input?.files||[])],status=$('proxyPhotoStatus'),button=$('analyzeProxyPhoto');
+ if(!files.length)return alert('분석할 주문 사진을 먼저 선택하세요.');
  if(!window.Tesseract){status.textContent='사진 분석 모듈을 불러오지 못했습니다. 인터넷 연결 후 다시 시도하세요.';status.classList.add('error');return}
  try{
-  button.disabled=true;status.classList.remove('error');status.textContent='사진 글자를 준비하고 있습니다…';
-  const result=await window.Tesseract.recognize(file,'kor+eng',{logger:message=>{if(message.status==='recognizing text')status.textContent=`사진 글자 인식 중… ${Math.round(Number(message.progress||0)*100)}%`;else if(message.status)status.textContent='사진 분석 준비 중…';}});
-  const text=normalizeProxyPhotoText(result?.data?.text||'');
+  button.disabled=true;status.classList.remove('error');const recognized=[];
+  for(let index=0;index<files.length;index++){
+   status.textContent=`${index+1}/${files.length} 사진 보정 중…`;const prepared=await preprocessProxyOrderPhoto(files[index]);
+   const result=await window.Tesseract.recognize(prepared,'eng',{logger:message=>{if(message.status==='recognizing text')status.textContent=`${index+1}/${files.length} 사진 글자 인식 중… ${Math.round(Number(message.progress||0)*100)}%`;else if(message.status)status.textContent=`${index+1}/${files.length} 사진 분석 준비 중…`;}});recognized.push(normalizeProxyPhotoText(result?.data?.text||''));
+  }
+  const text=recognized.filter(Boolean).join('\n');
   if(!text)throw new Error('사진에서 글자를 찾지 못했습니다. 더 밝고 선명하게 다시 촬영해주세요.');
   $('proxyPasteInput').value=text;pendingProxyPasteAnalysis=null;renderProxyPasteAnalysis();scheduleProxyDraftSave();status.textContent='사진 분석 완료 · 아래 품번과 수량을 반드시 확인하세요.';
  }catch(error){status.textContent='사진 분석 실패: '+(error?.message||error);status.classList.add('error')}
@@ -351,6 +361,6 @@ $('editProxyDestination')?.addEventListener('click',editSelectedProxyDestination
 $('deleteProxyDestination')?.addEventListener('click',deleteSelectedProxyDestination);
 $('confirmProxyPaste')?.addEventListener('click',applyPastedOrder);
 $('proxyPasteInput')?.addEventListener('input',()=>{pendingProxyPasteAnalysis=null;$('proxyPasteAnalysis').hidden=true;$('confirmProxyPaste').hidden=true});
-$('proxyOrderPhoto')?.addEventListener('change',event=>{const file=event.target.files?.[0],preview=$('proxyOrderPhotoPreview'),status=$('proxyPhotoStatus');if(preview.dataset.url)URL.revokeObjectURL(preview.dataset.url);if(!file){preview.classList.remove('show');preview.removeAttribute('src');return}const url=URL.createObjectURL(file);preview.dataset.url=url;preview.src=url;preview.classList.add('show');status.classList.remove('error');status.textContent='사진이 선택되었습니다. “사진에서 품번·수량 읽기”를 눌러주세요.'});
+$('proxyOrderPhoto')?.addEventListener('change',event=>{const files=[...(event.target.files||[])],file=files[0],preview=$('proxyOrderPhotoPreview'),status=$('proxyPhotoStatus');if(preview.dataset.url)URL.revokeObjectURL(preview.dataset.url);if(!file){preview.classList.remove('show');preview.removeAttribute('src');return}const url=URL.createObjectURL(file);preview.dataset.url=url;preview.src=url;preview.classList.add('show');status.classList.remove('error');status.textContent=`사진 ${files.length}장이 선택되었습니다. “사진에서 품번·수량 읽기”를 눌러주세요.`});
 $('analyzeProxyPhoto')?.addEventListener('click',analyzeProxyOrderPhoto);
 })();

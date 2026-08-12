@@ -1922,6 +1922,7 @@ async function applyCustomerBulkOrder() {
   const soldout = [];
   let addedKinds = 0;
   let addedQty = 0;
+  const addedBatchAt = ++cartAddedSequence;
 
   for (const [requestedNumber, qty] of totals.entries()) {
     const resolution = resolveBulkOrderItem(requestedNumber, index);
@@ -1931,7 +1932,7 @@ async function applyCustomerBulkOrder() {
     const { group, number } = found;
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
     const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
-    if (existing) { existing.qty = Number(existing.qty || 0) + qty; existing.addedAt = ++cartAddedSequence; }
+    if (existing) { existing.qty = Number(existing.qty || 0) + qty; existing.addedAt = addedBatchAt; }
     else cart.push({
       groupId: group.id,
       categoryId: group.category_id,
@@ -1941,7 +1942,7 @@ async function applyCustomerBulkOrder() {
       price: effectiveItemPrice(group, number),
       warehouseCode: String(group.warehouse_code || ""),
       imageUrl: group.image_url || "",
-      addedAt: ++cartAddedSequence
+      addedAt: addedBatchAt
     });
     addedKinds += 1;
     addedQty += qty;
@@ -1977,6 +1978,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
   if (!group) return;
 
   let addedQty = 0;
+  const addedBatchAt = ++cartAddedSequence;
 
   document
     .querySelectorAll(".catalog-qty-input:not(:disabled)")
@@ -1993,7 +1995,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
 
       if (existingItem) {
         existingItem.qty += qty;
-        existingItem.addedAt = ++cartAddedSequence;
+        existingItem.addedAt = addedBatchAt;
       } else {
         cart.push({
           groupId: group.id,
@@ -2004,7 +2006,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
           price: effectiveItemPrice(group,number),
           warehouseCode: String(group.warehouse_code||''),
           imageUrl: group.image_url || "",
-          addedAt: ++cartAddedSequence
+          addedAt: addedBatchAt
         });
       }
 
