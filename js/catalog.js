@@ -1533,6 +1533,25 @@ const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
 let pendingCustomerBulkAnalysis = null;
 let customerBulkCartNotice = [];
+const CUSTOMER_CART_SORT_KEY = "designjam_customer_cart_sort";
+let customerCartSort = localStorage.getItem(CUSTOMER_CART_SORT_KEY) || "added-asc";
+let cartAddedSequence = Date.now();
+function cartItemNumberCompare(a, b) {
+  return String(a?.number || "").localeCompare(String(b?.number || ""), "ko", { numeric: true, sensitivity: "base" });
+}
+function cartAddedAt(item, fallback = 0) { return Number(item?.addedAt || fallback || 0); }
+function sortedCartEntries(mode = customerCartSort) {
+  const entries = cart.map((item, index) => ({ item, index, addedAt: cartAddedAt(item, index + 1) }));
+  if (mode === "latest-desc") return entries.sort((a, b) => b.addedAt - a.addedAt || b.index - a.index);
+  if (mode === "item-asc") return entries.sort((a, b) => cartItemNumberCompare(a.item, b.item) || a.index - b.index);
+  if (mode === "item-desc") return entries.sort((a, b) => cartItemNumberCompare(b.item, a.item) || a.index - b.index);
+  return entries.sort((a, b) => a.addedAt - b.addedAt || a.index - b.index);
+}
+function setCustomerCartSort(value) { customerCartSort = value || "added-asc"; localStorage.setItem(CUSTOMER_CART_SORT_KEY, customerCartSort); renderCart(); }
+function clearCustomerCart() {
+  if (!cart.length || !confirm(`장바구니 ${cart.length.toLocaleString()}품번을 모두 삭제할까요?`)) return;
+  cart = []; clearSavedCart(); customerBulkCartNotice = []; renderCart();
+}
 window.addEventListener("pagehide", () => {
   localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
   const input = document.getElementById("customerBulkOrderInput");
@@ -1912,7 +1931,7 @@ async function applyCustomerBulkOrder() {
     const { group, number } = found;
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
     const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
-    if (existing) existing.qty = Number(existing.qty || 0) + qty;
+    if (existing) { existing.qty = Number(existing.qty || 0) + qty; existing.addedAt = ++cartAddedSequence; }
     else cart.push({
       groupId: group.id,
       categoryId: group.category_id,
@@ -1921,7 +1940,8 @@ async function applyCustomerBulkOrder() {
       qty,
       price: effectiveItemPrice(group, number),
       warehouseCode: String(group.warehouse_code || ""),
-      imageUrl: group.image_url || ""
+      imageUrl: group.image_url || "",
+      addedAt: ++cartAddedSequence
     });
     addedKinds += 1;
     addedQty += qty;
@@ -1973,6 +1993,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
 
       if (existingItem) {
         existingItem.qty += qty;
+        existingItem.addedAt = ++cartAddedSequence;
       } else {
         cart.push({
           groupId: group.id,
@@ -1982,7 +2003,8 @@ function addGroupToCart(groupId, nextAction = "cart") {
           qty,
           price: effectiveItemPrice(group,number),
           warehouseCode: String(group.warehouse_code||''),
-          imageUrl: group.image_url || ""
+          imageUrl: group.image_url || "",
+          addedAt: ++cartAddedSequence
         });
       }
 
@@ -2037,8 +2059,10 @@ function renderCart() {
   let totalQty = 0;
   let totalPrice = 0;
 
-  const itemHtml = cart
-    .map((item, index) => {
+  const sortedEntries = sortedCartEntries();
+  const newestAddedAt = Math.max(...cart.map((item, index) => cartAddedAt(item, index + 1)));
+  const itemHtml = sortedEntries
+    .map(({ item, index, addedAt }) => {
       const itemTotal =
         Number(item.qty) * Number(item.price);
 
@@ -2055,7 +2079,7 @@ function renderCart() {
               : `<div class="cart-thumb cart-thumb-empty">사진 없음</div>`
             }
             <div>
-              <strong>${escapeHtml(item.number)}</strong>
+              <strong>${escapeHtml(item.number)} ${addedAt === newestAddedAt ? '<em class="cart-latest-badge">최신 담음</em>' : ''}</strong>
               <small>${escapeHtml(item.title)}</small>
               <small class="cart-unit-price">단가 ${Number(item.price).toLocaleString()}원 / 1죽</small>
             </div>
@@ -2098,6 +2122,18 @@ function renderCart() {
 
     <div class="product-card">
       <h2>🛒 장바구니</h2>
+
+      <div class="customer-cart-toolbar">
+        <label>정렬
+          <select class="order-input" onchange="setCustomerCartSort(this.value)">
+            <option value="added-asc" ${customerCartSort === "added-asc" ? "selected" : ""}>담은 순서</option>
+            <option value="latest-desc" ${customerCartSort === "latest-desc" ? "selected" : ""}>최근 담은 순</option>
+            <option value="item-asc" ${customerCartSort === "item-asc" ? "selected" : ""}>품번 낮은순</option>
+            <option value="item-desc" ${customerCartSort === "item-desc" ? "selected" : ""}>품번 높은순</option>
+          </select>
+        </label>
+        <button class="cart-clear-all-button" type="button" onclick="clearCustomerCart()">장바구니 전체삭제</button>
+      </div>
 
       ${customerBulkCartNotice.length ? `<div class="customer-bulk-order-result customer-bulk-cart-notice">${customerBulkCartNotice.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("")}</div>` : ""}
 
@@ -2300,7 +2336,8 @@ async function submitOrder() {
   const revisionContext=getOrderRevisionContext();
   const orderNumber = revisionContext?.orderNumber || makeOrderNumber();
 
-  const orderRows = cart.map(item => ({
+  const orderItemsSorted = [...cart].sort(cartItemNumberCompare);
+  const orderRows = orderItemsSorted.map(item => ({
     order_number: orderNumber,
     customer_id: currentUser.id,
     customer_name: currentCustomer.business_name,
@@ -2324,7 +2361,7 @@ async function submitOrder() {
     submitButton.textContent = "주문 저장 중...";
   }
 
-  const revisionItems=cart.map(item=>({item_number:String(item.number),warehouse_code:item.warehouseCode||null,qty:Number(item.qty),price:Number(item.price)}));
+  const revisionItems=orderItemsSorted.map(item=>({item_number:String(item.number),warehouse_code:item.warehouseCode||null,qty:Number(item.qty),price:Number(item.price)}));
   const { error } = revisionContext
     ? await supabaseClient.rpc('customer_complete_order_revision',{
         p_order_number:orderNumber,p_items:revisionItems,p_memo:memo,p_delivery_name:deliveryName,
@@ -2363,7 +2400,7 @@ async function submitOrder() {
   let totalQty = 0;
   let totalPrice = 0;
 
-  const completeItems = cart
+  const completeItems = orderItemsSorted
     .map(item => {
       const itemTotal =
         Number(item.qty) * Number(item.price);
@@ -2765,6 +2802,8 @@ window.changeCatalogQty = changeCatalogQty;
 window.recalculateGroupTotal = recalculateGroupTotal;
 window.addGroupToCart = addGroupToCart;
 window.renderCart = renderCart;
+window.setCustomerCartSort = setCustomerCartSort;
+window.clearCustomerCart = clearCustomerCart;
 window.continueShopping = continueShopping;
 window.removeCartItem = removeCartItem;
 window.setCartQty = setCartQty;

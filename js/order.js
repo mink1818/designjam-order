@@ -127,6 +127,7 @@ async function loadMyOrders() {
     }
   });
 
+  Object.values(grouped).forEach(group => group.items.sort((a,b) => String(a.item_number||'').localeCompare(String(b.item_number||''),'ko',{numeric:true,sensitivity:'base'})));
   myOrderGroups = Object.values(grouped).sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );

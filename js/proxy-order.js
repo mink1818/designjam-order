@@ -211,6 +211,22 @@ function renderProxyPasteAnalysis(){
  const option=(key,label,value,wide='',defaultChecked=false)=>`<label class="${wide}"><input type="checkbox" data-smart-field="${key}" ${value&&defaultChecked?'checked':''} ${value?'':'disabled'}><span><b>${label}</b><br>${esc(value||'인식 안 됨')}</span></label>`;
  box.innerHTML=`<h3>자동 분석 결과 · 적용할 항목만 선택</h3><div class="smart-paste-options">${option('items','품번·수량',rows.map(row=>`${row.item} ${row.qty}죽`).join(', '),'smart-paste-items',true)}${option('customer','거래처명',fields.customer,'',true)}${option('delivery','실제 납품처명',fields.delivery,'',true)}${option('memo','메모',fields.memo)}</div>${rows.length?'':'<p class="smart-paste-warning">인식된 품번이 없습니다. 원문을 확인해 주세요.</p>'}`;box.hidden=false;$('confirmProxyPaste').hidden=false;$('proxyPasteResult').textContent='분석 결과를 확인한 뒤 선택 항목 적용을 눌러주세요.';
 }
+function normalizeProxyPhotoText(value){
+ return String(value||'').normalize('NFKC').replace(/\b[0-9OQIL|]{2,8}[AM]?\b/gi,token=>{if(!/\d/.test(token))return token;const suffix=/[AM]$/i.test(token)?token.slice(-1).toUpperCase():'';const body=suffix?token.slice(0,-1):token;return body.replace(/[OQ]/gi,'0').replace(/[IL|]/gi,'1')+suffix}).replace(/[‐‑‒–—]/g,'-').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+}
+async function analyzeProxyOrderPhoto(){
+ const input=$('proxyOrderPhoto'),file=input?.files?.[0],status=$('proxyPhotoStatus'),button=$('analyzeProxyPhoto');
+ if(!file)return alert('분석할 주문 사진을 먼저 선택하세요.');
+ if(!window.Tesseract){status.textContent='사진 분석 모듈을 불러오지 못했습니다. 인터넷 연결 후 다시 시도하세요.';status.classList.add('error');return}
+ try{
+  button.disabled=true;status.classList.remove('error');status.textContent='사진 글자를 준비하고 있습니다…';
+  const result=await window.Tesseract.recognize(file,'kor+eng',{logger:message=>{if(message.status==='recognizing text')status.textContent=`사진 글자 인식 중… ${Math.round(Number(message.progress||0)*100)}%`;else if(message.status)status.textContent='사진 분석 준비 중…';}});
+  const text=normalizeProxyPhotoText(result?.data?.text||'');
+  if(!text)throw new Error('사진에서 글자를 찾지 못했습니다. 더 밝고 선명하게 다시 촬영해주세요.');
+  $('proxyPasteInput').value=text;pendingProxyPasteAnalysis=null;renderProxyPasteAnalysis();scheduleProxyDraftSave();status.textContent='사진 분석 완료 · 아래 품번과 수량을 반드시 확인하세요.';
+ }catch(error){status.textContent='사진 분석 실패: '+(error?.message||error);status.classList.add('error')}
+ finally{button.disabled=false}
+}
 async function applyPastedOrder(event){
  if(event?.currentTarget?.id==='applyProxyPaste'||!pendingProxyPasteAnalysis)return renderProxyPasteAnalysis();const checked=key=>Boolean($('proxyPasteAnalysis')?.querySelector(`[data-smart-field="${key}"]:checked`)),fields=pendingProxyPasteAnalysis.fields,raw=checked('items')?pendingProxyPasteAnalysis.items:[],merged=new Map(),unmatched=[];
  for(const row of raw){const resolution=resolveProxyItem(row.item);let found=resolution.item;if(!found&&resolution.candidates.length>1)found=await chooseProxyItem(row.item,resolution.candidates,resolution.remembered);const itemNumber=found?.item_number||row.item;if(!found)unmatched.push(row.item);const key=normalizeItem(itemNumber),current=merged.get(key)||{item_number:itemNumber,qty:0};current.qty+=row.qty;merged.set(key,current)}
@@ -335,4 +351,6 @@ $('editProxyDestination')?.addEventListener('click',editSelectedProxyDestination
 $('deleteProxyDestination')?.addEventListener('click',deleteSelectedProxyDestination);
 $('confirmProxyPaste')?.addEventListener('click',applyPastedOrder);
 $('proxyPasteInput')?.addEventListener('input',()=>{pendingProxyPasteAnalysis=null;$('proxyPasteAnalysis').hidden=true;$('confirmProxyPaste').hidden=true});
+$('proxyOrderPhoto')?.addEventListener('change',event=>{const file=event.target.files?.[0],preview=$('proxyOrderPhotoPreview'),status=$('proxyPhotoStatus');if(preview.dataset.url)URL.revokeObjectURL(preview.dataset.url);if(!file){preview.classList.remove('show');preview.removeAttribute('src');return}const url=URL.createObjectURL(file);preview.dataset.url=url;preview.src=url;preview.classList.add('show');status.classList.remove('error');status.textContent='사진이 선택되었습니다. “사진에서 품번·수량 읽기”를 눌러주세요.'});
+$('analyzeProxyPhoto')?.addEventListener('click',analyzeProxyOrderPhoto);
 })();
