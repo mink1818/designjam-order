@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
-    const protectedActions = new Set(["set_password", "create_admin", "set_admin_role", "set_admin_blocked"]);
+    const protectedActions = new Set(["set_password", "create_admin", "update_admin_profile", "set_admin_role", "set_admin_blocked"]);
     if (protectedActions.has(action)) {
       if (!isDeveloper) return json({ error: "이 작업은 개발관리자만 가능합니다." }, 403);
       const { data: grant } = await admin.from("admin_security_grants").select("password_verified_until,email_verified_until").eq("user_id", caller.id).maybeSingle();
@@ -68,6 +68,47 @@ Deno.serve(async (req) => {
       const { error } = await admin.auth.admin.updateUserById(targetId, { password });
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, message: "비밀번호가 변경되었습니다." });
+    }
+
+    if (action === "update_admin_profile") {
+      const targetId = String(body.target_id || "");
+      const name = String(body.name || "").trim();
+      const email = String(body.email || "").trim().toLowerCase();
+      if (!targetId) return json({ error: "대상 관리자 계정이 없습니다." }, 400);
+      if (!name) return json({ error: "관리자 이름을 입력하세요." }, 400);
+      if (!/^\S+@\S+\.\S+$/.test(email)) return json({ error: "관리자 이메일을 정확히 입력하세요." }, 400);
+
+      const { data: targetProfile } = await admin.from("customers")
+        .select("id,email,business_name,owner_name,is_admin")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (!targetProfile?.is_admin) return json({ error: "관리자 계정을 찾을 수 없습니다." }, 404);
+
+      const { data: authTarget, error: authReadError } = await admin.auth.admin.getUserById(targetId);
+      if (authReadError || !authTarget.user) return json({ error: authReadError?.message || "로그인 계정을 찾을 수 없습니다." }, 400);
+      const previousEmail = String(authTarget.user.email || targetProfile.email || "");
+      const previousMetadata = authTarget.user.user_metadata || {};
+      const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetId, {
+        email,
+        email_confirm: true,
+        user_metadata: { ...previousMetadata, business_name: name, owner_name: name, email },
+      });
+      if (authUpdateError) return json({ error: `로그인 정보 수정 실패: ${authUpdateError.message}` }, 400);
+
+      const { error: profileError } = await admin.from("customers").update({
+        email,
+        business_name: name,
+        owner_name: name,
+      }).eq("id", targetId).eq("is_admin", true);
+      if (profileError) {
+        await admin.auth.admin.updateUserById(targetId, {
+          email: previousEmail,
+          email_confirm: true,
+          user_metadata: previousMetadata,
+        });
+        return json({ error: `관리자 정보 저장 실패: ${profileError.message}` }, 400);
+      }
+      return json({ ok: true, admin: { id: targetId, email, name }, relogin_required: targetId === caller.id && email !== previousEmail.toLowerCase() });
     }
 
     if (action === "create_admin") {
