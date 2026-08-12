@@ -107,7 +107,7 @@ async function loadAdminAccounts(){
     data=presenceResult.data;
     health.textContent='✅ 로그인·최종활동·접속기록 정상 연결 · 관리자 활동 시 자동 갱신';health.classList.remove('auth-error');
   }else{
-    health.textContent=`⚠ 접속기록 점검 필요: ${presenceResult.error.message} · V6.5.85 SQL을 실행해주세요.`;health.classList.add('auth-error');
+    health.textContent=`⚠ 접속기록 점검 필요: ${presenceResult.error.message} · V6.5.86 SQL을 실행해주세요.`;health.classList.add('auth-error');
   }
   const adminQueries=[
     'id,email,business_name,owner_name,blocked,created_at,admin_role,last_login_at,admin_last_seen_at,admin_logged_out_at,admin_device',

@@ -12,6 +12,8 @@ const todayStartIso = () => { const d=new Date(); d.setHours(0,0,0,0); return d.
 const uniqueOrders = rows => new Set((rows||[]).map(r=>r.order_number).filter(Boolean)).size;
 const setText = (id,value) => { const el=document.getElementById(id); if(el) el.textContent=value; };
 const esc = value => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+function parseSoldoutItems(value){if(Array.isArray(value))return value.map(String);const text=String(value||'').trim();if(!text)return[];try{const parsed=JSON.parse(text);if(Array.isArray(parsed))return parsed.map(String)}catch(_){}return text.replace(/^\{|\}$/g,'').split(',').map(v=>v.trim().replace(/^"|"$/g,'')).filter(Boolean)}
+async function fetchAllProductSoldouts(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,soldout_items,warehouse_code').range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
 
 async function guardAdminHome(){
   const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
@@ -42,7 +44,7 @@ async function loadDashboard(){
     supabaseClient.from("orders").select("order_number").eq("status","출고완료").gte("shipped_at",start),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
-    supabaseClient.from("product_groups").select("id,item_numbers,soldout_items")
+    fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))
   ]);
   setText("todayOrderCount",uniqueOrders(todayOrders.data));
   setText("pendingOrderCount",uniqueOrders(pending.data));
@@ -50,8 +52,8 @@ async function loadDashboard(){
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);
   const soldoutItems=new Set();
-  (products.data||[]).forEach(group=>(Array.isArray(group.soldout_items)?group.soldout_items:[]).forEach(item=>soldoutItems.add(String(item).trim().toUpperCase())));
-  setText("soldoutCount",soldoutItems.size);
+  (products.data||[]).forEach(group=>parseSoldoutItems(group.soldout_items).forEach(item=>{const itemKey=String(item).trim().toUpperCase(),key=`${String(group.warehouse_code||'').toUpperCase()}:${itemKey}`;if(itemKey)soldoutItems.add(key)}));
+  setText("soldoutCount",products.error?"-":soldoutItems.size);
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
   await loadNotifications();
   await loadHandwritingTrainingStatus();

@@ -22,7 +22,7 @@
     if(busy)throw new Error('이미 다른 사진을 분석하고 있습니다. 잠시 기다려주세요.');
     busy=true;
     try{
-      if(!window.PaddleHandwritingOCR){onStatus('PP-OCRv5 무료 인식 엔진을 불러오는 중…');await new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-paddle-ocr]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('PP-OCRv5 엔진 로드 실패')),{once:true});return}const script=document.createElement('script');script.src='js/paddle-ocr-browser.js?v=65850';script.dataset.paddleOcr='1';script.onload=resolve;script.onerror=()=>reject(new Error('PP-OCRv5 엔진 로드 실패'));document.head.appendChild(script)});}if(!window.PaddleHandwritingOCR)throw new Error('PP-OCRv5 무료 인식 엔진을 불러오지 못했습니다.');
+      if(!window.PaddleHandwritingOCR){onStatus('PP-OCRv5 무료 인식 엔진을 불러오는 중…');await new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-paddle-ocr]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('PP-OCRv5 엔진 로드 실패')),{once:true});return}const script=document.createElement('script');script.src='js/paddle-ocr-browser.js?v=65860';script.dataset.paddleOcr='1';script.onload=resolve;script.onerror=()=>reject(new Error('PP-OCRv5 엔진 로드 실패'));document.head.appendChild(script)});}if(!window.PaddleHandwritingOCR)throw new Error('PP-OCRv5 무료 인식 엔진을 불러오지 못했습니다.');
       const recognized=await window.PaddleHandwritingOCR.recognize(files,onStatus);
       onStatus(`PP-OCRv5가 손글씨 ${recognized.length}줄을 품번 목록과 대조 중…`);
       const parsed=recognized.map(line=>{
