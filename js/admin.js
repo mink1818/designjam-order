@@ -233,6 +233,8 @@ try {
         paymentBankName: order.payment_bank_name || "",
         paymentAccountNumber: order.payment_account_number || "",
         paymentAccountHolder: order.payment_account_holder || "",
+        proxyCreatedByName: order.proxy_created_by_name || "",
+        proxyCreatedByRole: order.proxy_created_by_role || "",
         isProxy: isProxyOrder,
         pickingStatus: order.picking_status || '대기',
         items: []
@@ -575,7 +577,7 @@ summaryTotal += Number(group.shipping_fee || 0);
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}" data-revision-status="${escapeAdminAttr(group.revisionStatus||'')}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?'<small class="proxy-order-badge">관리자 대신주문</small>':''} ${group.memo?'<small class="customer-order-memo-badge">📝 메모</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?`<small class="proxy-order-badge">관리자 대신주문${group.proxyCreatedByName?` · ${escapeAdminHtml(group.proxyCreatedByName)}(${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')})`:''}</small>`:''} ${group.memo?'<small class="customer-order-memo-badge">📝 메모</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
     <p class="order-delivery-preview"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}</p>
     <p class="order-summary-number">${isDone ? `출고 ${formatCompletedDateTime(group.completedAt)}` : formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
@@ -588,7 +590,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div class="order-status-stack">
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
-    ${isDone?`<button class="order-card-edit-button undo-top-button" type="button" onclick="event.stopPropagation();toggleOrderStatus('${escapeAdminAttr(group.orderNumber)}','출고완료','${escapeAdminAttr(group.pickingStatus||'검증완료')}')">출고취소</button><button class="order-card-edit-button completed-delete-top-button" type="button" onclick="event.stopPropagation();deleteCompletedOrder('${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'거래처 미입력')}')">주문삭제</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
+    ${isDone?`<button class="order-card-edit-button undo-top-button" type="button" onclick="event.stopPropagation();toggleOrderStatus('${escapeAdminAttr(group.orderNumber)}','출고완료','${escapeAdminAttr(group.pickingStatus||'검증완료')}')">출고취소·재고복원</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
@@ -602,7 +604,7 @@ class="order-detail">
 
         ${renderOrderItemEditor(group, index)}
 
-        <div class="order-party-summary"><p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
+        <div class="order-party-summary">${group.isProxy&&group.proxyCreatedByName?`<p class="proxy-created-by-admin"><strong>대신주문 접수자</strong> ${escapeAdminHtml(group.proxyCreatedByName)} · ${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')} · ${formatOrderDate(group.createdAt)}</p>`:''}<p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
         <section class="order-party-editor" id="order-party-editor-${index}" hidden><div class="order-party-edit-grid"><label>거래처명<input data-party="customer" value="${escapeAdminAttr(group.customerName||'')}"></label><label>대표자명<input data-party="owner" value="${escapeAdminAttr(group.customerOwnerName||'')}"></label><label>실제 납품처명<input data-party="delivery" value="${escapeAdminAttr(group.deliveryName||'')}"></label><label>납품처 연락처<input data-party="phone" value="${escapeAdminAttr(group.deliveryPhone||'')}"></label><label class="wide">납품처 주소<input data-party="address" value="${escapeAdminAttr(group.deliveryAddress||'')}"></label><label class="wide">주문 메모<textarea data-party="memo" rows="3">${escapeAdminHtml(group.memo||'')}</textarea></label></div><div class="v3-card-actions"><button type="button" class="cart-btn" onclick="saveOrderPartyInfo('${escapeAdminAttr(group.orderNumber)}',${index})">정보 저장</button><button type="button" class="cart-btn gray-btn" onclick="toggleOrderPartyEditor(${index})">취소</button></div></section>
         ${group.memo ? `<div class="customer-order-memo"><strong>거래처 주문메모</strong><p>${escapeAdminHtml(group.memo).replaceAll("\n", "<br>")}</p></div>` : ""}
         <div class="order-copy-all-row"><span class="copy-button-pair"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event,'kakao')">S·B·I 카톡용 전체복사</button><button type="button" class="warehouse-copy-button all-warehouse-copy-button excel-copy-button" onclick="copyAllWarehouseOrders(this,event,'excel')">S·B·I 엑셀용 전체복사</button><button type="button" class="warehouse-copy-button" onclick="copyOrderDetails(this,event,'kakao')">품번·수량·단가 카톡복사</button><button type="button" class="warehouse-copy-button excel-copy-button" onclick="copyOrderDetails(this,event,'excel')">품번·수량·단가 엑셀복사</button></span><small>상세복사는 품번·출고수량·1죽 단가·금액을 함께 복사합니다.</small></div>
@@ -672,7 +674,7 @@ class="order-detail">
           ${group.status === "출고완료" ? "출고취소·재고복원" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
         </button>
 
-        <button class="cart-btn picking-btn" type="button" ${group.revisionStatus?'disabled title="고객 주문변경 확인을 먼저 완료해주세요"':''} onclick="event.stopPropagation();location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'변경확인 후 피킹가능':String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹검증 화면'}</button>
+        <button class="cart-btn picking-btn" type="button" ${group.revisionStatus?'disabled title="고객 주문변경 확인을 먼저 완료해주세요"':''} onclick="event.stopPropagation();location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'변경확인 후 피킹가능':String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작 지시'}</button>
         ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
         <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">출고지별 작업지시서 출력</button>
 
@@ -683,8 +685,6 @@ class="order-detail">
 >
   거래명세서 출력
 </button>
-        ${canEditOrderItems(group)?`<button class="cart-btn admin-delete-order-btn" type="button" onclick="deleteOrderFromAdmin(decodeURIComponent('${encodeURIComponent(group.orderNumber)}'),decodeURIComponent('${encodeURIComponent(group.customerName || '거래처 미입력')}'),${group.items.length})">피킹 전 주문 전체삭제</button>`:`<p class="order-delete-locked">피킹을 시작한 주문은 바로 삭제할 수 없습니다.</p>`}
-        ${isDone?`<button class="cart-btn admin-delete-order-btn completed-order-delete" type="button" onclick="deleteCompletedOrder('${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'거래처 미입력')}')">출고취소 후 주문삭제</button>`:''}
       </div>
       </div>
     `;
@@ -697,23 +697,6 @@ class="order-detail">
   });
 }
 
-async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
-  if (!confirm(`주문 전체삭제\n\n거래처: ${customerName}\n주문번호: ${orderNumber}\n품번: ${Number(itemCount || 0)}개\n\n주문 화면에서는 삭제되며 원본은 삭제 주문 이력에 보관됩니다. 계속할까요?`)) return;
-  if (!confirm(`정말 삭제할까요?\n삭제 후 관리자 메인의 삭제 주문 이력에서 원본을 확인할 수 있습니다.\n\n${orderNumber}`)) return;
-  try {
-    const { data, error } = await supabaseClient.rpc("delete_order_and_restore_inventory", {
-      p_order_number: orderNumber,
-      p_device_name: "주문관리 주문 전체삭제"
-    });
-    if (error) throw error;
-    alert(`${customerName} 피킹 전 주문을 전체삭제했습니다.`);
-    await loadOrders();
-  } catch (error) {
-    alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.28-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
-  }
-}
-async function deleteCompletedOrder(orderNumber,customerName){if(!confirm(`출고완료 주문을 취소하고 삭제할까요?\n\n거래처: ${customerName}\n주문번호: ${orderNumber}\n\nERP 재고를 복원하고 삭제 이력에 원본을 보관합니다.`))return;if(!confirm('정말 삭제할까요?\n주문관리에서는 사라지며 삭제 주문 이력에 보관됩니다.'))return;try{const {data,error}=await supabaseClient.rpc('cancel_and_delete_completed_order',{p_order_number:orderNumber,p_device_name:'출고완료 취소·주문삭제'});if(error)throw error;alert(`출고취소·주문삭제 완료\n복원 수량: ${Number(data?.restored_quantity||0)}개`);loadOrders()}catch(error){alert('출고완료 주문삭제 실패: SQL/V6.5.89-COMPLETED-ORDER-CANCEL-DELETE.sql을 먼저 실행해주세요.\n'+error.message)}}
-window.deleteCompletedOrder=deleteCompletedOrder;
 
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
   if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }

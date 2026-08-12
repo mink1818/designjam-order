@@ -310,6 +310,8 @@ async function submit(){
   });
   if(error)throw error;
   if(data?.ok===false)throw new Error(data.error||'대신주문 저장에 실패했습니다.');
+  const creatorSave=await supabaseClient.rpc('record_proxy_order_creator',{p_order_number:order});
+  if(creatorSave.error)throw new Error(`대신주문 접수자 기록 실패: ${creatorSave.error.message} · V6.5.89-PROXY-CREATOR-AUDIT.sql을 실행해주세요.`);
   const ownerName=mode==='direct'?safeDirectOwnerName():(customer?.owner_name||'');
   const deliverySave=await supabaseClient.rpc('save_order_delivery_info',{p_order_number:order,p_owner_name:ownerName,p_delivery_name:deliveryName,p_delivery_phone:deliveryPhone,p_delivery_address:deliveryAddress});
   if(deliverySave.error)throw new Error(`납품처 저장 실패: ${deliverySave.error.message}`);
