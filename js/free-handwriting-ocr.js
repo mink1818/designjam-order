@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  let worker=null,busy=false;
+  let worker=null,busy=false,lastRecognized=[];
   const normalize=value=>String(value||'').normalize('NFKC').toUpperCase().replace(/[OQ]/g,'0').replace(/[IL|!]/g,'1').replace(/[Z]/g,'2').replace(/[G]/g,'6').replace(/[‐‑‒–—_]/g,'-');
   function distance(a,b){const x=String(a),y=String(b),dp=Array.from({length:x.length+1},()=>Array(y.length+1).fill(0));for(let i=0;i<=x.length;i++)dp[i][0]=i;for(let j=0;j<=y.length;j++)dp[0][j]=j;for(let i=1;i<=x.length;i++)for(let j=1;j<=y.length;j++)dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(x[i-1]===y[j-1]?0:1));return dp[x.length][y.length]}
   async function bitmap(file){try{return await createImageBitmap(file)}catch{return new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(file);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=reject;image.src=url})}}
@@ -19,6 +19,30 @@
     let best='',score=99;for(const candidate of known){const key=candidate.replace(/^([SBI])[-_\s]+/,'');if(Math.abs(key.length-itemKey.length)>1)continue;const d=distance(itemKey,key);if(d<score){score=d;best=candidate}}const confidence=best?Math.max(0,1-score/Math.max(itemKey.length,best.length)):0;return{observed_text:text,item_number:best||itemKey,qty,registered:Boolean(best),confidence,needs_review:!best||confidence<.82}
   }
   async function analyze(files,knownItems,onStatus=()=>{}){
-    if(busy)throw new Error('이미 다른 사진을 분석하고 있습니다. 잠시 기다려주세요.');busy=true;try{const lines=[];for(let i=0;i<files.length;i++){onStatus(`${i+1}/${files.length} 사진에서 손글씨 줄을 찾는 중…`);lines.push(...await splitLines(files[i]))}onStatus(`손글씨 ${lines.length}줄 확인 · 무료 모델 준비 중…`);if(!worker)worker=new Worker('js/free-handwriting-ocr-worker.js?v=65820',{type:'module'});const texts=await new Promise((resolve,reject)=>{const handler=event=>{const msg=event.data||{};if(msg.type==='progress'){const raw=Number(msg.progress?.progress||0),percent=Math.round(raw<=1?raw*100:raw);if(percent>0&&percent<=100)onStatus(`무료 손글씨 모델 최초 다운로드 중… ${percent}%`)}else if(msg.type==='line-progress')onStatus(`손글씨 분석 중… ${msg.index+1}/${msg.total}`);else if(msg.type==='result'){worker.removeEventListener('message',handler);resolve(msg.texts)}else if(msg.type==='error'){worker.removeEventListener('message',handler);reject(new Error(msg.error))}};worker.addEventListener('message',handler);worker.postMessage({type:'analyze',lines})});return texts.map(text=>parse(text,knownItems)).filter(row=>row.item_number)}finally{busy=false}}
-  window.FreeHandwritingOCR={analyze};
+    if(busy)throw new Error('이미 다른 사진을 분석하고 있습니다. 잠시 기다려주세요.');
+    busy=true;
+    try{
+      if(!window.PaddleHandwritingOCR){onStatus('PP-OCRv5 무료 인식 엔진을 불러오는 중…');await new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-paddle-ocr]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('PP-OCRv5 엔진 로드 실패')),{once:true});return}const script=document.createElement('script');script.src='js/paddle-ocr-browser.js?v=65830';script.dataset.paddleOcr='1';script.onload=resolve;script.onerror=()=>reject(new Error('PP-OCRv5 엔진 로드 실패'));document.head.appendChild(script)});}if(!window.PaddleHandwritingOCR)throw new Error('PP-OCRv5 무료 인식 엔진을 불러오지 못했습니다.');
+      const recognized=await window.PaddleHandwritingOCR.recognize(files,onStatus);
+      onStatus(`PP-OCRv5가 손글씨 ${recognized.length}줄을 품번 목록과 대조 중…`);
+      const parsed=recognized.map(line=>{
+        const row=parse(line.text,knownItems);
+        row.ocr_score=Number(line.score||0);
+        row.confidence=Math.min(Number(row.confidence||0),Math.max(.01,Number(line.score||0)));
+        row.needs_review=row.needs_review||row.confidence<.82;
+        return row;
+      }).filter(row=>row.item_number);lastRecognized=parsed.map(row=>({...row}));return parsed;
+    }finally{busy=false}
+  }
+  async function saveTrainingData(supabase,files,confirmedItems,source='admin'){
+    if(!supabase||!files?.length||!confirmedItems?.length)return{saved:0};
+    const {data:{user}}=await supabase.auth.getUser();if(!user)return{saved:0};let saved=0;
+    for(let index=0;index<files.length;index++){
+      const file=files[index],extension=String(file.name||'photo.jpg').split('.').pop().replace(/[^a-z0-9]/gi,'').slice(0,8)||'jpg',path=`${user.id}/${Date.now()}-${crypto.randomUUID?.()||Math.random().toString(36).slice(2)}-${index}.${extension}`;
+      const upload=await supabase.storage.from('handwriting-training').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});if(upload.error){console.warn('학습사진 저장 생략:',upload.error.message);continue}
+      const insert=await supabase.from('handwriting_training_samples').insert({created_by:user.id,source_type:source,image_path:path,ocr_result:lastRecognized,confirmed_items:confirmedItems});if(insert.error){console.warn('학습정답 저장 생략:',insert.error.message);continue}saved++;
+    }
+    return{saved};
+  }
+  window.FreeHandwritingOCR={analyze,saveTrainingData};
 })();

@@ -49,6 +49,16 @@ async function loadDashboard(){
   setText("soldoutCount",(products.data||[]).filter(p=>p.sold_out===true).length);
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
   await loadNotifications();
+  await loadRevisionAlerts();
+}
+
+async function loadRevisionAlerts(){
+  const panel=document.getElementById('revisionAlertPanel'),box=document.getElementById('revisionAlertList');if(!panel||!box)return;
+  const {data,error}=await supabaseClient.from('orders').select('order_number,customer_name,delivery_name,customer_revision_status,customer_revision_started_at,customer_revision_completed_at').not('customer_revision_status','is',null).neq('status','출고완료').order('customer_revision_completed_at',{ascending:false,nullsFirst:false});
+  if(error){console.warn('고객 주문 수정건 조회 실패:',error.message);panel.hidden=true;return}
+  const map=new Map();(data||[]).forEach(row=>{if(!map.has(row.order_number))map.set(row.order_number,row)});const rows=[...map.values()];panel.hidden=!rows.length;setText('revisionAlertCount',`${rows.length}건`);
+  box.innerHTML=rows.map(row=>{const complete=row.customer_revision_status==='수정완료',time=row.customer_revision_completed_at||row.customer_revision_started_at;return `<button type="button" class="revision-alert-item ${complete?'complete':'editing'}" data-order="${esc(row.order_number)}"><span><b>${complete?'🚨 수정완료·변경확인 필요':'✏️ 고객 수정중'}</b><strong>${esc(row.customer_name||'거래처 미입력')}</strong><small>납품처 ${esc(row.delivery_name||'-')} · ${esc(row.order_number)}${time?` · ${new Date(time).toLocaleString('ko-KR')}`:''}</small></span><em>${complete?'변경확인·재피킹 허용':'수정 완료 대기'}</em></button>`}).join('');
+  box.querySelectorAll('[data-order]').forEach(button=>button.onclick=()=>location.href=`admin.html?view=orders&search=${encodeURIComponent(button.dataset.order)}`);
 }
 
 async function loadNotifications(){
@@ -86,6 +96,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('refreshDashboardBtn')?.addEventListener('click',loadDashboard);
   document.getElementById('markAllReadBtn')?.addEventListener('click',markAllRead);
   await loadDashboard();
+  const revisionChannel=supabaseClient.channel('admin-home-revision-v65830').on('postgres_changes',{event:'*',schema:'public',table:'orders'},payload=>{if(payload.new?.customer_revision_status||payload.old?.customer_revision_status)loadRevisionAlerts()}).subscribe();
+  setInterval(loadRevisionAlerts,15000);
 });
 
 let adminSearchTimer=null;

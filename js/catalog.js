@@ -1911,6 +1911,7 @@ function renderCustomerBulkOrder() {
       </div>
     </div>`;
   const input = document.getElementById("customerBulkOrderInput");
+  const photoBox=document.querySelector('.customer-order-photo-box');if(photoBox&&!photoBox.querySelector('.handwriting-learning-note'))photoBox.insertAdjacentHTML('beforeend','<p class="handwriting-learning-note">💡 잘못 인식한 품번·수량을 수정해 확정하면 학습자료로 저장되며, 자료가 충분히 쌓인 뒤 디자인 삭스 전용 손글씨 모델 업데이트에 반영될 예정입니다.</p>');
   input?.addEventListener("input", () => { pendingCustomerBulkAnalysis = null; document.getElementById("customerBulkOrderAnalysis").hidden = true; document.getElementById("confirmCustomerBulkOrder").hidden = true; });
   requestAnimationFrame(() => input?.focus());
 }
@@ -1932,6 +1933,7 @@ async function applyCustomerBulkOrder() {
   const soldout = [];
   let addedKinds = 0;
   let addedQty = 0;
+  const confirmedTraining = [];
   const addedBatchAt = ++cartAddedSequence;
 
   for (const [requestedNumber, qty] of totals.entries()) {
@@ -1940,6 +1942,7 @@ async function applyCustomerBulkOrder() {
     if (!found && resolution.candidates.length > 1) found = await chooseBulkOrderCandidate(requestedNumber, resolution.candidates, resolution.remembered);
     if (!found) { missing.push(requestedNumber); continue; }
     const { group, number } = found;
+    confirmedTraining.push({item_number:String(number),qty:Number(qty)});
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
     const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
     if (existing) { existing.qty = Number(existing.qty || 0) + qty; existing.addedAt = addedBatchAt; }
@@ -1968,6 +1971,7 @@ async function applyCustomerBulkOrder() {
   if (resultBox) {
     resultBox.innerHTML = messages.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("");
   }
+  if(customerOrderPhotoFiles.length&&confirmedTraining.length&&window.FreeHandwritingOCR?.saveTrainingData){await window.FreeHandwritingOCR.saveTrainingData(supabaseClient,[...customerOrderPhotoFiles],confirmedTraining,'customer-vip')}
   pendingCustomerBulkAnalysis = null;
   if (addedQty) {
     customerBulkCartNotice = messages;
