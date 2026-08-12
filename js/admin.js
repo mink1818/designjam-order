@@ -588,7 +588,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div class="order-status-stack">
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
-    <button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},${isDone})">${isDone ? "수정불가" : "주문수정"}</button>
+    ${isDone?`<button class="order-card-edit-button undo-top-button" type="button" onclick="event.stopPropagation();toggleOrderStatus('${escapeAdminAttr(group.orderNumber)}','출고완료','${escapeAdminAttr(group.pickingStatus||'검증완료')}')">출고취소</button><button class="order-card-edit-button completed-delete-top-button" type="button" onclick="event.stopPropagation();deleteCompletedOrder('${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'거래처 미입력')}')">주문삭제</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
@@ -684,6 +684,7 @@ class="order-detail">
   거래명세서 출력
 </button>
         ${canEditOrderItems(group)?`<button class="cart-btn admin-delete-order-btn" type="button" onclick="deleteOrderFromAdmin(decodeURIComponent('${encodeURIComponent(group.orderNumber)}'),decodeURIComponent('${encodeURIComponent(group.customerName || '거래처 미입력')}'),${group.items.length})">피킹 전 주문 전체삭제</button>`:`<p class="order-delete-locked">피킹을 시작한 주문은 바로 삭제할 수 없습니다.</p>`}
+        ${isDone?`<button class="cart-btn admin-delete-order-btn completed-order-delete" type="button" onclick="deleteCompletedOrder('${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'거래처 미입력')}')">출고취소 후 주문삭제</button>`:''}
       </div>
       </div>
     `;
@@ -711,6 +712,8 @@ async function deleteOrderFromAdmin(orderNumber, customerName, itemCount) {
     alert(`주문 전체삭제 실패: ${error.message}\n\nSupabase에서 SQL/V6.5.28-PRE-PICK-ORDER-MANAGEMENT.sql을 먼저 실행했는지 확인해주세요.`);
   }
 }
+async function deleteCompletedOrder(orderNumber,customerName){if(!confirm(`출고완료 주문을 취소하고 삭제할까요?\n\n거래처: ${customerName}\n주문번호: ${orderNumber}\n\nERP 재고를 복원하고 삭제 이력에 원본을 보관합니다.`))return;if(!confirm('정말 삭제할까요?\n주문관리에서는 사라지며 삭제 주문 이력에 보관됩니다.'))return;try{const {data,error}=await supabaseClient.rpc('cancel_and_delete_completed_order',{p_order_number:orderNumber,p_device_name:'출고완료 취소·주문삭제'});if(error)throw error;alert(`출고취소·주문삭제 완료\n복원 수량: ${Number(data?.restored_quantity||0)}개`);loadOrders()}catch(error){alert('출고완료 주문삭제 실패: SQL/V6.5.89-COMPLETED-ORDER-CANCEL-DELETE.sql을 먼저 실행해주세요.\n'+error.message)}}
+window.deleteCompletedOrder=deleteCompletedOrder;
 
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
   if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
@@ -1087,7 +1090,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65880','js/admin-mobile-nav.js?v=65880'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65890','js/admin-mobile-nav.js?v=65890'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {
@@ -1274,7 +1277,7 @@ async function saveOrderPaymentAccount(orderNumber,index,isDone=false){
   payload.tracking_number=trackingInput?.value.trim()||'';
 
   const result=await supabaseClient.rpc('save_order_shipping_bundle',{p_order_number:orderNumber,p_shipping_fee:payload.shipping_fee,p_courier:payload.courier,p_tracking_number:payload.tracking_number,p_payment_account_id:payload.payment_account_id||null,p_payment_account_label:payload.payment_account_label,p_payment_bank_name:payload.payment_bank_name,p_payment_account_number:payload.payment_account_number,p_payment_account_holder:payload.payment_account_holder});const error=result.error;
-  if(error){alert('배송정보 저장 실패: SQL/V6.5.88-SHIPPING-EDITOR.sql을 먼저 실행해주세요.\n'+error.message);return;}
+  if(error){alert('배송정보 저장 실패: SQL/V6.5.89-SHIPPING-EDITOR.sql을 먼저 실행해주세요.\n'+error.message);return;}
   const preview=detail.querySelector('.selected-account-preview');
   if(preview){
     preview.textContent=`저장됨: ${payload.payment_bank_name} ${payload.payment_account_number} / ${payload.payment_account_holder}`;
@@ -1296,7 +1299,7 @@ async function saveOrderPaymentAccount(orderNumber,index,isDone=false){
 }
 window.changePaymentAccountMode=changePaymentAccountMode;window.updatePaymentAccountPreview=updatePaymentAccountPreview;window.saveOrderPaymentAccount=saveOrderPaymentAccount;window.enableOrderShippingEdit=enableOrderShippingEdit;
 function toggleOrderPartyEditor(index){const box=document.getElementById(`order-party-editor-${index}`);if(box)box.hidden=!box.hidden}
-async function saveOrderPartyInfo(orderNumber,index){const box=document.getElementById(`order-party-editor-${index}`);if(!box)return;const value=key=>box.querySelector(`[data-party="${key}"]`)?.value.trim()||'';if(!value('customer'))return alert('거래처명을 입력하세요.');if(!confirm('이 주문의 거래처·납품정보와 메모를 수정할까요?\n단가와 수량은 변경되지 않습니다.'))return;const {error}=await supabaseClient.rpc('admin_update_order_party_info',{p_order_number:orderNumber,p_customer_name:value('customer'),p_owner_name:value('owner'),p_delivery_name:value('delivery'),p_delivery_phone:value('phone'),p_delivery_address:value('address'),p_memo:value('memo')});if(error)return alert('주문 정보 수정 실패: SQL/V6.5.88-ADMIN-ACTIVITY-ORDER-PARTY.sql을 먼저 실행해주세요.\n'+error.message);alert('거래처·납품정보와 메모를 저장했습니다.');loadOrders()}
+async function saveOrderPartyInfo(orderNumber,index){const box=document.getElementById(`order-party-editor-${index}`);if(!box)return;const value=key=>box.querySelector(`[data-party="${key}"]`)?.value.trim()||'';if(!value('customer'))return alert('거래처명을 입력하세요.');if(!confirm('이 주문의 거래처·납품정보와 메모를 수정할까요?\n단가와 수량은 변경되지 않습니다.'))return;const {error}=await supabaseClient.rpc('admin_update_order_party_info',{p_order_number:orderNumber,p_customer_name:value('customer'),p_owner_name:value('owner'),p_delivery_name:value('delivery'),p_delivery_phone:value('phone'),p_delivery_address:value('address'),p_memo:value('memo')});if(error)return alert('주문 정보 수정 실패: SQL/V6.5.89-ADMIN-ACTIVITY-ORDER-PARTY.sql을 먼저 실행해주세요.\n'+error.message);alert('거래처·납품정보와 메모를 저장했습니다.');loadOrders()}
 window.toggleOrderPartyEditor=toggleOrderPartyEditor;window.saveOrderPartyInfo=saveOrderPartyInfo;
 
 async function saveOrderNote(orderNumber,note,input){
