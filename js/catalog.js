@@ -753,7 +753,8 @@ function renderAllProducts(pushHistory = true) {
   hideLegacyFilters();
 
   const keyword = normalizeSearch(catalogSearch?.value);
-  const matched = sortProductGroups(keyword ? filterGroupsForSearch(keyword) : groups);
+  // 검색할 때는 사용자가 입력한 품번과의 일치도를 일반 정렬보다 우선합니다.
+  const matched = keyword ? filterGroupsForSearch(keyword) : sortProductGroups(groups);
 
   catalogList.innerHTML = `
     ${cartTopButton()}
@@ -860,7 +861,34 @@ function buildGroupSearchText(group) {
 
   return normalizeSearch(values.join(" "));
 }
-function filterGroupsForSearch(keyword,textBuilder=buildGroupSearchText){const key=normalizeSearch(keyword);if(!key)return groups;const optionalItem=resolveUniqueOptionalSuffixItem(keyword),resolvedKey=normalizeSearch(optionalItem);const exactExists=groups.some(group=>(group.item_numbers||[]).some(number=>normalizeSearch(number)===key));return groups.filter(group=>optionalItem?(group.item_numbers||[]).some(number=>normalizeSearch(number)===resolvedKey):exactExists?(group.item_numbers||[]).some(number=>normalizeSearch(number)===key):textBuilder(group).includes(key))}
+function normalizeCustomerItemSearch(value) {
+  return normalizeSearch(customerDisplayItemNumber(value));
+}
+
+function getGroupSearchMatch(group, keyword, textBuilder = buildGroupSearchText) {
+  const key = normalizeSearch(keyword);
+  if (!key) return { rank: 0, target: "" };
+  const optionalItem = resolveUniqueOptionalSuffixItem(keyword);
+  const itemKey = normalizeCustomerItemSearch(optionalItem || keyword);
+  const numbers = (group.item_numbers || []).map(String);
+  const rankedItems = numbers.map((number, index) => {
+    const numberKey = normalizeCustomerItemSearch(number);
+    const rank = numberKey === itemKey ? 0 : numberKey.startsWith(itemKey) ? 1 : numberKey.includes(itemKey) ? 2 : 99;
+    return { number, index, rank };
+  }).filter(row => row.rank < 99).sort((a, b) => a.rank - b.rank || a.index - b.index);
+  if (rankedItems.length) return { rank: rankedItems[0].rank, target: rankedItems[0].number };
+  // 숫자가 들어간 검색어는 품번에서만 찾아 가격·설명의 같은 숫자가 섞이지 않게 합니다.
+  if (/\d/.test(itemKey)) return null;
+  return textBuilder(group).includes(key) ? { rank: 3, target: numbers[0] || "" } : null;
+}
+
+function filterGroupsForSearch(keyword, textBuilder = buildGroupSearchText) {
+  if (!normalizeSearch(keyword)) return groups;
+  return groups.map((group, index) => ({ group, index, match: getGroupSearchMatch(group, keyword, textBuilder) }))
+    .filter(row => row.match)
+    .sort((a, b) => a.match.rank - b.match.rank || a.index - b.index)
+    .map(row => row.group);
+}
 
 /* 브랜드·카테고리·품번 전체 검색 */
 function renderGlobalSearchResults() {
@@ -2737,14 +2765,12 @@ function renderCustomerSearchResults(keyword=""){
     box.innerHTML='<div class="customer-search-empty">브랜드 또는 품번을 입력하면 상품이 바로 표시됩니다.<br><small>예: 나이키, 6005</small></div>';
     return;
   }
-  const optionalItem=resolveUniqueOptionalSuffixItem(keyword),optionalKey=normalizedLiveSearch(optionalItem);
-  const matches=groups.filter(group=>optionalItem?(group.item_numbers||[]).some(number=>normalizedLiveSearch(number)===optionalKey):getGroupSearchText(group).includes(query)).slice(0,30);
+  const matches=filterGroupsForSearch(keyword, group => getGroupSearchText(group)).slice(0,30);
   if(!matches.length){box.innerHTML='<div class="customer-search-empty">검색 결과가 없습니다.</div>';return;}
   box.innerHTML=matches.map(group=>{
     const category=categories.find(item=>Number(item.id)===Number(group.category_id));
     const numbers=(group.item_numbers||[]).map(String);
-    const exact=numbers.find(number=>optionalItem?normalizedLiveSearch(number)===optionalKey:normalizedLiveSearch(number).includes(query));
-    const target=exact||numbers[0]||'';
+    const target=getGroupSearchMatch(group,keyword,group=>getGroupSearchText(group))?.target||numbers[0]||'';
     return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
       ${group.image_url?`<img src="${escapeAttribute(group.image_url)}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
       <span><strong>${escapeHtml(group.title||'상품')}</strong><small>${escapeHtml(category?.name||'')} · ${numbers.map(escapeHtml).join(', ')}</small></span>
