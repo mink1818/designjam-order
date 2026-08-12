@@ -1532,6 +1532,7 @@ const CUSTOMER_BULK_ORDER_DRAFT_KEY = "designjam_customer_bulk_order_draft";
 const CUSTOMER_BULK_ITEM_CHOICE_KEY = "designjam_customer_bulk_item_choices_v2";
 const CUSTOMER_BULK_DELIVERY_DRAFT_KEY = "designjam_customer_bulk_delivery_draft";
 let pendingCustomerBulkAnalysis = null;
+let customerBulkCartNotice = [];
 window.addEventListener("pagehide", () => {
   localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
   const input = document.getElementById("customerBulkOrderInput");
@@ -1937,9 +1938,10 @@ async function applyCustomerBulkOrder() {
     resultBox.innerHTML = messages.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("");
   }
   pendingCustomerBulkAnalysis = null;
-  if (addedQty && !missing.length) {
+  if (addedQty) {
+    customerBulkCartNotice = messages;
     localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);
-    setTimeout(showOrderForm, 350);
+    setTimeout(renderCart, 350);
   }
 }
 window.renderCustomerBulkOrder = renderCustomerBulkOrder;
@@ -2097,6 +2099,8 @@ function renderCart() {
     <div class="product-card">
       <h2>🛒 장바구니</h2>
 
+      ${customerBulkCartNotice.length ? `<div class="customer-bulk-order-result customer-bulk-cart-notice">${customerBulkCartNotice.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("")}</div>` : ""}
+
       ${itemHtml}
 
       <hr>
@@ -2116,6 +2120,7 @@ function renderCart() {
       </button>
     </div>
   `;
+  customerBulkCartNotice = [];
 }
 
 function continueShopping() {

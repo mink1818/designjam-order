@@ -452,8 +452,12 @@ function fallbackCopyWithoutJump(text) {
 
 function copyItemKey(value){return String(value||'').trim().toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,'')}
 function compareCopiedItem(a,b){return copyItemKey(a).localeCompare(copyItemKey(b),'ko',{numeric:true,sensitivity:'base'})}
-function formatOrderCopyRows(rows,mode='excel'){
-  return rows.map((row,rowOrder)=>({item:formatCopiedItemNumber(row.dataset.copyItem),rawItem:row.dataset.copyItem,qty:row.dataset.copyQty,rowOrder})).sort((a,b)=>compareCopiedItem(a.rawItem,b.rawItem)||a.rowOrder-b.rowOrder).map(entry=>mode==='kakao'?`${entry.item}            ${entry.qty}`:`${entry.item}\t${entry.qty}`).join('\n');
+let orderCopyGroupMap=null;
+function copyGroupNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const parsed=JSON.parse(value);if(Array.isArray(parsed))return parsed.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
+async function getOrderCopyGroupMap(){if(orderCopyGroupMap)return orderCopyGroupMap;const map=new Map();try{const {data}=await supabaseClient.from('product_groups').select('id,item_numbers');(data||[]).forEach((group,index)=>copyGroupNumbers(group.item_numbers).forEach(number=>map.set(copyItemKey(number),String(group.id??index))))}catch(_){}orderCopyGroupMap=map;return map}
+function formatCopyEntriesWithGroupGap(entries,mode='excel',details=false){let previousGroup=null;return entries.map(entry=>{const group=entry.group||`single:${copyItemKey(entry.rawItem)}`,gap=previousGroup!==null&&group!==previousGroup?'\n':'';previousGroup=group;if(details)return gap+(mode==='kakao'?`${entry.item}      ${entry.qty}죽      ${entry.price.toLocaleString()}원      ${(entry.qty*entry.price).toLocaleString()}원`:`${entry.item}\t${entry.qty}\t${entry.price}\t${entry.qty*entry.price}`);return gap+(mode==='kakao'?`${entry.item}            ${entry.qty}`:`${entry.item}\t${entry.qty}`)}).join('\n')}
+async function formatOrderCopyRows(rows,mode='excel'){
+  const groupMap=await getOrderCopyGroupMap(),entries=rows.map((row,rowOrder)=>({item:formatCopiedItemNumber(row.dataset.copyItem),rawItem:row.dataset.copyItem,qty:row.dataset.copyQty,rowOrder,group:groupMap.get(copyItemKey(row.dataset.copyItem))||''})).sort((a,b)=>compareCopiedItem(a.rawItem,b.rawItem)||a.rowOrder-b.rowOrder);return formatCopyEntriesWithGroupGap(entries,mode);
 }
 
 function formatCopiedItemNumber(value){const clean=String(value||'').trim().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/i,'');if(/A$/i.test(clean))return`${clean.slice(0,-1)} 아동`;if(/M$/i.test(clean))return`${clean.slice(0,-1)} 무지`;return clean}
@@ -463,7 +467,7 @@ async function copyWarehouseOrder(button, event, mode='excel') {
   event?.stopPropagation();
   const section = button.closest(".admin-warehouse-section");
   const rows = [...section.querySelectorAll(".pick-row[data-copy-item]")];
-  const text = formatOrderCopyRows(rows,mode);
+  const text = await formatOrderCopyRows(rows,mode);
   if (!text) return alert("복사할 품번이 없습니다.");
   try {
     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
@@ -484,7 +488,7 @@ async function copyAllWarehouseOrders(button, event, mode='excel') {
   if (!card) return;
   const rows = [...card.querySelectorAll('.admin-warehouse-section .pick-row[data-copy-item]')];
   if (!rows.length) return alert('복사할 S·B·I 주문이 없습니다.');
-  const text = formatOrderCopyRows(rows,mode);
+  const text = await formatOrderCopyRows(rows,mode);
   try {
     if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
     await navigator.clipboard.writeText(text);
@@ -499,9 +503,9 @@ async function copyAllWarehouseOrders(button, event, mode='excel') {
 
 async function copyOrderDetails(button,event,mode='excel'){
  event?.preventDefault();event?.stopPropagation();const card=button.closest('.order-card');if(!card)return;
- const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map((row,rowOrder)=>({item:formatCopiedItemNumber(row.dataset.copyItem),rawItem:row.dataset.copyItem,qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0),rowOrder})).sort((a,b)=>compareCopiedItem(a.rawItem,b.rawItem)||a.rowOrder-b.rowOrder);
+ const groupMap=await getOrderCopyGroupMap();const rows=[...card.querySelectorAll('.pick-row[data-copy-item]')].map((row,rowOrder)=>({item:formatCopiedItemNumber(row.dataset.copyItem),rawItem:row.dataset.copyItem,qty:Number(row.dataset.copyQty||0),price:Number(row.dataset.unitPrice||0),rowOrder,group:groupMap.get(copyItemKey(row.dataset.copyItem))||''})).sort((a,b)=>compareCopiedItem(a.rawItem,b.rawItem)||a.rowOrder-b.rowOrder);
  if(!rows.length)return alert('복사할 주문 품목이 없습니다.');
- const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
+ const body=formatCopyEntriesWithGroupGap(rows,mode,true);const text=mode==='kakao'?body:`품번\t수량(죽)\t단가(1죽)\t금액\n${body}`;
  try{if(!navigator.clipboard?.writeText)throw new Error();await navigator.clipboard.writeText(text)}catch(_){if(!fallbackCopyWithoutJump(text))return alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해 주세요.')}
  const original=button.textContent;button.textContent='상세 복사완료';setTimeout(()=>button.textContent=original,1600);
 }
@@ -1086,7 +1090,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=65780','js/admin-mobile-nav.js?v=65780'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=65791','js/admin-mobile-nav.js?v=65791'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {
