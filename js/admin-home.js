@@ -13,7 +13,7 @@ const uniqueOrders = rows => new Set((rows||[]).map(r=>r.order_number).filter(Bo
 const setText = (id,value) => { const el=document.getElementById(id); if(el) el.textContent=value; };
 const esc = value => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 function parseSoldoutItems(value){if(Array.isArray(value))return value.map(String);const text=String(value||'').trim();if(!text)return[];try{const parsed=JSON.parse(text);if(Array.isArray(parsed))return parsed.map(String)}catch(_){}return text.replace(/^\{|\}$/g,'').split(',').map(v=>v.trim().replace(/^"|"$/g,'')).filter(Boolean)}
-async function fetchAllProductSoldouts(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,soldout_items,warehouse_code').range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
+async function fetchAllProductSoldouts(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('inventory_items').select('item_number,quantity,warehouse_code,category_name').lte('quantity',0).range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
 
 async function guardAdminHome(){
   const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
@@ -52,7 +52,7 @@ async function loadDashboard(){
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);
   const soldoutItems=new Set();
-  (products.data||[]).forEach(group=>parseSoldoutItems(group.soldout_items).forEach(item=>{const itemKey=String(item).trim().toUpperCase(),key=`${String(group.warehouse_code||'').toUpperCase()}:${itemKey}`;if(itemKey)soldoutItems.add(key)}));
+  (products.data||[]).forEach(item=>{const itemKey=String(item.item_number||'').trim().toUpperCase(),key=`${String(item.warehouse_code||'').toUpperCase()}:${itemKey}`;if(itemKey)soldoutItems.add(key)});
   setText("soldoutCount",products.error?"-":soldoutItems.size);
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
   await loadNotifications();

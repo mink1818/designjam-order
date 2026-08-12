@@ -107,7 +107,7 @@ async function loadAdminAccounts(){
     data=presenceResult.data;
     health.textContent='✅ 로그인·최종활동·접속기록 정상 연결 · 관리자 활동 시 자동 갱신';health.classList.remove('auth-error');
   }else{
-    health.textContent=`⚠ 접속기록 점검 필요: ${presenceResult.error.message} · V6.5.86 SQL을 실행해주세요.`;health.classList.add('auth-error');
+    health.textContent=`⚠ 접속기록 점검 필요: ${presenceResult.error.message} · V6.5.87 SQL을 실행해주세요.`;health.classList.add('auth-error');
   }
   const adminQueries=[
     'id,email,business_name,owner_name,blocked,created_at,admin_role,last_login_at,admin_last_seen_at,admin_logged_out_at,admin_device',
@@ -189,4 +189,5 @@ async function changeAdminRole(id,role,select){
 window.changeAdminRole=changeAdminRole;
 
 window.changeAdminPassword=changeAdminPassword;window.setAdminBlocked=setAdminBlocked;
-document.addEventListener('DOMContentLoaded',()=>{document.getElementById('createAdminBtn')?.addEventListener('click',createAdminAccount);setTimeout(loadAdminAccounts,300);setInterval(loadAdminAccounts,30000);});
+async function loadAdminActivity(){const box=document.getElementById('adminActivityList');if(!box)return;const {data,error}=await supabaseClient.rpc('get_admin_activity',{p_limit:200});if(error){box.innerHTML=`<p>활동기록을 불러오지 못했습니다: ${esc(error.message)} · V6.5.87 SQL을 실행해주세요.</p>`;return}const rows=data||[];box.innerHTML=rows.length?`<div class="admin-activity-list">${rows.map(row=>{const hasLocation=row.latitude!==null&&row.longitude!==null;return `<article><strong>${esc(row.admin_name||'관리자')} · ${esc(row.admin_role==='manager'?'매니저':row.admin_role==='developer_admin'?'개발관리자':'관리자')}</strong><span>${new Date(row.created_at).toLocaleString('ko-KR')} · ${esc(row.activity_type==='location'?'위치 기록':'활동')}</span><small>${esc(row.page_path||'-')} · ${esc(row.device_info||'-')}${hasLocation?` · <a target="_blank" rel="noopener" href="https://maps.google.com/?q=${row.latitude},${row.longitude}">지도에서 위치 확인</a> (오차 약 ${Math.round(Number(row.accuracy_m||0))}m)`:''}</small></article>`}).join('')}</div>`:'<p>저장된 활동기록이 없습니다.</p>'}
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('createAdminBtn')?.addEventListener('click',createAdminAccount);setTimeout(()=>{loadAdminAccounts();loadAdminActivity()},300);setInterval(loadAdminAccounts,30000);setInterval(loadAdminActivity,60000);});
