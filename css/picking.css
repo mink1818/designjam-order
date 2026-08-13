@@ -34,6 +34,7 @@
  .pick-item-row>strong{font-size:17px}.pick-item-row>b{font-size:13px}.pick-row-actions{grid-column:auto;display:flex;gap:3px;justify-content:flex-end}
  .picking-state{padding:6px 7px;font-size:11px}.pick-item-row button{padding:6px 7px;font-size:11px}.pick-row-actions .soldout-btn{min-width:50px}
 }
+.order-pick-card.my-picking-order{border-color:#15803d;box-shadow:0 0 0 2px rgba(21,128,61,.14)}.pick-assignee,.active-picker-banner{color:#176b34!important;font-weight:800}.active-picker-banner{margin-top:7px!important;padding:7px 10px;border-radius:8px;background:#e7f7ee}.picking-force-release{background:#b42318!important;color:#fff!important}.scan-quantity-control button:disabled{opacity:.58;cursor:not-allowed}
 @page{margin:8mm}
 @media print{
  html,body{background:#fff!important;background-image:none!important}

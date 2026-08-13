@@ -15,7 +15,14 @@
     if (page === 'statement.html') return;
     if (document.getElementById('adminMobileBottomNav')) return;
     const active = currentKey();
-    const items = [
+    const manager = document.documentElement.dataset.adminRole === 'manager' || document.documentElement.dataset.adminRole === 'employee';
+    const items = manager ? [
+      ['back', '#back', '←', '뒤로'],
+      ['forward', '#forward', '→', '앞으로'],
+      ['home', 'admin-home.html', '🏠', '홈'],
+      ['picking', 'picking.html', '📋', '피킹'],
+      ['proxy', 'proxy-order.html', '🛒', '대신주문']
+    ] : [
       ['back', '#back', '←', '뒤로'],
       ['forward', '#forward', '→', '앞으로'],
       ['home', 'admin-home.html', '🏠', '홈'],
