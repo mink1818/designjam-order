@@ -1718,6 +1718,20 @@ function expandBulkOrderRange(token) {
   return Array.from({ length: end - start + 1 }, (_, offset) => `${prefix}${start + offset}${suffix}`);
 }
 
+function parseCompactBulkItemTokens(line) {
+  const source = String(line || "").normalize("NFKC");
+  // 한 줄 나열식: 7002 8002(2) 203 362(3)
+  // 괄호가 하나라도 있을 때만 이 형식으로 판정해 기존 "4001 2" 입력과 구분합니다.
+  if (!/[（(]\s*\d+\s*[)）]/.test(source)) return [];
+  const tokenPattern = /(?:^|[\s,;|]+)((?:[SBI][-_]?)?\d+[AM]?)(?:\s*[（(]\s*(\d+)\s*(?:죽|족)?\s*[)）])?(?=$|[\s,;|]+)/gi;
+  const rows = [];
+  let match;
+  while ((match = tokenPattern.exec(source)) !== null) {
+    rows.push({ number: match[1], qty: Math.max(1, Math.floor(Number(match[2]) || 1)) });
+  }
+  return rows;
+}
+
 function parseCustomerBulkOrder(text) {
   const parsed = [];
   String(text || "").split(/\r?\n/).forEach(rawLine => {
@@ -1726,6 +1740,11 @@ function parseCustomerBulkOrder(text) {
     if (/^(?:납품처명?|배송처명?|연락처|전화(?:번호)?|주소|납품주소|배송주소|메모|요청사항)\s*[:：]/i.test(line)) return;
     if (/0\d{1,2}[\s-]?\d{3,4}[\s-]?\d{4}/.test(line.replace(/\s+/g, ""))) return;
     if (/(?:특별시|광역시|특별자치|[가-힣]+(?:도|시|군|구|읍|면|동|로|길))/.test(line) && /\d/.test(line)) return;
+    const compactRows = parseCompactBulkItemTokens(line);
+    if (compactRows.length) {
+      compactRows.forEach(row => expandBulkOrderRange(row.number).forEach(number => parsed.push({ number, qty: row.qty })));
+      return;
+    }
     const cleaned = line
       .replace(/[()\[\]]/g, " ")
       .replace(/(죽씩|족씩|죽|족)/gi, " ")
@@ -1928,7 +1947,7 @@ function renderCustomerBulkOrder() {
       <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="8" placeholder="카톡·문자 주문 내용을 붙여넣거나 직접 입력하세요.">${escapeHtml(draft)}</textarea>
       ${hasVipPasteAccess()?`<div class="customer-order-photo-box"><strong>VIP 무료 주문사진 분석</strong><input type="file" accept="image/*" multiple onchange="selectCustomerOrderPhotos(this)"><div id="customerOrderPhotoList"></div><div class="customer-order-photo-actions"><button id="analyzeCustomerOrderPhotos" type="button" onclick="analyzeCustomerOrderPhotos()">사진에서 품번·수량 읽기</button><button id="clearCustomerOrderPhotos" type="button" onclick="clearCustomerOrderPhotos()" hidden>선택파일 전체삭제</button></div><small id="customerOrderPhotoStatus">카톡에서 저장한 주문 사진을 선택하세요. 첫 사용 때만 무료 모델을 내려받습니다.</small></div>`:''}
       ${hasVipPasteAccess()?'<p class="customer-bulk-order-help"><b>VIP 안내:</b> 납품처명·연락처·주소·메모까지 선택 적용할 수 있습니다. 인식 결과를 확인한 뒤 적용해 주세요.</p>':'<p class="customer-bulk-order-help"><b>안내:</b> 품번·수량만 자동 적용됩니다. 납품정보는 다음 주문 화면에서 입력해 주세요.</p>'}
-      <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽</span></p>
+      <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽 또는 4001 4002(2) 4003(3)</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderAnalysis" class="customer-smart-paste-preview" hidden></div>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>

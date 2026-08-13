@@ -20,9 +20,9 @@ async function requireSecurity(level='password'){
     // 화면에서 기다리는 인증번호 입력 방식과 맞지 않습니다. 재인증 전용 nonce를 사용합니다.
     const sent=await supabaseClient.auth.reauthenticate();
     if(sent.error)throw new Error('인증번호 메일 발송 실패: '+sent.error.message);
-    const nonce=prompt('메일로 받은 6자리 인증번호를 입력하세요.\n\n링크를 누르는 방식이 아니라 메일 본문의 인증번호를 입력하면 됩니다.');
+    const nonce=prompt('메일로 받은 8자리 인증번호를 입력하세요.\n\n링크를 누르는 방식이 아니라 메일 본문의 인증번호를 입력하면 됩니다.');
     if(!nonce)throw new Error('메일 인증이 취소되었습니다.');
-    if(!/^\d{6}$/.test(String(nonce).trim()))throw new Error('메일에 표시된 6자리 인증번호를 정확히 입력하세요.');
+    if(!/^\d{8}$/.test(String(nonce).trim()))throw new Error('메일에 표시된 8자리 인증번호를 정확히 입력하세요.');
     const {data:{user}}=await supabaseClient.auth.getUser();
     const verified=await supabaseClient.auth.updateUser({
       nonce:String(nonce).trim(),

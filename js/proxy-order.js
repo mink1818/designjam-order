@@ -169,6 +169,12 @@ function parsePastedItemLine(line){
  if(!match)return{item:source.replace(/[,.\/~～〜]+$/,'').trim(),qty:1};
  return{item:match[1].trim(),qty:Math.max(1,Number(match[2]))};
 }
+function parseCompactProxyItems(line){
+ const source=String(line||'').normalize('NFKC');if(!/[（(]\s*\d+\s*[)）]/.test(source))return[];
+ const pattern=/(?:^|[\s,;|]+)((?:[SBI][-_]?)?\d+[AM]?)(?:\s*[（(]\s*(\d+)\s*(?:죽|족)?\s*[)）])?(?=$|[\s,;|]+)/gi,rows=[];let match;
+ while((match=pattern.exec(source))!==null)rows.push({item:match[1],qty:Math.max(1,Math.floor(Number(match[2])||1))});
+ return rows;
+}
 function expandPastedItemRange(line){
  const source=String(line||'').trim().replace(/[～〜]/g,'~');
  // 4003~3족처럼 수량 단위가 붙은 기존 입력은 품번 범위가 아니라 수량 입력으로 유지합니다.
@@ -207,7 +213,7 @@ function smartProxyItems(text){
 function analyzeProxyPaste(text){
  const source=String(text||'').normalize('NFKC'),receiverLabel='(?:받는\\s*사람|받는\\s*분|수령인|수취인|배송받는\\s*분)',senderLabel='(?:보내는\\s*사람|보내는\\s*분|발송인|주문자)',receiver=smartPersonSection(source,receiverLabel,senderLabel),sender=smartPersonSection(source,senderLabel),fields={customer:sender.name||'',delivery:receiver.name||'',phone:receiver.phone||'',address:receiver.address||'',memo:receiver.memo||''};
  const labels=[['customer',/(?:거래처명?|업체명?)\s*[:：]\s*([^\n;|]+)/i],['delivery',/(?:납품처명?|배송처명?)\s*[:：]\s*([^\n;|]+)/i],['phone',/(?:연락처|전화(?:번호)?)\s*[:：]\s*([^\n;|]+)/i],['address',/(?:주소|납품주소|배송주소)\s*[:：]\s*([^\n;|]+)/i],['memo',/(?:메모|요청사항)\s*[:：]\s*([^\n;|]+)/i]];
- labels.forEach(([key,re])=>{const match=source.match(re);if(match)fields[key]=match[1].trim()});const lineItems=[];source.split(/\r?\n/).forEach(line=>{const range=expandPastedItemRange(line);if(range.length)return range.forEach(item=>lineItems.push({item,qty:1}));const parsed=parsePastedItemLine(line);if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(parsed.item)))lineItems.push(parsed)});return{fields,items:lineItems.length?lineItems:smartProxyItems(source)};
+ labels.forEach(([key,re])=>{const match=source.match(re);if(match)fields[key]=match[1].trim()});const lineItems=[];source.split(/\r?\n/).forEach(line=>{const compact=parseCompactProxyItems(line);if(compact.length)return lineItems.push(...compact);const range=expandPastedItemRange(line);if(range.length)return range.forEach(item=>lineItems.push({item,qty:1}));const parsed=parsePastedItemLine(line);if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(parsed.item)))lineItems.push(parsed)});return{fields,items:lineItems.length?lineItems:smartProxyItems(source)};
 }
 function renderProxyPasteAnalysis(){
  const text=String($('proxyPasteInput')?.value||'').trim();if(!text)return alert('붙여넣을 주문정보를 입력하세요.');if(!pendingProxyPasteAnalysis)pendingProxyPasteAnalysis=analyzeProxyPaste(text);const {fields,items:rows}=pendingProxyPasteAnalysis,box=$('proxyPasteAnalysis');
