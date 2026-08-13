@@ -2,7 +2,7 @@
  const box=document.getElementById('customerNoticeArea'); if(!box||!window.supabase)return;
  const client=window.supabase.createClient('https://dtjhuejmxrjkcxzvilgw.supabase.co','sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87');
  const now=new Date().toISOString();
- const {data,error}=await client.from('announcements').select('*').eq('is_published',true).lte('start_at',now).or(`end_at.is.null,end_at.gte.${now}`).order('is_pinned',{ascending:false}).order('created_at',{ascending:false}).limit(8);
+ const {data,error}=await client.from('announcements').select('*').eq('is_published',true).eq('popup_enabled',false).lte('start_at',now).or(`end_at.is.null,end_at.gte.${now}`).order('is_pinned',{ascending:false}).order('created_at',{ascending:false}).limit(8);
  if(error||!data?.length){box.hidden=true;return;}
  const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
  let seen=[];try{seen=JSON.parse(localStorage.getItem('designjam_seen_notices')||'[]')}catch(_){seen=[]}

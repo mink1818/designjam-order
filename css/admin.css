@@ -2689,3 +2689,5 @@ body.login-stable.auth-pending{visibility:hidden!important;opacity:0!important}b
 html[data-admin-role="manager"] .manager-restricted-menu,
 html[data-admin-role="employee"] .manager-restricted-menu,
 .v3-menu-card.manager-restricted-menu{display:none!important}
+.notice-emergency-guide{padding:11px 13px;border-radius:11px;background:#fff4e5;color:#7a2e0e;font-weight:800;line-height:1.5}
+.notice-popup-options{margin:0;padding:13px;border:1px solid #b9cae0;border-radius:12px}.notice-popup-options legend{padding:0 7px;font-weight:900}.notice-popup-options p{margin:2px 0 9px;color:#5f6f82}.notice-popup-options>div{display:flex;gap:8px;flex-wrap:wrap}.notice-popup-options>div label{display:flex;align-items:center;gap:5px;padding:7px 10px;border-radius:9px;background:#edf4fc;font-weight:800}.notice-popup-options input{width:auto;margin:0}.notice-popup-status{padding:9px 11px;border-radius:9px;background:#eaf3ff;color:#174f89;font-weight:800}@media(max-width:600px){.notice-popup-options>div{display:grid;grid-template-columns:1fr 1fr}}
