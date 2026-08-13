@@ -172,6 +172,7 @@ function getCartStorageKey() {
 function getOrderRevisionStorageKey(){return currentUser?.id?`designjam_order_revision_${currentUser.id}`:null}
 function getOrderRevisionContext(){const key=getOrderRevisionStorageKey();if(!key)return null;try{const value=JSON.parse(localStorage.getItem(key)||'null');return value?.orderNumber?value:null}catch(_){return null}}
 function clearOrderRevisionContext(){const key=getOrderRevisionStorageKey();if(key)localStorage.removeItem(key)}
+async function validateOrderRevisionContext(){const context=getOrderRevisionContext();if(!context||!currentUser)return null;const {data,error}=await supabaseClient.from('orders').select('order_number,status,customer_revision_status').eq('order_number',context.orderNumber).eq('customer_id',currentUser.id).limit(1).maybeSingle();if(error){console.warn('주문수정 상태 확인 실패:',error.message);return context}const valid=Boolean(data)&&data.status!=='출고완료'&&data.customer_revision_status==='수정중';if(valid)return context;clearOrderRevisionContext();return null}
 
 function loadSavedCart() {
   const key = getCartStorageKey();
@@ -2398,7 +2399,7 @@ async function submitOrder() {
   if(!deliveryName)return alert('납품처명을 입력해주세요.');
   if(!deliveryAddress)return alert('납품처 주소를 입력해주세요.');
 
-  const revisionContext=getOrderRevisionContext();
+  const revisionContext=await validateOrderRevisionContext();
   const orderNumber = revisionContext?.orderNumber || makeOrderNumber();
 
   const orderItemsSorted = [...cart].sort(cartItemNumberCompare);
@@ -2440,7 +2441,7 @@ async function submitOrder() {
       submitButton.textContent = "주문 접수하기";
     }
 
-    alert(`${revisionContext?'주문 수정완료':'주문 저장'} 실패: ${error.message}${revisionContext?'\n\nSupabase에서 V6.5.63 SQL을 먼저 실행해주세요.':''}`);
+    alert(`${revisionContext?'주문 수정완료':'주문 저장'} 실패: ${error.message}`);
     return;
   }
 
@@ -2844,6 +2845,7 @@ async function startCatalogPage() {
   const allowed = await checkCustomerAccess();
   if (!allowed) return;
 
+  await validateOrderRevisionContext();
   loadSavedCart();
   await loadCatalog();
   bindCustomerSearchModal();
