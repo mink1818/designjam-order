@@ -25,7 +25,7 @@ async function guardAdminHome(){
   if(!isAdminEmail(user.email) && !(profile?.is_admin===true && profile?.blocked!==true)){ await supabaseClient.auth.signOut(); location.replace("admin.html"); return false; }
   sessionStorage.setItem(ADMIN_SESSION_KEY,user.id); localStorage.setItem(ADMIN_SESSION_KEY,user.id);
   currentAdmin=user;
-  if(['employee','manager'].includes(profile?.admin_role)){const allowed=['picking.html','proxy-order.html','scanner.html'];document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page)))button.hidden=true});document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search').forEach(element=>element.hidden=true)}
+  if(['employee','manager'].includes(profile?.admin_role)){document.documentElement.dataset.adminRole='manager';const allowed=['picking.html','proxy-order.html','scanner.html'];document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')})}
   document.body.classList.add("auth-ready");
   requestAnimationFrame(()=>{
     document.body.classList.remove("auth-pending");

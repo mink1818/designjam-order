@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-5-94-multi-account-picking-b1';
+const CACHE_NAME='design-socks-v6-5-94-multi-account-picking-b2';
 const APP_SHELL=[
   '/offline.html?v=65940',
   '/css/main.css?v=65940',
