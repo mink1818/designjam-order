@@ -1,22 +1,22 @@
-const CACHE_NAME='design-socks-v6-5-97-persistent-popup-b1';
+const CACHE_NAME='design-socks-v6-5-98-popup-actions-b1';
 const APP_SHELL=[
-  '/offline.html?v=65970',
-  '/css/main.css?v=65970',
-  '/css/admin.css?v=65970',
-  '/css/statement.css?v=65970',
-  '/customer-share-document.html?v=65970',
-  '/css/customer-share-document.css?v=65970',
-  '/js/customer-share-document.js?v=65970',
-  '/js/pwa.js?v=65970',
-  '/js/version-badge.js?v=65970',
-  '/js/back-navigation.js?v=65970',
-  '/js/free-handwriting-ocr.js?v=65970',
-  '/js/emergency-notice-modal.js?v=65970',
-  '/icons/customer-192.png?v=65970',
-  '/icons/customer-512.png?v=65970',
-  '/icons/admin-192.png?v=65970',
-  '/icons/admin-512.png?v=65970',
-  '/images/install-guide/android-full-guide.jpg?v=65970'
+  '/offline.html?v=65980',
+  '/css/main.css?v=65980',
+  '/css/admin.css?v=65980',
+  '/css/statement.css?v=65980',
+  '/customer-share-document.html?v=65980',
+  '/css/customer-share-document.css?v=65980',
+  '/js/customer-share-document.js?v=65980',
+  '/js/pwa.js?v=65980',
+  '/js/version-badge.js?v=65980',
+  '/js/back-navigation.js?v=65980',
+  '/js/free-handwriting-ocr.js?v=65980',
+  '/js/emergency-notice-modal.js?v=65980',
+  '/icons/customer-192.png?v=65980',
+  '/icons/customer-512.png?v=65980',
+  '/icons/admin-192.png?v=65980',
+  '/icons/admin-512.png?v=65980',
+  '/images/install-guide/android-full-guide.jpg?v=65980'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
@@ -36,7 +36,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=65970');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=65980');
       throw new Error('offline');
     })
   );
