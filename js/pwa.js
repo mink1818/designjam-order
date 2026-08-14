@@ -2,7 +2,7 @@
   'use strict';
   const app=document.body?.dataset?.pwaApp||'customer';
   const name=app==='admin'?'디자인 삭스 주문관리 (관리자)':'디자인 삭스 주문관리 (거래처)';
-  const icon=app==='admin'?'/icons/admin-192.png?v=66000':'/icons/customer-192.png?v=66000';
+  const icon=app==='admin'?'/icons/admin-192.png?v=66010':'/icons/customer-192.png?v=66010';
   let deferredPrompt=null;
 
   function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
@@ -11,6 +11,7 @@
   function isKakao(){return /KAKAOTALK/i.test(navigator.userAgent)}
   function isSamsung(){return /SamsungBrowser/i.test(navigator.userAgent)}
   function isChrome(){return /Chrome/i.test(navigator.userAgent)&&!/SamsungBrowser|EdgA|OPR/i.test(navigator.userAgent)}
+  function isMobile(){return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)||navigator.maxTouchPoints>1&&innerWidth<900}
 
   function injectStyles(){
     if(document.getElementById('designSocksPwaStyles'))return;
@@ -20,6 +21,7 @@
       #dsPwaInstall{position:fixed;left:12px;bottom:12px;z-index:2147483000;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:10px 12px;border:1px solid #d7e0eb;border-radius:16px;background:#fff;color:#102b52;box-shadow:0 12px 35px rgba(0,0,0,.2);font-family:Arial,sans-serif}#dsPwaInstall[hidden]{display:none!important}#dsPwaInstall img{width:42px;height:42px;border-radius:10px}#dsPwaInstall .ds-copy{min-width:0;flex:1}#dsPwaInstall strong{display:block;font-size:13px}#dsPwaInstall small{display:block;color:#607086;font-size:11px;margin-top:2px}#dsPwaInstall button{border:0;border-radius:9px;padding:8px 10px;font-weight:800;cursor:pointer}#dsPwaInstall .install{background:#24589f;color:#fff}#dsPwaInstall .close{background:#eef2f7;color:#55606d}
       #dsSplash{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:${app==='admin'?'#112437':'#fff'};transition:opacity .3s ease}#dsSplash.hide{opacity:0;pointer-events:none}#dsSplash .inner{text-align:center;color:${app==='admin'?'#fff':'#102b52'};font-family:Arial,sans-serif}#dsSplash img{width:118px;height:118px;border-radius:26px;box-shadow:0 14px 35px rgba(0,0,0,.15)}#dsSplash h1{margin:18px 0 5px;font-size:27px}#dsSplash p{margin:0;opacity:.75;font-weight:700}
       #dsInstallGuide{position:fixed;inset:0;z-index:2147483647;background:rgba(3,12,25,.72);display:grid;place-items:center;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));overflow:hidden;box-sizing:border-box;font-family:Arial,sans-serif}#dsInstallGuide[hidden]{display:none!important}.ds-guide-card{width:min(520px,100%);max-width:100%;height:calc(100vh - 16px);max-height:calc(100vh - 16px);height:min(900px,calc(100dvh - 16px));max-height:calc(100dvh - 16px);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);color:#17243a}.ds-guide-head{display:flex;flex:0 0 auto;align-items:center;gap:12px;min-width:0;padding:18px;border-bottom:1px solid #e7ebf0}.ds-guide-head>div{min-width:0;flex:1}.ds-guide-head img{flex:0 0 54px;width:54px;height:54px;border-radius:13px}.ds-guide-head h2{margin:0;font-size:20px;overflow-wrap:anywhere}.ds-guide-head p{margin:3px 0 0;color:#657188;font-size:13px;overflow-wrap:anywhere}.ds-guide-close{flex:0 0 36px;margin-left:auto;border:0;background:#eef2f7;border-radius:50%;width:36px;height:36px;font-size:22px;cursor:pointer}.ds-tabs{display:grid;flex:0 0 auto;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px 0}.ds-tabs button{border:1px solid #dbe3ee;background:#f6f8fb;padding:11px;border-radius:11px;font-weight:800}.ds-tabs button.active{background:#24589f;color:white;border-color:#24589f}.ds-guide-body{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:18px}.ds-device-guide{display:none}.ds-device-guide.active{display:block}.ds-warning{background:#fff6dd;border:1px solid #f1cf68;border-radius:12px;padding:12px;margin-bottom:14px;font-size:13px;line-height:1.55}.ds-step{display:grid;grid-template-columns:34px 1fr;gap:10px;margin:12px 0;align-items:start}.ds-step-num{width:30px;height:30px;border-radius:50%;background:#24589f;color:#fff;display:grid;place-items:center;font-weight:900}.ds-step b{display:block;margin-bottom:3px}.ds-step p{margin:0;color:#536176;font-size:14px;line-height:1.55}.ds-guide-actions{flex:0 0 auto;padding:10px 18px max(18px,env(safe-area-inset-bottom));display:grid;gap:9px;background:#fff;border-top:1px solid #eef1f5}.ds-guide-actions button{border:0;border-radius:12px;padding:13px;font-weight:900;cursor:pointer}.ds-guide-primary{background:#24589f;color:#fff}.ds-guide-secondary{background:#edf2f8;color:#27364d}.ds-mini-note{font-size:12px;color:#6d788a;text-align:center;line-height:1.45;margin-top:8px}.ds-visual-guide{display:grid;gap:14px}.ds-full-guide-image{max-width:100%;border:1px solid #dfe5ec;border-radius:14px;overflow:hidden;background:#fff}.ds-full-guide-image img{display:block;width:100%;max-width:100%;height:auto;cursor:zoom-in}.ds-visual-step{border:1px solid #dfe5ec;border-radius:14px;overflow:hidden;background:#fff}.ds-visual-step img{display:block;width:100%;height:auto;cursor:zoom-in}.ds-visual-caption{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;font-size:15px;line-height:1.45;font-weight:800}.ds-visual-caption span{flex:0 0 30px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#d62828;color:#fff;font-size:17px}.ds-image-viewer{position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.9);display:grid;place-items:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}.ds-image-viewer[hidden]{display:none!important}.ds-image-viewer img{max-width:100%;max-height:92dvh;object-fit:contain}.ds-image-viewer button{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border:0;border-radius:50%;font-size:28px;background:#fff;cursor:pointer}
+      #dsInstallNotice{position:fixed;inset:0;z-index:2147483645;display:grid;place-items:center;padding:18px;background:rgba(3,12,25,.62);font-family:Arial,sans-serif;box-sizing:border-box}#dsInstallNotice[hidden]{display:none!important}.ds-install-notice-card{width:min(430px,100%);max-height:min(72dvh,620px);overflow:auto;background:#fff;color:#17243a;border:2px solid #24589f;border-radius:22px;padding:22px;box-sizing:border-box;box-shadow:0 24px 70px rgba(0,0,0,.34)}.ds-install-notice-card h2{margin:0 0 8px;font-size:22px}.ds-install-notice-card p{margin:0;color:#58667a;line-height:1.55;font-size:15px}.ds-install-env{margin:14px 0;padding:12px;border-radius:12px;background:#edf4ff;color:#173f78;font-weight:800;line-height:1.5}.ds-install-notice-actions{display:grid;gap:9px;margin-top:16px}.ds-install-notice-actions button{border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:900;cursor:pointer}.ds-install-open{background:#24589f;color:#fff}.ds-install-later{background:#eef2f7;color:#34445b}
       @media(max-width:520px){#dsPwaInstall{right:8px;left:8px;bottom:8px}.ds-guide-card{height:calc(100vh - 16px);max-height:calc(100vh - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:16px}.ds-guide-head{gap:9px;padding:12px}.ds-guide-head img{flex-basis:42px;width:42px;height:42px}.ds-guide-head h2{font-size:16px}.ds-guide-head p{font-size:11px}.ds-guide-body{padding:8px 10px 14px;overflow-x:hidden}.ds-device-guide{width:100%;min-width:0}.ds-full-guide-image{width:100%;box-sizing:border-box;overflow:visible}.ds-full-guide-image img{width:100%;height:auto;object-fit:contain}.ds-tabs{padding:10px 12px 0}.ds-tabs button{padding:9px 6px}.ds-guide-actions{padding:8px 12px max(12px,env(safe-area-inset-bottom))}.ds-mini-note{font-size:11px;margin-top:2px}}
       #dsBackToTop{position:fixed;right:18px;bottom:22px;z-index:2147482500;width:48px;height:48px;border:0;border-radius:50%;background:#24589f;color:#fff;font-size:24px;font-weight:900;line-height:1;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.24);cursor:pointer;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .2s ease,transform .2s ease,visibility .2s}#dsBackToTop.show{opacity:1;visibility:visible;transform:translateY(0)}#dsBackToTop:focus-visible{outline:3px solid #8fc1ff;outline-offset:3px}@media(max-width:520px){#dsBackToTop{right:14px;bottom:78px;width:46px;height:46px}}
     `;
@@ -54,18 +56,21 @@
         <div class="ds-tabs"><button type="button" data-tab="android">안드로이드</button><button type="button" data-tab="ios">아이폰</button></div>
         <div class="ds-guide-body">
           <div class="ds-device-guide" data-guide="android">
-            ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>아래 사진 순서대로 눌러 삼성 인터넷으로 연 뒤 홈 화면에 추가하세요.</div>':''}
+            ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>화면 아래 <b>⋯ → 다른 브라우저로 열기</b>를 먼저 누르세요.</div>':''}
+            <div class="ds-step"><span class="ds-step-num">1</span><div><b>화면 위 또는 아래의 점 3개 누르기</b><p>브라우저 화면 위쪽의 <b>⋮</b> 또는 아래쪽의 <b>⋯</b> 메뉴 버튼을 누르세요.</p></div></div>
+            <div class="ds-step"><span class="ds-step-num">2</span><div><b>홈 화면에 추가</b><p>메뉴에서 <b>설치·바로가기 만들기</b> 또는 <b>현재 페이지 추가 → 홈 화면</b>을 누르세요.</p></div></div>
+            <div class="ds-step"><span class="ds-step-num">3</span><div><b>홈 화면에서 실행</b><p>추가된 디자인 삭스 아이콘을 누르면 앱처럼 바로 열립니다.</p></div></div>
             <div class="ds-full-guide-image">
-              <img src="/images/install-guide/android-full-guide.jpg?v=66000" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
+              <img src="/images/install-guide/android-full-guide.jpg?v=66010" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
             </div>
             <div class="ds-warning" style="margin-top:14px"><b>안내 사진을 누르면 크게 볼 수 있습니다.</b><br>사진의 빨간 표시를 순서대로 누르면 설치가 완료됩니다.</div>
           </div>
           <div class="ds-device-guide" data-guide="ios">
             ${isKakao()?'<div class="ds-warning"><b>현재 카카오톡 안에서 열려 있습니다.</b><br>먼저 카카오톡 메뉴에서 <b>Safari로 열기</b>를 선택하세요.</div>':''}
             <div class="ds-step"><span class="ds-step-num">1</span><div><b>Safari로 열기</b><p>카카오톡의 <b>⋯ 메뉴 → Safari로 열기</b>를 누르세요.</p></div></div>
-            <div class="ds-step"><span class="ds-step-num">2</span><div><b>공유 버튼 누르기</b><p>Safari 아래쪽의 <b>□↑ 공유 버튼</b>을 누르세요.</p></div></div>
+            <div class="ds-step"><span class="ds-step-num">2</span><div><b>공유 버튼 누르기</b><p>Safari 아래쪽의 <b>□↑ 공유 버튼</b>을 누르세요. 보이지 않으면 <b>⋯ → 공유</b>를 누르세요.</p></div></div>
             <div class="ds-step"><span class="ds-step-num">3</span><div><b>홈 화면에 추가 선택</b><p>메뉴를 아래로 내려 <b>홈 화면에 추가</b>를 누르세요.</p></div></div>
-            <div class="ds-step"><span class="ds-step-num">4</span><div><b>추가 완료</b><p>오른쪽 위 <b>추가</b>를 누르면 홈 화면에 아이콘이 생깁니다.</p></div></div>
+            <div class="ds-step"><span class="ds-step-num">4</span><div><b>웹 앱으로 열기</b><p><b>웹 앱으로 열기</b>를 켠 뒤 오른쪽 위 <b>추가</b>를 누르세요.</p></div></div>
           </div>
         </div>
         <div class="ds-guide-actions">
@@ -119,6 +124,27 @@
     const nativeBtn=guide.querySelector('[data-native-install]');
     nativeBtn.hidden=!(deferredPrompt&&!isKakao());
     guide.hidden=false;
+  }
+
+  function installEnvironmentText(){
+    if(isIOS())return isKakao()?'카카오톡에서 Safari로 연 뒤 설치할 수 있습니다.':'Safari 공유 메뉴에서 홈 화면에 추가할 수 있습니다.';
+    if(isKakao())return '카카오톡 아래 ⋯에서 다른 브라우저로 연 뒤 설치할 수 있습니다.';
+    if(isAndroid())return '화면 위 또는 아래의 점 3개 메뉴에서 설치·바로가기 만들기 또는 현재 페이지 추가를 선택하세요.';
+    return '브라우저 메뉴에서 홈 화면에 추가하면 앱처럼 사용할 수 있습니다.';
+  }
+
+  function maybeShowInstallNotice(){
+    if(app!=='customer'||isStandalone()||!isMobile())return;
+    const key='ds_install_notice_until_customer';
+    if(Number(localStorage.getItem(key)||0)>Date.now())return;
+    if(document.getElementById('dsInstallNotice'))return;
+    const el=document.createElement('section');
+    el.id='dsInstallNotice';
+    el.innerHTML=`<div class="ds-install-notice-card" role="dialog" aria-modal="true" aria-label="홈 화면 설치 안내"><h2>📱 홈 화면에 설치해 보세요</h2><p>카카오톡에서 매번 찾지 않아도 디자인 삭스 아이콘으로 바로 주문할 수 있습니다.</p><div class="ds-install-env">${installEnvironmentText()}</div><div class="ds-install-notice-actions"><button type="button" class="ds-install-open">내 휴대폰 설치 방법 보기</button><button type="button" class="ds-install-later">3일 동안 보지 않기</button></div></div>`;
+    document.body.appendChild(el);
+    el.querySelector('.ds-install-open').onclick=()=>{el.remove();showGuide()};
+    el.querySelector('.ds-install-later').onclick=()=>{localStorage.setItem(key,String(Date.now()+3*24*60*60*1000));el.remove()};
+    el.addEventListener('click',e=>{if(e.target===el)el.remove()});
   }
 
   function ensureInstall(){
@@ -181,6 +207,7 @@
     showSplash();
     ensureBackToTop();
     document.querySelectorAll('[data-install-app]').forEach(b=>b.addEventListener('click',installApp));
+    setTimeout(maybeShowInstallNotice,1400);
     if('serviceWorker'in navigator){
       let reloading=false;
       navigator.serviceWorker.addEventListener('controllerchange',()=>{
@@ -192,7 +219,7 @@
         const applied=sessionStorage.getItem('ds_sw_reloaded_version');
         if(current&&applied!==current){reloading=true;sessionStorage.setItem('ds_sw_reloaded_version',current);location.reload()}
       });
-      navigator.serviceWorker.register('/service-worker.js?v=66000').then(reg=>{
+      navigator.serviceWorker.register('/service-worker.js?v=66010').then(reg=>{
         reg.update();
         if(reg.waiting)reg.waiting.postMessage('SKIP_WAITING');
         reg.addEventListener('updatefound',()=>{
