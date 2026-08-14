@@ -38,6 +38,7 @@ let mainCategories = [];
 let categories = [];
 let groups = [];
 let cart = [];
+let orderSubmissionInProgress = false;
 
 let currentScreen = "home-menu";
 let cartReturnState = null;
@@ -2398,6 +2399,8 @@ async function submitOrder() {
   const deliveryAddress=document.getElementById('deliveryAddress')?.value.trim()||'';
   if(!deliveryName)return alert('납품처명을 입력해주세요.');
   if(!deliveryAddress)return alert('납품처 주소를 입력해주세요.');
+  if(orderSubmissionInProgress)return alert('주문을 저장하고 있습니다. 잠시만 기다려주세요.');
+  orderSubmissionInProgress=true;
 
   const revisionContext=await validateOrderRevisionContext();
   const orderNumber = revisionContext?.orderNumber || makeOrderNumber();
@@ -2436,6 +2439,7 @@ async function submitOrder() {
     : await supabaseClient.from("orders").insert(orderRows);
 
   if (error) {
+    orderSubmissionInProgress=false;
     if (submitButton) {
       submitButton.disabled = false;
       submitButton.textContent = "주문 접수하기";
@@ -2541,6 +2545,7 @@ async function submitOrder() {
 }
 
 function resetOrder() {
+  orderSubmissionInProgress = false;
   if (catalogSearch) catalogSearch.value = "";
   activeMainCategoryId = null;
   renderMainCategories();
@@ -2561,7 +2566,9 @@ function makeOrderNumber() {
     String(now.getSeconds()).padStart(2, "0")
   ].join("");
 
-  return `DJ-${datePart}-${timePart}`;
+  const randomPart=(globalThis.crypto?.randomUUID?.()||`${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`)
+    .replace(/-/g,"").slice(0,6).toUpperCase();
+  return `DJ-${datePart}-${timePart}-${randomPart}`;
 }
 
 /* ================================
