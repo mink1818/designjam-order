@@ -119,6 +119,9 @@ function toggleItemFavorite(event, number) {
 }
 function rememberViewedGroup(group){const rows=JSON.parse(localStorage.getItem('designjam_recent_viewed')||'[]');const now=new Date().toISOString();const next=[...(group.item_numbers||[]).map(number=>({number:String(number),title:group.title||'상품',image_url:group.image_url||'',viewed_at:now})),...rows];const seen=new Set();localStorage.setItem('designjam_recent_viewed',JSON.stringify(next.filter(x=>{const k=String(x.number);if(seen.has(k))return false;seen.add(k);return true}).slice(0,50)));}
 
+// 목록에는 저용량 WebP 썸네일을, 상품 상세·확대에는 image_url 원본을 사용한다.
+function groupThumbnailUrl(group){return String(group?.thumbnail_url||group?.image_url||'').trim();}
+
 function openRequestedItemFromUrl() {
   const params = new URLSearchParams(location.search);
   const requestedItem = String(params.get('item') || '').trim();
@@ -219,6 +222,11 @@ function getCartItemImage(item) {
     });
   }
   return group?.image_url || "";
+}
+function getCartItemThumbnail(item){
+  if(item.thumbnailUrl)return item.thumbnailUrl;
+  const group=groups.find(row=>Number(row.id)===Number(item.groupId));
+  return groupThumbnailUrl(group);
 }
 
 /* ================================
@@ -971,7 +979,7 @@ function renderGlobalSearchResults() {
                     class="catalog-group-image"
                     loading="lazy"
                     decoding="async"
-                    src="${escapeAttribute(group.image_url)}"
+                    src="${escapeAttribute(groupThumbnailUrl(group))}"
                     alt="${escapeAttribute(group.title)}"
                   >
                 `
@@ -1190,7 +1198,7 @@ function renderGroupCard(group) {
               class="catalog-group-image"
               loading="lazy"
               decoding="async"
-              src="${escapeAttribute(group.image_url)}"
+              src="${escapeAttribute(groupThumbnailUrl(group))}"
               alt="${escapeAttribute(group.title)}"
             >
           `
@@ -2005,6 +2013,7 @@ async function applyCustomerBulkOrder() {
       price: effectiveItemPrice(group, number),
       warehouseCode: String(group.warehouse_code || ""),
       imageUrl: group.image_url || "",
+      thumbnailUrl: groupThumbnailUrl(group),
       addedAt: addedBatchAt
     });
     addedKinds += 1;
@@ -2071,6 +2080,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
           price: effectiveItemPrice(group,number),
           warehouseCode: String(group.warehouse_code||''),
           imageUrl: group.image_url || "",
+          thumbnailUrl: groupThumbnailUrl(group),
           addedAt: addedBatchAt
         });
       }
@@ -2137,12 +2147,13 @@ function renderCart() {
       totalPrice += itemTotal;
 
       const imageUrl = getCartItemImage(item);
+      const thumbnailUrl = getCartItemThumbnail(item);
 
       return `
         <div class="cart-item cart-edit-item">
           <div class="cart-product-info">
             ${imageUrl
-              ? `<button class="cart-thumb-button" type="button" onclick="openCartImagePreview('${escapeJsString(imageUrl)}', '${escapeJsString(item.title)}')" aria-label="${escapeAttribute(item.title)} 사진 크게 보기"><img class="cart-thumb" src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(item.title)}"></button>`
+              ? `<button class="cart-thumb-button" type="button" onclick="openCartImagePreview('${escapeJsString(imageUrl)}', '${escapeJsString(item.title)}')" aria-label="${escapeAttribute(item.title)} 사진 크게 보기"><img class="cart-thumb" loading="lazy" decoding="async" src="${escapeAttribute(thumbnailUrl||imageUrl)}" alt="${escapeAttribute(item.title)}"></button>`
               : `<div class="cart-thumb cart-thumb-empty">사진 없음</div>`
             }
             <div>
@@ -2799,7 +2810,7 @@ function renderCustomerSearchResults(keyword=""){
     const numbers=(group.item_numbers||[]).map(String);
     const target=getGroupSearchMatch(group,keyword,group=>getGroupSearchText(group))?.target||numbers[0]||'';
     return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
-      ${group.image_url?`<img src="${escapeAttribute(group.image_url)}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
+      ${group.image_url?`<img loading="lazy" decoding="async" src="${escapeAttribute(groupThumbnailUrl(group))}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
       <span><strong>${escapeHtml(group.title||'상품')}</strong><small>${escapeHtml(category?.name||'')} · ${numbers.map(escapeHtml).join(', ')}</small></span>
       <em>${formatGroupUnitPrice(group)}</em>
     </button>`;
@@ -2936,7 +2947,7 @@ function renderFrequentProducts(){
           <button class="frequent-card" type="button" onclick="openGroup(${g.id})">
             <span class="frequent-card-image">
               ${g.image_url
-                ? `<img src="${escapeAttribute(g.image_url)}" alt="${escapeAttribute(g.title)}">`
+                ? `<img loading="lazy" decoding="async" src="${escapeAttribute(groupThumbnailUrl(g))}" alt="${escapeAttribute(g.title)}">`
                 : `<span class="frequent-no-image" aria-hidden="true">🧦</span>`}
             </span>
             <strong>${escapeHtml(g.title)}</strong>

@@ -112,6 +112,7 @@ const imageLibrarySummary =
 const BULK_IMAGE_FOLDER = "bulk-image-library";
 const BULK_IMAGE_PAGE_SIZE = 1000;
 let bulkImageLibrary = new Map();
+let uploadedGroupThumbnailUrl = "";
 
 coverFile.addEventListener("change", async () => {
   const file = coverFile.files[0];
@@ -202,11 +203,11 @@ groupFile.addEventListener("change", async () => {
       "상품사진을 업로드하는 중입니다."
     );
 
-    const publicUrl =
-      await uploadImage(file, "product-groups");
+    const uploaded = await uploadGroupImageSet(file);
 
     document.getElementById("groupImage").value =
-      publicUrl;
+      uploaded.originalUrl;
+    uploadedGroupThumbnailUrl = uploaded.thumbnailUrl;
 
     showMessage(
       "groupMessage",
@@ -1735,6 +1736,7 @@ async function saveGroup() {
   ),
 
   image_url: imageUrl,
+  thumbnail_url: uploadedGroupThumbnailUrl || null,
   image_urls: uploadedGroupImageUrls,
   item_numbers: itemNumbers,
   soldout_items: soldoutItems,
@@ -1801,6 +1803,7 @@ function editGroup(id) {
 
   document.getElementById("groupImage").value =
     group.image_url || "";
+  uploadedGroupThumbnailUrl = group.thumbnail_url || "";
 
     document.getElementById("groupDescription").value =
   group.description_text || "";
@@ -1911,6 +1914,7 @@ function cloneGroup(id) {
 
   document.getElementById("groupImage").value =
     group.image_url || "";
+  uploadedGroupThumbnailUrl = group.thumbnail_url || "";
 
   document.getElementById("groupNumbers").value =
     itemNumbers.join(", ");
@@ -2022,6 +2026,7 @@ function resetGroupForm() {
   document.getElementById("groupCategory").value = "";
   document.getElementById("groupTitle").value = "";
   document.getElementById("groupImage").value = "";
+  uploadedGroupThumbnailUrl = "";
 document.getElementById("groupDescription").value = "";
 
 document.getElementById("groupBrand").value = "";
@@ -2240,7 +2245,7 @@ setupProductsKeyboardShortcuts();
 
 startProductsPage();
 
-async function uploadImage(file, folder) {
+async function uploadImage(file, folder, cacheControl = "3600") {
   if (!file) return "";
 
   if (!file.type.startsWith("image/")) {
@@ -2260,7 +2265,7 @@ async function uploadImage(file, folder) {
       .from("product-images")
       .upload(filePath, file, {
         contentType: file.type,
-        cacheControl: "3600",
+        cacheControl,
         upsert: false
       });
 
@@ -2275,6 +2280,57 @@ async function uploadImage(file, folder) {
 
   return data.publicUrl;
 }
+
+async function createWebpThumbnail(file, maxEdge = 480) {
+  const source = await createImageBitmap(file);
+  const ratio = Math.min(1, maxEdge / Math.max(source.width, source.height));
+  const width = Math.max(1, Math.round(source.width * ratio));
+  const height = Math.max(1, Math.round(source.height * ratio));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(source, 0, 0, width, height);
+  source.close?.();
+  const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("썸네일 생성 실패")), "image/webp", 0.74));
+  return new File([blob], `thumb-${Date.now()}.webp`, { type: "image/webp" });
+}
+
+async function uploadGroupImageSet(file) {
+  const originalUrl = await uploadImage(file, "product-groups");
+  try {
+    const thumbnailUrl = await uploadImage(await createWebpThumbnail(file), "product-thumbnails", "31536000");
+    return { originalUrl, thumbnailUrl };
+  } catch (error) {
+    console.warn("목록용 썸네일 생성 실패 - 원본으로 표시합니다:", error.message);
+    return { originalUrl, thumbnailUrl: "" };
+  }
+}
+
+async function generateMissingGroupThumbnails() {
+  const targets = allGroups.filter(group => group.image_url && !group.thumbnail_url);
+  if (!targets.length) { alert("썸네일이 없는 상품사진이 없습니다."); return; }
+  if (!confirm(`원본 사진은 그대로 두고 ${targets.length}개 목록용 썸네일을 생성할까요?`)) return;
+  let completed = 0, failed = 0;
+  showMessage("groupMessage", `목록용 썸네일을 생성하는 중입니다. 0 / ${targets.length}`);
+  for (const group of targets) {
+    try {
+      const response = await fetch(group.image_url, { mode: "cors" });
+      if (!response.ok) throw new Error(`사진 불러오기 실패 (${response.status})`);
+      const sourceFile = new File([await response.blob()], "original-image", { type: response.headers.get("content-type") || "image/jpeg" });
+      const thumbnailUrl = await uploadImage(await createWebpThumbnail(sourceFile), "product-thumbnails", "31536000");
+      const update = await supabaseClient.from("product_groups").update({ thumbnail_url: thumbnailUrl }).eq("id", group.id);
+      if (update.error) throw update.error;
+      completed++;
+    } catch (error) { failed++; console.warn(`상품 묶음 ${group.id} 썸네일 생성 실패:`, error.message); }
+    showMessage("groupMessage", `목록용 썸네일 생성 중: ${completed + failed} / ${targets.length} (완료 ${completed}, 실패 ${failed})`, failed > 0);
+  }
+  await loadProductData();
+  alert(`썸네일 생성 완료: ${completed}개${failed ? ` / 실패 ${failed}개` : ""}`);
+}
+window.generateMissingGroupThumbnails = generateMissingGroupThumbnails;
 
 async function uploadImages(files, folder) {
   const uploadedUrls = [];
