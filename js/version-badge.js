@@ -1,5 +1,5 @@
 (()=>{
-  const FALLBACK_VERSION='V6.6.5';
+  const RELEASE_VERSION='V6.6.6';
   function addBadge(version){
     let b=document.getElementById('appVersionBadge');
     if(!b){
@@ -9,14 +9,6 @@
     }
     b.textContent=version;
   }
-  async function resolveVersion(){
-    try{
-      const res=await fetch(`version.json?t=${Date.now()}`,{cache:'no-store'});
-      if(!res.ok) throw new Error('version fetch failed');
-      const data=await res.json();
-      return `V${String(data.version||'').replace(/^V/i,'')}`;
-    }catch(_){return FALLBACK_VERSION;}
-  }
-  async function init(){addBadge(await resolveVersion());}
+  function init(){addBadge(RELEASE_VERSION);}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();

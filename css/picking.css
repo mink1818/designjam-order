@@ -206,3 +206,18 @@ html[data-theme="dark"] body.picking-page .warehouse-check-b{border-color:#45a96
 html[data-theme="dark"] body.picking-page .warehouse-check-i{border-color:#d39a42!important}
 html[data-theme="dark"] body.picking-page .pick-stock-warning{background:#4b2429!important;color:#fecaca!important}
 html[data-theme="dark"] body.picking-page .pick-stock-warning.unregistered{background:#493719!important;color:#fde68a!important}
+
+/* V6.6.6 피킹 화면 상태칸은 캐시·테마 판정과 무관하게 고대비 유지 */
+body.picking-page .pick-order-summary span,
+body.picking-page .pick-order-summary strong{background:#26394d!important;border:1px solid #4a627a!important;color:#edf5fc!important}
+body.picking-page .warehouse-summary.warehouse-s{background:#203b5e!important;border:1px solid #4774a8!important;color:#bfdbfe!important}
+body.picking-page .warehouse-summary.warehouse-b{background:#193f2c!important;border:1px solid #367b52!important;color:#bbf7d0!important}
+body.picking-page .warehouse-summary.warehouse-i{background:#493719!important;border:1px solid #8b6a2f!important;color:#fde68a!important}
+body.picking-page label.soldout-check{background:#4a351c!important;border:1px solid #9a7135!important;color:#ffe0a3!important}
+body.picking-page label.soldout-check span,
+body.picking-page label.soldout-check b,
+body.picking-page label.soldout-check small{color:#ffe0a3!important}
+body.picking-page label.warehouse-outbound-check{background:#1e293b!important;color:#e8f1fa!important}
+body.picking-page label.warehouse-outbound-check span,
+body.picking-page label.warehouse-outbound-check b,
+body.picking-page label.warehouse-outbound-check small{color:#e8f1fa!important}
