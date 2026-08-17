@@ -115,6 +115,9 @@ if (["전체", "주문접수", "출고대기", "출고완료"].includes(requeste
 let customerNotes = {};
 let orderRevisionMap = {};
 let paymentAccounts = [];
+let orderPaymentRecords = new Map();
+const requestedPaymentFilter = adminUrlParams.get('payment') || '';
+const paymentRecordKey=(orderNumber,customerId)=>`${String(orderNumber||'')}::${String(customerId||'')}`;
 let adminInventoryMap = new Map();
 let adminInventoryAvailable = false;
 let adminCustomerIdentityMap = new Map();
@@ -199,6 +202,7 @@ try {
 }
 
   await loadAdminFeatureData(data);
+  await loadOrderPaymentRecords();
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -209,10 +213,11 @@ try {
 
   data.forEach(order => {
     const customerProfile=adminCustomerIdentityMap.get(String(order.customer_id||''))||{};
-    if (!grouped[order.order_number]) {
+    const groupedKey=paymentRecordKey(order.order_number,order.customer_id);
+    if (!grouped[groupedKey]) {
       const isProxyOrder = String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]');
       const ownerCandidate = order.customer_owner_name || customerProfile.owner_name || '';
-      grouped[order.order_number] = {
+      grouped[groupedKey] = {
         orderNumber: order.order_number,
         customerName: order.customer_name,
         customerOwnerName: visibleOrderOwnerName(ownerCandidate, isProxyOrder),
@@ -241,7 +246,7 @@ try {
       };
     }
 
-    const currentGroup=grouped[order.order_number];
+    const currentGroup=grouped[groupedKey];
     if(order.customer_revision_status)currentGroup.revisionStatus=order.customer_revision_status;
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
@@ -249,8 +254,8 @@ try {
     if(order.memo&&!currentGroup.memo)currentGroup.memo=order.memo;
     currentGroup.completedAt=latestTimestamp(currentGroup.completedAt,order.shipped_at,order.picking_verified_at,order.created_at);
     currentGroup.items.push(order);
-    if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[order.order_number].pickingStatus = order.picking_status;
-    else if (order.picking_status === '피킹중' && !String(grouped[order.order_number].pickingStatus).includes('검증완료')) grouped[order.order_number].pickingStatus = '피킹중';
+    if (order.picking_status === '검증완료' || order.picking_status === '부분품절 검증완료') grouped[groupedKey].pickingStatus = order.picking_status;
+    else if (order.picking_status === '피킹중' && !String(grouped[groupedKey].pickingStatus).includes('검증완료')) grouped[groupedKey].pickingStatus = '피킹중';
   });
 
   const groups = Object.values(grouped);
@@ -277,6 +282,8 @@ try {
       if (group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
         return false;
       }
+      const payment=orderPaymentRecords.get(paymentRecordKey(group.orderNumber,group.customerId));
+      if(requestedPaymentFilter==='unpaid' && (!payment||Number(payment.paid_amount||0)>=calculateGroupPaymentTotal(group)))return false;
 
       if (!keyword) return true;
 
@@ -380,6 +387,31 @@ function formatMobileOrderDate(value) {
   const minute = String(date.getMinutes()).padStart(2, "0");
   return `${month}-${day} ${hour}:${minute}`;
 }
+
+function calculateGroupPaymentTotal(group){
+  const productTotal=(group.items||[]).reduce((sum,item)=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0)));return sum+Math.max(0,ordered-soldout)*Number(item.price||0)},0);
+  return productTotal+Number(group.shipping_fee||0);
+}
+async function loadOrderPaymentRecords(){
+  const {data,error}=await supabaseClient.from('order_payment_records').select('*').limit(10000);
+  if(error){console.warn('입금정보 조회 실패:',error.message);orderPaymentRecords=new Map();return}
+  orderPaymentRecords=new Map((data||[]).map(row=>[paymentRecordKey(row.order_number,row.customer_key),row]));
+}
+async function saveOrderPayment(orderNumber,customerId,customerName,total,paidAmount){
+  const old=orderPaymentRecords.get(paymentRecordKey(orderNumber,customerId))||{};
+  const {data,error}=await supabaseClient.rpc('admin_save_order_payment',{p_order_number:orderNumber,p_customer_key:String(customerId||''),p_customer_name:customerName||'',p_order_amount:Number(total||0),p_paid_amount:Number(paidAmount||0),p_payment_account:old.payment_account||null,p_depositor_name:old.depositor_name||null,p_paid_at:Number(paidAmount||0)>0?(old.paid_at||new Date().toISOString()):null,p_memo:old.memo||null});
+  if(error){alert('입금상태 저장 실패: '+error.message+'\n\nV6.6.3-PAYMENT-RECEIVABLES.sql 실행 여부를 확인해주세요.');return false}
+  orderPaymentRecords.set(paymentRecordKey(orderNumber,customerId),data);return true;
+}
+async function toggleOrderPaid(input,orderNumber,customerId,total,customerName){
+  input.disabled=true;const next=input.checked?total:0;
+  if(!input.checked&&!confirm('이 주문을 미입금으로 변경할까요?')){input.checked=true;input.disabled=false;return}
+  if(await saveOrderPayment(orderNumber,customerId,customerName,total,next))await loadOrders();else{input.checked=!input.checked;input.disabled=false}
+}
+function togglePartialPaymentEditor(index){const box=document.getElementById(`partial-payment-${index}`);if(box)box.hidden=!box.hidden}
+async function savePartialPayment(button,orderNumber,customerId,total,customerName){const input=button.closest('.partial-payment-editor')?.querySelector('input');const value=Math.max(0,Number(input?.value||0));if(value>=total&&!confirm('주문금액 이상입니다. 입금완료로 저장할까요?'))return;button.disabled=true;if(await saveOrderPayment(orderNumber,customerId,customerName,total,value))await loadOrders();else button.disabled=false}
+async function showPaymentHistory(index,orderNumber,customerId){const box=document.getElementById(`payment-history-${index}`);if(!box)return;if(!box.hidden){box.hidden=true;return}box.hidden=false;box.innerHTML='<p>변경기록을 불러오는 중입니다.</p>';const {data,error}=await supabaseClient.from('order_payment_history').select('*').eq('order_number',orderNumber).eq('customer_key',String(customerId||'')).order('changed_at',{ascending:false}).limit(30);if(error){box.innerHTML=`<p>기록 조회 실패: ${escapeAdminHtml(error.message)}</p>`;return}box.innerHTML=data?.length?`<strong>입금 확인·변경 기록</strong>${data.map(row=>`<article><span>${escapeAdminHtml(row.previous_status||'최초등록')} → <b>${escapeAdminHtml(row.new_status)}</b></span><span>${Number(row.previous_paid_amount||0).toLocaleString()}원 → <b>${Number(row.new_paid_amount||0).toLocaleString()}원</b></span><small>${escapeAdminHtml(row.changed_by_name||'관리자')} · ${formatOrderDateTime(row.changed_at)}</small></article>`).join('')}`:'<p>저장된 변경기록이 없습니다.</p>'}
+window.toggleOrderPaid=toggleOrderPaid;window.togglePartialPaymentEditor=togglePartialPaymentEditor;window.savePartialPayment=savePartialPayment;window.showPaymentHistory=showPaymentHistory;
 
 function canEditOrderItems(group) {
   return group.status !== "출고완료" &&
@@ -541,6 +573,9 @@ group.items.forEach(item => {
 });
 
 summaryTotal += Number(group.shipping_fee || 0);
+    const paymentRecord=orderPaymentRecords.get(paymentRecordKey(group.orderNumber,group.customerId))||{};
+    const paidAmount=Math.max(0,Number(paymentRecord.paid_amount||0));
+    const paymentStatus=paidAmount<=0?'미입금':paidAmount<summaryTotal?'일부입금':'입금완료';
 
     getOrderWarehouseSections(group.items).forEach(section => {
       const sectionOrderedQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
@@ -596,6 +631,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
   </div>
   <div class="order-status-stack">
+    <label class="order-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
@@ -609,6 +645,8 @@ id="detail-${index}"
 class="order-detail">
 
         ${renderOrderRevisionPanel(group)}
+
+        <section class="order-payment-detail ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><div><strong>입금상태</strong><span>${paymentStatus}</span><small>주문금액 ${summaryTotal.toLocaleString()}원 · 입금 ${paidAmount.toLocaleString()}원 · 미수 ${Math.max(0,summaryTotal-paidAmount).toLocaleString()}원${paymentRecord.updated_at?`<br>최근 확인: ${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatOrderDateTime(paymentRecord.updated_at)}`:''}</small></div><span class="payment-detail-actions"><button type="button" onclick="togglePartialPaymentEditor(${index})">일부입금 입력</button><button type="button" class="gray-btn" onclick="showPaymentHistory(${index},'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}')">변경기록</button></span></section><div id="partial-payment-${index}" class="partial-payment-editor" hidden><label>현재까지 받은 금액<input type="number" min="0" step="100" value="${paidAmount}"></label><button type="button" onclick="savePartialPayment(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}')">저장</button></div><div id="payment-history-${index}" class="payment-history-list" hidden></div>
 
         ${renderOrderItemEditor(group, index)}
         ${canDeletePendingOrder(group)?`<div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deletePendingAdminOrder('${escapeAdminAttr(group.orderNumber)}')">주문접수건 삭제</button><small>피킹 시작 전 주문만 삭제할 수 있으며 삭제이력에 보관됩니다.</small></div>`:''}
@@ -1091,7 +1129,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=66020','js/admin-mobile-nav.js?v=66020'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=66030','js/admin-mobile-nav.js?v=66030'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

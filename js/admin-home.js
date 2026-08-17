@@ -25,7 +25,7 @@ async function guardAdminHome(){
   if(!isAdminEmail(user.email) && !(profile?.is_admin===true && profile?.blocked!==true)){ await supabaseClient.auth.signOut(); location.replace("admin.html"); return false; }
   sessionStorage.setItem(ADMIN_SESSION_KEY,user.id); localStorage.setItem(ADMIN_SESSION_KEY,user.id);
   currentAdmin=user;
-  if(['employee','manager'].includes(profile?.admin_role)){document.documentElement.dataset.adminRole='manager';const allowed=['picking.html','proxy-order.html','scanner.html'];document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')})}
+  if(['employee','manager'].includes(profile?.admin_role)){document.documentElement.dataset.adminRole='manager';const allowed=['picking.html','proxy-order.html','scanner.html'];document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')})}
   document.body.classList.add("auth-ready");
   requestAnimationFrame(()=>{
     document.body.classList.remove("auth-pending");
@@ -57,6 +57,21 @@ async function loadDashboard(){
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
   await loadNotifications();
   await loadHandwritingTrainingStatus();
+  await loadUnpaidCustomers();
+}
+
+async function fetchDashboardRows(table,columns,orderColumn){const rows=[];for(let from=0;;from+=1000){let q=supabaseClient.from(table).select(columns).range(from,from+999);if(orderColumn)q=q.order(orderColumn,{ascending:false});const {data,error}=await q;if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)return rows}}
+async function loadUnpaidCustomers(){
+  const panel=document.getElementById('unpaidCustomerPanel'),box=document.getElementById('unpaidCustomerList');if(!panel||!box)return;
+  try{
+    const [orders,payments]=await Promise.all([fetchDashboardRows('orders','order_number,customer_id,customer_name,qty,price,soldout_qty,is_soldout,shipping_fee,created_at','created_at'),fetchDashboardRows('order_payment_records','order_number,customer_key,paid_amount','updated_at')]);
+    const paymentMap=new Map(payments.map(x=>[`${x.order_number}::${x.customer_key||''}`,Number(x.paid_amount||0)])),orderMap=new Map();
+    orders.forEach(row=>{const key=`${row.order_number}::${row.customer_id||''}`;if(!orderMap.has(key))orderMap.set(key,{orderNumber:row.order_number,customerId:String(row.customer_id||''),name:row.customer_name||'거래처 미입력',total:0,shipping:0});const g=orderMap.get(key),ordered=Number(row.qty||0),soldout=Math.min(ordered,Number(row.soldout_qty||(row.is_soldout?ordered:0)));g.total+=Math.max(0,ordered-soldout)*Number(row.price||0);g.shipping=Math.max(g.shipping,Number(row.shipping_fee||0))});
+    const customerMap=new Map();let unpaidOrders=0,unpaidTotal=0;
+    orderMap.forEach((g,key)=>{if(!paymentMap.has(key))return;const total=g.total+g.shipping,paid=paymentMap.get(key)||0,balance=Math.max(0,total-paid);if(balance<=0)return;unpaidOrders++;unpaidTotal+=balance;const ck=g.customerId||g.name;if(!customerMap.has(ck))customerMap.set(ck,{...g,count:0,balance:0});const c=customerMap.get(ck);c.count++;c.balance+=balance});
+    setText('unpaidOrderCount',unpaidOrders);setText('unpaidOrderAmount',`${unpaidTotal.toLocaleString()}원`);
+    const list=[...customerMap.values()].sort((a,b)=>b.balance-a.balance);panel.hidden=!list.length;box.innerHTML=list.slice(0,20).map(c=>`<button type="button" data-href="admin.html?view=orders&status=전체&payment=unpaid&search=${encodeURIComponent(c.name)}"><b>${esc(c.name)}</b><span>${c.count}건</span><strong>${c.balance.toLocaleString()}원 미입금</strong></button>`).join('');box.querySelectorAll('[data-href]').forEach(b=>b.onclick=()=>location.href=b.dataset.href);
+  }catch(error){console.warn('미입금 현황 조회 실패:',error.message);panel.hidden=true;setText('unpaidOrderCount','-');setText('unpaidOrderAmount','SQL 확인')}
 }
 
 async function loadHandwritingTrainingStatus(){
