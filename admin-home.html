@@ -11,7 +11,7 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/admin-home.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66040">
 <title>디자인 삭스 주문관리 (관리자)</title>
-<link rel="stylesheet" href="css/admin.css?v=66040">
+<link rel="stylesheet" href="css/admin.css?v=66048">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,6 +38,7 @@
     <button class="v3-metric-card" data-link="members.html?filter=waiting"><span>승인 대기</span><strong id="waitingCustomerCount">-</strong><small>곳</small></button>
     <button class="v3-metric-card" data-link="members.html"><span>전체 거래처</span><strong id="customerCount">-</strong><small>곳</small></button>
     <button class="v3-metric-card unpaid-metric-card" id="unpaidCustomerToggle" type="button"><span>미입금</span><strong id="unpaidCustomerCount">-</strong><small>건 · 눌러서 확인</small></button>
+    <button class="v3-metric-card inquiry-metric-card" data-link="ai-inquiries.html?v=66048"><span>미답변 문의</span><strong id="unansweredInquiryCount">-</strong><small>건 · 눌러서 확인</small></button>
   </section>
   <section id="unpaidCustomerPanel" class="v3-dashboard-section unpaid-customer-panel" hidden>
     <div class="v3-section-heading"><h2>🔴 미입금 거래처</h2><span id="unpaidCustomerSummary">거래처별로 묶어서 표시합니다.</span></div>
@@ -57,7 +58,7 @@
       <button class="v3-menu-card" onclick="location.href='members.html'"><b>🏢 거래처관리</b><span>목록·승인·등급·메모·최근 주문</span></button>
       <button class="v3-menu-card" onclick="location.href='deleted-orders.html'"><b>🗂️ 삭제 주문 이력</b><span>삭제 전 주문 원본·처리자·시간 확인</span></button>
       <button class="v3-menu-card" onclick="location.href='notices.html'"><b>📢 공지·이벤트</b><span>공지·특가·신상품 등록</span></button>
-      <button class="v3-menu-card" onclick="location.href='ai-inquiries.html?v=66042'"><b>💬 거래처 문의관리</b><span>자동답변 불가 문의·관리자 답변</span></button>
+      <button class="v3-menu-card" onclick="location.href='ai-inquiries.html?v=66048'"><b>💬 거래처 문의관리</b><span>자동답변 불가 문의·관리자 답변</span></button>
       <button class="v3-menu-card" onclick="location.href='stats.html'"><b>📈 통계</b><span>주문·거래처·상품·월별 통계</span></button>
       <button class="v3-menu-card" onclick="location.href='settings.html'"><b>⚙️ 환경설정</b><span>입금계좌·관리자 계정·시스템 설정</span></button>
       <button class="v3-menu-card preview-menu-card" type="button" onclick="window.open('index.html?adminPreview=1','_blank','noopener')"><b>👀 거래처 화면 미리보기</b><span>거래처 화면을 주문 없이 확인</span></button>
@@ -71,7 +72,7 @@
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
-<script src="js/admin-home.js?v=66040"></script>
+<script src="js/admin-home.js?v=66048"></script>
 <script src="js/session-status.js?v=66040"></script>
 <script src="js/pwa.js?v=66040"></script>
 <script src="js/admin-page-transition.js?v=66040"></script>

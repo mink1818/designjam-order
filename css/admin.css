@@ -2719,3 +2719,5 @@ html[data-admin-role="employee"] .manager-restricted-menu,
 .unpaid-metric-card small{color:inherit!important}
 html[data-theme="dark"] .unpaid-metric-card{background:#172234!important;border-color:#3a4a61!important}
 html[data-theme="dark"] .unpaid-metric-card strong{color:#f87171!important}
+.inquiry-metric-card strong{color:#dc2626!important}
+.ai-inquiry-actions{display:flex;gap:8px;flex-wrap:wrap}.ai-inquiry-actions button{margin:0!important}.ai-force-completed{padding:10px;border-radius:9px;background:#f1f5f9;color:#475569;font-weight:800}@media(max-width:520px){.ai-inquiry-actions{display:grid;grid-template-columns:1fr}.ai-inquiry-actions button{width:100%!important}}

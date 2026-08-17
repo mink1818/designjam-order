@@ -58,6 +58,18 @@ async function loadDashboard(){
   await loadNotifications();
   await loadHandwritingTrainingStatus();
   await loadUnpaidCustomers();
+  await loadUnansweredInquiryCount();
+}
+
+async function loadUnansweredInquiryCount(){
+  try{
+    const {count,error}=await supabaseClient.from('customer_ai_inquiries').select('id',{count:'exact',head:true}).eq('status','대기');
+    if(error)throw error;
+    setText('unansweredInquiryCount',count??0);
+  }catch(error){
+    console.warn('미답변 문의 건수 조회 실패:',error.message);
+    setText('unansweredInquiryCount','-');
+  }
 }
 
 async function fetchDashboardRows(table,columns,orderColumn){const rows=[];for(let from=0;;from+=1000){let q=supabaseClient.from(table).select(columns).range(from,from+999);if(orderColumn)q=q.order(orderColumn,{ascending:false});const {data,error}=await q;if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)return rows}}

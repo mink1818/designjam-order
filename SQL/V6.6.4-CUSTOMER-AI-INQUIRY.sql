@@ -14,17 +14,20 @@ create table if not exists public.customer_ai_inquiries(
  updated_at timestamptz not null default now()
 );
 create index if not exists customer_ai_inquiries_customer_idx on public.customer_ai_inquiries(customer_id,created_at desc);
+alter table public.customer_ai_inquiries add column if not exists admin_force_completed boolean not null default false;
 alter table public.customer_ai_inquiries enable row level security;
 create or replace function public.is_general_admin() returns boolean language sql stable security definer set search_path=public as $$select exists(select 1 from customers where id=auth.uid() and is_admin=true and coalesce(blocked,false)=false and coalesce(admin_role,'admin') not in('manager','employee'))$$;
 drop policy if exists ai_inquiry_customer_select on public.customer_ai_inquiries;
-create policy ai_inquiry_customer_select on public.customer_ai_inquiries for select to authenticated using(customer_id=auth.uid() or public.is_general_admin());
+create policy ai_inquiry_customer_select on public.customer_ai_inquiries for select to authenticated using((customer_id=auth.uid() and not coalesce(admin_force_completed,false)) or public.is_general_admin());
 drop policy if exists ai_inquiry_customer_insert on public.customer_ai_inquiries;
 create policy ai_inquiry_customer_insert on public.customer_ai_inquiries for insert to authenticated with check(customer_id=auth.uid());
 drop policy if exists ai_inquiry_admin_update on public.customer_ai_inquiries;
 create policy ai_inquiry_admin_update on public.customer_ai_inquiries for update to authenticated using(public.is_general_admin()) with check(public.is_general_admin());
 create or replace function public.admin_list_ai_inquiries(p_status text default null) returns setof public.customer_ai_inquiries language plpgsql security definer set search_path=public as $$begin if not public.is_general_admin() then raise exception '관리자 권한이 필요합니다.';end if;return query select i.* from public.customer_ai_inquiries i where p_status is null or p_status='all' or i.status=p_status order by i.created_at desc limit 200;end$$;
 create or replace function public.admin_answer_ai_inquiry(p_id bigint,p_answer text) returns jsonb language plpgsql security definer set search_path=public as $$declare v_name text;begin if not public.is_general_admin() then raise exception '관리자 권한이 필요합니다.';end if;if nullif(trim(p_answer),'') is null then raise exception '답변을 입력하세요.';end if;select coalesce(nullif(trim(business_name),''),nullif(trim(owner_name),''),nullif(trim(email),''),'관리자') into v_name from customers where id=auth.uid();update customer_ai_inquiries set admin_answer=trim(p_answer),status='답변완료',answered_by=auth.uid(),answered_by_name=coalesce(v_name,'관리자'),answered_at=now(),updated_at=now() where id=p_id;if not found then raise exception '문의를 찾을 수 없습니다.';end if;return jsonb_build_object('ok',true);end$$;
+create or replace function public.admin_force_complete_ai_inquiry(p_id bigint) returns jsonb language plpgsql security definer set search_path=public as $$declare v_name text;begin if not public.is_general_admin() then raise exception '관리자 권한이 필요합니다.';end if;select coalesce(nullif(trim(business_name),''),nullif(trim(owner_name),''),nullif(trim(email),''),'관리자') into v_name from customers where id=auth.uid();update customer_ai_inquiries set status='답변완료',admin_force_completed=true,admin_answer=null,answered_by=auth.uid(),answered_by_name=coalesce(v_name,'관리자'),answered_at=now(),updated_at=now() where id=p_id;if not found then raise exception '문의를 찾을 수 없습니다.';end if;return jsonb_build_object('ok',true,'notified_customer',false);end$$;
 grant execute on function public.is_general_admin() to authenticated;
 grant execute on function public.admin_list_ai_inquiries(text) to authenticated;
 grant execute on function public.admin_answer_ai_inquiry(bigint,text) to authenticated;
+grant execute on function public.admin_force_complete_ai_inquiry(bigint) to authenticated;
 commit;
