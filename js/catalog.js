@@ -1954,17 +1954,18 @@ function renderCustomerBulkOrder() {
     <div class="product-card customer-bulk-order-card">
       <h2>📋 품번·수량 한번에 주문</h2>
       <p>${hasVipPasteAccess()?"카톡·문자 주문의 품번·수량과 납품정보를 붙여넣어 자동 입력할 수 있습니다.":"품번과 수량만 복사해 붙여넣거나 직접 입력할 수 있습니다."}</p>
-      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="8" placeholder="카톡·문자 주문 내용을 붙여넣거나 직접 입력하세요.">${escapeHtml(draft)}</textarea>
+      <textarea id="customerBulkOrderInput" class="order-input customer-bulk-order-input" rows="7" placeholder="카톡·문자 주문을 붙여넣거나 직접 입력하세요.&#10;&#10;예시&#10;4001 1&#10;4002 2&#10;4003 3&#10;↓ 같은 형식으로 아래에 계속 입력하세요.">${escapeHtml(draft)}</textarea>
       ${hasVipPasteAccess()?`<div class="customer-order-photo-box"><strong>VIP 무료 주문사진 분석</strong><input type="file" accept="image/*" multiple onchange="selectCustomerOrderPhotos(this)"><div id="customerOrderPhotoList"></div><div class="customer-order-photo-actions"><button id="analyzeCustomerOrderPhotos" type="button" onclick="analyzeCustomerOrderPhotos()">사진에서 품번·수량 읽기</button><button id="clearCustomerOrderPhotos" type="button" onclick="clearCustomerOrderPhotos()" hidden>선택파일 전체삭제</button></div><small id="customerOrderPhotoStatus">카톡에서 저장한 주문 사진을 선택하세요. 첫 사용 때만 무료 모델을 내려받습니다.</small></div>`:''}
       ${hasVipPasteAccess()?'<p class="customer-bulk-order-help"><b>VIP 안내:</b> 납품처명·연락처·주소·메모까지 선택 적용할 수 있습니다. 인식 결과를 확인한 뒤 적용해 주세요.</p>':'<p class="customer-bulk-order-help"><b>안내:</b> 품번·수량만 자동 적용됩니다. 납품정보는 다음 주문 화면에서 입력해 주세요.</p>'}
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽 또는 4001 4002(2) 4003(3)</span></p>
       <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
       <div id="customerBulkOrderAnalysis" class="customer-smart-paste-preview" hidden></div>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
+      <p class="customer-bulk-order-steps"><b>이용 순서</b><span>① 자동 분석</span><i>→</i><span>② 선택 항목 적용</span><i>→</i><span>③ 장바구니에서 품번·수량 확인</span></p>
       <div class="customer-bulk-order-actions">
-        <button class="cart-btn" type="button" onclick="renderCustomerBulkAnalysis()">자동 분석</button>
-        <button id="confirmCustomerBulkOrder" class="cart-btn green-btn" type="button" onclick="applyCustomerBulkOrder()" hidden>선택 항목 적용</button>
-        <button class="cart-btn gray-btn" type="button" onclick="renderCart()">장바구니 확인</button>
+        <button class="cart-btn" type="button" onclick="renderCustomerBulkAnalysis()">① 자동 분석</button>
+        <button id="confirmCustomerBulkOrder" class="cart-btn green-btn" type="button" onclick="applyCustomerBulkOrder()" hidden>② 선택 항목 적용</button>
+        <button class="cart-btn gray-btn" type="button" onclick="renderCart()">③ 품번·수량 확인</button>
         <button class="cart-btn gray-btn" type="button" onclick="continueShopping()">상품 목록으로</button>
       </div>
     </div>`;
