@@ -9,19 +9,19 @@
   <meta property="og:description" content="디자인 삭스 관리자용 주문·출고 관리 시스템">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/admin-home.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66010">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66020">
 <title>디자인 삭스 주문관리 (관리자)</title>
-<link rel="stylesheet" href="css/admin.css?v=66010">
+<link rel="stylesheet" href="css/admin.css?v=66020">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인 삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=66010">
-  <link rel="icon" href="icons/admin-192.png?v=66010">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=66010">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=66020">
+  <link rel="icon" href="icons/admin-192.png?v=66020">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=66020">
 </head>
-<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.1">
+<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.2">
 <header><h1>🧦 디자인 삭스 주문관리</h1><p>관리자 운영 대시보드</p></header>
 <main class="container">
   <section id="handwritingTrainingPanel" class="handwriting-training-panel" hidden><strong>✍️ 손글씨 학습자료</strong><span id="handwritingTrainingStatus">저장된 교정자료를 확인하는 중입니다.</span></section>
@@ -44,6 +44,7 @@
     <div class="v3-section-heading"><h2>관리 메뉴</h2><span>업무를 선택하세요</span></div>
     <div class="admin-menu-grid v3-menu-grid">
       <button class="v3-menu-card" onclick="location.href='admin.html?view=orders'"><b>📦 주문관리</b><span>접수·출고·송장 관리</span></button>
+      <button class="v3-menu-card" onclick="location.href='payments.html'"><b>💰 입금·미수금 관리</b><span>주문별 미입금·일부입금·입금완료 확인</span></button>
       <button class="v3-menu-card" onclick="location.href='picking.html'"><b>📋 작업지시서·피킹검증</b><span>주문 피킹·품절처리·최종검증·재고차감</span></button>
       <button class="v3-menu-card" onclick="location.href='proxy-order.html'"><b>🛒 관리자 대신주문</b><span>전화·문자 주문 직접접수·가격 자동계산</span></button>
       <button class="v3-menu-card" onclick="location.href='scanner.html'"><b>📦 ERP 재고센터</b><span>입고·출고 스캔·실시간 재고·작업이력</span></button>
@@ -63,14 +64,14 @@
     <div id="dashboardNotificationList" class="v3-notification-list"><p class="empty-copy">알림을 불러오는 중입니다.</p></div>
   </section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66010"></script>
-<script src="js/ui-preferences.js?v=66010"></script>
-<script src="js/admin-home.js?v=66010"></script>
-<script src="js/session-status.js?v=66010"></script>
-<script src="js/pwa.js?v=66010"></script>
-<script src="js/admin-page-transition.js?v=66010"></script>
-<script src="js/version-badge.js?v=66010"></script>
-<script src="js/back-navigation.js?v=66010"></script>
-<script src="js/admin-mobile-nav.js?v=66010"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66020"></script>
+<script src="js/ui-preferences.js?v=66020"></script>
+<script src="js/admin-home.js?v=66020"></script>
+<script src="js/session-status.js?v=66020"></script>
+<script src="js/pwa.js?v=66020"></script>
+<script src="js/admin-page-transition.js?v=66020"></script>
+<script src="js/version-badge.js?v=66020"></script>
+<script src="js/back-navigation.js?v=66020"></script>
+<script src="js/admin-mobile-nav.js?v=66020"></script>
 </body>
 </html>

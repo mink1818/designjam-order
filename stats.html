@@ -8,16 +8,16 @@
   <meta property="og:description" content="디자인 삭스 관리자용 주문·매출 통계">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/stats.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66010">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66020">
   <title>디자인 삭스 주문관리 (관리자)</title>
-  <link rel="stylesheet" href="css/admin.css?v=66010">
+  <link rel="stylesheet" href="css/admin.css?v=66020">
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인 삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=66010">
-  <link rel="icon" href="icons/admin-192.png?v=66010">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=66010">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=66020">
+  <link rel="icon" href="icons/admin-192.png?v=66020">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=66020">
 </head>
 <body class="auth-pending" data-session-page="admin" data-pwa-app="admin">
 <header><h1>📈 운영 통계</h1><p>매출·출고·상품·거래처를 한 화면에서 확인합니다.</p></header>
@@ -29,6 +29,8 @@
       <button type="button" data-range="week">이번 주</button>
       <button type="button" data-range="month" class="active">이번 달</button>
       <button type="button" data-range="lastMonth">지난달</button>
+      <button type="button" data-range="year">올해</button>
+      <button type="button" data-range="lastYear">작년</button>
       <button type="button" data-range="all">전체</button>
     </div>
     <div class="stats-custom-range">
@@ -47,8 +49,8 @@
   </section>
 
   <div class="v3-section-heading stats-group-title"><h2>① 핵심 운영지표</h2><span>현재 주문과 취소·변경을 분리한 순매출 기준</span></div><div id="statsCards" class="v3-metric-grid stats-metric-grid"></div>
-  <div class="v3-section-heading stats-group-title"><h2>② 주문 경로·변경 감사</h2><span>대신주문은 실제 거래처명으로 집계</span></div><section id="orderChannelCards" class="stats-audit-grid"></section>
-  <section class="product-card stats-panel stats-audit-panel"><div class="v3-section-heading"><h2>최근 변경·삭제 이력</h2><span>선택 기간 최근 12건</span></div><div id="orderAuditList" class="stats-audit-list"></div></section>
+  <details class="product-card stats-audit-details"><summary>② 주문 경로·변경·삭제 감사 보기</summary><p class="stats-detail-copy">대신주문은 실제 거래처명으로 매출과 순위에 반영됩니다.</p><section id="orderChannelCards" class="stats-audit-grid"></section>
+  <section class="stats-panel stats-audit-panel"><div class="v3-section-heading"><h2>최근 변경·삭제 이력</h2><span>선택 기간 최근 12건</span></div><div id="orderAuditList" class="stats-audit-list"></div></section></details>
 
   <div class="v3-section-heading stats-group-title"><h2>③ 주문·출고 현황</h2><span>클릭하면 주문관리로 이동</span></div><section class="stats-status-grid">
     <button class="product-card stats-status-card" data-order-filter="전체"><span>전체 주문</span><strong id="statusAll">0건</strong><small>주문관리로 이동</small></button>
@@ -56,20 +58,34 @@
     <button class="product-card stats-status-card done" data-order-filter="출고완료"><span>출고완료</span><strong id="statusDone">0건</strong><small>완료 주문 확인</small></button>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><h2>④ 날짜별 매출 흐름</h2><span>최근 14개 날짜 표시</span></div><section class="stats-chart-grid stats-chart-single">
+  <div class="v3-section-heading stats-group-title"><h2>④ 전체·연도·월별 매출 흐름</h2><span>기간별 매출과 전월 대비를 한 화면에서 비교</span></div>
+  <section class="product-card stats-period-controls">
+    <label>확인할 연도<select id="statsAnalysisYear"></select></label>
+    <label>확인할 월<input id="statsAnalysisMonth" type="month"></label>
+    <div id="monthlyCompareCards" class="stats-compare-grid"></div>
+  </section>
+  <section class="stats-chart-grid stats-timeline-grid">
     <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2>날짜별 주문금액</h2><span>선택 기간 기준</span></div>
-      <div id="salesTrendChart" class="stats-chart" aria-label="날짜별 주문금액 차트"></div>
+      <div class="v3-section-heading"><h2>전체 연도별 매출</h2><span>전체 주문 이력</span></div>
+      <div id="yearlySalesChart" class="stats-chart" aria-label="연도별 주문금액 차트"></div>
+    </article>
+    <article class="product-card stats-panel">
+      <div class="v3-section-heading"><h2 id="monthlySalesTitle">연도 월별 매출</h2><span>1월~12월</span></div>
+      <div id="monthlySalesChart" class="stats-chart" aria-label="월별 주문금액 차트"></div>
+    </article>
+    <article class="product-card stats-panel stats-wide-panel">
+      <div class="v3-section-heading"><h2 id="dailySalesTitle">월 일별 매출</h2><span>선택 월 전체 날짜</span></div>
+      <div id="dailySalesChart" class="stats-chart" aria-label="일별 주문금액 차트"></div>
     </article>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><h2>⑤ 판매·거래처 분석</h2><span>우선 관리 대상 확인</span></div><section class="stats-ranking-grid">
+  <div class="v3-section-heading stats-group-title"><h2>⑤ 월별 판매·거래처 토탈 랭킹</h2><span id="monthlyRankingPeriod">선택 월 기준 TOP 10</span></div><section class="stats-ranking-grid">
     <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2>상품 판매량 TOP 10</h2><span>품절 제외 · 단위 죽</span></div>
+      <div class="v3-section-heading"><h2>월간 품번 판매량 TOP 10</h2><span>품절·일부품절 제외 · 단위 죽</span></div>
       <div id="topProductsList" class="stats-ranking-list"></div>
     </article>
     <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2>거래처 주문금액 TOP 10</h2><span id="topCustomersCaption">선택 기간 전체 거래처 중 상위 10곳 · 배송비 포함</span></div>
+      <div class="v3-section-heading"><h2>월간 거래처 매출 TOP 10</h2><span id="topCustomersCaption">선택 월 전체 거래처 중 상위 10곳 · 배송비 포함</span></div>
       <div id="topCustomersList" class="stats-ranking-list"></div>
     </article>
   </section>
@@ -81,14 +97,14 @@
 
   <p id="statsMessage" class="stats-message" role="status"></p>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66010"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/stats.js?v=66010"></script>
-<script src="js/session-status.js?v=66010"></script>
-<script src="js/pwa.js?v=66010"></script>
-<script src="js/admin-page-transition.js?v=66010"></script>
-<script src="js/version-badge.js?v=66010"></script>
-<script src="js/back-navigation.js?v=66010"></script>
-<script src="js/ui-preferences.js?v=66010"></script>
-<script src="js/admin-mobile-nav.js?v=66010"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66020"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/stats.js?v=66020"></script>
+<script src="js/session-status.js?v=66020"></script>
+<script src="js/pwa.js?v=66020"></script>
+<script src="js/admin-page-transition.js?v=66020"></script>
+<script src="js/version-badge.js?v=66020"></script>
+<script src="js/back-navigation.js?v=66020"></script>
+<script src="js/ui-preferences.js?v=66020"></script>
+<script src="js/admin-mobile-nav.js?v=66020"></script>
 </body>
 </html>

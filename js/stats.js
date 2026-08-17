@@ -37,13 +37,15 @@ function getRangeBounds(range){
   if(range==='week'){start=startOfDay(now);const day=(start.getDay()+6)%7;start.setDate(start.getDate()-day);}
   if(range==='month') start=new Date(now.getFullYear(),now.getMonth(),1);
   if(range==='lastMonth'){start=new Date(now.getFullYear(),now.getMonth()-1,1);end=endOfDay(new Date(now.getFullYear(),now.getMonth(),0));}
+  if(range==='year') start=new Date(now.getFullYear(),0,1);
+  if(range==='lastYear'){start=new Date(now.getFullYear()-1,0,1);end=endOfDay(new Date(now.getFullYear()-1,11,31));}
   if(range==='all'){start=null;end=null;}
   if(range==='custom'){start=parseDateInput($('statsStartDate').value);const e=parseDateInput($('statsEndDate').value);end=e?endOfDay(e):null;}
   return {start,end};
 }
 
 function setDefaultDates(){
-  const now=new Date();$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));
+  const now=new Date();$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));$('statsAnalysisMonth').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 }
 
 async function fetchAllStatsRows(table,orderColumn,ascending=true){
@@ -87,11 +89,24 @@ async function loadSourceData(){
 function groupOrders(rows){
   const map=new Map();
   rows.forEach(row=>{
-    const key=row.order_number||`row-${row.id}`;
-    if(!map.has(key))map.set(key,{orderNumber:key,createdAt:row.created_at,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
+    const orderNumber=row.order_number||`row-${row.id}`;const customerIdentity=String(row.customer_id||normalizeStatsCustomerName(row.customer_name)||'unknown');const key=`${orderNumber}::${customerIdentity}`;
+    if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
     const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
   });
   return [...map.values()];
+}
+
+function effectiveItemQty(item){
+  if(item.is_soldout)return 0;
+  const ordered=Math.max(0,Number(item.qty||0));const soldout=Math.max(0,Number(item.soldout_qty||0));
+  if(soldout>0)return Math.max(0,ordered-soldout);
+  return ordered;
+}
+
+function orderTotals(order){
+  let amount=0,quantity=0;
+  order.items.forEach(item=>{const q=effectiveItemQty(item);quantity+=q;amount+=q*Number(item.price||0);});
+  return {amount:amount+Number(order.shippingFee||0),productAmount:amount,qty:quantity};
 }
 
 function calculateStats(){
@@ -106,8 +121,8 @@ function calculateStats(){
     if(String(order.orderNumber).startsWith('ADMIN-')||order.items.some(x=>String(x.memo||'').includes('[관리자 대신주문]')))proxyOrderCount++;
     let productAmount=0,orderQty=0;
     order.items.forEach(item=>{
-      if(item.is_soldout)return;
-      const q=Number(item.qty||0),price=Number(item.price||0),amount=price*q;
+      const q=effectiveItemQty(item);if(q<=0)return;
+      const price=Number(item.price||0),amount=price*q;
       orderQty+=q;productAmount+=amount;
       const num=String(item.item_number||'품번 미입력');
       const savedCode=String(item.warehouse_code||'').trim().toUpperCase();const prefix=num.toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/);const warehouse=['S','B','I'].includes(savedCode)?savedCode:(prefix?.[1]||'');if(warehouse){const w=warehouseSales.get(warehouse);w.qty+=q;w.amount+=amount;}
@@ -128,6 +143,46 @@ function calculateStats(){
   return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
 }
 
+function availableYears(){
+  const years=groupOrders(rawOrders).map(o=>new Date(o.createdAt).getFullYear()).filter(Number.isFinite);const nowYear=new Date().getFullYear();return [...new Set([nowYear,...years])].sort((a,b)=>b-a);
+}
+
+function fillAnalysisYears(){
+  const select=$('statsAnalysisYear'),previous=Number(select.value)||new Date().getFullYear();select.innerHTML=availableYears().map(y=>`<option value="${y}">${y}년</option>`).join('');select.value=String([...select.options].some(o=>Number(o.value)===previous)?previous:new Date().getFullYear());
+}
+
+function aggregateOrderSet(orders){
+  const products=new Map(),customers=new Map();let amount=0,qtyTotal=0;
+  orders.forEach(order=>{
+    const totals=orderTotals(order);amount+=totals.amount;qtyTotal+=totals.qty;
+    order.items.forEach(item=>{const q=effectiveItemQty(item);if(q<=0)return;const name=String(item.item_number||'품번 미입력');const p=products.get(name)||{name,qty:0,amount:0};p.qty+=q;p.amount+=q*Number(item.price||0);products.set(name,p);});
+    const display=String(order.customerName||'').trim()||'거래처 미입력';const key=normalizeStatsCustomerName(display)||order.customerId||'거래처 미입력';const c=customers.get(key)||{name:display,amount:0,qty:0,orders:0};c.amount+=totals.amount;c.qty+=totals.qty;c.orders++;customers.set(key,c);
+  });
+  return {amount,qty:qtyTotal,orders:orders.length,products:[...products.values()].sort((a,b)=>b.qty-a.qty||b.amount-a.amount),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount||b.qty-a.qty)};
+}
+
+function buildPeriodAnalytics(){
+  let allOrders=groupOrders(rawOrders);if($('completedOnlyCheck').checked)allOrders=allOrders.filter(o=>o.status==='출고완료');
+  const selectedYear=Number($('statsAnalysisYear').value)||new Date().getFullYear();const selectedMonth=$('statsAnalysisMonth').value||`${selectedYear}-01`;const [monthYear,monthNumber]=selectedMonth.split('-').map(Number);
+  const yearlyMap=new Map();allOrders.forEach(o=>{const y=new Date(o.createdAt).getFullYear();if(!Number.isFinite(y))return;const t=orderTotals(o);const row=yearlyMap.get(y)||{label:String(y),amount:0,qty:0,orders:0};row.amount+=t.amount;row.qty+=t.qty;row.orders++;yearlyMap.set(y,row);});
+  const monthly=Array.from({length:12},(_,i)=>({label:`${i+1}월`,amount:0,qty:0,orders:0}));allOrders.forEach(o=>{const d=new Date(o.createdAt);if(d.getFullYear()!==selectedYear)return;const t=orderTotals(o),row=monthly[d.getMonth()];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
+  const daysInMonth=new Date(monthYear,monthNumber,0).getDate();const daily=Array.from({length:daysInMonth},(_,i)=>({label:`${i+1}일`,amount:0,qty:0,orders:0}));const monthOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===monthYear&&d.getMonth()+1===monthNumber;});monthOrders.forEach(o=>{const d=new Date(o.createdAt),t=orderTotals(o),row=daily[d.getDate()-1];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
+  const previousDate=new Date(monthYear,monthNumber-2,1);const previousOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===previousDate.getFullYear()&&d.getMonth()===previousDate.getMonth();});
+  return {selectedYear,selectedMonth,yearly:[...yearlyMap.values()].sort((a,b)=>Number(a.label)-Number(b.label)),monthly,daily,current:aggregateOrderSet(monthOrders),previous:aggregateOrderSet(previousOrders)};
+}
+
+function compareText(current,previous,unit){
+  if(!previous)return current?`전월 데이터 없음 · ${money(current)}${unit}`:`0${unit}`;const rate=Math.round((current-previous)/previous*100);return `${rate>0?'▲ ':rate<0?'▼ ':''}${Math.abs(rate)}% · ${money(current)}${unit}`;
+}
+
+function renderPeriodAnalytics(){
+  const a=buildPeriodAnalytics();$('monthlySalesTitle').textContent=`${a.selectedYear}년 월별 매출`;$('dailySalesTitle').textContent=`${a.selectedMonth.replace('-','년 ')}월 일별 매출`;$('monthlyRankingPeriod').textContent=`${a.selectedMonth.replace('-','년 ')}월 토탈 기준 TOP 10`;
+  renderBarChart('yearlySalesChart',a.yearly,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderBarChart('monthlySalesChart',a.monthly,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,12);renderBarChart('dailySalesChart',a.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,31);
+  $('monthlyCompareCards').innerHTML=`<article><span>선택 월 매출</span><strong>${compareText(a.current.amount,a.previous.amount,'원')}</strong></article><article><span>선택 월 출고수량</span><strong>${compareText(a.current.qty,a.previous.qty,'죽')}</strong></article><article><span>선택 월 주문건수</span><strong>${compareText(a.current.orders,a.previous.orders,'건')}</strong></article>`;
+  renderRanking('topProductsList',a.current.products,'product');renderRanking('topCustomersList',a.current.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`${a.selectedMonth.replace('-','년 ')}월 전체 ${money(a.current.customers.length)}곳 중 상위 10곳 · 배송비 포함`;
+  return a;
+}
+
 function renderMetrics(s){
   const cards=[
     ['현재 주문금액',money(s.totalAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
@@ -143,10 +198,10 @@ function renderAuditSummary(s){
   $('orderAuditList').innerHTML=recent.length?recent.map(x=>`<div class="stats-audit-row"><b class="${x.type==='삭제'?'deleted':'changed'}">${x.type}</b><span><strong>${esc(x.name||'거래처 미입력')}</strong><small>${esc(x.order)} · ${new Date(x.at).toLocaleString('ko-KR')}</small></span><em>${esc(x.reason)}</em></div>`).join(''):'<p class="empty-copy">선택 기간의 주문 변경·삭제 이력이 없습니다.</p>';
 }
 
-function renderBarChart(targetId,rows,valueKey,formatter){
+function renderBarChart(targetId,rows,valueKey,formatter,limit=0){
   const box=$(targetId);if(!rows.length){box.innerHTML='<p class="empty-copy">표시할 데이터가 없습니다.</p>';return;}
-  const show=rows.slice(-14),max=Math.max(...show.map(r=>Number(r[valueKey]||0)),1);
-  box.innerHTML=`<div class="stats-bars">${show.map(r=>{const value=Number(r[valueKey]||0);const h=Math.max(4,Math.round(value/max*100));return `<div class="stats-bar-item" title="${esc(r.date)} · ${esc(formatter(value))}"><div class="stats-bar-value">${esc(formatter(value))}</div><div class="stats-bar-track"><i style="height:${h}%"></i></div><small>${esc(r.date.slice(5))}</small></div>`;}).join('')}</div>`;
+  const show=limit?rows.slice(-limit):rows,max=Math.max(...show.map(r=>Number(r[valueKey]||0)),1);
+  box.innerHTML=`<div class="stats-bars">${show.map(r=>{const value=Number(r[valueKey]||0),label=String(r.label||r.date||'');const h=value?Math.max(4,Math.round(value/max*100)):0;return `<div class="stats-bar-item" title="${esc(label)} · ${esc(formatter(value))}"><div class="stats-bar-value">${value?esc(formatter(value)):'-'}</div><div class="stats-bar-track"><i style="height:${h}%"></i></div><small>${esc(label.includes('-')?label.slice(5):label)}</small></div>`;}).join('')}</div>`;
 }
 
 function renderRanking(targetId,rows,type){
@@ -161,16 +216,31 @@ function renderCategoryShare(rows){
 }
 
 function renderAll(){
-  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');renderBarChart('salesTrendChart',currentStats.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderRanking('topProductsList',currentStats.products,'product');renderRanking('topCustomersList',currentStats.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`선택 기간 전체 ${money(currentStats.customerCount)}곳 중 상위 10곳 · 배송비 포함`;renderCategoryShare(currentStats.categories);
+  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');currentStats.periodAnalytics=renderPeriodAnalytics();renderCategoryShare(currentStats.categories);
 }
 
-function exportExcel(){if(!currentStats)return;if(!window.XLSX)return alert('엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const period=`${currentStats.start?localDateKey(currentStats.start):'전체'} ~ ${currentStats.end?localDateKey(currentStats.end):'현재'}`;const summary=[['DESIGN SOCKS 운영 통계'],['집계기간',period],[],['핵심지표','값','단위'],['총 주문금액',currentStats.totalAmount,'원'],['총 주문수량',currentStats.totalQty,'죽'],['주문건수',currentStats.orderCount,'건'],['거래처 수',currentStats.customerCount,'곳'],['평균 주문금액',currentStats.average,'원'],['출고완료율',currentStats.completionRate,'%'],[],['주문상태','건수'],['주문접수/출고대기',currentStats.pendingCount],['출고완료',currentStats.doneCount]];const make=(rows,widths)=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=widths.map(w=>({wch:w}));ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};if(rows.length>1)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}})};return ws;};const wb=XLSX.utils.book_new();const wsSummary=XLSX.utils.aoa_to_sheet(summary);wsSummary['!merges']=[XLSX.utils.decode_range('A1:C1')];wsSummary['!cols']=[{wch:24},{wch:22},{wch:12}];XLSX.utils.book_append_sheet(wb,wsSummary,'요약');XLSX.utils.book_append_sheet(wb,make([['날짜','주문금액','수량(죽)','주문건수'],...currentStats.daily.map(x=>[x.date,x.amount,x.qty,x.orders])],[14,18,14,12]),'날짜별');XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...currentStats.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'상품별');XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...currentStats.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'거래처별');XLSX.utils.book_append_sheet(wb,make([['순위','대분류','수량(죽)','주문금액'],...currentStats.categories.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,26,14,18]),'카테고리별');XLSX.utils.book_append_sheet(wb,make([['구분','거래처','주문번호','일시','사유'],...currentStats.changes.map(x=>['변경',x.customer_name||'',x.order_number,x.changed_at,x.change_reason||'주문 품목 수정']),...currentStats.deleted.map(x=>['삭제',x.customer_name||'',x.order_number,x.deleted_at,x.delete_reason||'주문 삭제'])],[10,28,30,22,30]),'변경삭제이력');XLSX.writeFile(wb,`DESIGN_SOCKS_운영통계_${localDateKey(new Date())}.xlsx`);}
+function exportExcel(){
+  if(!currentStats)return;if(!window.XLSX)return alert('엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');
+  const period=`${currentStats.start?localDateKey(currentStats.start):'전체'} ~ ${currentStats.end?localDateKey(currentStats.end):'현재'}`,a=currentStats.periodAnalytics||buildPeriodAnalytics();
+  const summary=[['DESIGN SOCKS 운영 통계'],['집계기간',period],['월간 랭킹 기준',a.selectedMonth],[],['핵심지표','값','단위'],['총 주문금액',currentStats.totalAmount,'원'],['총 주문수량',currentStats.totalQty,'죽'],['주문건수',currentStats.orderCount,'건'],['거래처 수',currentStats.customerCount,'곳'],['평균 주문금액',currentStats.average,'원'],['출고완료율',currentStats.completionRate,'%'],[],['주문상태','건수'],['주문접수/출고대기',currentStats.pendingCount],['출고완료',currentStats.doneCount]];
+  const make=(rows,widths)=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=widths.map(w=>({wch:w}));ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};if(rows.length>1)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}})};return ws;};
+  const wb=XLSX.utils.book_new(),wsSummary=XLSX.utils.aoa_to_sheet(summary);wsSummary['!merges']=[XLSX.utils.decode_range('A1:C1')];wsSummary['!cols']=[{wch:24},{wch:22},{wch:12}];XLSX.utils.book_append_sheet(wb,wsSummary,'요약');
+  XLSX.utils.book_append_sheet(wb,make([['연도','매출','수량(죽)','주문건수'],...a.yearly.map(x=>[x.label,x.amount,x.qty,x.orders])],[12,18,14,12]),'연도별매출');
+  XLSX.utils.book_append_sheet(wb,make([['월','매출','수량(죽)','주문건수'],...a.monthly.map(x=>[`${a.selectedYear}-${String(parseInt(x.label,10)).padStart(2,'0')}`,x.amount,x.qty,x.orders])],[12,18,14,12]),'월별매출');
+  XLSX.utils.book_append_sheet(wb,make([['일','매출','수량(죽)','주문건수'],...a.daily.map(x=>[`${a.selectedMonth}-${String(parseInt(x.label,10)).padStart(2,'0')}`,x.amount,x.qty,x.orders])],[14,18,14,12]),'일별매출');
+  XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...a.current.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'월간품번랭킹');
+  XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...a.current.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'월간거래처랭킹');
+  XLSX.utils.book_append_sheet(wb,make([['순위','대분류','수량(죽)','주문금액'],...currentStats.categories.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,26,14,18]),'카테고리별');
+  XLSX.utils.book_append_sheet(wb,make([['구분','거래처','주문번호','일시','사유'],...currentStats.changes.map(x=>['변경',x.customer_name||'',x.order_number,x.changed_at,x.change_reason||'주문 품목 수정']),...currentStats.deleted.map(x=>['삭제',x.customer_name||'',x.order_number,x.deleted_at,x.delete_reason||'주문 삭제'])],[10,28,30,22,30]),'변경삭제이력');
+  XLSX.writeFile(wb,`DESIGN_SOCKS_운영통계_${localDateKey(new Date())}.xlsx`);
+}
 
 function bindEvents(){
   $('statsRangeButtons').querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{currentRange=btn.dataset.range;$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));renderAll();}));
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
-  $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
+  $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
+  $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',renderAll);
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();bindEvents();try{await loadSourceData();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
+document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();bindEvents();try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});

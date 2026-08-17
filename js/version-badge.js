@@ -1,5 +1,5 @@
 (()=>{
-  const FALLBACK_VERSION='V6.6.1';
+  const FALLBACK_VERSION='V6.6.2';
   function addBadge(version){
     let b=document.getElementById('appVersionBadge');
     if(!b){
