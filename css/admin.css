@@ -2721,3 +2721,78 @@ html[data-theme="dark"] .unpaid-metric-card{background:#172234!important;border-
 html[data-theme="dark"] .unpaid-metric-card strong{color:#f87171!important}
 .inquiry-metric-card strong{color:#dc2626!important}
 .ai-inquiry-actions{display:flex;gap:8px;flex-wrap:wrap}.ai-inquiry-actions button{margin:0!important}.ai-force-completed{padding:10px;border-radius:9px;background:#f1f5f9;color:#475569;font-weight:800}@media(max-width:520px){.ai-inquiry-actions{display:grid;grid-template-columns:1fr}.ai-inquiry-actions button{width:100%!important}}
+
+/* V6.6.4 관리자 홈 다크모드에서 남아 있던 밝은 영역 통일 */
+html[data-theme="dark"] body[data-session-page="admin"] .handwriting-training-panel{
+  background:#172234!important;
+  border-color:#3a4a61!important;
+  color:#e2e8f0!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .handwriting-training-panel strong{color:#f8fafc!important}
+html[data-theme="dark"] body[data-session-page="admin"] .handwriting-training-panel span{color:#cbd5e1!important}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-dashboard-section{
+  background:#121d2d!important;
+  border-color:#3a4a61!important;
+  color:#e2e8f0!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-dashboard-section .v3-section-heading h2{color:#93c5fd!important}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-dashboard-section .v3-section-heading span,
+html[data-theme="dark"] body[data-session-page="admin"] .v3-dashboard-section .empty-copy{color:#cbd5e1!important}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-dashboard-section .text-button{color:#bfdbfe!important}
+html[data-theme="dark"] body[data-session-page="admin"] .global-admin-search input{
+  background:#0c1828!important;
+  border-color:#42536a!important;
+  color:#f8fafc!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-notification-item{
+  background:#17263a!important;
+  border-color:#40536b!important;
+  color:#f8fafc!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-notification-item.unread{
+  background:#183555!important;
+  border-color:#4d8ad1!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .v3-notification-item small{color:#cbd5e1!important}
+
+/* V6.6.4 관리자 상세 화면 다크모드 밝은 카드 통일 */
+html[data-theme="dark"] body[data-session-page="admin"] .admin-product-toolbar,
+html[data-theme="dark"] body[data-session-page="admin"] .product-management-guide,
+html[data-theme="dark"] body[data-session-page="admin"] .customer-list-guide,
+html[data-theme="dark"] body[data-session-page="admin"] .ai-admin-toolbar{
+  background:#172234!important;border-color:#40536b!important;color:#e2e8f0!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .admin-product-toolbar button,
+html[data-theme="dark"] body[data-session-page="admin"] .admin-filter button,
+html[data-theme="dark"] body[data-session-page="admin"] .accordion-global-toolbar button{
+  background:#26364b!important;border-color:#52637b!important;color:#f8fafc!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .admin-product-toolbar button:hover,
+html[data-theme="dark"] body[data-session-page="admin"] .admin-filter button:hover,
+html[data-theme="dark"] body[data-session-page="admin"] .accordion-global-toolbar button:hover{background:#31465f!important}
+html[data-theme="dark"] body[data-session-page="admin"] .product-management-guide span,
+html[data-theme="dark"] body[data-session-page="admin"] .customer-list-guide{color:#cbd5e1!important}
+html[data-theme="dark"] body[data-session-page="admin"] .product-summary-grid article,
+html[data-theme="dark"] body[data-session-page="admin"] .member-status-dashboard>div{
+  background:#172234!important;border:1px solid #40536b!important;color:#f8fafc!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .product-summary-grid span,
+html[data-theme="dark"] body[data-session-page="admin"] .member-status-dashboard span{color:#cbd5e1!important}
+html[data-theme="dark"] body[data-session-page="admin"] .product-summary-grid strong,
+html[data-theme="dark"] body[data-session-page="admin"] .member-status-dashboard strong{color:#93c5fd!important}
+html[data-theme="dark"] body[data-session-page="admin"] .admin-accordion-body>.product-card,
+html[data-theme="dark"] body[data-session-page="admin"] .admin-accordion-body>section,
+html[data-theme="dark"] body[data-session-page="admin"] .deleted-order-card,
+html[data-theme="dark"] body[data-session-page="admin"] .ai-inquiry-card{
+  background:#172234!important;border-color:#40536b!important;color:#eef5ff!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .deleted-history-toolbar input,
+html[data-theme="dark"] body[data-session-page="admin"] .deleted-history-toolbar select,
+html[data-theme="dark"] body[data-session-page="admin"] .v3-toolbar input,
+html[data-theme="dark"] body[data-session-page="admin"] .v3-toolbar select,
+html[data-theme="dark"] body[data-session-page="admin"] .ai-admin-toolbar select,
+html[data-theme="dark"] body[data-session-page="admin"] .ai-inquiry-card textarea{
+  background:#0f1726!important;border-color:#52637b!important;color:#f8fafc!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .ai-inquiry-card header small{color:#cbd5e1!important}
+html[data-theme="dark"] body[data-session-page="admin"] .ai-force-completed{background:#26364b!important;color:#d8e3ef!important}

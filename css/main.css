@@ -1861,3 +1861,65 @@ body.login-stable{min-height:100vh;min-height:100dvh;visibility:visible;opacity:
 html.customer-ai-open{overflow:hidden!important}body.customer-ai-open{position:fixed!important;left:0;right:0;width:100%;overflow:hidden!important;touch-action:none}.customer-ai-modal,.customer-ai-modal>section,.customer-ai-messages{overscroll-behavior:contain}.customer-ai-messages{touch-action:pan-y}
 .customer-ai-modal footer{grid-template-columns:1fr!important}.customer-ai-footer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.customer-ai-footer-actions #customerAiSendAdmin{background:#b42318}.customer-ai-footer-actions button{width:100%}@media(max-width:420px){.customer-ai-footer-actions{grid-template-columns:1fr}.customer-ai-footer-actions button{padding:9px 8px!important}}
 .customer-bulk-order-steps{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;margin:14px 0 9px;padding:10px 12px;border-radius:10px;background:#eef5ff;color:#174f89;font-size:13px;font-style:normal;font-weight:800}.customer-bulk-order-steps b{margin-right:3px}.customer-bulk-order-steps i{color:#7890aa;font-style:normal}@media(max-width:560px){.customer-bulk-order-steps{display:grid;grid-template-columns:auto 1fr;justify-content:start;text-align:left}.customer-bulk-order-steps b{grid-column:1/-1}.customer-bulk-order-steps i{display:none}}
+
+/* V6.6.4 거래처 전체 화면 눈부심 완화 다크모드 점검 */
+html[data-theme="dark"] body[data-session-page="customer"]{
+  background:#0f1822!important;color:#dde6ef!important;
+}
+html[data-theme="dark"] body[data-session-page="customer"] header,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-bottom-nav{
+  background:#172432!important;border-color:#344658!important;
+}
+html[data-theme="dark"] body[data-session-page="customer"] .customer-main-menu-card,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-quick-card,
+html[data-theme="dark"] body[data-session-page="customer"] .home-brand-button,
+html[data-theme="dark"] body[data-session-page="customer"] .brand-selector-button,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-profile-main,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-smart-paste-preview,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-smart-paste-options label,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-bulk-order-steps,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-cart-toolbar,
+html[data-theme="dark"] body[data-session-page="customer"] .order-tools-card{
+  background:#1b2938!important;border-color:#405266!important;color:#e4edf5!important;box-shadow:none!important;
+}
+html[data-theme="dark"] body[data-session-page="customer"] .customer-main-menu-card.primary,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-quick-card.primary{
+  background:linear-gradient(135deg,#1d4f7b,#28689e)!important;border-color:#4b82b2!important;color:#fff!important;
+}
+html[data-theme="dark"] body[data-session-page="customer"] .filter-buttons button,
+html[data-theme="dark"] body[data-session-page="customer"] .barcode-list-actions button,
+html[data-theme="dark"] body[data-session-page="customer"] .selected-brand-summary button,
+html[data-theme="dark"] body[data-session-page="customer"] .simple-back-button{
+  background:#263647!important;border-color:#4b5f74!important;color:#dce8f3!important;
+}
+html[data-theme="dark"] body[data-session-page="customer"] .brand-selector-button.active,
+html[data-theme="dark"] body[data-session-page="customer"] .home-brand-button.active,
+html[data-theme="dark"] body[data-session-page="customer"] .filter-buttons button.active{
+  background:#24486b!important;border-color:#6b9cc8!important;color:#fff!important;
+}
+html[data-theme="dark"] body[data-session-page="customer"] .handwriting-learning-note,
+html[data-theme="dark"] body[data-session-page="customer"] .premium-feature-note,
+html[data-theme="dark"] body[data-session-page="customer"] .customer-change-warning{
+  background:#3a321f!important;border-color:#806a35!important;color:#f2d99b!important;
+}
+html[data-theme="dark"] .emergency-notice-card,
+html[data-theme="dark"] .customer-ai-modal>section,
+html[data-theme="dark"] .bulk-item-choice-dialog{
+  background:#192736!important;border-color:#4c79a5!important;color:#e5edf5!important;
+}
+html[data-theme="dark"] .emergency-notice-card img{background:#111b25!important}
+html[data-theme="dark"] .emergency-notice-period,
+html[data-theme="dark"] .customer-ai-disclaimer{color:#b7c4d1!important}
+html[data-theme="dark"] .emergency-notice-help,
+html[data-theme="dark"] .emergency-notice-today{background:#332b1f!important;border-color:#6d5b37!important;color:#efd39c!important}
+html[data-theme="dark"] .emergency-notice-actions{background:linear-gradient(to bottom,rgba(25,39,54,.88),#192736 18px)!important}
+html[data-theme="dark"] .customer-ai-messages{background:#111c28!important}
+html[data-theme="dark"] .customer-ai-message,
+html[data-theme="dark"] .customer-ai-history,
+html[data-theme="dark"] .customer-ai-quick-questions button{
+  background:#223244!important;border-color:#40566d!important;color:#e6eef6!important;box-shadow:none!important;
+}
+html[data-theme="dark"] .customer-ai-message.user{background:#245b8e!important;color:#fff!important}
+html[data-theme="dark"] .customer-ai-history article{border-color:#40566d!important}
+html[data-theme="dark"] .customer-ai-modal footer{background:#192736!important}
+html[data-theme="dark"] body[data-session-page="customer"] img{filter:none!important;opacity:1!important}

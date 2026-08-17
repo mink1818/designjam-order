@@ -123,6 +123,20 @@ html[data-theme="dark"] .movement-row.adjust .movement-quantity{color:#bbb7ff!im
 html[data-theme="dark"] .movement-title-row>div:first-child span,
 html[data-theme="dark"] .inventory-heading span,
 html[data-theme="dark"] .movement-meta{color:#b8c7da!important}
+/* V6.6.4 최근 스캔 및 상단 도구의 밝은 배경 제거 */
+html[data-theme="dark"] .scan-row{border-bottom-color:#40536b!important;color:#eef5ff!important}
+html[data-theme="dark"] .scan-row.mode-in{background:#153627!important;border-left-color:#2cc77a!important}
+html[data-theme="dark"] .scan-row.mode-in strong{color:#75e4a9!important}
+html[data-theme="dark"] .scan-row.mode-out{background:#42242a!important;border-left-color:#ef6b76!important}
+html[data-theme="dark"] .scan-row.mode-out strong{color:#ff9ca7!important}
+html[data-theme="dark"] .scan-row.fail{background:#42321f!important;border-left-color:#f0a94b!important}
+html[data-theme="dark"] .scan-row.fail strong{color:#ffd18a!important}
+html[data-theme="dark"] .scan-row small,
+html[data-theme="dark"] .scan-row time{color:#d5e0ec!important}
+html[data-theme="dark"] .scanner-meta button{background:#26364b!important;color:#f8fafc!important;border:1px solid #52637b!important}
+html[data-theme="dark"] .scanner-meta button:hover{background:#31465f!important}
+html[data-theme="dark"] .scanner-meta button:disabled{background:#202b3a!important;color:#7f8da3!important;border-color:#39485b!important}
+html[data-theme="dark"] .scanner-meta input{background:#0f1726!important;color:#fff!important;border-color:#5b708a!important}
 @media(max-width:900px){html[data-theme="dark"] .inventory-search-tools{background:#172234!important}}
 
 /* V6.4.6 S/B/I 출고지 재고 일괄수정 */
