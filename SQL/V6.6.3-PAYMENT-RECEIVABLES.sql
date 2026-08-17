@@ -20,6 +20,27 @@ create table if not exists public.order_payment_records (
 );
 create index if not exists order_payment_records_status_idx on public.order_payment_records(payment_status,updated_at desc);
 
+-- V6.6.4: 이 기능을 처음 적용하는 순간 이미 출고완료였던 과거 주문은 관리 대상에서 제외합니다.
+-- 한 번 기준시각이 저장된 뒤에는 현재 미출고 주문과 이후 신규 주문의 입금이력이 출고완료 후에도 유지됩니다.
+create table if not exists public.order_payment_feature_config (
+ id boolean primary key default true check(id=true),
+ activated_at timestamptz not null default now()
+);
+do $$
+begin
+ if not exists(select 1 from public.order_payment_feature_config where id=true) then
+  delete from public.order_payment_records p
+  where exists(
+   select 1 from public.orders o
+   where o.order_number=p.order_number
+     and coalesce(o.customer_id::text,'')=p.customer_key
+   group by o.order_number,coalesce(o.customer_id::text,'')
+   having bool_and(coalesce(o.status,'주문접수')='출고완료')
+  );
+  insert into public.order_payment_feature_config(id,activated_at) values(true,now());
+ end if;
+end$$;
+
 -- 설치 시점에 이미 피킹검증이 끝난 '출고대기' 주문부터 관리합니다.
 -- 그 이전 주문은 입금완료로 간주하고 관리 대상에 넣지 않습니다.
 insert into public.order_payment_records(order_number,customer_key,customer_name,order_amount,paid_amount,payment_status,created_at,updated_at)
