@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-6-4-free-ai-support-b2';
+const CACHE_NAME='design-socks-v6-6-4-free-ai-support-b7';
 const APP_SHELL=[
   '/offline.html?v=66040',
   '/css/main.css?v=66040',
@@ -13,6 +13,7 @@ const APP_SHELL=[
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',
   '/js/customer-ai-support.js?v=66040',
+  '/js/admin-ai-inquiry-alert.js?v=66040',
   '/payments.html?v=66040',
   '/js/payments.js?v=66040',
   '/icons/customer-192.png?v=66040',

@@ -58,28 +58,21 @@
     <button class="product-card stats-status-card done" data-order-filter="출고완료"><span>출고완료</span><strong id="statusDone">0건</strong><small>완료 주문 확인</small></button>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><h2>④ 전체·연도·월별 매출 흐름</h2><span>기간별 매출과 전월 대비를 한 화면에서 비교</span></div>
+  <div class="v3-section-heading stats-group-title"><h2>④ 매출 흐름</h2><span>원하는 그래프를 선택하여 확인 · 기본 일 매출</span></div>
   <section class="product-card stats-period-controls">
     <label>확인할 연도<select id="statsAnalysisYear"></select></label>
     <label>확인할 월<input id="statsAnalysisMonth" type="month"></label>
+    <label>매출 그래프<select id="salesChartMode"><option value="daily" selected>일 매출</option><option value="monthly">월 매출</option><option value="yearly">연 매출</option></select></label>
     <div id="monthlyCompareCards" class="stats-compare-grid"></div>
   </section>
-  <section class="stats-chart-grid stats-timeline-grid">
+  <section class="stats-chart-grid stats-chart-single">
     <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2>전체 연도별 매출</h2><span>전체 주문 이력</span></div>
-      <div id="yearlySalesChart" class="stats-chart" aria-label="연도별 주문금액 차트"></div>
-    </article>
-    <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2 id="monthlySalesTitle">연도 월별 매출</h2><span>1월~12월</span></div>
-      <div id="monthlySalesChart" class="stats-chart" aria-label="월별 주문금액 차트"></div>
-    </article>
-    <article class="product-card stats-panel stats-wide-panel">
-      <div class="v3-section-heading"><h2 id="dailySalesTitle">월 일별 매출</h2><span>선택 월 전체 날짜</span></div>
-      <div id="dailySalesChart" class="stats-chart" aria-label="일별 주문금액 차트"></div>
+      <div class="v3-section-heading"><h2 id="salesChartTitle">일 매출</h2><span id="salesChartCaption">선택 월 전체 날짜</span></div>
+      <div id="salesChart" class="stats-chart" aria-label="선택한 기간의 매출 차트"></div>
     </article>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><h2>⑤ 월별 판매·거래처 토탈 랭킹</h2><span id="monthlyRankingPeriod">선택 월 기준 TOP 10</span></div><section class="stats-ranking-grid">
+  <div class="v3-section-heading stats-group-title stats-ranking-heading"><div><h2>⑤ 월별 판매·거래처 토탈 랭킹</h2><span id="monthlyRankingPeriod">선택 월 기준 TOP 10</span></div><label>랭킹 확인 월<input id="monthlyRankingMonth" type="month"></label></div><section class="stats-ranking-grid">
     <article class="product-card stats-panel">
       <div class="v3-section-heading"><h2>월간 품번 판매량 TOP 10</h2><span>품절·일부품절 제외 · 단위 죽</span></div>
       <div id="topProductsList" class="stats-ranking-list"></div>

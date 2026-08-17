@@ -45,7 +45,7 @@ function getRangeBounds(range){
 }
 
 function setDefaultDates(){
-  const now=new Date();$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));$('statsAnalysisMonth').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const now=new Date(),month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));$('statsAnalysisMonth').value=month;$('monthlyRankingMonth').value=month;
 }
 
 async function fetchAllStatsRows(table,orderColumn,ascending=true){
@@ -60,6 +60,14 @@ async function fetchAllStatsRows(table,orderColumn,ascending=true){
 
 function normalizeStatsCustomerName(value){
   return String(value||'').trim().normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko-KR');
+}
+
+function normalizeStatsItemNumber(value){
+  return String(value||'').trim().normalize('NFKC').toUpperCase().replace(/\s+/g,'').replace(/^[SBI][-_]?(?=\d)/,'');
+}
+
+function statsGroupItemNumbers(value){
+  const source=Array.isArray(value)?value:[value];return source.flatMap(item=>String(item||'').split(/[,\s/]+/)).map(x=>x.trim()).filter(Boolean);
 }
 
 async function loadSourceData(){
@@ -80,8 +88,8 @@ async function loadSourceData(){
   mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
   (groupsResult.data||[]).forEach(g=>{
-    const nums=String(g.item_numbers||g.items||g.product_numbers||'').split(/[,\s/]+/).map(x=>x.trim()).filter(Boolean);
-    nums.forEach(n=>productGroupMap.set(n,g));
+    const nums=statsGroupItemNumbers(g.item_numbers||g.items||g.product_numbers||[]);
+    nums.forEach(n=>productGroupMap.set(normalizeStatsItemNumber(n),g));
   });
   $('statsMessage').textContent='';
 }
@@ -127,7 +135,7 @@ function calculateStats(){
       const num=String(item.item_number||'품번 미입력');
       const savedCode=String(item.warehouse_code||'').trim().toUpperCase();const prefix=num.toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/);const warehouse=['S','B','I'].includes(savedCode)?savedCode:(prefix?.[1]||'');if(warehouse){const w=warehouseSales.get(warehouse);w.qty+=q;w.amount+=amount;}
       const p=products.get(num)||{name:num,qty:0,amount:0};p.qty+=q;p.amount+=amount;products.set(num,p);
-      const group=productGroupMap.get(num);const child=categoryNameMap.get(String(group?.category_id||''));const category=String(mainCategoryNameMap.get(String(child?.main_category_id||''))||child?.name||group?.main_category_name||group?.main_category||group?.category_name||group?.category||'미분류');
+      const group=productGroupMap.get(normalizeStatsItemNumber(num));const child=categoryNameMap.get(String(group?.category_id||''));const category=String(mainCategoryNameMap.get(String(child?.main_category_id||group?.main_category_id||''))||child?.name||group?.main_category_name||group?.main_category||group?.category_name||group?.category||'미분류');
       const c=categories.get(category)||{name:category,qty:0,amount:0};c.qty+=q;c.amount+=amount;categories.set(category,c);
     });
     const orderAmount=productAmount+Number(order.shippingFee||0);totalAmount+=orderAmount;totalQty+=orderQty;
@@ -176,8 +184,8 @@ function compareText(current,previous,unit){
 }
 
 function renderPeriodAnalytics(){
-  const a=buildPeriodAnalytics();$('monthlySalesTitle').textContent=`${a.selectedYear}년 월별 매출`;$('dailySalesTitle').textContent=`${a.selectedMonth.replace('-','년 ')}월 일별 매출`;$('monthlyRankingPeriod').textContent=`${a.selectedMonth.replace('-','년 ')}월 토탈 기준 TOP 10`;
-  renderBarChart('yearlySalesChart',a.yearly,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`);renderBarChart('monthlySalesChart',a.monthly,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,12);renderBarChart('dailySalesChart',a.daily,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,31);
+  const a=buildPeriodAnalytics(),mode=$('salesChartMode')?.value||'daily';$('monthlyRankingPeriod').textContent=`${a.selectedMonth.replace('-','년 ')}월 토탈 기준 TOP 10`;
+  const chart={daily:{title:`${a.selectedMonth.replace('-','년 ')}월 일 매출`,caption:'선택 월 전체 날짜',rows:a.daily,limit:31},monthly:{title:`${a.selectedYear}년 월 매출`,caption:'1월~12월',rows:a.monthly,limit:12},yearly:{title:'연 매출',caption:'전체 주문 이력',rows:a.yearly,limit:0}}[mode];$('salesChartTitle').textContent=chart.title;$('salesChartCaption').textContent=chart.caption;renderBarChart('salesChart',chart.rows,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,chart.limit);
   $('monthlyCompareCards').innerHTML=`<article><span>선택 월 매출</span><strong>${compareText(a.current.amount,a.previous.amount,'원')}</strong></article><article><span>선택 월 출고수량</span><strong>${compareText(a.current.qty,a.previous.qty,'죽')}</strong></article><article><span>선택 월 주문건수</span><strong>${compareText(a.current.orders,a.previous.orders,'건')}</strong></article>`;
   renderRanking('topProductsList',a.current.products,'product');renderRanking('topCustomersList',a.current.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`${a.selectedMonth.replace('-','년 ')}월 전체 ${money(a.current.customers.length)}곳 중 상위 10곳 · 배송비 포함`;
   return a;
@@ -239,7 +247,7 @@ function bindEvents(){
   $('statsRangeButtons').querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{currentRange=btn.dataset.range;$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));renderAll();}));
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
   $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
-  $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',renderAll);
+  $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;renderAll()});$('salesChartMode').addEventListener('change',renderAll);
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
 }
 
