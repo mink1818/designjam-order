@@ -68,10 +68,9 @@ async function loadUnpaidCustomers(){
     const paymentMap=new Map(payments.map(x=>[`${x.order_number}::${x.customer_key||''}`,Number(x.paid_amount||0)])),orderMap=new Map();
     orders.forEach(row=>{const key=`${row.order_number}::${row.customer_id||''}`;if(!orderMap.has(key))orderMap.set(key,{orderNumber:row.order_number,customerId:String(row.customer_id||''),name:row.customer_name||'거래처 미입력',total:0,shipping:0});const g=orderMap.get(key),ordered=Number(row.qty||0),soldout=Math.min(ordered,Number(row.soldout_qty||(row.is_soldout?ordered:0)));g.total+=Math.max(0,ordered-soldout)*Number(row.price||0);g.shipping=Math.max(g.shipping,Number(row.shipping_fee||0))});
     const customerMap=new Map();let unpaidOrders=0,unpaidTotal=0;
-    orderMap.forEach((g,key)=>{if(!paymentMap.has(key))return;const total=g.total+g.shipping,paid=paymentMap.get(key)||0,balance=Math.max(0,total-paid);if(balance<=0)return;unpaidOrders++;unpaidTotal+=balance;const ck=g.customerId||g.name;if(!customerMap.has(ck))customerMap.set(ck,{...g,count:0,balance:0});const c=customerMap.get(ck);c.count++;c.balance+=balance});
-    setText('unpaidOrderCount',unpaidOrders);setText('unpaidOrderAmount',`${unpaidTotal.toLocaleString()}원`);
-    const list=[...customerMap.values()].sort((a,b)=>b.balance-a.balance);panel.hidden=!list.length;box.innerHTML=list.slice(0,20).map(c=>`<button type="button" data-href="admin.html?view=orders&status=전체&payment=unpaid&search=${encodeURIComponent(c.name)}"><b>${esc(c.name)}</b><span>${c.count}건</span><strong>${c.balance.toLocaleString()}원 미입금</strong></button>`).join('');box.querySelectorAll('[data-href]').forEach(b=>b.onclick=()=>location.href=b.dataset.href);
-  }catch(error){console.warn('미입금 현황 조회 실패:',error.message);panel.hidden=true;setText('unpaidOrderCount','-');setText('unpaidOrderAmount','SQL 확인')}
+    orderMap.forEach((g,key)=>{if(!paymentMap.has(key))return;const total=g.total+g.shipping,paid=paymentMap.get(key)||0,balance=Math.max(0,total-paid);if(balance<=0)return;unpaidOrders++;unpaidTotal+=balance;const ck=String(g.name||'거래처 미입력').normalize('NFKC').replace(/\s+/g,'').toLowerCase();if(!customerMap.has(ck))customerMap.set(ck,{...g,count:0,balance:0});const c=customerMap.get(ck);c.count++;c.balance+=balance});
+    const list=[...customerMap.values()].sort((a,b)=>b.balance-a.balance);setText('unpaidCustomerCount',list.length);setText('unpaidCustomerSummary',`${list.length}곳 · ${unpaidOrders}건 · 미수금 ${unpaidTotal.toLocaleString()}원`);panel.hidden=true;box.innerHTML=list.length?list.slice(0,50).map(c=>`<button type="button" data-href="admin.html?view=orders&status=전체&payment=unpaid&search=${encodeURIComponent(c.name)}"><b>${esc(c.name)}</b><span>${c.count}건</span><strong>${c.balance.toLocaleString()}원 미입금</strong></button>`).join(''):'<p>미입금 거래처가 없습니다.</p>';box.querySelectorAll('[data-href]').forEach(b=>b.onclick=()=>location.href=b.dataset.href);
+  }catch(error){console.warn('미입금 현황 조회 실패:',error.message);panel.hidden=true;setText('unpaidCustomerCount','-')}
 }
 
 async function loadHandwritingTrainingStatus(){
@@ -125,6 +124,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.querySelectorAll('[data-link]').forEach(el=>el.addEventListener('click',()=>location.href=el.dataset.link));
   document.getElementById('refreshDashboardBtn')?.addEventListener('click',loadDashboard);
   document.getElementById('markAllReadBtn')?.addEventListener('click',markAllRead);
+  document.getElementById('unpaidCustomerToggle')?.addEventListener('click',()=>{const panel=document.getElementById('unpaidCustomerPanel');if(!panel)return;panel.hidden=!panel.hidden;if(!panel.hidden)panel.scrollIntoView({behavior:'smooth',block:'start'})});
   await loadDashboard();
 });
 

@@ -2,7 +2,7 @@
   'use strict';
   const app=document.body?.dataset?.pwaApp||'customer';
   const name=app==='admin'?'디자인 삭스 주문관리 (관리자)':'디자인 삭스 주문관리 (거래처)';
-  const icon=app==='admin'?'/icons/admin-192.png?v=66030':'/icons/customer-192.png?v=66030';
+  const icon=app==='admin'?'/icons/admin-192.png?v=66040':'/icons/customer-192.png?v=66040';
   let deferredPrompt=null;
 
   function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
@@ -61,7 +61,7 @@
             <div class="ds-step"><span class="ds-step-num">2</span><div><b>홈 화면에 추가</b><p>메뉴에서 <b>설치·바로가기 만들기</b> 또는 <b>현재 페이지 추가 → 홈 화면</b>을 누르세요.</p></div></div>
             <div class="ds-step"><span class="ds-step-num">3</span><div><b>홈 화면에서 실행</b><p>추가된 디자인 삭스 아이콘을 누르면 앱처럼 바로 열립니다.</p></div></div>
             <div class="ds-full-guide-image">
-              <img src="/images/install-guide/android-full-guide.jpg?v=66030" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
+              <img src="/images/install-guide/android-full-guide.jpg?v=66040" alt="디자인 삭스 홈 화면 추가 전체 안내" loading="eager" decoding="async" data-guide-image>
             </div>
             <div class="ds-warning" style="margin-top:14px"><b>안내 사진을 누르면 크게 볼 수 있습니다.</b><br>사진의 빨간 표시를 순서대로 누르면 설치가 완료됩니다.</div>
           </div>
@@ -219,7 +219,7 @@
         const applied=sessionStorage.getItem('ds_sw_reloaded_version');
         if(current&&applied!==current){reloading=true;sessionStorage.setItem('ds_sw_reloaded_version',current);location.reload()}
       });
-      navigator.serviceWorker.register('/service-worker.js?v=66030').then(reg=>{
+      navigator.serviceWorker.register('/service-worker.js?v=66040').then(reg=>{
         reg.update();
         if(reg.waiting)reg.waiting.postMessage('SKIP_WAITING');
         reg.addEventListener('updatefound',()=>{

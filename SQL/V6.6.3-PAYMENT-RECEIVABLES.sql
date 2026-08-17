@@ -20,14 +20,15 @@ create table if not exists public.order_payment_records (
 );
 create index if not exists order_payment_records_status_idx on public.order_payment_records(payment_status,updated_at desc);
 
--- 설치 시점의 진행 주문과 최근 30일 주문만 미입금 관리 대상으로 시작합니다.
--- 오래된 과거 주문이 전부 미수금으로 잡히는 현상을 방지합니다.
+-- 설치 시점에 이미 피킹검증이 끝난 '출고대기' 주문부터 관리합니다.
+-- 그 이전 주문은 입금완료로 간주하고 관리 대상에 넣지 않습니다.
 insert into public.order_payment_records(order_number,customer_key,customer_name,order_amount,paid_amount,payment_status,created_at,updated_at)
 select o.order_number,coalesce(o.customer_id::text,''),max(coalesce(o.customer_name,'')),
  sum(greatest(0,coalesce(o.qty,0)-case when coalesce(o.is_soldout,false) then coalesce(o.qty,0) else coalesce(o.soldout_qty,0) end)*coalesce(o.price,0))+max(coalesce(o.shipping_fee,0)),
  0,'미입금',min(coalesce(o.created_at,now())),now()
 from public.orders o
-where coalesce(o.status,'주문접수')<>'출고완료' or coalesce(o.shipped_at,o.created_at)>=now()-interval '30 days'
+where coalesce(o.status,'주문접수')='주문접수'
+  and coalesce(o.picking_status,'') in ('검증완료','부분품절 검증완료')
 group by o.order_number,coalesce(o.customer_id::text,'')
 on conflict(order_number,customer_key) do nothing;
 

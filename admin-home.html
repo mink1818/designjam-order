@@ -9,19 +9,19 @@
   <meta property="og:description" content="디자인 삭스 관리자용 주문·출고 관리 시스템">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://designjam-order.vercel.app/admin-home.html">
-  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66030">
+  <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66040">
 <title>디자인 삭스 주문관리 (관리자)</title>
-<link rel="stylesheet" href="css/admin.css?v=66030">
+<link rel="stylesheet" href="css/admin.css?v=66040">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="디자인 삭스 관리자">
-  <link rel="manifest" href="manifest-admin.webmanifest?v=66030">
-  <link rel="icon" href="icons/admin-192.png?v=66030">
-  <link rel="apple-touch-icon" href="icons/admin-180.png?v=66030">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=66040">
+  <link rel="icon" href="icons/admin-192.png?v=66040">
+  <link rel="apple-touch-icon" href="icons/admin-180.png?v=66040">
 </head>
-<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.3">
+<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.4">
 <header><h1>🧦 디자인 삭스 주문관리</h1><p>관리자 운영 대시보드</p></header>
 <main class="container">
   <section id="handwritingTrainingPanel" class="handwriting-training-panel" hidden><strong>✍️ 손글씨 학습자료</strong><span id="handwritingTrainingStatus">저장된 교정자료를 확인하는 중입니다.</span></section>
@@ -37,10 +37,10 @@
     <button class="v3-metric-card" data-link="soldout-products.html"><span>품절상품</span><strong id="soldoutCount">-</strong><small>품번</small></button>
     <button class="v3-metric-card" data-link="members.html?filter=waiting"><span>승인 대기</span><strong id="waitingCustomerCount">-</strong><small>곳</small></button>
     <button class="v3-metric-card" data-link="members.html"><span>전체 거래처</span><strong id="customerCount">-</strong><small>곳</small></button>
-    <button class="v3-metric-card unpaid-metric-card" data-link="admin.html?view=orders&status=전체&payment=unpaid"><span>미입금</span><strong id="unpaidOrderCount">-</strong><small id="unpaidOrderAmount">조회 중</small></button>
+    <button class="v3-metric-card unpaid-metric-card" id="unpaidCustomerToggle" type="button"><span>미입금 거래처</span><strong id="unpaidCustomerCount">-</strong><small>곳 · 눌러서 확인</small></button>
   </section>
   <section id="unpaidCustomerPanel" class="v3-dashboard-section unpaid-customer-panel" hidden>
-    <div class="v3-section-heading"><h2>🔴 미입금 거래처</h2><span>누르면 주문관리에서 해당 거래처의 미입금 주문을 확인합니다.</span></div>
+    <div class="v3-section-heading"><h2>🔴 미입금 거래처</h2><span id="unpaidCustomerSummary">거래처별로 묶어서 표시합니다.</span></div>
     <div id="unpaidCustomerList" class="unpaid-customer-list"></div>
   </section>
 
@@ -57,6 +57,7 @@
       <button class="v3-menu-card" onclick="location.href='members.html'"><b>🏢 거래처관리</b><span>목록·승인·등급·메모·최근 주문</span></button>
       <button class="v3-menu-card" onclick="location.href='deleted-orders.html'"><b>🗂️ 삭제 주문 이력</b><span>삭제 전 주문 원본·처리자·시간 확인</span></button>
       <button class="v3-menu-card" onclick="location.href='notices.html'"><b>📢 공지·이벤트</b><span>공지·특가·신상품 등록</span></button>
+      <button class="v3-menu-card" onclick="location.href='ai-inquiries.html'"><b>💬 거래처 문의관리</b><span>자동답변 불가 문의·관리자 답변</span></button>
       <button class="v3-menu-card" onclick="location.href='stats.html'"><b>📈 통계</b><span>주문·거래처·상품·월별 통계</span></button>
       <button class="v3-menu-card" onclick="location.href='settings.html'"><b>⚙️ 환경설정</b><span>입금계좌·관리자 계정·시스템 설정</span></button>
       <button class="v3-menu-card preview-menu-card" type="button" onclick="window.open('index.html?adminPreview=1','_blank','noopener')"><b>👀 거래처 화면 미리보기</b><span>거래처 화면을 주문 없이 확인</span></button>
@@ -68,14 +69,14 @@
     <div id="dashboardNotificationList" class="v3-notification-list"><p class="empty-copy">알림을 불러오는 중입니다.</p></div>
   </section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66030"></script>
-<script src="js/ui-preferences.js?v=66030"></script>
-<script src="js/admin-home.js?v=66030"></script>
-<script src="js/session-status.js?v=66030"></script>
-<script src="js/pwa.js?v=66030"></script>
-<script src="js/admin-page-transition.js?v=66030"></script>
-<script src="js/version-badge.js?v=66030"></script>
-<script src="js/back-navigation.js?v=66030"></script>
-<script src="js/admin-mobile-nav.js?v=66030"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script>
+<script src="js/ui-preferences.js?v=66040"></script>
+<script src="js/admin-home.js?v=66040"></script>
+<script src="js/session-status.js?v=66040"></script>
+<script src="js/pwa.js?v=66040"></script>
+<script src="js/admin-page-transition.js?v=66040"></script>
+<script src="js/version-badge.js?v=66040"></script>
+<script src="js/back-navigation.js?v=66040"></script>
+<script src="js/admin-mobile-nav.js?v=66040"></script>
 </body>
 </html>

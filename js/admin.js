@@ -574,8 +574,9 @@ group.items.forEach(item => {
 
 summaryTotal += Number(group.shipping_fee || 0);
     const paymentRecord=orderPaymentRecords.get(paymentRecordKey(group.orderNumber,group.customerId))||{};
+    const paymentTracked=Boolean(paymentRecord.id);
     const paidAmount=Math.max(0,Number(paymentRecord.paid_amount||0));
-    const paymentStatus=paidAmount<=0?'미입금':paidAmount<summaryTotal?'일부입금':'입금완료';
+    const paymentStatus=!paymentTracked?'이전주문':paidAmount<=0?'미입금':paidAmount<summaryTotal?'일부입금':'입금완료';
 
     getOrderWarehouseSections(group.items).forEach(section => {
       const sectionOrderedQty = section.items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
@@ -629,9 +630,10 @@ summaryTotal += Number(group.shipping_fee || 0);
     <span class="mobile-order-date">${isDone ? `출고 ${formatMobileOrderDate(group.completedAt)}` : formatMobileOrderDate(group.createdAt)}</span>
     <strong class="mobile-order-qty">${summaryQty}죽</strong>
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
+    <label class="order-payment-check mobile-payment-check ${!paymentTracked?'excluded':paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} ${!paymentTracked?'disabled':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${!paymentTracked?'이전주문':paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>
   </div>
   <div class="order-status-stack">
-    <label class="order-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>
+    <label class="order-payment-check desktop-payment-check ${!paymentTracked?'excluded':paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} ${!paymentTracked?'disabled':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${!paymentTracked?'이전주문':paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
@@ -646,7 +648,7 @@ class="order-detail">
 
         ${renderOrderRevisionPanel(group)}
 
-        <section class="order-payment-detail ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><div><strong>입금상태</strong><span>${paymentStatus}</span><small>주문금액 ${summaryTotal.toLocaleString()}원 · 입금 ${paidAmount.toLocaleString()}원 · 미수 ${Math.max(0,summaryTotal-paidAmount).toLocaleString()}원${paymentRecord.updated_at?`<br>최근 확인: ${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatOrderDateTime(paymentRecord.updated_at)}`:''}</small></div><span class="payment-detail-actions"><button type="button" onclick="togglePartialPaymentEditor(${index})">일부입금 입력</button><button type="button" class="gray-btn" onclick="showPaymentHistory(${index},'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}')">변경기록</button></span></section><div id="partial-payment-${index}" class="partial-payment-editor" hidden><label>현재까지 받은 금액<input type="number" min="0" step="100" value="${paidAmount}"></label><button type="button" onclick="savePartialPayment(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}')">저장</button></div><div id="payment-history-${index}" class="payment-history-list" hidden></div>
+        ${paymentTracked?`<section class="order-payment-detail ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><div><strong>입금상태</strong><span>${paymentStatus}</span><small>주문금액 ${summaryTotal.toLocaleString()}원 · 입금 ${paidAmount.toLocaleString()}원 · 미수 ${Math.max(0,summaryTotal-paidAmount).toLocaleString()}원${paymentRecord.updated_at?`<br>최근 확인: ${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatOrderDateTime(paymentRecord.updated_at)}`:''}</small></div><span class="payment-detail-actions"><button type="button" onclick="togglePartialPaymentEditor(${index})">일부입금 입력</button><button type="button" class="gray-btn" onclick="showPaymentHistory(${index},'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}')">변경기록</button></span></section><div id="partial-payment-${index}" class="partial-payment-editor" hidden><label>현재까지 받은 금액<input type="number" min="0" step="100" value="${paidAmount}"></label><button type="button" onclick="savePartialPayment(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}')">저장</button></div><div id="payment-history-${index}" class="payment-history-list" hidden></div>`:`<section class="order-payment-detail excluded"><div><strong>입금관리 제외</strong><small>기능 적용 이전 주문으로 입금완료 처리된 과거 주문입니다.</small></div></section>`}
 
         ${renderOrderItemEditor(group, index)}
         ${canDeletePendingOrder(group)?`<div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deletePendingAdminOrder('${escapeAdminAttr(group.orderNumber)}')">주문접수건 삭제</button><small>피킹 시작 전 주문만 삭제할 수 있으며 삭제이력에 보관됩니다.</small></div>`:''}
@@ -1129,7 +1131,7 @@ function openStatement(orderNumber) {
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
   const marker=document.createElement('meta');marker.id='authenticatedAdminChrome';document.head.appendChild(marker);
-  ['js/session-status.js?v=66030','js/admin-mobile-nav.js?v=66030'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
+  ['js/session-status.js?v=66040','js/admin-mobile-nav.js?v=66040'].forEach(src=>{const script=document.createElement('script');script.src=src;script.defer=true;document.body.appendChild(script)});
 }
 
 async function initializeAdminPage() {

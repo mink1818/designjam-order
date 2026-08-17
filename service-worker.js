@@ -1,24 +1,25 @@
-const CACHE_NAME='design-socks-v6-6-3-inline-payments-b1';
+const CACHE_NAME='design-socks-v6-6-4-free-ai-support-b2';
 const APP_SHELL=[
-  '/offline.html?v=66030',
-  '/css/main.css?v=66030',
-  '/css/admin.css?v=66030',
-  '/css/statement.css?v=66030',
-  '/customer-share-document.html?v=66030',
-  '/css/customer-share-document.css?v=66030',
-  '/js/customer-share-document.js?v=66030',
-  '/js/pwa.js?v=66030',
-  '/js/version-badge.js?v=66030',
-  '/js/back-navigation.js?v=66030',
-  '/js/free-handwriting-ocr.js?v=66030',
-  '/js/emergency-notice-modal.js?v=66030',
-  '/payments.html?v=66030',
-  '/js/payments.js?v=66030',
-  '/icons/customer-192.png?v=66030',
-  '/icons/customer-512.png?v=66030',
-  '/icons/admin-192.png?v=66030',
-  '/icons/admin-512.png?v=66030',
-  '/images/install-guide/android-full-guide.jpg?v=66030'
+  '/offline.html?v=66040',
+  '/css/main.css?v=66040',
+  '/css/admin.css?v=66040',
+  '/css/statement.css?v=66040',
+  '/customer-share-document.html?v=66040',
+  '/css/customer-share-document.css?v=66040',
+  '/js/customer-share-document.js?v=66040',
+  '/js/pwa.js?v=66040',
+  '/js/version-badge.js?v=66040',
+  '/js/back-navigation.js?v=66040',
+  '/js/free-handwriting-ocr.js?v=66040',
+  '/js/emergency-notice-modal.js?v=66040',
+  '/js/customer-ai-support.js?v=66040',
+  '/payments.html?v=66040',
+  '/js/payments.js?v=66040',
+  '/icons/customer-192.png?v=66040',
+  '/icons/customer-512.png?v=66040',
+  '/icons/admin-192.png?v=66040',
+  '/icons/admin-512.png?v=66040',
+  '/images/install-guide/android-full-guide.jpg?v=66040'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
@@ -38,7 +39,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=66030');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=66040');
       throw new Error('offline');
     })
   );
