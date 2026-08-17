@@ -177,3 +177,32 @@ html[data-theme="dark"] .order-pick-card .pick-order-counts{color:#e2e8f0!import
  .order-pick-card .pick-order-counts{grid-column:1/-1;grid-row:auto;text-align:left;white-space:normal}
  .order-pick-card .pick-order-number{font-size:11px!important}
 }
+
+/* V6.6.5 다크모드의 밝은 상태칸과 글자 대비 보정 */
+html[data-theme="dark"] body.picking-page .pick-order-summary span,
+html[data-theme="dark"] body.picking-page .pick-order-summary strong{
+ background:#26394d!important;border:1px solid #4a627a!important;color:#edf5fc!important;
+}
+html[data-theme="dark"] body.picking-page .warehouse-summary{border:1px solid #52677d!important;color:#edf5fc!important}
+html[data-theme="dark"] body.picking-page .warehouse-summary.warehouse-s{background:#203b5e!important;border-color:#4774a8!important;color:#bfdbfe!important}
+html[data-theme="dark"] body.picking-page .warehouse-summary.warehouse-b{background:#193f2c!important;border-color:#367b52!important;color:#bbf7d0!important}
+html[data-theme="dark"] body.picking-page .warehouse-summary.warehouse-i{background:#493719!important;border-color:#8b6a2f!important;color:#fde68a!important}
+html[data-theme="dark"] body.picking-page .soldout-check,
+html[data-theme="dark"] body.picking-page .soldout-check *{
+ color:#ffe0a3!important;
+}
+html[data-theme="dark"] body.picking-page .soldout-check{
+ background:#4a351c!important;border-color:#9a7135!important;
+}
+html[data-theme="dark"] body.picking-page .picking-state.soldout{
+ background:#4a2429!important;border:1px solid #a85562!important;color:#fecaca!important;
+}
+html[data-theme="dark"] body.picking-page .proxy-order-badge{background:#183f3a!important;color:#99f6e4!important}
+html[data-theme="dark"] body.picking-page .picking-session-button:not(.active){background:#183f2d!important;border-color:#3b8a5c!important;color:#bbf7d0!important}
+html[data-theme="dark"] body.picking-page .warehouse-outbound-check,
+html[data-theme="dark"] body.picking-page .warehouse-outbound-check *{color:#e8f1fa!important}
+html[data-theme="dark"] body.picking-page .warehouse-check-s{border-color:#5b8def!important}
+html[data-theme="dark"] body.picking-page .warehouse-check-b{border-color:#45a968!important}
+html[data-theme="dark"] body.picking-page .warehouse-check-i{border-color:#d39a42!important}
+html[data-theme="dark"] body.picking-page .pick-stock-warning{background:#4b2429!important;color:#fecaca!important}
+html[data-theme="dark"] body.picking-page .pick-stock-warning.unregistered{background:#493719!important;color:#fde68a!important}

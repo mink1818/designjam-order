@@ -2796,3 +2796,21 @@ html[data-theme="dark"] body[data-session-page="admin"] .ai-inquiry-card textare
 }
 html[data-theme="dark"] body[data-session-page="admin"] .ai-inquiry-card header small{color:#cbd5e1!important}
 html[data-theme="dark"] body[data-session-page="admin"] .ai-force-completed{background:#26364b!important;color:#d8e3ef!important}
+
+/* V6.6.5 밝은 상태 배경 위 글자 누락 방지 */
+html[data-theme="dark"] body[data-session-page="admin"] .proxy-order-badge,
+html[data-theme="dark"] body[data-session-page="admin"] .soldout-order-badge,
+html[data-theme="dark"] body[data-session-page="admin"] .order-status-badge,
+html[data-theme="dark"] body[data-session-page="admin"] .payment-status{
+ border-color:#52677d!important;color:#eef5fb!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .proxy-order-badge{background:#183f3a!important;color:#99f6e4!important}
+html[data-theme="dark"] body[data-session-page="admin"] .soldout-order-badge{background:#4a2429!important;color:#fecaca!important}
+html[data-theme="dark"] body[data-session-page="admin"] .order-payment-check,
+html[data-theme="dark"] body[data-session-page="admin"] .order-payment-detail,
+html[data-theme="dark"] body[data-session-page="admin"] .partial-payment-editor{
+ background:#243448!important;border-color:#52677d!important;color:#edf5fc!important;
+}
+html[data-theme="dark"] body[data-session-page="admin"] .order-payment-check *,
+html[data-theme="dark"] body[data-session-page="admin"] .order-payment-detail *,
+html[data-theme="dark"] body[data-session-page="admin"] .partial-payment-editor *{color:inherit!important}
