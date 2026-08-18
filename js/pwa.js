@@ -219,7 +219,7 @@
         const applied=sessionStorage.getItem('ds_sw_reloaded_version');
         if(current&&applied!==current){reloading=true;sessionStorage.setItem('ds_sw_reloaded_version',current);location.reload()}
       });
-      navigator.serviceWorker.register('/service-worker.js?v=66130').then(reg=>{
+      navigator.serviceWorker.register('/service-worker.js?v=66140').then(reg=>{
         reg.update();
         if(reg.waiting)reg.waiting.postMessage('SKIP_WAITING');
         reg.addEventListener('updatefound',()=>{

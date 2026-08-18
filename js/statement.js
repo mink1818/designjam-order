@@ -261,12 +261,12 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
         <span>${escapeHtml(customerOwnerName || first.customer_owner_name || "-")}</span>
       </div>
 
-      <div class="full-row info-order-number">
+      <div class="info-order-number">
         <strong>주문번호</strong>
         <span>${escapeHtml(first.order_number)}</span>
       </div>
 
-      <div class="full-row info-order-status">
+      <div class="info-order-status">
         <strong>주문상태</strong>
         <span>${escapeHtml(first.status || "-")}</span>
       </div>
