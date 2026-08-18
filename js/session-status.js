@@ -217,16 +217,20 @@
     if (!sb || adminPresenceUserId === userId) return;
     if (adminPresenceTimer) clearInterval(adminPresenceTimer);
     adminPresenceUserId = userId;
-    const touch = async () => {
+    let lastPresenceTouch = 0;
+    const touch = async (force = false) => {
       if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (!force && now - lastPresenceTouch < 110000) return;
+      lastPresenceTouch = now;
       try {
         await sb.rpc("touch_admin_presence", { p_device_info: adminDeviceInfo() });
-      } catch (_) {}
+      } catch (_) { lastPresenceTouch = 0; }
     };
-    touch();
-    adminPresenceTimer = setInterval(touch, 60000);
+    touch(true);
+    adminPresenceTimer = setInterval(touch, 120000);
     ["pointerdown", "keydown", "touchstart"].forEach(eventName => {
-      document.addEventListener(eventName, touch, { passive: true });
+      document.addEventListener(eventName, () => touch(false), { passive: true });
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") touch();

@@ -155,11 +155,18 @@ async function loadStatement() {
     const result = await supabaseClient.from("product_groups").select("title,item_numbers");
     if (!result.error) productGroups = result.data || [];
   } catch (_) {}
+  let customerOwnerName = data[0].customer_owner_name || "";
+  if (!customerOwnerName && data[0].customer_id) {
+    try {
+      const profile = await supabaseClient.from("customers").select("owner_name,representative").eq("id", data[0].customer_id).maybeSingle();
+      customerOwnerName = profile.data?.owner_name || profile.data?.representative || "";
+    } catch (_) {}
+  }
   // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.
-  renderStatement(data, productGroups);
+  renderStatement(data, productGroups, customerOwnerName);
 }
 
-function renderStatement(items, productGroups = []) {
+function renderStatement(items, productGroups = [], customerOwnerName = "") {
   const first = items[0];
   const customerName = first.customer_name || "거래처";
   const actualDeliveryName = first.delivery_name || "-";
@@ -249,14 +256,19 @@ function renderStatement(items, productGroups = []) {
         <span data-profile-field="delivery_name">${escapeHtml(actualDeliveryName)}</span>
       </div>
 
-      <div class="info-order-status">
-        <strong>주문상태</strong>
-        <span>${escapeHtml(first.status || "-")}</span>
+      <div class="info-owner-name">
+        <strong>대표자명</strong>
+        <span>${escapeHtml(customerOwnerName || first.customer_owner_name || "-")}</span>
       </div>
 
       <div class="full-row info-order-number">
         <strong>주문번호</strong>
         <span>${escapeHtml(first.order_number)}</span>
+      </div>
+
+      <div class="full-row info-order-status">
+        <strong>주문상태</strong>
+        <span>${escapeHtml(first.status || "-")}</span>
       </div>
 
       <div class="full-row info-memo">
