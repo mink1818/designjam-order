@@ -92,7 +92,8 @@ async function loadMyOrders() {
         memo: order.memo,
         status: order.status,
         revisionStatus: order.customer_revision_status || '',
-        shippingFee: order.shipping_fee || 0,
+        shippingFee: order.shipping_fee_manual === true ? Math.max(0,Number(order.shipping_fee||0)) : 4000,
+        shippingFeeManual: order.shipping_fee_manual === true,
         courier: order.courier || "로젠택배",
         trackingNumber: order.tracking_number || "",
         paymentAccount: {
@@ -108,6 +109,10 @@ async function loadMyOrders() {
       };
     }
     const currentGroup=grouped[order.order_number];
+    if(order.shipping_fee_manual===true){
+      currentGroup.shippingFeeManual=true;
+      currentGroup.shippingFee=Math.max(0,Number(order.shipping_fee||0));
+    }
     if(order.customer_revision_status)currentGroup.revisionStatus=order.customer_revision_status;
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;

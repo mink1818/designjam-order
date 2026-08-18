@@ -230,7 +230,8 @@ try {
         revisionStatus: order.customer_revision_status || '',
         createdAt: order.created_at,
         completedAt: order.shipped_at || latestTimestamp(order.picking_verified_at,order.created_at),
-        shipping_fee: Number(order.shipping_fee) > 0 ? Number(order.shipping_fee) : 4000,
+        shipping_fee: order.shipping_fee_manual === true ? Math.max(0,Number(order.shipping_fee||0)) : 4000,
+        shippingFeeManual: order.shipping_fee_manual === true,
         courier: order.courier || "로젠택배",
         tracking_number: order.tracking_number || "",
         paymentAccountId: order.payment_account_id || "",
@@ -247,6 +248,10 @@ try {
     }
 
     const currentGroup=grouped[groupedKey];
+    if(order.shipping_fee_manual===true){
+      currentGroup.shippingFeeManual=true;
+      currentGroup.shipping_fee=Math.max(0,Number(order.shipping_fee||0));
+    }
     if(order.customer_revision_status)currentGroup.revisionStatus=order.customer_revision_status;
     if(order.delivery_name&&(!currentGroup.deliveryName||currentGroup.deliveryName===currentGroup.customerName))currentGroup.deliveryName=order.delivery_name;
     if(order.delivery_phone&&!currentGroup.deliveryPhone)currentGroup.deliveryPhone=order.delivery_phone;
@@ -674,7 +679,7 @@ class="order-detail">
     class="shipping-input"
     type="number"
     step="500"
-    value="${Number(group.shipping_fee) > 0 ? Number(group.shipping_fee) : 4000}"
+    value="${Math.max(0,Number(group.shipping_fee||0))}"
     min="0"
     data-order="${group.orderNumber}"
     oninput="recalcOrderCard('order-${index}')" disabled
@@ -871,6 +876,7 @@ function queueShippingSave(orderNumber,detail){
 async function persistShippingFields(orderNumber,detail){
   const payload={
     shipping_fee:Number(detail.querySelector('.shipping-input')?.value)||0,
+    shipping_fee_manual:true,
     courier:getCourierValue(detail)||'로젠택배',
     tracking_number:detail.querySelector('.tracking-input')?.value.trim()||''
   };
@@ -900,7 +906,8 @@ async function saveShipping(orderNumber, fee){
     await supabaseClient
     .from("orders")
     .update({
-        shipping_fee:Number(fee)
+        shipping_fee:Number(fee),
+        shipping_fee_manual:true
     })
     .eq("order_number",orderNumber);
 
@@ -1326,6 +1333,7 @@ async function saveOrderPaymentAccount(orderNumber,index,isDone=false){
   const courierSelect=detail.querySelector('.courier-select');
   const trackingInput=detail.querySelector('.tracking-input');
   payload.shipping_fee=Number(shippingInput?.value)||0;
+  payload.shipping_fee_manual=true;
   payload.courier=getCourierValue(detail)||'로젠택배';
   payload.tracking_number=trackingInput?.value.trim()||'';
 

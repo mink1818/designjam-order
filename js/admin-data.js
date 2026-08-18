@@ -61,7 +61,7 @@ async function undoCompletedOrder(orderNumber) {
     })
     .eq("order_number", orderNumber);
   if (cleanupError) {
-    throw new Error(`재고는 복원됐지만 피킹 상태 초기화에 실패했습니다. V6.6.10 SQL을 실행해주세요. ${cleanupError.message}`);
+    throw new Error(`재고는 복원됐지만 피킹 상태 초기화에 실패했습니다. V6.6.11 SQL을 실행해주세요. ${cleanupError.message}`);
   }
   return data;
 }
