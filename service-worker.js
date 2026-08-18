@@ -1,14 +1,14 @@
-const CACHE_NAME='design-socks-v6-6-9-undo-repick-b1';
+const CACHE_NAME='design-socks-v6-6-10-picking-recovery-b1';
 const APP_SHELL=[
-  '/offline.html?v=66100',
-  '/css/main.css?v=66100',
-  '/css/admin.css?v=66100',
+  '/offline.html?v=66110',
+  '/css/main.css?v=66110',
+  '/css/admin.css?v=66110',
   '/css/statement.css?v=66040',
-  '/customer-share-document.html?v=66100',
+  '/customer-share-document.html?v=66110',
   '/css/customer-share-document.css?v=66040',
-  '/js/customer-share-document.js?v=66100',
+  '/js/customer-share-document.js?v=66110',
   '/js/pwa.js?v=66040',
-  '/js/version-badge.js?v=66100',
+  '/js/version-badge.js?v=66110',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',
@@ -42,7 +42,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=66100');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=66110');
       throw new Error('offline');
     })
   );

@@ -65,13 +65,21 @@ async function setOutboundConfirmed(id,code,checked){
 async function setPickingSetting(field,value,message){if(!active)return;if(active.revisionStatus)return renderWork('고객 주문변경 확인 전에는 피킹을 시작할 수 없습니다.','error');if(!isMyActivePicking())return renderWork('내 계정으로 피킹 중인 주문에서만 설정을 변경할 수 있습니다.','error');const orderNumber=active.orderNumber;const {error}=await supabaseClient.from('orders').update({[field]:value}).eq('order_number',orderNumber).eq('picking_assigned_to',currentPicker.id);if(error)return renderWork(`피킹 설정 저장 실패: ${error.message}`,'error');active.items.forEach(row=>row[field]=value);orders.filter(row=>row.order_number===orderNumber).forEach(row=>row[field]=value);if(field==='picking_scan_increment')scanIncrement=Number(value)===10?10:1;buildGroups();active=groups.find(group=>group.orderNumber===orderNumber)||active;renderList();renderWork(message,'success',false);pickingLiveChannel?.send({type:'broadcast',event:'picking-setting',payload:{orderNumber,field,value,assignedTo:currentPicker.id}}).catch(()=>{})}
 function pickingDeviceLabel(){const mobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);return `${mobile?'모바일·태블릿':'PC'} · ${navigator.platform||'기기'}`.slice(0,190)}
 async function releaseMyPreviousPicking(targetOrder){
- const mine=groups.filter(group=>group.orderNumber!==targetOrder&&group.items.some(row=>row.picking_session_active===true&&String(row.picking_assigned_to)===String(currentPicker.id)));
+ const {data,error}=await supabaseClient.from('orders')
+  .select('order_number,customer_name,status,picked_qty,soldout_qty')
+  .eq('picking_assigned_to',currentPicker.id)
+  .eq('picking_session_active',true)
+  .neq('order_number',targetOrder);
+ if(error){renderWork(`이전 피킹 작업 조회 실패: ${error.message}`,'error');return false}
+ const sessionMap=new Map();
+ (data||[]).forEach(row=>{const key=String(row.order_number||'');if(!key)return;const item=sessionMap.get(key)||{orderNumber:key,customerName:row.customer_name||'거래처 미입력',status:row.status||'',hasProgress:false};item.hasProgress=item.hasProgress||Number(row.picked_qty||0)>0||Number(row.soldout_qty||0)>0;sessionMap.set(key,item)});
+ const mine=[...sessionMap.values()];
  if(!mine.length)return true;
- const hasProgress=mine.some(group=>group.items.some(row=>Number(row.picked_qty||0)>0||Number(row.soldout_qty||0)>0));
+ const hasProgress=mine.some(group=>group.hasProgress);
  if(hasProgress&&!confirm(`내 계정에 이전 피킹 작업이 남아 있습니다.\n${mine.map(group=>`· ${group.customerName} (${group.orderNumber})`).join('\n')}\n\n이전 담당만 종료하고 새 주문을 시작할까요?\n기존 피킹수량은 그대로 유지됩니다.`))return false;
  for(const group of mine){
-  const {error}=await supabaseClient.rpc('release_order_picking',{p_order_number:group.orderNumber,p_force:false});
-  if(error){renderWork(`이전 피킹 작업 정리 실패: ${error.message}`,'error');return false}
+  const {error:releaseError}=await supabaseClient.rpc('release_order_picking',{p_order_number:group.orderNumber,p_force:false});
+  if(releaseError){renderWork(`이전 피킹 작업 정리 실패: ${releaseError.message}`,'error');return false}
  }
  return true;
 }
