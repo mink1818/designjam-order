@@ -230,7 +230,7 @@ try {
         revisionStatus: order.customer_revision_status || '',
         createdAt: order.created_at,
         completedAt: order.shipped_at || latestTimestamp(order.picking_verified_at,order.created_at),
-        shipping_fee: order.shipping_fee || 0,
+        shipping_fee: Number(order.shipping_fee) > 0 ? Number(order.shipping_fee) : 4000,
         courier: order.courier || "로젠택배",
         tracking_number: order.tracking_number || "",
         paymentAccountId: order.payment_account_id || "",
@@ -674,7 +674,7 @@ class="order-detail">
     class="shipping-input"
     type="number"
     step="500"
-    value="${group.shipping_fee || 0}"
+    value="${Number(group.shipping_fee) > 0 ? Number(group.shipping_fee) : 4000}"
     min="0"
     data-order="${group.orderNumber}"
     oninput="recalcOrderCard('order-${index}')" disabled
@@ -723,7 +723,7 @@ class="order-detail">
           ${group.status === "출고완료" ? "출고취소·재고복원" : String(group.pickingStatus || '').includes('검증완료') ? "출고완료" : "피킹검증 후 출고가능"}
         </button>
 
-        <button class="cart-btn picking-btn" type="button" ${group.revisionStatus?'disabled title="고객 주문변경 확인을 먼저 완료해주세요"':''} onclick="event.stopPropagation();location.href='picking.html?order=${encodeURIComponent(group.orderNumber)}'">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'변경확인 후 피킹가능':String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작 지시'}</button>
+        <button class="cart-btn picking-btn" type="button" ${group.revisionStatus?'disabled title="고객 주문변경 확인을 먼저 완료해주세요"':''} onclick="event.stopPropagation();openPickingAfterShippingSave('${escapeAdminAttr(group.orderNumber)}',${index})">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'변경확인 후 피킹가능':String(group.pickingStatus || '').includes('검증완료') ? '피킹 결과 확인' : group.pickingStatus === '피킹중' ? '피킹 계속하기' : '피킹 시작 지시'}</button>
         ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
         <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">출고지별 작업지시서 출력</button>
 
@@ -878,10 +878,22 @@ async function persistShippingFields(orderNumber,detail){
   fields.forEach(el=>el.classList.add('field-saving'));
   const {error}=await supabaseClient.from('orders').update(payload).eq('order_number',orderNumber);
   fields.forEach(el=>el.classList.remove('field-saving'));
-  if(error){fields.forEach(el=>el.classList.add('field-save-error'));console.warn('배송정보 자동저장 실패',error);return;}
+  if(error){fields.forEach(el=>el.classList.add('field-save-error'));console.warn('배송정보 자동저장 실패',error);return false;}
   fields.forEach(el=>{el.classList.remove('field-save-error');el.classList.add('field-save-success');setTimeout(()=>el.classList.remove('field-save-success'),900);});
+  return true;
 }
 window.queueShippingSave=queueShippingSave;
+
+async function openPickingAfterShippingSave(orderNumber,index){
+  const detail=document.getElementById(`detail-${index}`);
+  if(detail){
+    clearTimeout(orderShippingSaveTimers.get(orderNumber));
+    const saved=await persistShippingFields(orderNumber,detail);
+    if(saved===false){alert('배송비 저장에 실패하여 피킹 화면으로 이동하지 않았습니다. 다시 저장해주세요.');return;}
+  }
+  location.href=`picking.html?order=${encodeURIComponent(orderNumber)}`;
+}
+window.openPickingAfterShippingSave=openPickingAfterShippingSave;
 
 async function saveShipping(orderNumber, fee){
 
