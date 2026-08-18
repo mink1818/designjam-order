@@ -1,14 +1,14 @@
-const CACHE_NAME='design-socks-v6-6-6-picking-contrast-b1';
+const CACHE_NAME='design-socks-v6-6-7-statement-shipping-b1';
 const APP_SHELL=[
-  '/offline.html?v=66070',
-  '/css/main.css?v=66070',
-  '/css/admin.css?v=66070',
+  '/offline.html?v=66080',
+  '/css/main.css?v=66080',
+  '/css/admin.css?v=66080',
   '/css/statement.css?v=66040',
-  '/customer-share-document.html?v=66040',
+  '/customer-share-document.html?v=66080',
   '/css/customer-share-document.css?v=66040',
-  '/js/customer-share-document.js?v=66040',
+  '/js/customer-share-document.js?v=66080',
   '/js/pwa.js?v=66040',
-  '/js/version-badge.js?v=66070',
+  '/js/version-badge.js?v=66080',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',
@@ -42,7 +42,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=66070');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=66080');
       throw new Error('offline');
     })
   );

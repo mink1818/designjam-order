@@ -173,8 +173,8 @@ function renderStatement(items, productGroups = []) {
     return sum + Number(item.price || 0) * shippedQty;
   }, 0);
 
-  const shippingFee =
-    Number(first.shipping_fee || 0);
+  const savedShippingFee = Number(first.shipping_fee || 0);
+  const shippingFee = savedShippingFee > 0 ? savedShippingFee : 4000;
 
   const finalTotal =
     productTotal + shippingFee;
