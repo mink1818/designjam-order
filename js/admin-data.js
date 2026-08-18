@@ -43,6 +43,26 @@ async function undoCompletedOrder(orderNumber) {
     p_device_name: "주문관리 출고취소"
   });
   if (error) throw error;
+  // 구버전 RPC가 남기던 피킹 담당·세션 상태도 즉시 정리합니다.
+  // 재고는 RPC에서 한 번만 복원하고 여기서는 피킹 상태 필드만 초기화합니다.
+  const { error: cleanupError } = await supabaseClient
+    .from("orders")
+    .update({
+      picking_session_active: false,
+      picking_assigned_to: null,
+      picking_assigned_name: null,
+      picking_assigned_device: null,
+      picking_assigned_at: null,
+      picking_scan_increment: 1,
+      picking_batch_id: null,
+      s_outbound_confirmed: false,
+      b_outbound_confirmed: false,
+      i_outbound_confirmed: false
+    })
+    .eq("order_number", orderNumber);
+  if (cleanupError) {
+    throw new Error(`재고는 복원됐지만 피킹 상태 초기화에 실패했습니다. V6.6.9 SQL을 실행해주세요. ${cleanupError.message}`);
+  }
   return data;
 }
 
