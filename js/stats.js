@@ -147,8 +147,12 @@ function calculateStats(){
   const deleted=deletedOrders.filter(x=>inRange(x.deleted_at));
   const deletedAmount=deleted.reduce((sum,entry)=>{const items=Array.isArray(entry.order_snapshot)?entry.order_snapshot:[];const product=items.reduce((s,x)=>s+(x.is_soldout?0:Number(x.price||0)*Number(x.qty||0)),0);const shipping=Math.max(0,...items.map(x=>Number(x.shipping_fee||0)));return sum+product+shipping;},0);
   const changes=orderChangeHistory.filter(x=>inRange(x.changed_at));const changedOrderCount=new Set(changes.map(x=>x.order_number)).size;
+  const todayKey=localDateKey(new Date());
+  const todayOrders=groupOrders(rawOrders).filter(order=>localDateKey(order.createdAt)===todayKey&&(!completedOnly||order.status==='출고완료'));
+  const todayOrderCount=todayOrders.length;
+  const todayAmount=todayOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
   const customerCount=customers.size,orderCount=orders.length,average=orderCount?Math.round(totalAmount/orderCount):0,completionRate=orderCount?Math.round(doneCount/orderCount*100):0;
-  return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
+  return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,todayAmount,todayOrderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
 }
 
 function availableYears(){
@@ -193,7 +197,7 @@ function renderPeriodAnalytics(){
 
 function renderMetrics(s){
   const cards=[
-    ['현재 주문금액',money(s.totalAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
+    ['당일 매출',money(s.todayAmount),'원'],['당일 주문건수',money(s.todayOrderCount),'건'],['현재 주문금액',money(s.totalAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
   ];
   $('statsCards').innerHTML=cards.map(([label,value,unit])=>`<div class="v3-metric-card"><span>${label}</span><strong>${value}</strong><small>${unit}</small></div>`).join('');
   $('statusAll').textContent=`${s.orderCount.toLocaleString()}건`;$('statusPending').textContent=`${s.pendingCount.toLocaleString()}건`;$('statusDone').textContent=`${s.doneCount.toLocaleString()}건`;

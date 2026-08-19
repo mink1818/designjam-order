@@ -21,7 +21,7 @@
   <link rel="icon" href="icons/admin-192.png?v=66040">
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=66040">
 </head>
-<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.13">
+<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.15">
 <header><h1>🧦 디자인 삭스 주문관리</h1><p>관리자 운영 대시보드</p></header>
 <main class="container">
   <section id="handwritingTrainingPanel" class="handwriting-training-panel" hidden><strong>✍️ 손글씨 학습자료</strong><span id="handwritingTrainingStatus">저장된 교정자료를 확인하는 중입니다.</span></section>
@@ -37,11 +37,11 @@
     <button class="v3-metric-card" data-link="soldout-products.html"><span>품절상품</span><strong id="soldoutCount">-</strong><small>품번</small></button>
     <button class="v3-metric-card" data-link="members.html?filter=waiting"><span>승인 대기</span><strong id="waitingCustomerCount">-</strong><small>곳</small></button>
     <button class="v3-metric-card" data-link="members.html"><span>전체 거래처</span><strong id="customerCount">-</strong><small>곳</small></button>
-    <button class="v3-metric-card unpaid-metric-card" id="unpaidCustomerToggle" type="button"><span>미입금</span><strong id="unpaidCustomerCount">-</strong><small>건 · 눌러서 확인</small></button>
+    <button class="v3-metric-card unpaid-metric-card" id="unpaidCustomerToggle" type="button"><span>누적 미입금</span><strong id="unpaidCustomerCount">-</strong><small>건 · 눌러서 확인</small></button>
     <button class="v3-metric-card inquiry-metric-card" data-link="ai-inquiries.html?v=66048"><span>미답변 문의</span><strong id="unansweredInquiryCount">-</strong><small>건 · 눌러서 확인</small></button>
   </section>
   <section id="unpaidCustomerPanel" class="v3-dashboard-section unpaid-customer-panel" hidden>
-    <div class="v3-section-heading"><h2>🔴 미입금 거래처</h2><span id="unpaidCustomerSummary">거래처별로 묶어서 표시합니다.</span></div>
+    <div class="v3-section-heading"><h2>🔴 누적 미입금 거래처</h2><span id="unpaidCustomerSummary">적용 기준 이후 전체 주문을 거래처별로 묶어 표시합니다.</span></div>
     <div id="unpaidCustomerList" class="unpaid-customer-list"></div>
   </section>
 
@@ -72,11 +72,11 @@
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
-<script src="js/admin-home.js?v=66048"></script>
+<script src="js/admin-home.js?v=66150"></script>
 <script src="js/session-status.js?v=66130"></script>
-<script src="js/pwa.js?v=66140"></script>
+<script src="js/pwa.js?v=66150"></script>
 <script src="js/admin-page-transition.js?v=66040"></script>
-<script src="js/version-badge.js?v=66140"></script>
+<script src="js/version-badge.js?v=66151"></script>
 <script src="js/back-navigation.js?v=66040"></script>
 <script src="js/admin-mobile-nav.js?v=66040"></script>
 </body>

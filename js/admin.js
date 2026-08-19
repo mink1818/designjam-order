@@ -284,7 +284,8 @@ try {
       if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified)) return false;
       if (!["전체","주문접수","출고대기"].includes(adminFilter) && group.status !== adminFilter) return false;
 
-      if (group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
+      // 미입금 조회는 PC·모바일 모두 출고완료 기간 필터와 무관하게 누적 표시합니다.
+      if (requestedPaymentFilter!=='unpaid' && group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
         return false;
       }
       const payment=orderPaymentRecords.get(paymentRecordKey(group.orderNumber,group.customerId));

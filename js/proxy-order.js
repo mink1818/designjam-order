@@ -346,7 +346,10 @@ async function init(){
   proxyPartyHistory=partyHistory||[];
   proxySavedParties=savedDirectory.parties||[];proxySavedDestinations=savedDirectory.destinations||[];
   const productMap=new Map();(groups||[]).forEach(g=>asItemNumbers(g.item_numbers).forEach(n=>productMap.set(normalizeItem(n),{price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').trim().toUpperCase()||null})));
-  items=(inventoryRows||[]).map(x=>{const product=productMap.get(normalizeItem(x.item_number))||{};return{...x,price:rawPrice(x)||product.price||0,warehouse_code:x.warehouse_code||product.warehouse_code||null}});
+  // 일반단가는 상품 묶음에 등록된 판매단가가 운영 기준입니다.
+  // 재고 품번에 과거 단가가 남아 있어도 대신주문에 섞이지 않도록 묶음 단가를 우선합니다.
+  // 거래처별 전용단가는 effectiveProxyPrice()에서 이 기본단가 위에만 적용됩니다.
+  items=(inventoryRows||[]).map(x=>{const product=productMap.get(normalizeItem(x.item_number))||{};return{...x,price:product.price||rawPrice(x)||0,warehouse_code:x.warehouse_code||product.warehouse_code||null}});
   // product_groups에만 있고 inventory_items에는 아직 없는 품번도 대신주문 검색에 노출
   for(const g of groups||[])for(const n of asItemNumbers(g.item_numbers)){const key=normalizeItem(n);if(key&&!items.some(x=>normalizeItem(x.item_number)===key))items.push({item_number:String(n).trim(),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').trim().toUpperCase()||null})}
   items.sort((a,b)=>String(a.item_number).localeCompare(String(b.item_number),'ko',{numeric:true}));

@@ -2805,7 +2805,7 @@ window.uploadExcelProducts = uploadExcelProducts;
 
 async function importCustomerItemPricesFromGrid() {
   const grid = Array.isArray(window.pendingCustomerPriceGrid) ? window.pendingCustomerPriceGrid : [];
-  if (!grid.length) return { saved: 0, unmatched: [], invalid: 0, matchedCustomers: 0, missingSheet: true };
+  if (!grid.length) return { saved: 0, deleted: 0, changed: 0, added: 0, unmatched: [], invalid: 0, matchedCustomers: 0, missingSheet: true };
   const headerKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
   const itemHeaders = ["품번원본","품번","표시품번","상품번호","sku"];
   const headerIndex = grid.findIndex(row => row.some(cell => itemHeaders.includes(headerKey(cell))));
@@ -2814,7 +2814,6 @@ async function importCustomerItemPricesFromGrid() {
   const itemColumn = headers.findIndex(value=>itemHeaders.includes(headerKey(value)));
   const baseColumns = new Set(["순번","묶음명","카테고리","대분류","품번원본","품번","상품번호","sku","기본단가","단가","설명","표시순서","포함브랜드","출고지","표시품번","비고"]);
   const customerColumns = headers.map((name,index)=>({name:String(name).replace(/^(거래처|업체)\s*[:：]\s*/,'').trim(),index})).filter(entry=>entry.name&&!baseColumns.has(headerKey(entry.name)));
-  if (!customerColumns.length) return { saved: 0, unmatched: ["거래처별단가 시트에 실제 등록 거래처명 열이 없습니다."], invalid: 0, matchedCustomers: 0, missingSheet: false };
   const { data: customers, error: customerError } = await supabaseClient.from("customers").select("id,business_name,owner_name,email").eq("is_admin",false);
   if (customerError) throw customerError;
   const customerNameKey=value=>String(value||"").trim().normalize("NFKC").toLowerCase().replace(/[\s._()\[\]{}\-]+/g,"");
@@ -2824,7 +2823,7 @@ async function importCustomerItemPricesFromGrid() {
   const excelCustomerIds=window.pendingCustomerPriceCustomerIds instanceof Map?window.pendingCustomerPriceCustomerIds:new Map();
   const resolveCustomerIds=name=>{const key=customerNameKey(name),excelId=String(excelCustomerIds.get(key)||'').trim(),explicit=customerById.get(excelId);return explicit?[explicit]:(customerByName.get(key)||[])};
   const unmatched = customerColumns.filter(c=>!resolveCustomerIds(c.name).length).map(c=>c.name);
-  const payloadMap = new Map(),namePayloadMap=new Map();let invalid=0;
+  const namePayloadMap=new Map();let invalid=0;
   grid.slice(headerIndex+1).forEach(row=>{
     let itemNumbers=[];
     try { itemNumbers=parseItemPattern(row[itemColumn]); } catch (_) { return; }
@@ -2834,13 +2833,17 @@ async function importCustomerItemPricesFromGrid() {
       if(!Number.isFinite(price)||price<=0||price%50!==0){invalid++;return;}
       const customerIds=resolveCustomerIds(column.name);
       itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");namePayloadMap.set(`${customerNameKey(column.name)}::${normalized}`,{customer_name:column.name,item_number:normalized,price})});
-      customerIds.forEach(customerId=>itemNumbers.forEach(itemNumber=>{const normalized=String(itemNumber).trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/,"");payloadMap.set(`${customerId}::${normalized}`,{customer_id:customerId,item_number:normalized,price,updated_at:new Date().toISOString()})}));
     });
   });
-  const payload=[...payloadMap.values()],namePayload=[...namePayloadMap.values()];let saved=0,nameSaved=0,updatedOpenOrders=0;
-  for(let i=0;i<payload.length;i+=500){const batch=payload.slice(i,i+500).map(({customer_id,item_number,price})=>({customer_id,item_number,price}));const {data,error}=await supabaseClient.rpc("upsert_customer_item_prices",{p_prices:batch});if(error)throw new Error(`거래처별 단가 저장 실패: ${error.message}. V6.5.2 SQL을 먼저 실행해주세요.`);saved+=Number(data?.saved??batch.length);updatedOpenOrders+=Number(data?.updated_open_orders||0);}
-  for(let i=0;i<namePayload.length;i+=500){const batch=namePayload.slice(i,i+500);const {data,error}=await supabaseClient.rpc("upsert_customer_name_item_prices",{p_prices:batch});if(error)throw new Error(`직접입력 거래처 단가 저장 실패: ${error.message}. V6.5.17-CUSTOMER-PRICE-RESYNC.sql을 먼저 실행해주세요.`);nameSaved+=Number(data?.saved??batch.length);}
-  return { saved, nameSaved, updatedOpenOrders, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), nameCustomers:customerColumns.length, missingSheet: false };
+  const namePayload=[...namePayloadMap.values()];
+  const {data:preview,error:previewError}=await supabaseClient.rpc("sync_customer_item_prices_from_excel",{p_prices:namePayload,p_apply:false});
+  if(previewError)throw new Error(`거래처별 단가 동기화 준비 실패: ${previewError.message}. V6.6.14 SQL을 먼저 실행해주세요.`);
+  const added=Number(preview?.added||0),changed=Number(preview?.changed||0),deleted=Number(preview?.deleted||0),removedCustomers=Number(preview?.removed_customers||0);
+  const summary=`거래처별 전용단가를 엑셀 내용과 동일하게 맞춥니다.\n\n· 추가 ${added.toLocaleString()}건\n· 변경 ${changed.toLocaleString()}건\n· 삭제 ${deleted.toLocaleString()}건${removedCustomers?`\n· 전용단가 전체 삭제 거래처 ${removedCustomers.toLocaleString()}곳`:''}\n\n삭제된 단가는 기본단가로 복귀하며, 기존 접수 주문의 단가는 변경되지 않습니다. 계속할까요?`;
+  if(!confirm(summary))throw new Error("거래처별 단가 동기화를 취소했습니다.");
+  const {data:result,error:syncError}=await supabaseClient.rpc("sync_customer_item_prices_from_excel",{p_prices:namePayload,p_apply:true});
+  if(syncError)throw new Error(`거래처별 단가 동기화 실패: ${syncError.message}. V6.6.14 SQL을 확인해주세요.`);
+  return { saved:Number(result?.saved||namePayload.length), nameSaved:Number(result?.saved||namePayload.length), added, changed, deleted, updatedOpenOrders:0, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), nameCustomers:customerColumns.length, missingSheet: false };
 }
 
 function readCustomerPriceCustomerIds(workbook){
@@ -3604,6 +3607,9 @@ async function registerExcelProducts() {
           <span>엑셀에서 빠진 대분류 숨김 <strong>${hiddenMissingMainCount}개</strong></span>
           <span>실패 <strong>${errorCount}개</strong></span>
           <span>거래처별 단가 <strong>${customerPriceResult.saved}개</strong></span>
+          <span>단가 추가 <strong>${customerPriceResult.added||0}개</strong></span>
+          <span>단가 변경 <strong>${customerPriceResult.changed||0}개</strong></span>
+          <span>단가 삭제·기본단가 복귀 <strong>${customerPriceResult.deleted||0}개</strong></span>
           <span>단가 연결 거래처 <strong>${customerPriceResult.matchedCustomers||0}개</strong></span>
           <span>거래처명 단가 <strong>${customerPriceResult.nameSaved||0}개</strong></span>
           <span>거래처명 프로필 <strong>${customerPriceResult.nameCustomers||0}개</strong></span>
