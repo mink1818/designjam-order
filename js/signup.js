@@ -151,11 +151,19 @@ async function signupCustomer() {
 
       if (
         message.toLowerCase().includes("already") ||
-        message.toLowerCase().includes("registered")
+        message.toLowerCase().includes("registered") ||
+        message.toLowerCase().includes("duplicate") ||
+        message.includes("이미 등록된 거래처명")
       ) {
         throw new Error(
-          "이미 가입된 휴대폰번호입니다."
+          message.includes("거래처명")
+            ? "이미 등록된 거래처명입니다. 기존 계정 확인 또는 관리자에게 문의해주세요."
+            : "이미 가입된 휴대폰번호 또는 거래처명입니다."
         );
+      }
+
+      if (message.toLowerCase().includes("database error saving new user")) {
+        throw new Error("이미 등록된 거래처명 또는 휴대폰번호인지 확인해주세요. 계속되면 관리자에게 문의해주세요.");
       }
 
       throw error;

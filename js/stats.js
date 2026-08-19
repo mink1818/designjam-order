@@ -7,6 +7,7 @@ const ADMIN_SESSION_KEY='designjam_admin_session';
 let rawOrders=[];
 let deletedOrders=[];
 let orderChangeHistory=[];
+let paymentRecords=[];
 let productGroupMap=new Map();
 let categoryNameMap=new Map();
 let mainCategoryNameMap=new Map();
@@ -48,10 +49,10 @@ function setDefaultDates(){
   const now=new Date(),month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));$('statsAnalysisMonth').value=month;$('monthlyRankingMonth').value=month;
 }
 
-async function fetchAllStatsRows(table,orderColumn,ascending=true){
+async function fetchAllStatsRows(table,orderColumn,ascending=true,columns='*'){
   const rows=[];
   for(let from=0;;from+=1000){
-    const result=await supabaseClient.from(table).select('*').order(orderColumn,{ascending}).range(from,from+999);
+    const result=await supabaseClient.from(table).select(columns).order(orderColumn,{ascending}).range(from,from+999);
     if(result.error)return {data:rows,error:result.error};
     rows.push(...(result.data||[]));
     if(!result.data||result.data.length<1000)return {data:rows,error:null};
@@ -72,18 +73,20 @@ function statsGroupItemNumbers(value){
 
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
-  const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult]=await Promise.all([
+  const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult,paymentsResult]=await Promise.all([
     fetchAllStatsRows('orders','created_at',true),
     supabaseClient.from('product_groups').select('*'),
     supabaseClient.from('product_categories').select('id,name,main_category_id'),
     supabaseClient.from('product_main_categories').select('id,name'),
     fetchAllStatsRows('deleted_order_history','deleted_at',true),
-    fetchAllStatsRows('order_change_history','changed_at',true)
+    fetchAllStatsRows('order_change_history','changed_at',true),
+    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,paid_amount')
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
   deletedOrders=deletedResult.error?[]:(deletedResult.data||[]);
   orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
+  paymentRecords=paymentsResult.error?[]:(paymentsResult.data||[]);
   categoryNameMap=new Map((categoriesResult.data||[]).map(x=>[String(x.id),x]));
   mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
@@ -151,8 +154,18 @@ function calculateStats(){
   const todayOrders=groupOrders(rawOrders).filter(order=>localDateKey(order.createdAt)===todayKey&&(!completedOnly||order.status==='출고완료'));
   const todayOrderCount=todayOrders.length;
   const todayAmount=todayOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
+  const paymentMap=new Map(paymentRecords.map(row=>[`${row.order_number}::${String(row.customer_key||'')}`,Math.max(0,Number(row.paid_amount||0))]));
+  let receivableAmount=0,receivableOrderCount=0,partialPaymentCount=0,unpaidOrderCount=0;
+  groupOrders(rawOrders).forEach(order=>{
+    const key=`${order.orderNumber}::${String(order.customerId||'')}`;
+    if(!paymentMap.has(key))return;
+    const total=orderTotals(order).amount,paid=Math.min(total,paymentMap.get(key)||0),balance=Math.max(0,total-paid);
+    if(balance<=0)return;
+    receivableAmount+=balance;receivableOrderCount++;
+    if(paid>0)partialPaymentCount++;else unpaidOrderCount++;
+  });
   const customerCount=customers.size,orderCount=orders.length,average=orderCount?Math.round(totalAmount/orderCount):0,completionRate=orderCount?Math.round(doneCount/orderCount*100):0;
-  return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,todayAmount,todayOrderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
+  return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,todayAmount,todayOrderCount,receivableAmount,receivableOrderCount,partialPaymentCount,unpaidOrderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
 }
 
 function availableYears(){
@@ -197,7 +210,7 @@ function renderPeriodAnalytics(){
 
 function renderMetrics(s){
   const cards=[
-    ['당일 매출',money(s.todayAmount),'원'],['당일 주문건수',money(s.todayOrderCount),'건'],['현재 주문금액',money(s.totalAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
+    ['당일 매출',money(s.todayAmount),'원'],['당일 주문건수',money(s.todayOrderCount),'건'],['누적 미수금',money(s.receivableAmount),'원'],['미입금·일부입금',money(s.receivableOrderCount),`건 · 미입금 ${money(s.unpaidOrderCount)} / 일부 ${money(s.partialPaymentCount)}`],['현재 주문금액',money(s.totalAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
   ];
   $('statsCards').innerHTML=cards.map(([label,value,unit])=>`<div class="v3-metric-card"><span>${label}</span><strong>${value}</strong><small>${unit}</small></div>`).join('');
   $('statusAll').textContent=`${s.orderCount.toLocaleString()}건`;$('statusPending').textContent=`${s.pendingCount.toLocaleString()}건`;$('statusDone').textContent=`${s.doneCount.toLocaleString()}건`;
