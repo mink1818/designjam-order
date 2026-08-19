@@ -1,14 +1,14 @@
-const CACHE_NAME='design-socks-v6-6-15-proxy-price-daily-stats-b1';
+const CACHE_NAME='design-socks-v6-6-16-fast-price-sync-b1';
 const APP_SHELL=[
-  '/offline.html?v=66151',
-  '/css/main.css?v=66151',
-  '/css/admin.css?v=66151',
-  '/css/statement.css?v=66151',
-  '/customer-share-document.html?v=66151',
+  '/offline.html?v=66160',
+  '/css/main.css?v=66160',
+  '/css/admin.css?v=66160',
+  '/css/statement.css?v=66160',
+  '/customer-share-document.html?v=66160',
   '/css/customer-share-document.css?v=66040',
-  '/js/customer-share-document.js?v=66151',
-  '/js/pwa.js?v=66151',
-  '/js/version-badge.js?v=66151',
+  '/js/customer-share-document.js?v=66160',
+  '/js/pwa.js?v=66160',
+  '/js/version-badge.js?v=66160',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',
@@ -42,7 +42,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=66151');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=66160');
       throw new Error('offline');
     })
   );
