@@ -2839,13 +2839,13 @@ async function importCustomerItemPricesFromGrid() {
   const excelMessage=document.getElementById("excelMessage");
   if(excelMessage)excelMessage.innerHTML=`<div class="product-success"><h3>상품 반영 완료 · 거래처별 단가 변경사항 확인 중...</h3><p>${namePayload.length.toLocaleString()}건의 단가를 빠른 동기화 방식으로 비교하고 있습니다.</p></div>`;
   const {data:preview,error:previewError}=await supabaseClient.rpc("sync_customer_item_prices_from_excel",{p_prices:namePayload,p_apply:false});
-  if(previewError)throw new Error(`거래처별 단가 동기화 준비 실패: ${previewError.message}. V6.6.16 SQL을 먼저 실행해주세요.`);
+  if(previewError)throw new Error(`거래처별 단가 동기화 준비 실패: ${previewError.message}. V6.6.17 SQL을 먼저 실행해주세요.`);
   const added=Number(preview?.added||0),changed=Number(preview?.changed||0),deleted=Number(preview?.deleted||0),removedCustomers=Number(preview?.removed_customers||0);
   const summary=`거래처별 전용단가를 엑셀 내용과 동일하게 맞춥니다.\n\n· 추가 ${added.toLocaleString()}건\n· 변경 ${changed.toLocaleString()}건\n· 삭제 ${deleted.toLocaleString()}건${removedCustomers?`\n· 전용단가 전체 삭제 거래처 ${removedCustomers.toLocaleString()}곳`:''}\n\n삭제된 단가는 기본단가로 복귀하며, 기존 접수 주문의 단가는 변경되지 않습니다. 계속할까요?`;
   if(!confirm(summary))throw new Error("거래처별 단가 동기화를 취소했습니다.");
   if(excelMessage)excelMessage.innerHTML=`<div class="product-success"><h3>거래처별 단가 저장 중...</h3><p>${namePayload.length.toLocaleString()}건을 반영하고 있습니다. 이 단계가 끝날 때까지 화면을 닫지 마세요.</p></div>`;
   const {data:result,error:syncError}=await supabaseClient.rpc("sync_customer_item_prices_from_excel",{p_prices:namePayload,p_apply:true});
-  if(syncError)throw new Error(`거래처별 단가 동기화 실패: ${syncError.message}. V6.6.16 SQL을 확인해주세요.`);
+  if(syncError)throw new Error(`거래처별 단가 동기화 실패: ${syncError.message}. V6.6.17 SQL을 확인해주세요.`);
   return { saved:Number(result?.saved||namePayload.length), nameSaved:Number(result?.saved||namePayload.length), added, changed, deleted, updatedOpenOrders:0, unmatched, invalid, matchedCustomers: customerColumns.reduce((sum,column)=>sum+resolveCustomerIds(column.name).length,0), nameCustomers:customerColumns.length, missingSheet: false };
 }
 
