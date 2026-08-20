@@ -180,20 +180,21 @@ function fillAnalysisYears(){
 }
 
 function aggregateOrderSet(orders){
-  const products=new Map(),customers=new Map();let amount=0,qtyTotal=0;
+  const products=new Map(),customers=new Map();let amount=0,qtyTotal=0,shippingFee=0,shippingOrderCount=0;
   orders.forEach(order=>{
     const totals=orderTotals(order);amount+=totals.amount;qtyTotal+=totals.qty;
+    const fee=Math.max(0,Number(order.shippingFee||0));shippingFee+=fee;if(fee>0)shippingOrderCount++;
     order.items.forEach(item=>{const q=effectiveItemQty(item);if(q<=0)return;const name=String(item.item_number||'품번 미입력');const p=products.get(name)||{name,qty:0,amount:0};p.qty+=q;p.amount+=q*Number(item.price||0);products.set(name,p);});
     const display=String(order.customerName||'').trim()||'거래처 미입력';const key=normalizeStatsCustomerName(display)||order.customerId||'거래처 미입력';const c=customers.get(key)||{name:display,amount:0,qty:0,orders:0};c.amount+=totals.amount;c.qty+=totals.qty;c.orders++;customers.set(key,c);
   });
-  return {amount,qty:qtyTotal,orders:orders.length,products:[...products.values()].sort((a,b)=>b.qty-a.qty||b.amount-a.amount),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount||b.qty-a.qty)};
+  return {amount,qty:qtyTotal,orders:orders.length,shippingFee,shippingOrderCount,products:[...products.values()].sort((a,b)=>b.qty-a.qty||b.amount-a.amount),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount||b.qty-a.qty)};
 }
 
 function buildPeriodAnalytics(){
   let allOrders=groupOrders(rawOrders);if($('completedOnlyCheck').checked)allOrders=allOrders.filter(o=>o.status==='출고완료');
   const selectedYear=Number($('statsAnalysisYear').value)||new Date().getFullYear();const selectedMonth=$('statsAnalysisMonth').value||`${selectedYear}-01`;const [monthYear,monthNumber]=selectedMonth.split('-').map(Number);
   const yearlyMap=new Map();allOrders.forEach(o=>{const y=new Date(o.createdAt).getFullYear();if(!Number.isFinite(y))return;const t=orderTotals(o);const row=yearlyMap.get(y)||{label:String(y),amount:0,qty:0,orders:0};row.amount+=t.amount;row.qty+=t.qty;row.orders++;yearlyMap.set(y,row);});
-  const monthly=Array.from({length:12},(_,i)=>({label:`${i+1}월`,amount:0,qty:0,orders:0}));allOrders.forEach(o=>{const d=new Date(o.createdAt);if(d.getFullYear()!==selectedYear)return;const t=orderTotals(o),row=monthly[d.getMonth()];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
+  const monthly=Array.from({length:12},(_,i)=>({label:`${i+1}월`,amount:0,qty:0,orders:0,shippingFee:0,shippingOrders:0}));allOrders.forEach(o=>{const d=new Date(o.createdAt);if(d.getFullYear()!==selectedYear)return;const t=orderTotals(o),row=monthly[d.getMonth()],fee=Math.max(0,Number(o.shippingFee||0));row.amount+=t.amount;row.qty+=t.qty;row.orders++;row.shippingFee+=fee;if(fee>0)row.shippingOrders++;});
   const daysInMonth=new Date(monthYear,monthNumber,0).getDate();const daily=Array.from({length:daysInMonth},(_,i)=>({label:`${i+1}일`,amount:0,qty:0,orders:0}));const monthOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===monthYear&&d.getMonth()+1===monthNumber;});monthOrders.forEach(o=>{const d=new Date(o.createdAt),t=orderTotals(o),row=daily[d.getDate()-1];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
   const previousDate=new Date(monthYear,monthNumber-2,1);const previousOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===previousDate.getFullYear()&&d.getMonth()===previousDate.getMonth();});
   return {selectedYear,selectedMonth,yearly:[...yearlyMap.values()].sort((a,b)=>Number(a.label)-Number(b.label)),monthly,daily,current:aggregateOrderSet(monthOrders),previous:aggregateOrderSet(previousOrders)};
@@ -207,6 +208,8 @@ function renderPeriodAnalytics(){
   const a=buildPeriodAnalytics(),mode=$('salesChartMode')?.value||'daily';$('monthlyRankingPeriod').textContent=`${a.selectedMonth.replace('-','년 ')}월 토탈 기준 TOP 10`;
   const chart={daily:{title:`${a.selectedMonth.replace('-','년 ')}월 일 매출`,caption:'선택 월 전체 날짜',rows:a.daily,limit:31},monthly:{title:`${a.selectedYear}년 월 매출`,caption:'1월~12월',rows:a.monthly,limit:12},yearly:{title:'연 매출',caption:'전체 주문 이력',rows:a.yearly,limit:0}}[mode];$('salesChartTitle').textContent=chart.title;$('salesChartCaption').textContent=chart.caption;renderBarChart('salesChart',chart.rows,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,chart.limit);
   $('monthlyCompareCards').innerHTML=`<article><span>선택 월 매출</span><strong>${compareText(a.current.amount,a.previous.amount,'원')}</strong></article><article><span>선택 월 출고수량</span><strong>${compareText(a.current.qty,a.previous.qty,'죽')}</strong></article><article><span>선택 월 주문건수</span><strong>${compareText(a.current.orders,a.previous.orders,'건')}</strong></article>`;
+  const shippingSummary=$('shippingFeeSummary');if(shippingSummary)shippingSummary.innerHTML=`<article><span>선택 월 배송비</span><strong>${compareText(a.current.shippingFee,a.previous.shippingFee,'원')}</strong></article><article><span>배송비 발생 주문</span><strong>${money(a.current.shippingOrderCount)}건</strong></article><article><span>${a.selectedYear}년 배송비 합계</span><strong>${money(a.monthly.reduce((sum,row)=>sum+Number(row.shippingFee||0),0))}원</strong></article>`;
+  const shippingTitle=$('shippingChartTitle'),shippingCaption=$('shippingChartCaption');if(shippingTitle)shippingTitle.textContent=`${a.selectedYear}년 월별 배송비`;if(shippingCaption)shippingCaption.textContent='1월~12월 · 배송비 0원 주문 제외';renderBarChart('shippingFeeChart',a.monthly,'shippingFee',v=>`${money(v)}원`,12);
   renderRanking('topProductsList',a.current.products,'product');renderRanking('topCustomersList',a.current.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`${a.selectedMonth.replace('-','년 ')}월 전체 ${money(a.current.customers.length)}곳 중 상위 10곳 · 배송비 포함`;
   return a;
 }
@@ -255,6 +258,7 @@ function exportExcel(){
   const wb=XLSX.utils.book_new(),wsSummary=XLSX.utils.aoa_to_sheet(summary);wsSummary['!merges']=[XLSX.utils.decode_range('A1:C1')];wsSummary['!cols']=[{wch:24},{wch:22},{wch:12}];XLSX.utils.book_append_sheet(wb,wsSummary,'요약');
   XLSX.utils.book_append_sheet(wb,make([['연도','매출','수량(죽)','주문건수'],...a.yearly.map(x=>[x.label,x.amount,x.qty,x.orders])],[12,18,14,12]),'연도별매출');
   XLSX.utils.book_append_sheet(wb,make([['월','매출','수량(죽)','주문건수'],...a.monthly.map(x=>[`${a.selectedYear}-${String(parseInt(x.label,10)).padStart(2,'0')}`,x.amount,x.qty,x.orders])],[12,18,14,12]),'월별매출');
+  XLSX.utils.book_append_sheet(wb,make([['월','배송비 합계','배송비 발생 주문건수'],...a.monthly.map(x=>[`${a.selectedYear}-${String(parseInt(x.label,10)).padStart(2,'0')}`,x.shippingFee,x.shippingOrders])],[12,18,20]),'월별배송비');
   XLSX.utils.book_append_sheet(wb,make([['일','매출','수량(죽)','주문건수'],...a.daily.map(x=>[`${a.selectedMonth}-${String(parseInt(x.label,10)).padStart(2,'0')}`,x.amount,x.qty,x.orders])],[14,18,14,12]),'일별매출');
   XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...a.current.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'월간품번랭킹');
   XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...a.current.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'월간거래처랭킹');
