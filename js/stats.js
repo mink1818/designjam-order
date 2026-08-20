@@ -208,8 +208,20 @@ function renderPeriodAnalytics(){
   const a=buildPeriodAnalytics(),mode=$('salesChartMode')?.value||'daily';$('monthlyRankingPeriod').textContent=`${a.selectedMonth.replace('-','년 ')}월 토탈 기준 TOP 10`;
   const chart={daily:{title:`${a.selectedMonth.replace('-','년 ')}월 일 매출`,caption:'선택 월 전체 날짜',rows:a.daily,limit:31},monthly:{title:`${a.selectedYear}년 월 매출`,caption:'1월~12월',rows:a.monthly,limit:12},yearly:{title:'연 매출',caption:'전체 주문 이력',rows:a.yearly,limit:0}}[mode];$('salesChartTitle').textContent=chart.title;$('salesChartCaption').textContent=chart.caption;renderBarChart('salesChart',chart.rows,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,chart.limit);
   $('monthlyCompareCards').innerHTML=`<article><span>선택 월 매출</span><strong>${compareText(a.current.amount,a.previous.amount,'원')}</strong></article><article><span>선택 월 출고수량</span><strong>${compareText(a.current.qty,a.previous.qty,'죽')}</strong></article><article><span>선택 월 주문건수</span><strong>${compareText(a.current.orders,a.previous.orders,'건')}</strong></article>`;
-  const shippingSummary=$('shippingFeeSummary');if(shippingSummary)shippingSummary.innerHTML=`<article><span>선택 월 배송비</span><strong>${compareText(a.current.shippingFee,a.previous.shippingFee,'원')}</strong></article><article><span>배송비 발생 주문</span><strong>${money(a.current.shippingOrderCount)}건</strong></article><article><span>${a.selectedYear}년 배송비 합계</span><strong>${money(a.monthly.reduce((sum,row)=>sum+Number(row.shippingFee||0),0))}원</strong></article>`;
-  const shippingTitle=$('shippingChartTitle'),shippingCaption=$('shippingChartCaption');if(shippingTitle)shippingTitle.textContent=`${a.selectedYear}년 월별 배송비 금액`;if(shippingCaption)shippingCaption.textContent='1월~12월 · 금액을 바로 확인';const shippingAmounts=$('shippingFeeMonthlyAmounts');if(shippingAmounts)shippingAmounts.innerHTML=a.monthly.map(row=>`<article><span>${row.label}</span><strong>${money(row.shippingFee)}원</strong><small>${money(row.shippingOrders)}건</small></article>`).join('');
+  const shippingMode=$('shippingPeriodMode')?.value||'monthly';
+  const shippingSummary=$('shippingFeeSummary');
+  const yearShipping=a.monthly.reduce((sum,row)=>sum+Number(row.shippingFee||0),0);
+  if(shippingSummary)shippingSummary.innerHTML=`<article><span>선택 월 배송비</span><strong>${money(a.current.shippingFee)}원</strong></article><article><span>배송비 발생 주문</span><strong>${money(a.current.shippingOrderCount)}건</strong></article><article><span>${a.selectedYear}년 배송비 합계</span><strong>${money(yearShipping)}원</strong></article>`;
+  const shippingAmounts=$('shippingFeePeriodAmounts'),shippingCaption=$('shippingPeriodCaption');
+  let shippingRows=[];
+  if(shippingMode==='daily'){
+    shippingRows=a.daily.map(row=>{const day=parseInt(row.label,10);const feeOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===monthYear&&d.getMonth()+1===monthNumber&&d.getDate()===day&&Number(o.shippingFee||0)>0;});return {label:row.label,shippingFee:feeOrders.reduce((sum,o)=>sum+Math.max(0,Number(o.shippingFee||0)),0),shippingOrders:feeOrders.length};});
+    if(shippingCaption)shippingCaption.textContent=`일별 · ${a.selectedMonth.replace('-','년 ')}월`;
+  }else if(shippingMode==='yearly'){
+    const ym=new Map();allOrders.forEach(o=>{const d=new Date(o.createdAt),fee=Math.max(0,Number(o.shippingFee||0));if(!fee||!Number.isFinite(d.getFullYear()))return;const y=d.getFullYear(),r=ym.get(y)||{label:`${y}년`,shippingFee:0,shippingOrders:0};r.shippingFee+=fee;r.shippingOrders++;ym.set(y,r);});shippingRows=[...ym.values()].sort((x,y)=>parseInt(x.label)-parseInt(y.label));
+    if(shippingCaption)shippingCaption.textContent='연도별 · 전체 주문 이력';
+  }else{shippingRows=a.monthly;if(shippingCaption)shippingCaption.textContent=`월별 · ${a.selectedYear}년`;}
+  if(shippingAmounts)shippingAmounts.innerHTML=shippingRows.map(row=>`<article><span>${row.label}</span><strong>${money(row.shippingFee)}원</strong><small>${money(row.shippingOrders)}건</small></article>`).join('');
   renderRanking('topProductsList',a.current.products,'product');renderRanking('topCustomersList',a.current.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`${a.selectedMonth.replace('-','년 ')}월 전체 ${money(a.current.customers.length)}곳 중 상위 10곳 · 배송비 포함`;
   return a;
 }
@@ -276,3 +288,5 @@ function bindEvents(){
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();bindEvents();try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
+
+document.getElementById('shippingPeriodMode')?.addEventListener('change',()=>{if(currentStats)currentStats.periodAnalytics=renderPeriodAnalytics();});

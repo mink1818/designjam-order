@@ -10,7 +10,7 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/stats.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66040">
   <title>디자인 삭스 주문관리 (관리자)</title>
-  <link rel="stylesheet" href="css/admin.css?v=66240">
+  <link rel="stylesheet" href="css/admin.css?v=66260">
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -52,10 +52,15 @@
   <details class="product-card stats-audit-details"><summary>② 주문 경로·변경·삭제 감사 보기</summary><p class="stats-detail-copy">대신주문은 실제 거래처명으로 매출과 순위에 반영됩니다.</p><section id="orderChannelCards" class="stats-audit-grid"></section>
   <section class="stats-panel stats-audit-panel"><div class="v3-section-heading"><h2>최근 변경·삭제 이력</h2><span>선택 기간 최근 12건</span></div><div id="orderAuditList" class="stats-audit-list"></div></section></details>
 
-  <div class="v3-section-heading stats-group-title"><h2>③ 주문·출고 현황</h2><span>클릭하면 주문관리로 이동</span></div><section class="stats-status-grid">
+  <div class="v3-section-heading stats-group-title"><h2>③ 주문·출고 현황</h2><span>주문 상태와 배송비를 함께 확인</span></div><section class="stats-status-grid">
     <button class="product-card stats-status-card" data-order-filter="전체"><span>전체 주문</span><strong id="statusAll">0건</strong><small>주문관리로 이동</small></button>
     <button class="product-card stats-status-card pending" data-order-filter="주문접수"><span>주문접수</span><strong id="statusPending">0건</strong><small>미출고 주문 확인</small></button>
     <button class="product-card stats-status-card done" data-order-filter="출고완료"><span>출고완료</span><strong id="statusDone">0건</strong><small>완료 주문 확인</small></button>
+  </section>
+  <section class="product-card shipping-status-panel">
+    <div class="shipping-status-head"><div><strong>배송비 집계</strong><small id="shippingPeriodCaption">월별 · 선택 연도</small></div><select id="shippingPeriodMode" aria-label="배송비 집계 단위"><option value="daily">일</option><option value="monthly" selected>월</option><option value="yearly">년</option></select></div>
+    <div id="shippingFeeSummary" class="stats-compare-grid"></div>
+    <div id="shippingFeePeriodAmounts" class="shipping-month-amounts"></div>
   </section>
 
   <div class="v3-section-heading stats-group-title"><h2>④ 매출 흐름</h2><span>원하는 그래프를 선택하여 확인 · 기본 일 매출</span></div>
@@ -72,16 +77,7 @@
     </article>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><h2>⑤ 월별 배송비 집계</h2><span>주문별 배송비는 한 번만 계산 · 위 연도/월 선택과 연동</span></div>
-  <section class="product-card stats-period-controls">
-    <div id="shippingFeeSummary" class="stats-compare-grid"></div>
-  </section>
-  <section class="product-card stats-panel">
-    <div class="v3-section-heading"><h2 id="shippingChartTitle">월별 배송비 금액</h2><span id="shippingChartCaption">1월~12월 금액을 바로 확인</span></div>
-    <div id="shippingFeeMonthlyAmounts" class="shipping-month-amounts"></div>
-  </section>
-
-  <div class="v3-section-heading stats-group-title stats-ranking-heading"><div><h2>⑥ 월별 판매·거래처 토탈 랭킹</h2><span id="monthlyRankingPeriod">선택 월 기준 TOP 10</span></div><label>랭킹 확인 월<input id="monthlyRankingMonth" type="month"></label></div><section class="stats-ranking-grid">
+  <div class="v3-section-heading stats-group-title stats-ranking-heading"><div><h2>⑤ 월별 판매·거래처 토탈 랭킹</h2><span id="monthlyRankingPeriod">선택 월 기준 TOP 10</span></div><label>랭킹 확인 월<input id="monthlyRankingMonth" type="month"></label></div><section class="stats-ranking-grid">
     <article class="product-card stats-panel">
       <div class="v3-section-heading"><h2>월간 품번 판매량 TOP 10</h2><span>품절·일부품절 제외 · 단위 죽</span></div>
       <div id="topProductsList" class="stats-ranking-list"></div>
@@ -92,7 +88,7 @@
     </article>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><h2>⑦ 출고지·카테고리 분석</h2><span>S·B·I 매출과 대분류 비중</span></div><section id="warehouseSalesCards" class="stats-status-grid"></section><section class="product-card stats-panel">
+  <div class="v3-section-heading stats-group-title"><h2>⑥ 출고지·카테고리 분석</h2><span>S·B·I 매출과 대분류 비중</span></div><section id="warehouseSalesCards" class="stats-status-grid"></section><section class="product-card stats-panel">
     <div class="v3-section-heading"><h2>대분류별 판매 비중</h2><span>상품 데이터에 대분류 정보가 있을 때 표시</span></div>
     <div id="categoryShareList" class="stats-share-list"></div>
   </section>
@@ -100,7 +96,7 @@
   <p id="statsMessage" class="stats-message" role="status"></p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/stats.js?v=66240"></script>
+<script src="js/stats.js?v=66260"></script>
 <script src="js/session-status.js?v=66130"></script>
 <script src="js/pwa.js?v=66180"></script>
 <script src="js/admin-page-transition.js?v=66040"></script>
