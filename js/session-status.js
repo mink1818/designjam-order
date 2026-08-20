@@ -221,14 +221,14 @@
     const touch = async (force = false) => {
       if (document.visibilityState === "hidden") return;
       const now = Date.now();
-      if (!force && now - lastPresenceTouch < 110000) return;
+      if (!force && now - lastPresenceTouch < 210000) return;
       lastPresenceTouch = now;
       try {
         await sb.rpc("touch_admin_presence", { p_device_info: adminDeviceInfo() });
       } catch (_) { lastPresenceTouch = 0; }
     };
     touch(true);
-    adminPresenceTimer = setInterval(touch, 120000);
+    adminPresenceTimer = setInterval(touch, 240000);
     ["pointerdown", "keydown", "touchstart"].forEach(eventName => {
       document.addEventListener(eventName, () => touch(false), { passive: true });
     });

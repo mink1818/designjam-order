@@ -106,15 +106,16 @@ document.addEventListener('DOMContentLoaded',async()=>{
  $('refreshOrders').onclick=()=>load(true);$('orderSearch').oninput=renderList;
  if($('pickingSort'))$('pickingSort').onchange=e=>{pickingSort=e.target.value;renderWork()};
  $('orderList').onclick=e=>{const b=e.target.closest('[data-order]');if(!b)return;selectPickingOrder(b.dataset.order)};
- let buffer='',last=0,refreshTimer=null,refreshing=false;
+ let buffer='',last=0,refreshTimer=null,refreshing=false,realtimeReady=false,lastSafetyRefresh=Date.now();
  const refreshPicking=async()=>{if(refreshing||document.activeElement?.matches?.('[data-picking-note]'))return;refreshing=true;try{await load(false)}finally{refreshing=false}};
+ const schedulePickingRefresh=(delay=800)=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{lastSafetyRefresh=Date.now();refreshPicking()},delay)};
  const applyLiveSetting=payload=>{const orderNumber=String(payload?.orderNumber||''),field=String(payload?.field||''),value=payload?.value;if(!orderNumber||!['picking_session_active','picking_scan_increment'].includes(field))return;orders.filter(row=>row.order_number===orderNumber).forEach(row=>row[field]=value);buildGroups();if(active)active=groups.find(group=>group.orderNumber===active.orderNumber)||active;if(active&&field==='picking_scan_increment'&&active.orderNumber===orderNumber)scanIncrement=Number(value)===10?10:1;renderList();if(active?.orderNumber===orderNumber)renderWork(field==='picking_session_active'?'피킹 담당상태가 변경되었습니다.':`바코드 스캔수량이 ${Number(value)===10?10:1}개로 변경되었습니다.`,'success',false)};
  document.addEventListener('keydown',e=>{if(e.target?.matches?.('input:not(#pickScanInput),textarea,[contenteditable="true"]'))return;if(e.key==='Backspace'){buffer='';return}if(e.key==='Enter'){const fresh=Date.now()-last<=120;if(buffer&&fresh){scan(buffer);e.preventDefault()}buffer='';return}const key=keyFromEvent(e);if(key){const now=Date.now();if(now-last>120)buffer='';buffer+=key;last=now}});
  await load(true);
- pickingLiveChannel=supabaseClient.channel('picking-orders-live-v6530')
+ pickingLiveChannel=supabaseClient.channel('picking-orders-live-v6639')
   .on('broadcast',{event:'picking-setting'},event=>applyLiveSetting(event.payload))
-  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},event=>{const row=event.new||{},local=orders.find(item=>String(item.id)===String(row.id));if(local)Object.assign(local,row);const activeNumber=active?.orderNumber||'';buildGroups();active=activeNumber?(groups.find(group=>group.orderNumber===activeNumber)||null):null;if(active){const sharedStep=Number(active.items[0]?.picking_scan_increment||1);scanIncrement=sharedStep===10?10:1}renderList();if(active?.orderNumber===row.order_number)renderWork('실시간 피킹 진행상태를 반영했습니다.','success',false);clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshPicking,250)})
-  .subscribe();
- setInterval(refreshPicking,2000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshPicking()});
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},event=>{const row=event.new||{},local=orders.find(item=>String(item.id)===String(row.id));lastSafetyRefresh=Date.now();if(!local){schedulePickingRefresh();return}Object.assign(local,row);const activeNumber=active?.orderNumber||'';buildGroups();active=activeNumber?(groups.find(group=>group.orderNumber===activeNumber)||null):null;if(active){const sharedStep=Number(active.items[0]?.picking_scan_increment||1);scanIncrement=sharedStep===10?10:1}renderList();if(active?.orderNumber===row.order_number)renderWork('실시간 피킹 진행상태를 반영했습니다.','success',false)})
+  .subscribe(status=>{realtimeReady=status==='SUBSCRIBED';if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)&&!document.hidden)schedulePickingRefresh(1200)});
+ setInterval(()=>{if(document.hidden)return;const now=Date.now();if(!realtimeReady||now-lastSafetyRefresh>=300000){lastSafetyRefresh=now;refreshPicking()}},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastSafetyRefresh=Date.now();refreshPicking()}});
 });
 })();

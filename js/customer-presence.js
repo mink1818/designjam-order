@@ -6,12 +6,12 @@ document.addEventListener('DOMContentLoaded',async()=>{
     const touch=async(force=false)=>{
       if(document.visibilityState==='hidden')return;
       const now=Date.now();
-      if(!force&&now-lastTouch<110000)return;
+      if(!force&&now-lastTouch<210000)return;
       lastTouch=now;
       try{await supabaseClient.rpc('touch_customer_presence')}catch(_){lastTouch=0}
     };
     touch(true);
-    timer=setInterval(touch,120000);
+    timer=setInterval(touch,240000);
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')touch()});
     window.addEventListener('pagehide',()=>{if(timer)clearInterval(timer)},{once:true});
   }catch(e){}

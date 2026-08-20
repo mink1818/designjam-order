@@ -1098,6 +1098,10 @@ window.openWorkSheet = openWorkSheet;
 
 let adminRealtimeTimer = null;
 let adminRealtimeBusy = false;
+let adminRealtimeChannel = null;
+let adminRealtimeConnected = false;
+let adminRealtimeLastSnapshot = 0;
+let adminRealtimeRefreshDelay = null;
 
 function updateAdminOrderCardStatus(orderNumber, status, pickingStatus, revisionStatus='') {
   const card = Array.from(document.querySelectorAll('.order-card[data-order-number]'))
@@ -1176,10 +1180,45 @@ async function refreshAdminOrderStatuses() {
 
 function startAdminRealtimeRefresh() {
   if (!adminOrders || adminRealtimeTimer) return;
-  // 전체 목록을 다시 그리지 않고 상태와 버튼만 갱신하여 화면 깜빡임과 상세 닫힘을 방지합니다.
-  adminRealtimeTimer = window.setInterval(refreshAdminOrderStatuses, 5000);
+  const scheduleSnapshot = (delay=900) => {
+    clearTimeout(adminRealtimeRefreshDelay);
+    adminRealtimeRefreshDelay = setTimeout(() => {
+      adminRealtimeLastSnapshot = Date.now();
+      refreshAdminOrderStatuses();
+    }, delay);
+  };
+  const applyRealtimeRow = row => {
+    if (!row?.order_number) return;
+    const card = Array.from(document.querySelectorAll('.order-card[data-order-number]'))
+      .find(el => el.dataset.orderNumber === String(row.order_number));
+    if (!card) { scheduleSnapshot(); return; }
+    const previousRevision = card.dataset.revisionStatus || '';
+    updateAdminOrderCardStatus(row.order_number, row.status, row.picking_status, row.customer_revision_status || '');
+    if (previousRevision !== String(row.customer_revision_status || '')) scheduleSnapshot(350);
+  };
+  adminRealtimeLastSnapshot = Date.now();
+  adminRealtimeChannel = supabaseClient.channel('admin-orders-live-v6639')
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'orders'}, event => applyRealtimeRow(event.new || {}))
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'orders'}, () => scheduleSnapshot())
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'orders'}, () => scheduleSnapshot())
+    .subscribe(status => {
+      adminRealtimeConnected = status === 'SUBSCRIBED';
+      if (['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status) && document.visibilityState === 'visible') scheduleSnapshot(1200);
+    });
+  // 실시간 연결 장애 시와 5분 안전 점검 때만 보정 조회합니다.
+  adminRealtimeTimer = window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (!adminRealtimeConnected || now - adminRealtimeLastSnapshot >= 300000) {
+      adminRealtimeLastSnapshot = now;
+      refreshAdminOrderStatuses();
+    }
+  }, 30000);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshAdminOrderStatuses();
+    if (document.visibilityState === 'visible') {
+      adminRealtimeLastSnapshot = Date.now();
+      refreshAdminOrderStatuses();
+    }
   });
   window.addEventListener('storage', event => {
     if (event.key === 'designjam_picking_verified') refreshAdminOrderStatuses();
