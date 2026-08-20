@@ -278,25 +278,48 @@ function initReceivableLookup(){
   renderReceivableCustomerList();
 }
 
+function receivableCustomerIdentity(order){
+  const direct=String(order?.customerId||'').trim();
+  if(direct)return direct;
+  const normalized=normalizeStatsCustomerName(order?.customerName||'');
+  if(!normalized)return '';
+  const matches=[...customerStatsMeta.entries()].filter(([,meta])=>normalizeStatsCustomerName(meta?.business_name||'')===normalized);
+  return matches.length===1?String(matches[0][0]):`name:${normalized}`;
+}
 function receivableSnapshot(){
   const pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));
   const map=new Map();
-  groupOrders(rawOrders).forEach(o=>{const key=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(!key)return;const t=orderTotals(o),paid=Math.min(t.amount,pmap.get(`${o.orderNumber}::${String(o.customerId||'')}`)||0),balance=Math.max(0,t.amount-paid),meta=customerStatsMeta.get(String(o.customerId||''))||{};let x=map.get(key);if(!x)x={key,name:meta.business_name||o.customerName||'거래처명 미입력',alias:meta.customer_tag||'',balance:0,lastTrade:'',lastPayment:''};x.balance+=balance;const day=localDateKey(o.createdAt);if(day>x.lastTrade)x.lastTrade=day;if(paid>0&&day>x.lastPayment)x.lastPayment=day;map.set(key,x)});
+  groupOrders(rawOrders).forEach(o=>{
+    const paymentKey=`${o.orderNumber}::${String(o.customerId||'')}`;
+    if(!pmap.has(paymentKey))return; // 기존 누적 미수금과 동일: 입금관리 대상 주문만 집계
+    const key=receivableCustomerIdentity(o);if(!key)return;
+    const t=orderTotals(o),paid=Math.min(t.amount,pmap.get(paymentKey)||0),balance=Math.max(0,t.amount-paid);
+    const meta=customerStatsMeta.get(String(key))||{};
+    let x=map.get(key);
+    if(!x)x={key,name:meta.business_name||o.customerName||'거래처명 미입력',alias:meta.customer_tag||'',balance:0,lastTrade:''};
+    x.balance+=balance;
+    const day=localDateKey(o.createdAt);if(day>x.lastTrade)x.lastTrade=day;
+    map.set(key,x);
+  });
   return [...map.values()];
 }
 function renderReceivableCustomerList(){
   const summary=$('receivableSummary'),out=$('receivableCustomerList'),filter=$('receivableListFilter')?.value||'unpaid',query=$('receivableCustomerSearch')?.value||'';if(!summary||!out)return;
   const all=receivableSnapshot(),unpaid=all.filter(x=>x.balance>0),total=unpaid.reduce((a,x)=>a+x.balance,0);summary.innerHTML=`<article><span>전체 미수금</span><strong>${money(total)}원</strong></article><article><span>미수 거래처</span><strong>${money(unpaid.length)}곳</strong></article>`;
   let rows=(filter==='all'?all:unpaid).filter(x=>lookupMatchesStats(`${x.name} ${x.alias}`,query)).sort((a,b)=>b.balance-a.balance||String(a.name).localeCompare(String(b.name),'ko',{numeric:true}));
-  out.innerHTML=rows.length?rows.map(x=>`<button type="button" class="stats-receivable-customer-row" data-receivable-key="${esc(x.key)}"><span><b>${esc(x.name)}</b>${x.alias?`<small class="member-customer-alias">${esc(x.alias)}</small>`:''}<em>최근거래 ${esc(x.lastTrade||'-')} · 최근입금 ${esc(x.lastPayment||'-')}</em></span><strong>${money(x.balance)}원</strong></button>`).join(''):'<p class="empty-copy">조건에 맞는 거래처가 없습니다.</p>';
+  out.innerHTML=rows.length?rows.map(x=>`<button type="button" class="stats-receivable-customer-row" data-receivable-key="${esc(x.key)}"><span><b>${esc(x.name)}</b>${x.alias?`<small class="member-customer-alias">${esc(x.alias)}</small>`:''}<em>최근거래 ${esc(x.lastTrade||'-')} · 선택하면 일별 미수금 내역</em></span><strong>${money(x.balance)}원</strong></button>`).join(''):'<p class="empty-copy">조건에 맞는 거래처가 없습니다.</p>';
   out.querySelectorAll('[data-receivable-key]').forEach(btn=>btn.onclick=()=>{const row=all.find(x=>x.key===btn.dataset.receivableKey);if(!row)return;$('receivableCustomer').value=row.key;$('receivableCustomerSearch').value=row.name;renderReceivableLookup();document.getElementById('receivableDailyResult')?.scrollIntoView({behavior:'smooth',block:'nearest'})});
 }
 
 function renderReceivableLookup(){
   const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}
   const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value,pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));const rows=new Map();
-  groupOrders(rawOrders).filter(o=>String(o.customerId||normalizeStatsCustomerName(o.customerName))===key&&(!start||localDateKey(o.createdAt)>=start)&&(!end||localDateKey(o.createdAt)<=end)).forEach(o=>{const d=localDateKey(o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,pmap.get(`${o.orderNumber}::${String(o.customerId||'')}`)||0),x=rows.get(d)||{day:d,total:0,shipping:0,paid:0,balance:0,count:0};x.total+=t.amount;x.shipping+=o.shippingFee;x.paid+=paid;x.balance+=Math.max(0,t.amount-paid);x.count++;rows.set(d,x)});
-  const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>날짜</th><th>주문금액</th><th>배송비</th><th>입금액</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td>${money(x.paid)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 내역이 없습니다.</p>';
+  groupOrders(rawOrders).filter(o=>receivableCustomerIdentity(o)===key&&(!start||localDateKey(o.createdAt)>=start)&&(!end||localDateKey(o.createdAt)<=end)).forEach(o=>{
+    const paymentKey=`${o.orderNumber}::${String(o.customerId||'')}`;if(!pmap.has(paymentKey))return;
+    const d=localDateKey(o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,pmap.get(paymentKey)||0),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
+    x.total+=t.amount;x.shipping+=o.shippingFee;x.balance+=Math.max(0,t.amount-paid);x.count++;rows.set(d,x)
+  });
+  const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>날짜</th><th>주문금액</th><th>배송비</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 미수금 내역이 없습니다.</p>';
 }
 
 function renderAuditSummary(s){
