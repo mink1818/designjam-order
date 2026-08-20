@@ -101,8 +101,8 @@ function groupOrders(rows){
   const map=new Map();
   rows.forEach(row=>{
     const orderNumber=row.order_number||`row-${row.id}`;const customerIdentity=String(row.customer_id||normalizeStatsCustomerName(row.customer_name)||'unknown');const key=`${orderNumber}::${customerIdentity}`;
-    if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
-    const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
+    if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,completedAt:row.shipped_at||row.completed_at||row.picking_verified_at||null,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
+    const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.shipped_at||row.completed_at||row.picking_verified_at)g.completedAt=row.shipped_at||row.completed_at||row.picking_verified_at;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
   });
   return [...map.values()];
 }
@@ -151,7 +151,7 @@ function calculateStats(){
   const deletedAmount=deleted.reduce((sum,entry)=>{const items=Array.isArray(entry.order_snapshot)?entry.order_snapshot:[];const product=items.reduce((s,x)=>s+(x.is_soldout?0:Number(x.price||0)*Number(x.qty||0)),0);const shipping=Math.max(0,...items.map(x=>Number(x.shipping_fee||0)));return sum+product+shipping;},0);
   const changes=orderChangeHistory.filter(x=>inRange(x.changed_at));const changedOrderCount=new Set(changes.map(x=>x.order_number)).size;
   const todayKey=localDateKey(new Date());
-  const todayOrders=groupOrders(rawOrders).filter(order=>localDateKey(order.createdAt)===todayKey&&(!completedOnly||order.status==='출고완료'));
+  const todayOrders=groupOrders(rawOrders).filter(order=>order.status==='출고완료'&&localDateKey(order.completedAt)===todayKey);
   const todayOrderCount=todayOrders.length;
   const todayAmount=todayOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
   const nowMonth=new Date(),monthStart=new Date(nowMonth.getFullYear(),nowMonth.getMonth(),1);

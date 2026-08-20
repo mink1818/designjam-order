@@ -2835,3 +2835,9 @@ html[data-theme=dark] .admin-customer-tag{background:#243246;border-color:#52647
 .admin-order-tag-inline{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#ede9fe;border:1px solid #8b5cf6;color:#5b21b6;font-size:11px;font-weight:900;line-height:1.25;vertical-align:middle;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){.admin-order-tag-inline{margin-left:4px;padding:1px 5px;font-size:10px;max-width:110px}.order-delivery-preview{display:flex!important;align-items:center;gap:3px;min-width:0}.order-delivery-preview .admin-order-tag-inline{flex:0 1 auto}}
 html[data-theme=dark] .admin-order-tag-inline{background:#3b2a67;border-color:#8b5cf6;color:#ede9fe}
+
+/* V6.6.30 거래처 고정 애칭 - 주문별 관리표시와 색상 분리 */
+.admin-customer-alias-inline{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#dcfce7;border:1px solid #22c55e;color:#166534;font-size:11px;font-weight:900;line-height:1.25;vertical-align:middle;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){.admin-customer-alias-inline{margin-left:4px;padding:1px 5px;font-size:10px;max-width:110px}.order-delivery-preview .admin-customer-alias-inline{flex:0 1 auto}}
+html[data-theme=dark] .admin-customer-alias-inline{background:#153b28;border-color:#22c55e;color:#bbf7d0}
+.payment-daily-table{width:100%;border-collapse:collapse;margin-top:12px}.payment-daily-table th,.payment-daily-table td{padding:9px 8px;border-bottom:1px solid #dbe4ee;text-align:right}.payment-daily-table th:first-child,.payment-daily-table td:first-child{text-align:left}.payment-daily-table tfoot{font-weight:900}
