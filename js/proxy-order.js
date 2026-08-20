@@ -385,3 +385,9 @@ $('confirmProxyPaste')?.addEventListener('click',()=>{if(!selectedProxyPhotoFile
 $('analyzeProxyPhoto')?.addEventListener('click',analyzeProxyOrderPhoto);
 const proxyPhotoBox=document.querySelector('.proxy-photo-order');if(proxyPhotoBox&&!proxyPhotoBox.querySelector('.handwriting-learning-note'))proxyPhotoBox.insertAdjacentHTML('beforeend','<p class="handwriting-learning-note">💡 손글씨를 잘못 인식한 경우 품번·수량을 수정한 뒤 적용해주세요. 확정한 정답은 학습자료로 저장되며, 자료가 충분히 쌓인 뒤 디자인 삭스 전용 손글씨 모델 업데이트에 반영될 예정입니다.</p>');
 })();
+
+// V6.6.28: accidental Ctrl+V twice guard
+function normalizePasteGuardText(v){return String(v||'').normalize('NFKC').replace(/\r\n/g,'\n').trim()}
+function collapseExactDoublePaste(v){const t=String(v||'').replace(/\r\n/g,'\n'), n=t.length; for(let cut=Math.floor(n/2)-2;cut<=Math.floor(n/2)+2;cut++){if(cut>0&&normalizePasteGuardText(t.slice(0,cut))===normalizePasteGuardText(t.slice(cut)))return t.slice(0,cut).trim()}return v}
+let proxyLastPaste={text:'',at:0};
+$('proxyPasteInput')?.addEventListener('paste',e=>{const text=e.clipboardData?.getData('text')||'', now=Date.now(), el=e.currentTarget;if(text&&proxyLastPaste.text===text&&now-proxyLastPaste.at<2500){e.preventDefault();$('proxyPasteResult').textContent='같은 내용의 연속 붙여넣기를 막았습니다.';return}proxyLastPaste={text,at:now};setTimeout(()=>{const fixed=collapseExactDoublePaste(el.value);if(fixed!==el.value){el.value=fixed;pendingProxyPasteAnalysis=null;$('proxyPasteResult').textContent='중복으로 붙여넣어진 내용을 1회분으로 자동 정리했습니다.'}},0)});

@@ -2991,3 +2991,10 @@ function renderBankTransferBox(){
 }
 
 window.addEventListener("DOMContentLoaded", updateAdminPreviewBanner);
+
+
+// V6.6.28: accidental Ctrl+V twice guard for customer bulk order
+function normalizeCustomerPasteGuardText(v){return String(v||'').normalize('NFKC').replace(/\r\n/g,'\n').trim()}
+function collapseCustomerExactDoublePaste(v){const t=String(v||'').replace(/\r\n/g,'\n'), n=t.length;for(let cut=Math.floor(n/2)-2;cut<=Math.floor(n/2)+2;cut++){if(cut>0&&normalizeCustomerPasteGuardText(t.slice(0,cut))===normalizeCustomerPasteGuardText(t.slice(cut)))return t.slice(0,cut).trim()}return v}
+let customerLastBulkPaste={text:'',at:0};
+document.addEventListener('paste',e=>{const el=e.target;if(el?.id!=='customerBulkOrderInput')return;const text=e.clipboardData?.getData('text')||'',now=Date.now();if(text&&customerLastBulkPaste.text===text&&now-customerLastBulkPaste.at<2500){e.preventDefault();const r=document.getElementById('customerBulkOrderResult');if(r)r.textContent='같은 내용의 연속 붙여넣기를 막았습니다.';return}customerLastBulkPaste={text,at:now};setTimeout(()=>{const fixed=collapseCustomerExactDoublePaste(el.value);if(fixed!==el.value){el.value=fixed;pendingCustomerBulkAnalysis=null;const r=document.getElementById('customerBulkOrderResult');if(r)r.textContent='중복으로 붙여넣어진 내용을 1회분으로 자동 정리했습니다.'}},0)});
