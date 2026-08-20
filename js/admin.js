@@ -192,16 +192,21 @@ function setAdminPage(page) {
 
 async function saveOrderAdminTag(orderNumber,index){
   const input=document.getElementById(`admin-order-tag-${index}`);
-  const section=input?.closest('.admin-order-tag-editor');
-  const show=!!section?.querySelector('input[type=checkbox]')?.checked;
   const tag=String(input?.value||'').trim();
-  if(show&&!tag){alert('표시 내용을 입력하세요.');section.querySelector('input[type=checkbox]').checked=false;return;}
-  const {error}=await supabaseClient.from('order_admin_metadata').upsert({order_number:orderNumber,admin_tag:tag,show_tag:show,updated_at:new Date().toISOString()},{onConflict:'order_number'});
+  if(!tag){alert('표시 내용을 입력하세요.');return;}
+  const {error}=await supabaseClient.from('order_admin_metadata').upsert({order_number:orderNumber,admin_tag:tag,show_tag:true,updated_at:new Date().toISOString()},{onConflict:'order_number'});
   if(error)return alert('관리자 표시 저장 실패: '+error.message+'\n\nSQL/V6.6.20-ORDER-ADMIN-TAG.sql을 먼저 실행하세요.');
-  adminOrderMetaMap.set(String(orderNumber),{order_number:orderNumber,admin_tag:tag,show_tag:show});
+  adminOrderMetaMap.set(String(orderNumber),{order_number:orderNumber,admin_tag:tag,show_tag:true});
   await loadOrders();
 }
 window.saveOrderAdminTag=saveOrderAdminTag;
+async function deleteOrderAdminTag(orderNumber){
+  const {error}=await supabaseClient.from('order_admin_metadata').upsert({order_number:orderNumber,admin_tag:'',show_tag:false,updated_at:new Date().toISOString()},{onConflict:'order_number'});
+  if(error)return alert('관리자 표시 삭제 실패: '+error.message);
+  adminOrderMetaMap.set(String(orderNumber),{order_number:orderNumber,admin_tag:'',show_tag:false});
+  await loadOrders();
+}
+window.deleteOrderAdminTag=deleteOrderAdminTag;
 
 async function loadOrders() {
   adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
@@ -694,7 +699,7 @@ class="order-detail">
         ${renderOrderItemEditor(group, index)}
         ${canDeletePendingOrder(group)?`<div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deletePendingAdminOrder('${escapeAdminAttr(group.orderNumber)}')">주문접수건 삭제</button><small>피킹 시작 전 주문만 삭제할 수 있으며 삭제이력에 보관됩니다.</small></div>`:''}
 
-        <section class="admin-order-tag-editor" onclick="event.stopPropagation()"><label class="admin-order-tag-toggle"><input type="checkbox" ${group.showOrderAdminTag?'checked':''} onchange="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})"><span>관리자 표시 ON</span></label><input id="admin-order-tag-${index}" type="text" maxlength="40" value="${escapeAdminAttr(group.orderAdminTag||'')}" placeholder="예: 휴대폰주문, 퀵배송, 확인필요" onkeydown="if(event.key==='Enter'){event.preventDefault();saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})}"><button type="button" class="cart-btn" onclick="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})">표시 저장</button><small>관리자만 표시됩니다 · 자유입력</small></section>
+        <section class="admin-order-tag-editor" onclick="event.stopPropagation()"><strong>관리표시</strong><input id="admin-order-tag-${index}" type="text" maxlength="40" value="${escapeAdminAttr(group.orderAdminTag||'')}" placeholder="예: 휴대폰주문, 퀵배송, 확인필요" onkeydown="if(event.key==='Enter'){event.preventDefault();saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})}"><button type="button" class="cart-btn" onclick="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})">저장</button>${group.showOrderAdminTag&&group.orderAdminTag?`<button type="button" class="admin-order-tag-delete" onclick="deleteOrderAdminTag('${escapeAdminAttr(group.orderNumber)}')">삭제</button>`:''}<small>관리자만 표시 · 자유입력</small></section>
         <div class="order-party-summary">${group.isProxy&&group.proxyCreatedByName?`<p class="proxy-created-by-admin"><strong>대신주문 접수자</strong> ${escapeAdminHtml(group.proxyCreatedByName)} · ${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')} · 접수 ${formatOrderDateTime(group.createdAt)}</p>`:''}<p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
         <section class="order-party-editor" id="order-party-editor-${index}" hidden><div class="order-party-edit-grid"><label>거래처명<input data-party="customer" value="${escapeAdminAttr(group.customerName||'')}"></label><label>대표자명<input data-party="owner" value="${escapeAdminAttr(group.customerOwnerName||'')}"></label><label>실제 납품처명<input data-party="delivery" value="${escapeAdminAttr(group.deliveryName||'')}"></label><label>납품처 연락처<input data-party="phone" value="${escapeAdminAttr(group.deliveryPhone||'')}"></label><label class="wide">납품처 주소<input data-party="address" value="${escapeAdminAttr(group.deliveryAddress||'')}"></label><label class="wide">주문 메모<textarea data-party="memo" rows="3">${escapeAdminHtml(group.memo||'')}</textarea></label></div><div class="v3-card-actions"><button type="button" class="cart-btn" onclick="saveOrderPartyInfo('${escapeAdminAttr(group.orderNumber)}',${index})">정보 저장</button><button type="button" class="cart-btn gray-btn" onclick="toggleOrderPartyEditor(${index})">취소</button></div></section>
         ${group.memo ? `<div class="customer-order-memo"><strong>거래처 주문메모</strong><p>${escapeAdminHtml(group.memo).replaceAll("\n", "<br>")}</p></div>` : ""}
