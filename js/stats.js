@@ -63,6 +63,10 @@ function normalizeStatsCustomerName(value){
   return String(value||'').trim().normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko-KR');
 }
 
+const STATS_KOREAN_INITIALS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+function statsInitialText(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?STATS_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
+let receivableCustomerOptions=[];
+
 function normalizeStatsItemNumber(value){
   return String(value||'').trim().normalize('NFKC').toUpperCase().replace(/\s+/g,'').replace(/^[SBI][-_]?(?=\d)/,'');
 }
@@ -252,7 +256,14 @@ function renderTodayDetail(mode){
   box.innerHTML=`<div class="v3-section-heading"><h2>${title}</h2><span>${orders.length}건</span></div><div class="stats-today-detail-list">${orders.length?orders.map(o=>{const t=orderTotals(o);const time=mode==='sales'?o.completedAt:o.createdAt;return `<div class="stats-today-detail-row"><span><b>${esc(o.customerName)}</b><small>${esc(o.orderNumber)} · ${new Date(time).toLocaleString('ko-KR')}</small></span><span>상품 ${money(t.productAmount)}원<br><small>배송비 ${money(o.shippingFee)}원</small></span><strong>${money(t.amount)}원</strong></div>`}).join(''):'<p class="empty-copy">해당 주문이 없습니다.</p>'}</div>`;
 }
 function initReceivableLookup(){
-  const sel=$('receivableCustomer');if(!sel)return;const map=new Map();groupOrders(rawOrders).forEach(o=>{const k=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(k&&!map.has(k))map.set(k,o.customerName)});sel.innerHTML='<option value="">거래처 선택</option>'+[...map].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'ko')).map(([k,n])=>`<option value="${esc(k)}">${esc(n)}</option>`).join('');
+  const sel=$('receivableCustomer'),input=$('receivableCustomerSearch'),list=$('receivableCustomerList');if(!sel||!input||!list)return;
+  const map=new Map();groupOrders(rawOrders).forEach(o=>{const k=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(k&&!map.has(k))map.set(k,{key:k,name:o.customerName||'거래처명 미입력',owner:''})});
+  receivableCustomerOptions=[...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
+  list.innerHTML=receivableCustomerOptions.map(x=>`<option value="${esc(x.name)}"></option>`).join('');
+  sel.innerHTML='<option value="">거래처 선택</option>'+receivableCustomerOptions.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}</option>`).join('');
+  const choose=()=>{const q=String(input.value||'').trim().normalize('NFKC'),nq=normalizeStatsCustomerName(q),iq=statsInitialText(q).replace(/\s/g,'');if(!q){sel.value='';renderReceivableLookup();return}const exact=receivableCustomerOptions.find(x=>normalizeStatsCustomerName(x.name)===nq);const match=exact||receivableCustomerOptions.find(x=>normalizeStatsCustomerName(x.name).includes(nq)||statsInitialText(x.name).replace(/\s/g,'').includes(iq));sel.value=match?.key||'';if(match&&exact)input.value=match.name;renderReceivableLookup()};
+  input.addEventListener('input',()=>{const q=String(input.value||'').trim().normalize('NFKC'),nq=normalizeStatsCustomerName(q),iq=statsInitialText(q).replace(/\s/g,'');const filtered=!q?receivableCustomerOptions:receivableCustomerOptions.filter(x=>normalizeStatsCustomerName(x.name).includes(nq)||statsInitialText(x.name).replace(/\s/g,'').includes(iq));list.innerHTML=filtered.slice(0,80).map(x=>`<option value="${esc(x.name)}"></option>`).join('');choose()});
+  input.addEventListener('change',choose);
 }
 function renderReceivableLookup(){
   const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}

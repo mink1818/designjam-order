@@ -80,7 +80,7 @@ function renderCustomerRow(c){
  const state=customerState(c);const owner=c.owner_name||c.representative||'-';const grade=c.customer_grade||'일반';const meta=adminCustomerMeta.get(String(c.id))||{};
  return `<article class="compact-customer-card" data-id="${c.id}">
   <button type="button" class="compact-customer-summary-row" onclick="toggleCustomerDetail('${c.id}')" aria-expanded="false">
-   <span class="customer-main-info"><strong>${esc(c.business_name||'거래처명 미입력')}</strong><small>${esc(owner)} · ${esc(phone(c.phone))}</small></span>
+   <span class="customer-main-info"><strong>${esc(c.business_name||'거래처명 미입력')}${meta.customer_tag?` <small class="member-customer-alias">${esc(meta.customer_tag)}</small>`:''}</strong><small>${esc(owner)} · ${esc(phone(c.phone))}</small></span>
    <span class="customer-meta-info"><span class="presence-chip ${isOnline(c)?'online':'offline'}">${isOnline(c)?'● 접속중':'○ 오프라인'}</span><span class="status-badge ${state.cls}">${state.text}</span><span class="grade-chip">${esc(grade)}</span><small>${esc(lastSeenText(c))}</small></span>
    <span class="customer-chevron">›</span>
   </button>
