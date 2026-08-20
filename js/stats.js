@@ -66,6 +66,7 @@ function normalizeStatsCustomerName(value){
 const STATS_KOREAN_INITIALS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
 function statsInitialText(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?STATS_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
 let receivableCustomerOptions=[];
+let customerStatsMeta=new Map();
 
 function normalizeStatsItemNumber(value){
   return String(value||'').trim().normalize('NFKC').toUpperCase().replace(/\s+/g,'').replace(/^[SBI][-_]?(?=\d)/,'');
@@ -77,20 +78,22 @@ function statsGroupItemNumbers(value){
 
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
-  const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult,paymentsResult]=await Promise.all([
+  const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult,paymentsResult,customersResult]=await Promise.all([
     fetchAllStatsRows('orders','created_at',true),
     supabaseClient.from('product_groups').select('*'),
     supabaseClient.from('product_categories').select('id,name,main_category_id'),
     supabaseClient.from('product_main_categories').select('id,name'),
     fetchAllStatsRows('deleted_order_history','deleted_at',true),
     fetchAllStatsRows('order_change_history','changed_at',true),
-    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,paid_amount')
+    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,paid_amount'),
+    supabaseClient.from('customers').select('id,business_name,customer_tag')
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
   deletedOrders=deletedResult.error?[]:(deletedResult.data||[]);
   orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
   paymentRecords=paymentsResult.error?[]:(paymentsResult.data||[]);
+  customerStatsMeta=new Map((customersResult.data||[]).map(c=>[String(c.id),c]));
   categoryNameMap=new Map((categoriesResult.data||[]).map(x=>[String(x.id),x]));
   mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
@@ -255,16 +258,40 @@ function renderTodayDetail(mode){
   if(box.dataset.mode===mode&&!box.hidden){box.hidden=true;box.dataset.mode='';return}box.dataset.mode=mode;box.hidden=false;
   box.innerHTML=`<div class="v3-section-heading"><h2>${title}</h2><span>${orders.length}건</span></div><div class="stats-today-detail-list">${orders.length?orders.map(o=>{const t=orderTotals(o);const time=mode==='sales'?o.completedAt:o.createdAt;return `<div class="stats-today-detail-row"><span><b>${esc(o.customerName)}</b><small>${esc(o.orderNumber)} · ${new Date(time).toLocaleString('ko-KR')}</small></span><span>상품 ${money(t.productAmount)}원<br><small>배송비 ${money(o.shippingFee)}원</small></span><strong>${money(t.amount)}원</strong></div>`}).join(''):'<p class="empty-copy">해당 주문이 없습니다.</p>'}</div>`;
 }
+function normalizeCustomerStatsLookup(value){return String(value||'').trim().normalize('NFKC').replace(/\s+/g,'').toLowerCase()}
+function koreanInitialTextStats(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?STATS_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
+function lookupMatchesStats(label,query){const needle=normalizeCustomerStatsLookup(query);if(!needle)return true;const source=String(label||'');return normalizeCustomerStatsLookup(source).includes(needle)||normalizeCustomerStatsLookup(koreanInitialTextStats(source)).includes(needle)}
+function lookupRankStats(label,query){const needle=normalizeCustomerStatsLookup(query);if(!needle)return 0;const source=normalizeCustomerStatsLookup(label),initials=normalizeCustomerStatsLookup(koreanInitialTextStats(label));if(source===needle)return 0;if(source.startsWith(needle))return 1;if(initials===needle)return 2;if(initials.startsWith(needle))return 3;if(source.includes(needle))return 4;if(initials.includes(needle))return 5;return 99}
+function customerSearchCompareStats(nameA,nameB,query){const rank=lookupRankStats(nameA,query)-lookupRankStats(nameB,query);return rank||String(nameA||'').localeCompare(String(nameB||''),'ko',{numeric:true})}
 function initReceivableLookup(){
-  const sel=$('receivableCustomer'),input=$('receivableCustomerSearch'),list=$('receivableCustomerList');if(!sel||!input||!list)return;
+  const sel=$('receivableCustomer'),input=$('receivableCustomerSearch'),box=$('receivableCustomerSuggestions');if(!sel||!input||!box)return;
   const map=new Map();groupOrders(rawOrders).forEach(o=>{const k=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(k&&!map.has(k))map.set(k,{key:k,name:o.customerName||'거래처명 미입력',owner:''})});
-  receivableCustomerOptions=[...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
-  list.innerHTML=receivableCustomerOptions.map(x=>`<option value="${esc(x.name)}"></option>`).join('');
+  receivableCustomerOptions=[...map.values()].sort((a,b)=>customerSearchCompareStats(a.name,b.name,''));
   sel.innerHTML='<option value="">거래처 선택</option>'+receivableCustomerOptions.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}</option>`).join('');
-  const choose=()=>{const q=String(input.value||'').trim().normalize('NFKC'),nq=normalizeStatsCustomerName(q),iq=statsInitialText(q).replace(/\s/g,'');if(!q){sel.value='';renderReceivableLookup();return}const exact=receivableCustomerOptions.find(x=>normalizeStatsCustomerName(x.name)===nq);const match=exact||receivableCustomerOptions.find(x=>normalizeStatsCustomerName(x.name).includes(nq)||statsInitialText(x.name).replace(/\s/g,'').includes(iq));sel.value=match?.key||'';if(match&&exact)input.value=match.name;renderReceivableLookup()};
-  input.addEventListener('input',()=>{const q=String(input.value||'').trim().normalize('NFKC'),nq=normalizeStatsCustomerName(q),iq=statsInitialText(q).replace(/\s/g,'');const filtered=!q?receivableCustomerOptions:receivableCustomerOptions.filter(x=>normalizeStatsCustomerName(x.name).includes(nq)||statsInitialText(x.name).replace(/\s/g,'').includes(iq));list.innerHTML=filtered.slice(0,80).map(x=>`<option value="${esc(x.name)}"></option>`).join('');choose()});
-  input.addEventListener('change',choose);
+  const hide=()=>{box.hidden=true;box.innerHTML=''};
+  const selectRow=row=>{if(!row)return;sel.value=row.key;input.value=row.name;hide();renderReceivableLookup()};
+  const renderSuggestions=query=>{const value=String(query||'').trim();if(!value){hide();return}const rows=receivableCustomerOptions.filter(row=>lookupMatchesStats(row.name,value)).sort((a,b)=>customerSearchCompareStats(a.name,b.name,value)).slice(0,40);if(!rows.length){hide();return}box.hidden=false;box.innerHTML=rows.map((row,index)=>`<button type="button" data-receivable-index="${index}"><b>${esc(row.name)}</b><small>가입 거래처</small></button>`).join('');box.querySelectorAll('[data-receivable-index]').forEach(button=>button.onclick=()=>selectRow(rows[Number(button.dataset.receivableIndex)]))};
+  input.addEventListener('input',()=>{sel.value='';renderSuggestions(input.value);renderReceivableLookup();renderReceivableCustomerList()});
+  input.addEventListener('keydown',event=>{if(event.key==='Escape')hide();if(event.key==='Enter'){event.preventDefault();box.querySelector('[data-receivable-index]')?.click()}});
+  input.addEventListener('focus',()=>renderSuggestions(input.value));
+  document.addEventListener('click',event=>{if(!event.target.closest('.stats-receivable-search-wrap'))hide()});
+  renderReceivableCustomerList();
 }
+
+function receivableSnapshot(){
+  const pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));
+  const map=new Map();
+  groupOrders(rawOrders).forEach(o=>{const key=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(!key)return;const t=orderTotals(o),paid=Math.min(t.amount,pmap.get(`${o.orderNumber}::${String(o.customerId||'')}`)||0),balance=Math.max(0,t.amount-paid),meta=customerStatsMeta.get(String(o.customerId||''))||{};let x=map.get(key);if(!x)x={key,name:meta.business_name||o.customerName||'거래처명 미입력',alias:meta.customer_tag||'',balance:0,lastTrade:'',lastPayment:''};x.balance+=balance;const day=localDateKey(o.createdAt);if(day>x.lastTrade)x.lastTrade=day;if(paid>0&&day>x.lastPayment)x.lastPayment=day;map.set(key,x)});
+  return [...map.values()];
+}
+function renderReceivableCustomerList(){
+  const summary=$('receivableSummary'),out=$('receivableCustomerList'),filter=$('receivableListFilter')?.value||'unpaid',query=$('receivableCustomerSearch')?.value||'';if(!summary||!out)return;
+  const all=receivableSnapshot(),unpaid=all.filter(x=>x.balance>0),total=unpaid.reduce((a,x)=>a+x.balance,0);summary.innerHTML=`<article><span>전체 미수금</span><strong>${money(total)}원</strong></article><article><span>미수 거래처</span><strong>${money(unpaid.length)}곳</strong></article>`;
+  let rows=(filter==='all'?all:unpaid).filter(x=>lookupMatchesStats(`${x.name} ${x.alias}`,query)).sort((a,b)=>b.balance-a.balance||String(a.name).localeCompare(String(b.name),'ko',{numeric:true}));
+  out.innerHTML=rows.length?rows.map(x=>`<button type="button" class="stats-receivable-customer-row" data-receivable-key="${esc(x.key)}"><span><b>${esc(x.name)}</b>${x.alias?`<small class="member-customer-alias">${esc(x.alias)}</small>`:''}<em>최근거래 ${esc(x.lastTrade||'-')} · 최근입금 ${esc(x.lastPayment||'-')}</em></span><strong>${money(x.balance)}원</strong></button>`).join(''):'<p class="empty-copy">조건에 맞는 거래처가 없습니다.</p>';
+  out.querySelectorAll('[data-receivable-key]').forEach(btn=>btn.onclick=()=>{const row=all.find(x=>x.key===btn.dataset.receivableKey);if(!row)return;$('receivableCustomer').value=row.key;$('receivableCustomerSearch').value=row.name;renderReceivableLookup();document.getElementById('receivableDailyResult')?.scrollIntoView({behavior:'smooth',block:'nearest'})});
+}
+
 function renderReceivableLookup(){
   const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}
   const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value,pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));const rows=new Map();
@@ -321,7 +348,7 @@ function bindEvents(){
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
   $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
   $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;renderAll()});$('salesChartMode').addEventListener('change',renderAll);
-  $('receivableCustomer')?.addEventListener('change',renderReceivableLookup);$('receivableStart')?.addEventListener('change',renderReceivableLookup);$('receivableEnd')?.addEventListener('change',renderReceivableLookup);
+  $('receivableCustomer')?.addEventListener('change',renderReceivableLookup);$('receivableStart')?.addEventListener('change',renderReceivableLookup);$('receivableEnd')?.addEventListener('change',renderReceivableLookup);$('receivableListFilter')?.addEventListener('change',renderReceivableCustomerList);
   $('statusPeriodMode')?.addEventListener('change',updateStatusPeriodControls);$('statusPeriodDate')?.addEventListener('change',renderStatusPeriod);$('statusPeriodMonth')?.addEventListener('change',renderStatusPeriod);$('statusPeriodYear')?.addEventListener('change',renderStatusPeriod);
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
 }
