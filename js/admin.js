@@ -118,6 +118,8 @@ let paymentAccounts = [];
 let orderPaymentRecords = new Map();
 const requestedPaymentFilter = adminUrlParams.get('payment') || '';
 const paymentRecordKey=(orderNumber,customerId)=>`${String(orderNumber||'')}::${String(customerId||'')}`;
+const normalizeAdminCustomerName=value=>String(value||'').trim().normalize('NFKC').replace(/[\s_.·ㆍ,()[\]{}\-/]+/g,'').toLowerCase();
+const getOrderPaymentRecord=(orderNumber,customerId)=>orderPaymentRecords.get(paymentRecordKey(orderNumber,customerId))||orderPaymentRecords.get(`order::${String(orderNumber||'')}`);
 let adminInventoryMap = new Map();
 let adminInventoryAvailable = false;
 let adminCustomerIdentityMap = new Map();
@@ -247,7 +249,7 @@ try {
   data.forEach(order => {
     const customerProfile=adminCustomerIdentityMap.get(String(order.customer_id||''))||{};
     const customerMeta=adminCustomerMetaMap.get(String(order.customer_id||''))||{};
-    const groupedKey=paymentRecordKey(order.order_number,order.customer_id);
+    const groupedKey=`${String(order.order_number||'')}::${normalizeAdminCustomerName(order.customer_name||'')||String(order.customer_id||'')}`;
     const orderMeta=adminOrderMetaMap.get(String(order.order_number||''))||{};
     if (!grouped[groupedKey]) {
       const isProxyOrder = String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]');
@@ -328,7 +330,7 @@ try {
       if (requestedPaymentFilter!=='unpaid' && group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
         return false;
       }
-      const payment=orderPaymentRecords.get(paymentRecordKey(group.orderNumber,group.customerId));
+      const payment=getOrderPaymentRecord(group.orderNumber,group.customerId);
       if(requestedPaymentFilter==='unpaid' && (!payment||Number(payment.paid_amount||0)>=calculateGroupPaymentTotal(group)))return false;
 
       if (!keyword) return true;
@@ -441,13 +443,13 @@ function calculateGroupPaymentTotal(group){
 async function loadOrderPaymentRecords(){
   const {data,error}=await supabaseClient.from('order_payment_records').select('*').limit(10000);
   if(error){console.warn('입금정보 조회 실패:',error.message);orderPaymentRecords=new Map();return}
-  orderPaymentRecords=new Map((data||[]).map(row=>[paymentRecordKey(row.order_number,row.customer_key),row]));
+  orderPaymentRecords=new Map();(data||[]).forEach(row=>{orderPaymentRecords.set(paymentRecordKey(row.order_number,row.customer_key),row);orderPaymentRecords.set(`order::${String(row.order_number||'')}`,row)});
 }
 async function saveOrderPayment(orderNumber,customerId,customerName,total,paidAmount){
-  const old=orderPaymentRecords.get(paymentRecordKey(orderNumber,customerId))||{};
+  const old=getOrderPaymentRecord(orderNumber,customerId)||{};
   const {data,error}=await supabaseClient.rpc('admin_save_order_payment',{p_order_number:orderNumber,p_customer_key:String(customerId||''),p_customer_name:customerName||'',p_order_amount:Number(total||0),p_paid_amount:Number(paidAmount||0),p_payment_account:old.payment_account||null,p_depositor_name:old.depositor_name||null,p_paid_at:Number(paidAmount||0)>0?(old.paid_at||new Date().toISOString()):null,p_memo:old.memo||null});
   if(error){alert('입금상태 저장 실패: '+error.message+'\n\nV6.6.3-PAYMENT-RECEIVABLES.sql 실행 여부를 확인해주세요.');return false}
-  orderPaymentRecords.set(paymentRecordKey(orderNumber,customerId),data);return true;
+  orderPaymentRecords.set(paymentRecordKey(orderNumber,customerId),data);orderPaymentRecords.set(`order::${String(orderNumber||'')}`,data);return true;
 }
 async function toggleOrderPaid(input,orderNumber,customerId,total,customerName){
   input.disabled=true;const next=input.checked?total:0;
@@ -619,7 +621,7 @@ group.items.forEach(item => {
 });
 
 summaryTotal += Number(group.shipping_fee || 0);
-    const paymentRecord=orderPaymentRecords.get(paymentRecordKey(group.orderNumber,group.customerId))||{};
+    const paymentRecord=getOrderPaymentRecord(group.orderNumber,group.customerId)||{};
     const paymentTracked=Boolean(paymentRecord.id);
     const paidAmount=Math.max(0,Number(paymentRecord.paid_amount||0));
     const paymentStatus=!paymentTracked?'이전주문':paidAmount<=0?'미입금':paidAmount<summaryTotal?'일부입금':'입금완료';

@@ -85,7 +85,7 @@ async function loadSourceData(){
     supabaseClient.from('product_main_categories').select('id,name'),
     fetchAllStatsRows('deleted_order_history','deleted_at',true),
     fetchAllStatsRows('order_change_history','changed_at',true),
-    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,paid_amount'),
+    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,customer_name,paid_amount'),
     supabaseClient.from('customers').select('id,business_name,customer_tag')
   ]);
   if(ordersResult.error) throw ordersResult.error;
@@ -107,7 +107,7 @@ async function loadSourceData(){
 function groupOrders(rows){
   const map=new Map();
   rows.forEach(row=>{
-    const orderNumber=row.order_number||`row-${row.id}`;const customerIdentity=String(row.customer_id||normalizeStatsCustomerName(row.customer_name)||'unknown');const key=`${orderNumber}::${customerIdentity}`;
+    const orderNumber=row.order_number||`row-${row.id}`;const customerIdentity=normalizeStatsCustomerName(row.customer_name)||String(row.customer_id||'unknown');const key=`${orderNumber}::${customerIdentity}`;
     if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,completedAt:row.shipped_at||row.completed_at||row.picking_verified_at||null,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
     const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.shipped_at||row.completed_at||row.picking_verified_at)g.completedAt=row.shipped_at||row.completed_at||row.picking_verified_at;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
   });
@@ -265,7 +265,7 @@ function lookupRankStats(label,query){const needle=normalizeCustomerStatsLookup(
 function customerSearchCompareStats(nameA,nameB,query){const rank=lookupRankStats(nameA,query)-lookupRankStats(nameB,query);return rank||String(nameA||'').localeCompare(String(nameB||''),'ko',{numeric:true})}
 function initReceivableLookup(){
   const sel=$('receivableCustomer'),input=$('receivableCustomerSearch'),box=$('receivableCustomerSuggestions');if(!sel||!input||!box)return;
-  const map=new Map();groupOrders(rawOrders).forEach(o=>{const k=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(k&&!map.has(k))map.set(k,{key:k,name:o.customerName||'거래처명 미입력',owner:''})});
+  const map=new Map();groupOrders(rawOrders).forEach(o=>{const normalized=normalizeStatsCustomerName(o.customerName);const k=normalized?`name:${normalized}`:String(o.customerId||'');if(k&&!map.has(k))map.set(k,{key:k,name:o.customerName||'거래처명 미입력',owner:''})});
   receivableCustomerOptions=[...map.values()].sort((a,b)=>customerSearchCompareStats(a.name,b.name,''));
   sel.innerHTML='<option value="">거래처 선택</option>'+receivableCustomerOptions.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}</option>`).join('');
   const hide=()=>{box.hidden=true;box.innerHTML=''};
@@ -279,22 +279,25 @@ function initReceivableLookup(){
 }
 
 function receivableCustomerIdentity(order){
-  const direct=String(order?.customerId||'').trim();
-  if(direct)return direct;
   const normalized=normalizeStatsCustomerName(order?.customerName||'');
-  if(!normalized)return '';
-  const matches=[...customerStatsMeta.entries()].filter(([,meta])=>normalizeStatsCustomerName(meta?.business_name||'')===normalized);
-  return matches.length===1?String(matches[0][0]):`name:${normalized}`;
+  if(normalized)return `name:${normalized}`;
+  const direct=String(order?.customerId||'').trim();
+  return direct?`id:${direct}`:'';
+}
+function receivablePaymentFor(order){
+  const normalized=normalizeStatsCustomerName(order?.customerName||'');
+  const exact=paymentRecords.find(r=>String(r.order_number||'')===String(order?.orderNumber||'')&&normalizeStatsCustomerName(r.customer_name||'')===normalized);
+  const fallback=paymentRecords.find(r=>String(r.order_number||'')===String(order?.orderNumber||''));
+  return exact||fallback||null;
 }
 function receivableSnapshot(){
-  const pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));
   const map=new Map();
   groupOrders(rawOrders).forEach(o=>{
-    const paymentKey=`${o.orderNumber}::${String(o.customerId||'')}`;
-    if(!pmap.has(paymentKey))return; // 기존 누적 미수금과 동일: 입금관리 대상 주문만 집계
+    const payment=receivablePaymentFor(o);
+    if(!payment)return; // 기존 누적 미수금과 동일: 입금관리 대상 주문만 집계
     const key=receivableCustomerIdentity(o);if(!key)return;
-    const t=orderTotals(o),paid=Math.min(t.amount,pmap.get(paymentKey)||0),balance=Math.max(0,t.amount-paid);
-    const meta=customerStatsMeta.get(String(key))||{};
+    const t=orderTotals(o),paid=Math.min(t.amount,Math.max(0,Number(payment.paid_amount||0))),balance=Math.max(0,t.amount-paid);
+    const normalized=normalizeStatsCustomerName(o.customerName);const meta=[...customerStatsMeta.values()].find(row=>normalizeStatsCustomerName(row?.business_name||'')===normalized)||{};
     let x=map.get(key);
     if(!x)x={key,name:meta.business_name||o.customerName||'거래처명 미입력',alias:meta.customer_tag||'',balance:0,lastTrade:''};
     x.balance+=balance;
@@ -313,10 +316,10 @@ function renderReceivableCustomerList(){
 
 function renderReceivableLookup(){
   const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}
-  const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value,pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));const rows=new Map();
+  const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value;const rows=new Map();
   groupOrders(rawOrders).filter(o=>receivableCustomerIdentity(o)===key&&(!start||localDateKey(o.createdAt)>=start)&&(!end||localDateKey(o.createdAt)<=end)).forEach(o=>{
-    const paymentKey=`${o.orderNumber}::${String(o.customerId||'')}`;if(!pmap.has(paymentKey))return;
-    const d=localDateKey(o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,pmap.get(paymentKey)||0),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
+    const payment=receivablePaymentFor(o);if(!payment)return;
+    const d=localDateKey(o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,Math.max(0,Number(payment.paid_amount||0))),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
     x.total+=t.amount;x.shipping+=o.shippingFee;x.balance+=Math.max(0,t.amount-paid);x.count++;rows.set(d,x)
   });
   const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>날짜</th><th>주문금액</th><th>배송비</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 미수금 내역이 없습니다.</p>';
