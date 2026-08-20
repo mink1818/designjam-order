@@ -46,7 +46,7 @@ function getRangeBounds(range){
 }
 
 function setDefaultDates(){
-  const now=new Date(),month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));$('statsAnalysisMonth').value=month;$('monthlyRankingMonth').value=month;
+  const now=new Date(),month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;$('statsEndDate').value=localDateKey(now);$('statsStartDate').value=localDateKey(new Date(now.getFullYear(),now.getMonth(),1));$('statsAnalysisMonth').value=month;$('monthlyRankingMonth').value=month;if($('receivableEnd'))$('receivableEnd').value=localDateKey(now);if($('receivableStart')){const d=new Date(now);d.setMonth(d.getMonth()-1);$('receivableStart').value=localDateKey(d);}
 }
 
 async function fetchAllStatsRows(table,orderColumn,ascending=true,columns='*'){
@@ -152,7 +152,8 @@ function calculateStats(){
   const changes=orderChangeHistory.filter(x=>inRange(x.changed_at));const changedOrderCount=new Set(changes.map(x=>x.order_number)).size;
   const todayKey=localDateKey(new Date());
   const todayOrders=groupOrders(rawOrders).filter(order=>order.status==='출고완료'&&localDateKey(order.completedAt)===todayKey);
-  const todayOrderCount=todayOrders.length;
+  const todayCreatedOrders=groupOrders(rawOrders).filter(order=>localDateKey(order.createdAt)===todayKey);
+  const todayOrderCount=todayCreatedOrders.length;
   const todayAmount=todayOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
   const nowMonth=new Date(),monthStart=new Date(nowMonth.getFullYear(),nowMonth.getMonth(),1);
   const monthOrders=groupOrders(rawOrders).filter(order=>new Date(order.createdAt)>=monthStart&&(!completedOnly||order.status==='출고완료'));
@@ -236,9 +237,28 @@ function renderMetrics(s){
   const cards=[
     ['당일 매출',money(s.todayAmount),'원'],['당일 주문건수',money(s.todayOrderCount),'건'],['누적 미수금',money(s.receivableAmount),'원'],['미입금·일부입금',money(s.receivableOrderCount),`건 · 미입금 ${money(s.unpaidOrderCount)} / 일부 ${money(s.partialPaymentCount)}`],['이번 달 매출',money(s.monthAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
   ];
-  $('statsCards').innerHTML=cards.map(([label,value,unit])=>`<div class="v3-metric-card"><span>${label}</span><strong>${value}</strong><small>${unit}</small></div>`).join('');
-  renderStatusPeriod();
+  $('statsCards').innerHTML=cards.map(([label,value,unit])=>{const detail=label==='당일 매출'?'sales':label==='당일 주문건수'?'orders':'';return `<${detail?'button':'div'} ${detail?`type="button" data-today-detail="${detail}"`:''} class="v3-metric-card${detail?' stats-clickable-metric':''}"><span>${label}</span><strong>${value}</strong><small>${unit}${detail?' · 눌러서 상세보기':''}</small></${detail?'button':'div'}>`}).join('');
+  document.querySelectorAll('[data-today-detail]').forEach(btn=>btn.addEventListener('click',()=>renderTodayDetail(btn.dataset.todayDetail)));
+  renderStatusPeriod();renderReceivableLookup();
   const start=s.start?localDateKey(s.start):'전체 시작';const end=s.end?localDateKey(s.end):'현재';$('statsPeriodLabel').textContent=`집계 기간: ${start} ~ ${end}${s.completedOnly?' · 출고완료만 포함':''}`;
+}
+
+
+function renderTodayDetail(mode){
+  const box=$('todayDetailPanel');if(!box)return;const today=localDateKey(new Date());
+  const orders=groupOrders(rawOrders).filter(o=>mode==='sales'?(o.status==='출고완료'&&localDateKey(o.completedAt)===today):localDateKey(o.createdAt)===today);
+  const title=mode==='sales'?'당일매출 상세 · 오늘 출고완료':'당일 주문건수 상세 · 오늘 접수';
+  if(box.dataset.mode===mode&&!box.hidden){box.hidden=true;box.dataset.mode='';return}box.dataset.mode=mode;box.hidden=false;
+  box.innerHTML=`<div class="v3-section-heading"><h2>${title}</h2><span>${orders.length}건</span></div><div class="stats-today-detail-list">${orders.length?orders.map(o=>{const t=orderTotals(o);const time=mode==='sales'?o.completedAt:o.createdAt;return `<div class="stats-today-detail-row"><span><b>${esc(o.customerName)}</b><small>${esc(o.orderNumber)} · ${new Date(time).toLocaleString('ko-KR')}</small></span><span>상품 ${money(t.productAmount)}원<br><small>배송비 ${money(o.shippingFee)}원</small></span><strong>${money(t.amount)}원</strong></div>`}).join(''):'<p class="empty-copy">해당 주문이 없습니다.</p>'}</div>`;
+}
+function initReceivableLookup(){
+  const sel=$('receivableCustomer');if(!sel)return;const map=new Map();groupOrders(rawOrders).forEach(o=>{const k=String(o.customerId||normalizeStatsCustomerName(o.customerName));if(k&&!map.has(k))map.set(k,o.customerName)});sel.innerHTML='<option value="">거래처 선택</option>'+[...map].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'ko')).map(([k,n])=>`<option value="${esc(k)}">${esc(n)}</option>`).join('');
+}
+function renderReceivableLookup(){
+  const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}
+  const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value,pmap=new Map(paymentRecords.map(r=>[`${r.order_number}::${String(r.customer_key||'')}`,Math.max(0,Number(r.paid_amount||0))]));const rows=new Map();
+  groupOrders(rawOrders).filter(o=>String(o.customerId||normalizeStatsCustomerName(o.customerName))===key&&(!start||localDateKey(o.createdAt)>=start)&&(!end||localDateKey(o.createdAt)<=end)).forEach(o=>{const d=localDateKey(o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,pmap.get(`${o.orderNumber}::${String(o.customerId||'')}`)||0),x=rows.get(d)||{day:d,total:0,shipping:0,paid:0,balance:0,count:0};x.total+=t.amount;x.shipping+=o.shippingFee;x.paid+=paid;x.balance+=Math.max(0,t.amount-paid);x.count++;rows.set(d,x)});
+  const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>날짜</th><th>주문금액</th><th>배송비</th><th>입금액</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td>${money(x.paid)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 내역이 없습니다.</p>';
 }
 
 function renderAuditSummary(s){
@@ -290,9 +310,10 @@ function bindEvents(){
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
   $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
   $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;renderAll()});$('salesChartMode').addEventListener('change',renderAll);
+  $('receivableCustomer')?.addEventListener('change',renderReceivableLookup);$('receivableStart')?.addEventListener('change',renderReceivableLookup);$('receivableEnd')?.addEventListener('change',renderReceivableLookup);
   $('statusPeriodMode')?.addEventListener('change',updateStatusPeriodControls);$('statusPeriodDate')?.addEventListener('change',renderStatusPeriod);$('statusPeriodMonth')?.addEventListener('change',renderStatusPeriod);$('statusPeriodYear')?.addEventListener('change',renderStatusPeriod);
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
+document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();initReceivableLookup();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
 
