@@ -18,10 +18,33 @@ const signupMessage =
 const signupPhoneInput =
   document.getElementById("signupPhone");
 
+const businessNameInput =
+  document.getElementById("businessName");
+
+const BUSINESS_NAME_ALLOWED =
+  /^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+$/;
+
 signupButton.addEventListener(
   "click",
   signupCustomer
 );
+
+/* 거래처명은 주문·미수금 연결 기준이므로 공백과 기호를 허용하지 않습니다. */
+businessNameInput.addEventListener("input", () => {
+  const original = String(businessNameInput.value || "");
+  const cleaned = original
+    .normalize("NFKC")
+    .replace(/[^가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]/g, "");
+
+  if (original !== cleaned) {
+    businessNameInput.value = cleaned;
+    signupMessage.innerHTML = `
+      <p class="auth-error">
+        거래처명은 공백·특수기호 없이 한글·영문·숫자만 입력할 수 있습니다.
+      </p>
+    `;
+  }
+});
 
 /* 휴대폰번호에서 숫자만 추출 */
 function normalizePhone(value) {
@@ -89,6 +112,12 @@ async function signupCustomer() {
 
   if (!businessName) {
     alert("거래처명을 입력해주세요.");
+    return;
+  }
+
+  if (!BUSINESS_NAME_ALLOWED.test(businessName)) {
+    alert("거래처명은 공백·특수기호 없이 한글·영문·숫자만 입력해주세요.");
+    businessNameInput.focus();
     return;
   }
 

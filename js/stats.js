@@ -165,12 +165,12 @@ function calculateStats(){
   const nowMonth=new Date(),monthStart=new Date(nowMonth.getFullYear(),nowMonth.getMonth(),1);
   const monthOrders=groupOrders(rawOrders).filter(order=>new Date(order.createdAt)>=monthStart&&(!completedOnly||order.status==='출고완료'));
   const monthAmount=monthOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
-  const paymentMap=new Map(paymentRecords.map(row=>[`${row.order_number}::${String(row.customer_key||'')}`,Math.max(0,Number(row.paid_amount||0))]));
+  const paymentMap=new Map();paymentRecords.forEach(row=>{const paid=Math.max(0,Number(row.paid_amount||0));paymentMap.set(`${row.order_number}::${String(row.customer_key||'')}`,paid);paymentMap.set(`order::${row.order_number}`,paid)});
   let receivableAmount=0,receivableOrderCount=0,partialPaymentCount=0,unpaidOrderCount=0;
   groupOrders(rawOrders).forEach(order=>{
     const key=`${order.orderNumber}::${String(order.customerId||'')}`;
-    if(!paymentMap.has(key))return;
-    const total=orderTotals(order).amount,paid=Math.min(total,paymentMap.get(key)||0),balance=Math.max(0,total-paid);
+    const storedPaid=paymentMap.has(key)?paymentMap.get(key):paymentMap.get(`order::${order.orderNumber}`);if(storedPaid===undefined)return;
+    const total=orderTotals(order).amount,paid=Math.max(0,storedPaid||0),balance=Math.max(0,total-paid);
     if(balance<=0)return;
     receivableAmount+=balance;receivableOrderCount++;
     if(paid>0)partialPaymentCount++;else unpaidOrderCount++;
@@ -377,4 +377,3 @@ function bindEvents(){
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();initReceivableLookup();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
-
