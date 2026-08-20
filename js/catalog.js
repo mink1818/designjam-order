@@ -2993,7 +2993,7 @@ function renderBankTransferBox(){
 window.addEventListener("DOMContentLoaded", updateAdminPreviewBanner);
 
 
-// V6.6.28: accidental Ctrl+V twice guard for customer bulk order
+// V6.6.29: accidental Ctrl+V twice guard for customer bulk order
 function normalizeCustomerPasteGuardText(v){return String(v||'').normalize('NFKC').replace(/\r\n/g,'\n').trim()}
 function collapseCustomerExactDoublePaste(v){const t=String(v||'').replace(/\r\n/g,'\n'), n=t.length;for(let cut=Math.floor(n/2)-2;cut<=Math.floor(n/2)+2;cut++){if(cut>0&&normalizeCustomerPasteGuardText(t.slice(0,cut))===normalizeCustomerPasteGuardText(t.slice(cut)))return t.slice(0,cut).trim()}return v}
 let customerLastBulkPaste={text:'',at:0};

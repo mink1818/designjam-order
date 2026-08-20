@@ -2832,6 +2832,6 @@ html[data-theme=dark] .admin-customer-tag{background:#243246;border-color:#52647
 @media(max-width:420px){.status-period-controls{gap:6px}.status-period-controls select,.status-period-controls input{font-size:13px;padding-left:7px;padding-right:7px}.stats-status-grid-four{gap:8px}.stats-status-grid-four .stats-status-card{padding:11px}.stats-status-grid-four .stats-status-card strong{font-size:19px}}
 
 /* V6.6.28: collapsed order admin marker beside delivery name */
-.admin-order-tag-inline{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#fff3cd;border:1px solid #e6c65c;color:#6b5200;font-size:11px;font-weight:900;line-height:1.25;vertical-align:middle;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-order-tag-inline{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#ede9fe;border:1px solid #8b5cf6;color:#5b21b6;font-size:11px;font-weight:900;line-height:1.25;vertical-align:middle;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){.admin-order-tag-inline{margin-left:4px;padding:1px 5px;font-size:10px;max-width:110px}.order-delivery-preview{display:flex!important;align-items:center;gap:3px;min-width:0}.order-delivery-preview .admin-order-tag-inline{flex:0 1 auto}}
-html[data-theme=dark] .admin-order-tag-inline{background:#4a3d13;border-color:#8b7426;color:#ffeaa0}
+html[data-theme=dark] .admin-order-tag-inline{background:#3b2a67;border-color:#8b5cf6;color:#ede9fe}
