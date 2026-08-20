@@ -2814,3 +2814,6 @@ html[data-theme="dark"] body[data-session-page="admin"] .partial-payment-editor{
 html[data-theme="dark"] body[data-session-page="admin"] .order-payment-check *,
 html[data-theme="dark"] body[data-session-page="admin"] .order-payment-detail *,
 html[data-theme="dark"] body[data-session-page="admin"] .partial-payment-editor *{color:inherit!important}
+/* V6.6.19 관리자 전용 고객표시 */
+.admin-customer-tag{display:inline-block;margin-left:5px;padding:2px 7px;border-radius:999px;background:#eef3f8;border:1px solid #c8d3df;font-size:12px;font-weight:800;vertical-align:middle}
+html[data-theme=dark] .admin-customer-tag{background:#243246;border-color:#52647b}

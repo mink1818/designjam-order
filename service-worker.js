@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-6-18-receivable-duplicate-signup-b1';
+const CACHE_NAME='design-socks-v6-6-19-order-safety-customer-meta-b1';
 const APP_SHELL=[
   '/offline.html?v=66180',
   '/css/main.css?v=66180',

@@ -39,6 +39,8 @@ let categories = [];
 let groups = [];
 let cart = [];
 let orderSubmissionInProgress = false;
+let customerBulkApplyInProgress = false;
+let lastCustomerBulkApplySignature = "";
 
 let currentScreen = "home-menu";
 let cartReturnState = null;
@@ -1976,6 +1978,10 @@ function renderCustomerBulkOrder() {
 }
 
 async function applyCustomerBulkOrder() {
+  if (customerBulkApplyInProgress) return;
+  const applyButton = document.getElementById("confirmCustomerBulkOrder");
+  customerBulkApplyInProgress = true;
+  if (applyButton) applyButton.disabled = true;
   const input = document.getElementById("customerBulkOrderInput");
   const resultBox = document.getElementById("customerBulkOrderResult");
   const pastedText = input?.value || "";
@@ -1983,7 +1989,9 @@ async function applyCustomerBulkOrder() {
   const checked = key => Boolean(document.querySelector(`[data-customer-smart-field="${key}"]:checked`));
   const rows = checked("items") ? pendingCustomerBulkAnalysis.rows : [];
   const deliveryFields = hasVipPasteAccess()?Object.fromEntries(Object.entries(pendingCustomerBulkAnalysis.delivery).filter(([key, value]) => checked(key) && value)):{};
-  if (!rows.length && !Object.keys(deliveryFields).length) { if (resultBox) resultBox.textContent = "적용할 항목을 하나 이상 선택해 주세요."; return; }
+  if (!rows.length && !Object.keys(deliveryFields).length) { if (resultBox) resultBox.textContent = "적용할 항목을 하나 이상 선택해 주세요."; customerBulkApplyInProgress=false; if(applyButton)applyButton.disabled=false; return; }
+  const signature = JSON.stringify({rows:rows.map(r=>[String(r.number),Number(r.qty)]).sort(),delivery:deliveryFields});
+  if (signature === lastCustomerBulkApplySignature && !confirm("방금 적용한 주문과 동일합니다.\n다시 적용하면 같은 품번의 수량이 추가되어 2배가 될 수 있습니다.\n\n정말 한 번 더 추가할까요?")) { customerBulkApplyInProgress=false; if(applyButton)applyButton.disabled=false; return; }
 
   const index = getBulkOrderItemIndex();
   const totals = new Map();
@@ -2032,7 +2040,10 @@ async function applyCustomerBulkOrder() {
     resultBox.innerHTML = messages.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("");
   }
   if(customerOrderPhotoFiles.length&&confirmedTraining.length&&window.FreeHandwritingOCR?.saveTrainingData){await window.FreeHandwritingOCR.saveTrainingData(supabaseClient,[...customerOrderPhotoFiles],confirmedTraining,'customer-vip')}
+  if (addedQty) lastCustomerBulkApplySignature = signature;
   pendingCustomerBulkAnalysis = null;
+  customerBulkApplyInProgress = false;
+  if (applyButton) applyButton.disabled = false;
   if (addedQty) {
     customerBulkCartNotice = messages;
     localStorage.removeItem(CUSTOMER_BULK_ORDER_DRAFT_KEY);

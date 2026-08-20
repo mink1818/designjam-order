@@ -5,6 +5,7 @@ const ADMIN_SESSION_KEY="designjam_admin_session";
 const ADMIN_EMAILS=new Set(["900smk@naver.com","sm0727sm@hanmail.net","p1028p@naver.com"]);
 const PAGE_SIZE=30;
 let allCustomers=[],memberFilter="전체",currentRows=[],visibleCount=PAGE_SIZE;
+let adminCustomerMeta=new Map();
 const list=document.getElementById('customerList'),search=document.getElementById('memberSearch'),sort=document.getElementById('memberSort');
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const money=v=>Number(v||0).toLocaleString('ko-KR');
@@ -30,7 +31,8 @@ const memberNameKey=value=>String(value||'').trim().normalize('NFKC').toLowerCas
 async function loadCustomers(){
  list.innerHTML='<p class="customer-loading">거래처 정보를 불러오는 중...</p>';
  try{
- const {data,error}=await withTimeout(supabaseClient.from('customers').select('*').order('created_at',{ascending:false}),15000);
+ const [{data,error},metaResult]=await Promise.all([withTimeout(supabaseClient.from('customers').select('*').order('created_at',{ascending:false}),15000),withTimeout(supabaseClient.from('customer_admin_metadata').select('*'),15000).catch(()=>({data:[]}))]);
+ adminCustomerMeta=new Map((metaResult.data||[]).map(row=>[String(row.customer_id),row]));
  if(error)throw error;
  const customers=(data||[]).filter(c=>!c.is_admin);
  let orders=[];
@@ -56,7 +58,7 @@ function renderFilteredCustomers(){
  const q=String(search.value||'').toLowerCase().replace(/\s/g,'');
  let rows=allCustomers.filter(c=>{
   const status=memberFilter==='전체'||(memberFilter==='승인대기'&&!c.approved&&!c.blocked)||(memberFilter==='승인완료'&&c.approved&&!c.blocked)||(memberFilter==='차단'&&c.blocked);
-  const text=[c.business_name,c.owner_name,c.representative,c.phone,c.email,c.address,c.customer_grade,c.admin_memo].join(' ').toLowerCase().replace(/\s/g,'');
+  const meta=adminCustomerMeta.get(String(c.id))||{};const text=[c.business_name,c.owner_name,c.representative,c.phone,c.email,c.address,c.customer_grade,c.admin_memo,meta.customer_code,meta.customer_tag].join(' ').toLowerCase().replace(/\s/g,'');
   return status&&(text.includes(q)||memberInitialText(text).replace(/\s/g,'').includes(q));
  });
  const mode=sort.value;
@@ -75,7 +77,7 @@ function renderCustomers(){
   ${visibleCount<currentRows.length?`<button class="cart-btn customer-more-btn" onclick="showMoreCustomers()">다음 ${Math.min(PAGE_SIZE,currentRows.length-visibleCount)}곳 더 보기</button>`:''}`;
 }
 function renderCustomerRow(c){
- const state=customerState(c);const owner=c.owner_name||c.representative||'-';const grade=c.customer_grade||'일반';
+ const state=customerState(c);const owner=c.owner_name||c.representative||'-';const grade=c.customer_grade||'일반';const meta=adminCustomerMeta.get(String(c.id))||{};
  return `<article class="compact-customer-card" data-id="${c.id}">
   <button type="button" class="compact-customer-summary-row" onclick="toggleCustomerDetail('${c.id}')" aria-expanded="false">
    <span class="customer-main-info"><strong>${esc(c.business_name||'거래처명 미입력')}</strong><small>${esc(owner)} · ${esc(phone(c.phone))}</small></span>
@@ -91,7 +93,7 @@ function renderCustomerRow(c){
     <label>연락처<input data-field="phone" maxlength="50" value="${esc(c.phone||'')}"></label>
     <label class="wide">가입 주소<input data-field="address" maxlength="300" value="${esc(c.address||'')}"></label>
     <label>등급<select data-field="customer_grade"><option ${grade==='일반'?'selected':''}>일반</option><option ${grade==='우수'?'selected':''}>우수</option><option ${grade==='VIP'?'selected':''}>VIP</option><option ${String(grade).toUpperCase()==='VVIP'?'selected':''}>VVIP</option></select></label>
-    <label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
+    <label>고객코드<input data-admin-meta="customer_code" maxlength="40" value="${esc(meta.customer_code||'')}" placeholder="예: A012"></label><label>관리자 고객표시<input data-admin-meta="customer_tag" maxlength="40" value="${esc(meta.customer_tag||'')}" placeholder="예: 휴대폰주문"></label><label><span>주문목록에 고객표시</span><input data-admin-meta="show_order_tag" type="checkbox" ${meta.show_order_tag?'checked':''}></label><label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>
    <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${c.id}','${esc(c.business_name||'')}')">주문내역</button></div>
@@ -113,7 +115,10 @@ async function saveCustomer(id){
  if(!businessName)return alert('거래처명을 입력하세요.');
  const identity=await supabaseClient.rpc('admin_update_customer_identity',{p_customer_id:id,p_business_name:businessName,p_owner_name:ownerName});
  if(identity.error)return alert('거래처명·대표자명 저장 실패: '+identity.error.message+'\n\nSQL/V6.5.28-CUSTOMER-DELIVERY-AUDIT.sql을 먼저 실행하세요.');
- const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);alert('거래처 정보가 저장되었습니다. 변경 이력도 기록했습니다.');loadCustomers();
+ const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);
+ const metaPayload={customer_id:id};card.querySelectorAll('[data-admin-meta]').forEach(el=>metaPayload[el.dataset.adminMeta]=el.type==='checkbox'?el.checked:el.value.trim());
+ const metaSave=await supabaseClient.from('customer_admin_metadata').upsert(metaPayload,{onConflict:'customer_id'});if(metaSave.error)return alert('고객코드·고객표시 저장 실패: '+metaSave.error.message+'\n\nV6.6.19 SQL을 먼저 실행하세요.');
+ alert('거래처 정보가 저장되었습니다. 변경 이력도 기록했습니다.');loadCustomers();
 }
 async function approveCustomer(id){const {error}=await supabaseClient.from('customers').update({approved:true,blocked:false}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
 async function toggleBlock(id,blocked){if(!confirm(blocked?'차단을 해제할까요?':'이 거래처를 차단할까요?'))return;const {error}=await supabaseClient.from('customers').update({blocked:!blocked}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
