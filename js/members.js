@@ -93,7 +93,7 @@ function renderCustomerRow(c){
     <label>연락처<input data-field="phone" maxlength="50" value="${esc(c.phone||'')}"></label>
     <label class="wide">가입 주소<input data-field="address" maxlength="300" value="${esc(c.address||'')}"></label>
     <label>등급<select data-field="customer_grade"><option ${grade==='일반'?'selected':''}>일반</option><option ${grade==='우수'?'selected':''}>우수</option><option ${grade==='VIP'?'selected':''}>VIP</option><option ${String(grade).toUpperCase()==='VVIP'?'selected':''}>VVIP</option></select></label>
-    <label>고객코드<input data-admin-meta="customer_code" maxlength="40" value="${esc(meta.customer_code||'')}" placeholder="예: A012"></label><label>관리자 고객표시<input data-admin-meta="customer_tag" maxlength="40" value="${esc(meta.customer_tag||'')}" placeholder="예: 휴대폰주문"></label><label><span>주문목록에 고객표시</span><input data-admin-meta="show_order_tag" type="checkbox" ${meta.show_order_tag?'checked':''}></label><label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
+    <label>고객코드<input data-admin-meta="customer_code" maxlength="40" value="${esc(meta.customer_code||'')}" placeholder="예: A012"></label><label class="wide">관리자 메모<textarea data-field="admin_memo" placeholder="전화요망, 합배송, 후불 등">${esc(c.admin_memo||'')}</textarea></label>
    </div>
    <section class="customer-password-admin-box"><h3>비밀번호 분실 처리</h3><p>거래처에 안내할 새 비밀번호를 관리자가 직접 지정합니다.</p><div class="customer-password-row"><input data-password-one type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 6자리 이상"><input data-password-two type="password" minlength="6" autocomplete="new-password" placeholder="새 비밀번호 확인"><button class="cart-btn" type="button" onclick="setCustomerPassword('${c.id}', this)">비밀번호 변경</button></div></section>
    <div class="v3-card-actions"><button class="cart-btn" onclick="saveCustomer('${c.id}')">저장</button>${!c.approved&&!c.blocked?`<button class="cart-btn" onclick="approveCustomer('${c.id}')">승인</button>`:''}<button class="cart-btn gray-btn" onclick="toggleBlock('${c.id}',${!!c.blocked})">${c.blocked?'차단 해제':'차단'}</button><button class="cart-btn gray-btn" onclick="openCustomerOrders('${c.id}','${esc(c.business_name||'')}')">주문내역</button></div>
@@ -116,8 +116,8 @@ async function saveCustomer(id){
  const identity=await supabaseClient.rpc('admin_update_customer_identity',{p_customer_id:id,p_business_name:businessName,p_owner_name:ownerName});
  if(identity.error)return alert('거래처명·대표자명 저장 실패: '+identity.error.message+'\n\nSQL/V6.5.28-CUSTOMER-DELIVERY-AUDIT.sql을 먼저 실행하세요.');
  const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);
- const metaPayload={customer_id:id};card.querySelectorAll('[data-admin-meta]').forEach(el=>metaPayload[el.dataset.adminMeta]=el.type==='checkbox'?el.checked:el.value.trim());
- const metaSave=await supabaseClient.from('customer_admin_metadata').upsert(metaPayload,{onConflict:'customer_id'});if(metaSave.error)return alert('고객코드·고객표시 저장 실패: '+metaSave.error.message+'\n\nV6.6.19 SQL을 먼저 실행하세요.');
+ const metaPayload={customer_id:id,customer_code:(card.querySelector('[data-admin-meta="customer_code"]')?.value||'').trim()};
+ const metaSave=await supabaseClient.from('customer_admin_metadata').upsert(metaPayload,{onConflict:'customer_id'});if(metaSave.error)return alert('고객코드 저장 실패: '+metaSave.error.message+'\n\nV6.6.20 SQL을 먼저 실행하세요.');
  alert('거래처 정보가 저장되었습니다. 변경 이력도 기록했습니다.');loadCustomers();
 }
 async function approveCustomer(id){const {error}=await supabaseClient.from('customers').update({approved:true,blocked:false}).eq('id',id);if(error)return alert(error.message);loadCustomers();}

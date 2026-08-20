@@ -2817,3 +2817,6 @@ html[data-theme="dark"] body[data-session-page="admin"] .partial-payment-editor 
 /* V6.6.19 관리자 전용 고객표시 */
 .admin-customer-tag{display:inline-block;margin-left:5px;padding:2px 7px;border-radius:999px;background:#eef3f8;border:1px solid #c8d3df;font-size:12px;font-weight:800;vertical-align:middle}
 html[data-theme=dark] .admin-customer-tag{background:#243246;border-color:#52647b}
+/* V6.6.20 관리자 주문별 표시 */
+.admin-order-tag-badge{display:inline-block;margin-left:5px;padding:3px 8px;border-radius:999px;background:#fff3cd;border:1px solid #e6c65c;color:#6b5200;font-size:12px;font-weight:900;vertical-align:middle}
+.admin-order-tag-editor{display:grid;grid-template-columns:auto minmax(180px,1fr) auto;gap:8px;align-items:center;margin:10px 0;padding:10px 12px;border:1px solid #d5dfeb;border-radius:11px;background:#f8fafc}.admin-order-tag-editor input[type=text]{min-width:0;padding:10px;border:1px solid #b8c6d5;border-radius:9px}.admin-order-tag-toggle{display:flex;align-items:center;gap:6px;font-weight:900;white-space:nowrap}.admin-order-tag-toggle input{width:19px;height:19px}.admin-order-tag-editor small{grid-column:1/-1;color:#64748b}@media(max-width:650px){.admin-order-tag-editor{grid-template-columns:1fr auto}.admin-order-tag-toggle{grid-column:1/-1}.admin-order-tag-editor input[type=text]{width:100%;box-sizing:border-box}}

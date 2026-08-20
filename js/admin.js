@@ -123,12 +123,14 @@ let adminInventoryAvailable = false;
 let adminCustomerIdentityMap = new Map();
 let adminCustomerMetaMap = new Map();
 let adminProductCatalogMap = new Map();
+let adminOrderMetaMap = new Map();
 
 async function fetchCustomerIdentitySnapshot(){
   const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('customers').select('id,business_name,owner_name,phone,address').range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows;
 }
 
-async function fetchAdminCustomerMetadata(){const {data,error}=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag');if(error){console.warn('V6.6.19 고객표시 조회 생략:',error.message);return[]}return data||[]}
+async function fetchAdminCustomerMetadata(){const {data,error}=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag');if(error){console.warn('V6.6.20 고객표시 조회 생략:',error.message);return[]}return data||[]}
+async function fetchAdminOrderMetadata(){const {data,error}=await supabaseClient.from('order_admin_metadata').select('order_number,admin_tag,show_tag');if(error){console.warn('V6.6.20 주문표시 조회 생략:',error.message);return[]}return data||[]}
 async function fetchAdminProductCatalog(){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,price,warehouse_code');if(error){console.warn('상품단가표 조회 실패:',error.message);return[]}return data||[]}
 function catalogNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const p=JSON.parse(value);if(Array.isArray(p))return p.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>adminProductCatalogMap.set(inventoryKey(n),{item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()})))}
@@ -187,24 +189,40 @@ function setAdminPage(page) {
   document.getElementById("adminOrders")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+
+async function saveOrderAdminTag(orderNumber,index){
+  const input=document.getElementById(`admin-order-tag-${index}`);
+  const section=input?.closest('.admin-order-tag-editor');
+  const show=!!section?.querySelector('input[type=checkbox]')?.checked;
+  const tag=String(input?.value||'').trim();
+  if(show&&!tag){alert('표시 내용을 입력하세요.');section.querySelector('input[type=checkbox]').checked=false;return;}
+  const {error}=await supabaseClient.from('order_admin_metadata').upsert({order_number:orderNumber,admin_tag:tag,show_tag:show,updated_at:new Date().toISOString()},{onConflict:'order_number'});
+  if(error)return alert('관리자 표시 저장 실패: '+error.message+'\n\nSQL/V6.6.20-ORDER-ADMIN-TAG.sql을 먼저 실행하세요.');
+  adminOrderMetaMap.set(String(orderNumber),{order_number:orderNumber,admin_tag:tag,show_tag:show});
+  await loadOrders();
+}
+window.saveOrderAdminTag=saveOrderAdminTag;
+
 async function loadOrders() {
   adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
 
   let data = [];
 
 try {
-  const [orderRows, inventoryRows, customerRows, customerMetaRows, productCatalogRows] = await Promise.all([
+  const [orderRows, inventoryRows, customerRows, customerMetaRows, productCatalogRows, orderMetaRows] = await Promise.all([
     fetchOrders(),
     fetchInventorySnapshot(),
     fetchCustomerIdentitySnapshot(),
     fetchAdminCustomerMetadata(),
-    fetchAdminProductCatalog()
+    fetchAdminProductCatalog(),
+    fetchAdminOrderMetadata()
   ]);
   // 관리자 주문화면은 현재 단가표가 아니라 주문 접수 당시 저장된 단가를 유지합니다.
   data = orderRows;
   adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
   adminCustomerMetaMap=new Map((customerMetaRows||[]).map(row=>[String(row.customer_id),row]));
   setAdminProductCatalog(productCatalogRows);
+  adminOrderMetaMap=new Map((orderMetaRows||[]).map(row=>[String(row.order_number),row]));
   setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
   adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
@@ -225,6 +243,7 @@ try {
     const customerProfile=adminCustomerIdentityMap.get(String(order.customer_id||''))||{};
     const customerMeta=adminCustomerMetaMap.get(String(order.customer_id||''))||{};
     const groupedKey=paymentRecordKey(order.order_number,order.customer_id);
+    const orderMeta=adminOrderMetaMap.get(String(order.order_number||''))||{};
     if (!grouped[groupedKey]) {
       const isProxyOrder = String(order.order_number||'').startsWith('ADMIN-') || String(order.memo||'').includes('[관리자 대신주문]');
       const ownerCandidate = order.customer_owner_name || customerProfile.owner_name || '';
@@ -234,7 +253,9 @@ try {
         customerOwnerName: visibleOrderOwnerName(ownerCandidate, isProxyOrder),
         customerCode: customerMeta.customer_code||'',
         customerTag: customerMeta.customer_tag||'',
-        showCustomerTag: customerMeta.show_order_tag===true,
+        showCustomerTag: false,
+        orderAdminTag: orderMeta.admin_tag||'',
+        showOrderAdminTag: orderMeta.show_tag===true,
         deliveryName: order.delivery_name || order.customer_name || '',
         deliveryPhone: order.delivery_phone || customerProfile.phone || '',
         deliveryAddress: order.delivery_address || customerProfile.address || '',
@@ -641,7 +662,7 @@ summaryTotal += Number(group.shipping_fee || 0);
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}" data-revision-status="${escapeAdminAttr(group.revisionStatus||'')}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?`<small class="proxy-order-badge">관리자 대신주문${group.proxyCreatedByName?` · ${escapeAdminHtml(group.proxyCreatedByName)}(${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')}) · ${formatHourMinute(group.createdAt)}`:''}</small>`:''} ${group.memo?'<small class="customer-order-memo-badge">📝 메모</small>':''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?`<small class="proxy-order-badge">관리자 대신주문${group.proxyCreatedByName?` · ${escapeAdminHtml(group.proxyCreatedByName)}(${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')}) · ${formatHourMinute(group.createdAt)}`:''}</small>`:''} ${group.memo?'<small class="customer-order-memo-badge">📝 메모</small>':''} ${group.showOrderAdminTag&&group.orderAdminTag?`<small class="admin-order-tag-badge">[${escapeAdminHtml(group.orderAdminTag)}]</small>`:''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''}</h2>
     <p class="order-delivery-preview"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}</p>
     <p class="order-summary-number">${isDone ? `출고 ${formatCompletedDateTime(group.completedAt)}` : formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
@@ -673,7 +694,8 @@ class="order-detail">
         ${renderOrderItemEditor(group, index)}
         ${canDeletePendingOrder(group)?`<div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deletePendingAdminOrder('${escapeAdminAttr(group.orderNumber)}')">주문접수건 삭제</button><small>피킹 시작 전 주문만 삭제할 수 있으며 삭제이력에 보관됩니다.</small></div>`:''}
 
-        <div class="order-party-summary">${group.isProxy&&group.proxyCreatedByName?`<p class="proxy-created-by-admin"><strong>대신주문 접수자</strong> ${escapeAdminHtml(group.proxyCreatedByName)} · ${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')} · 접수 ${formatOrderDateTime(group.createdAt)}</p>`:''}<p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${group.showCustomerTag&&group.customerTag?` <span class="admin-customer-tag">[${escapeAdminHtml(group.customerTag)}]</span>`:''}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
+        <section class="admin-order-tag-editor" onclick="event.stopPropagation()"><label class="admin-order-tag-toggle"><input type="checkbox" ${group.showOrderAdminTag?'checked':''} onchange="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})"><span>관리자 표시 ON</span></label><input id="admin-order-tag-${index}" type="text" maxlength="40" list="admin-order-tag-presets" value="${escapeAdminAttr(group.orderAdminTag||'')}" placeholder="예: 휴대폰주문" onkeydown="if(event.key==='Enter'){event.preventDefault();saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})}"><button type="button" class="cart-btn" onclick="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})">표시 저장</button><small>이 주문에만 적용되며 거래처 화면에는 표시되지 않습니다.</small></section>
+        <div class="order-party-summary">${group.isProxy&&group.proxyCreatedByName?`<p class="proxy-created-by-admin"><strong>대신주문 접수자</strong> ${escapeAdminHtml(group.proxyCreatedByName)} · ${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')} · 접수 ${formatOrderDateTime(group.createdAt)}</p>`:''}<p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
         <section class="order-party-editor" id="order-party-editor-${index}" hidden><div class="order-party-edit-grid"><label>거래처명<input data-party="customer" value="${escapeAdminAttr(group.customerName||'')}"></label><label>대표자명<input data-party="owner" value="${escapeAdminAttr(group.customerOwnerName||'')}"></label><label>실제 납품처명<input data-party="delivery" value="${escapeAdminAttr(group.deliveryName||'')}"></label><label>납품처 연락처<input data-party="phone" value="${escapeAdminAttr(group.deliveryPhone||'')}"></label><label class="wide">납품처 주소<input data-party="address" value="${escapeAdminAttr(group.deliveryAddress||'')}"></label><label class="wide">주문 메모<textarea data-party="memo" rows="3">${escapeAdminHtml(group.memo||'')}</textarea></label></div><div class="v3-card-actions"><button type="button" class="cart-btn" onclick="saveOrderPartyInfo('${escapeAdminAttr(group.orderNumber)}',${index})">정보 저장</button><button type="button" class="cart-btn gray-btn" onclick="toggleOrderPartyEditor(${index})">취소</button></div></section>
         ${group.memo ? `<div class="customer-order-memo"><strong>거래처 주문메모</strong><p>${escapeAdminHtml(group.memo).replaceAll("\n", "<br>")}</p></div>` : ""}
         <div class="order-copy-all-row"><span class="copy-button-pair"><button type="button" class="warehouse-copy-button all-warehouse-copy-button" onclick="copyAllWarehouseOrders(this,event,'kakao')">S·B·I 카톡용 전체복사</button><button type="button" class="warehouse-copy-button all-warehouse-copy-button excel-copy-button" onclick="copyAllWarehouseOrders(this,event,'excel')">S·B·I 엑셀용 전체복사</button><button type="button" class="warehouse-copy-button" onclick="copyOrderDetails(this,event,'kakao')">품번·수량·단가 카톡복사</button><button type="button" class="warehouse-copy-button excel-copy-button" onclick="copyOrderDetails(this,event,'excel')">품번·수량·단가 엑셀복사</button></span><small>상세복사는 품번·출고수량·1죽 단가·금액을 함께 복사합니다.</small></div>
