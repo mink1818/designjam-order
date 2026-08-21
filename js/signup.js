@@ -20,6 +20,18 @@ const signupPhoneInput =
 
 const businessNameInput =
   document.getElementById("businessName");
+const signupAddressSearch = document.getElementById("signupAddressSearch");
+const addressInput = document.getElementById("address");
+const addressDetailInput = document.getElementById("addressDetail");
+
+function openSignupAddressSearch() {
+  window.DesignSocksAddressSearch.open((data) => {
+    const selected = data.userSelectedType === "J" ? data.jibunAddress : data.roadAddress;
+    addressInput.value = selected || data.roadAddress || data.jibunAddress || "";
+    addressDetailInput.focus();
+  });
+}
+signupAddressSearch?.addEventListener("click", openSignupAddressSearch);
 
 const BUSINESS_NAME_ALLOWED =
   /^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+$/;
@@ -92,11 +104,9 @@ async function signupCustomer() {
   const phone =
     normalizePhone(signupPhoneInput.value);
 
-  const address =
-    document
-      .getElementById("address")
-      .value
-      .trim();
+  const baseAddress = addressInput.value.trim();
+  const addressDetail = addressDetailInput.value.trim();
+  const address = [baseAddress, addressDetail].filter(Boolean).join(" ");
 
   const password =
     document
@@ -124,6 +134,11 @@ async function signupCustomer() {
   if (!/^01[0-9]{8,9}$/.test(phone)) {
     alert("휴대폰번호를 정확히 입력해주세요.");
     signupPhoneInput.focus();
+    return;
+  }
+
+  if (!baseAddress) {
+    alert("주소 검색을 이용해 사업장 주소를 선택해주세요.");
     return;
   }
 
@@ -234,6 +249,7 @@ async function signupCustomer() {
     document.getElementById("ownerName").value = "";
     signupPhoneInput.value = "";
     document.getElementById("address").value = "";
+    addressDetailInput.value = "";
     document.getElementById("signupPassword").value = "";
     document.getElementById("passwordConfirm").value = "";
 
