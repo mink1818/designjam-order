@@ -52,7 +52,7 @@ function setDefaultDates(){
 async function fetchAllStatsRows(table,orderColumn,ascending=true,columns='*'){
   const rows=[];
   for(let from=0;;from+=1000){
-    const result=await supabaseClient.from(table).select(columns).order(orderColumn,{ascending}).range(from,from+999);
+    const result=await supabaseClient.from(table).select(columns).order(orderColumn,{ascending}).order('id',{ascending}).range(from,from+999);
     if(result.error)return {data:rows,error:result.error};
     rows.push(...(result.data||[]));
     if(!result.data||result.data.length<1000)return {data:rows,error:null};
@@ -85,7 +85,7 @@ async function loadSourceData(){
     supabaseClient.from('product_main_categories').select('id,name'),
     fetchAllStatsRows('deleted_order_history','deleted_at',true),
     fetchAllStatsRows('order_change_history','changed_at',true),
-    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,customer_name,paid_amount'),
+    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,customer_name,paid_amount,confirmed_by,updated_at'),
     supabaseClient.from('customers').select('id,business_name,customer_tag')
   ]);
   if(ordersResult.error) throw ordersResult.error;
@@ -165,12 +165,12 @@ function calculateStats(){
   const nowMonth=new Date(),monthStart=new Date(nowMonth.getFullYear(),nowMonth.getMonth(),1);
   const monthOrders=groupOrders(rawOrders).filter(order=>new Date(order.createdAt)>=monthStart&&(!completedOnly||order.status==='출고완료'));
   const monthAmount=monthOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
-  const paymentMap=new Map();paymentRecords.forEach(row=>{const paid=Math.max(0,Number(row.paid_amount||0));paymentMap.set(`${row.order_number}::${String(row.customer_key||'')}`,paid);paymentMap.set(`order::${row.order_number}`,paid)});
+  const paymentMap=new Map();paymentRecords.forEach(row=>{const k=`order::${row.order_number}`,old=paymentMap.get(k);if(!old||(!old.confirmed_by&&row.confirmed_by)||((!!old.confirmed_by)===(!!row.confirmed_by)&&new Date(row.updated_at||0)>new Date(old.updated_at||0)))paymentMap.set(k,row)});
   let receivableAmount=0,receivableOrderCount=0,partialPaymentCount=0,unpaidOrderCount=0;
   groupOrders(rawOrders).forEach(order=>{
     const key=`${order.orderNumber}::${String(order.customerId||'')}`;
-    const storedPaid=paymentMap.has(key)?paymentMap.get(key):paymentMap.get(`order::${order.orderNumber}`);if(storedPaid===undefined)return;
-    const total=orderTotals(order).amount,paid=Math.max(0,storedPaid||0),balance=Math.max(0,total-paid);
+    const record=paymentMap.get(`order::${order.orderNumber}`);if(!record)return;
+    const total=orderTotals(order).amount,paid=Math.max(0,Number(record.paid_amount||0)),balance=Math.max(0,total-paid);
     if(balance<=0)return;
     receivableAmount+=balance;receivableOrderCount++;
     if(paid>0)partialPaymentCount++;else unpaidOrderCount++;
@@ -286,9 +286,10 @@ function receivableCustomerIdentity(order){
 }
 function receivablePaymentFor(order){
   const normalized=normalizeStatsCustomerName(order?.customerName||'');
-  const exact=paymentRecords.find(r=>String(r.order_number||'')===String(order?.orderNumber||'')&&normalizeStatsCustomerName(r.customer_name||'')===normalized);
-  const fallback=paymentRecords.find(r=>String(r.order_number||'')===String(order?.orderNumber||''));
-  return exact||fallback||null;
+  const candidates=paymentRecords.filter(r=>String(r.order_number||'')===String(order?.orderNumber||''));
+  candidates.sort((a,b)=>Number(!!b.confirmed_by)-Number(!!a.confirmed_by)||new Date(b.updated_at||0)-new Date(a.updated_at||0));
+  const exact=candidates.find(r=>normalizeStatsCustomerName(r.customer_name||'')===normalized);
+  return exact||candidates[0]||null;
 }
 function receivableSnapshot(){
   const map=new Map();

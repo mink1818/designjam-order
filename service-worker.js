@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-6-39';
+const CACHE_NAME='design-socks-v6-6-46';
 const APP_SHELL=[
   '/offline.html?v=66180',
   '/css/main.css?v=66180',
@@ -8,7 +8,7 @@ const APP_SHELL=[
   '/css/customer-share-document.css?v=66040',
   '/js/customer-share-document.js?v=66180',
   '/js/pwa.js?v=66180',
-  '/js/version-badge.js?v=66390',
+  '/js/version-badge.js?v=66430',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',

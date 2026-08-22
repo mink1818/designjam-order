@@ -2,7 +2,7 @@ async function fetchOrders() {
   // Supabase 한 번 응답 상한(1000행)을 넘는 과거 주문도 미입금 누적 조회에서 빠지지 않게 모두 불러옵니다.
   const rows=[];
   for(let from=0;;from+=1000){
-    const {data,error}=await supabaseClient.from("orders").select("*").order("created_at",{ascending:false}).range(from,from+999);
+    const {data,error}=await supabaseClient.from("orders").select("*").order("created_at",{ascending:false}).order("id",{ascending:false}).range(from,from+999);
     if(error)throw error;
     rows.push(...(data||[]));
     if(!data||data.length<1000)break;

@@ -52,7 +52,6 @@
       type="text"
       autocomplete="organization"
       placeholder="예: 행복상회"
-      pattern="[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+"
       title="공백·특수기호 없이 한글·영문·숫자만 입력해주세요."
       maxlength="40"
       required
@@ -85,17 +84,13 @@
       placeholder="예: 010-1234-5678"
     >
 
-    <label for="address">
-      주소
-    </label>
-
-    <input
-      id="address"
-      class="order-input"
-      type="text"
-      autocomplete="street-address"
-      placeholder="사업장 주소"
-    >
+    <label for="address">주소 *</label>
+    <div class="address-search-row">
+      <input id="address" class="order-input" type="text" autocomplete="street-address" placeholder="주소 검색 버튼을 눌러주세요" readonly>
+      <button id="signupAddressSearch" class="cart-btn address-search-btn" type="button">주소 검색</button>
+    </div>
+    <p class="address-search-help">도로명·구주소(지번)·건물명으로 검색할 수 있습니다.</p>
+    <input id="addressDetail" class="order-input" type="text" autocomplete="address-line2" placeholder="상세주소 (동·호수 등)">
 
     <label for="signupPassword">
       비밀번호 *
@@ -146,10 +141,12 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/signup.js?v=66380"></script>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" data-designsocks-postcode="1"></script>
+<script src="js/address-search.js?v=66430"></script>
+<script src="js/signup.js?v=66500"></script>
 
 <script src="js/pwa.js?v=66180"></script>
-<script src="js/version-badge.js?v=66390"></script>
+<script src="js/version-badge.js?v=66651"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
 </body>
 </html>

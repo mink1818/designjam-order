@@ -441,9 +441,9 @@ function calculateGroupPaymentTotal(group){
   return productTotal+Number(group.shipping_fee||0);
 }
 async function loadOrderPaymentRecords(){
-  const {data,error}=await supabaseClient.from('order_payment_records').select('*').limit(10000);
+  const {data,error}=await supabaseClient.from('order_payment_records').select('id,order_number,customer_key,customer_name,order_amount,paid_amount,payment_status,payment_account,depositor_name,paid_at,memo,confirmed_by,confirmed_by_name,updated_at').limit(10000);
   if(error){console.warn('입금정보 조회 실패:',error.message);orderPaymentRecords=new Map();return}
-  orderPaymentRecords=new Map();(data||[]).forEach(row=>{orderPaymentRecords.set(paymentRecordKey(row.order_number,row.customer_key),row);orderPaymentRecords.set(`order::${String(row.order_number||'')}`,row)});
+  orderPaymentRecords=new Map();(data||[]).forEach(row=>{orderPaymentRecords.set(paymentRecordKey(row.order_number,row.customer_key),row);const k=`order::${String(row.order_number||'')}`,old=orderPaymentRecords.get(k);if(!old||(!old.confirmed_by&&row.confirmed_by)||((!!old.confirmed_by)===(!!row.confirmed_by)&&new Date(row.updated_at||0)>new Date(old.updated_at||0)))orderPaymentRecords.set(k,row)});
 }
 async function saveOrderPayment(orderNumber,customerId,customerName,total,paidAmount){
   const old=getOrderPaymentRecord(orderNumber,customerId)||{};

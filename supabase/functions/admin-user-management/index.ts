@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
-    const protectedActions = new Set(["set_password", "create_admin", "update_admin_profile", "set_admin_role", "set_admin_blocked"]);
+    const protectedActions = new Set(["create_admin", "update_admin_profile", "set_admin_role", "set_admin_blocked"]);
     if (protectedActions.has(action)) {
       if (!isDeveloper) return json({ error: "이 작업은 개발관리자만 가능합니다." }, 403);
       const { data: grant } = await admin.from("admin_security_grants").select("password_verified_until,email_verified_until").eq("user_id", caller.id).maybeSingle();
@@ -65,6 +65,29 @@ Deno.serve(async (req) => {
       const password = String(body.password || "");
       if (!targetId) return json({ error: "대상 계정이 없습니다." }, 400);
       if (password.length < 6) return json({ error: "비밀번호는 6자리 이상이어야 합니다." }, 400);
+
+      // 거래처 비밀번호는 일반 관리자와 개발관리자 모두 변경할 수 있다.
+      // 관리자 계정 자체의 비밀번호 변경은 기존 보안 정책대로 개발관리자 + 추가 인증이 필요하다.
+      const { data: targetProfile, error: targetProfileError } = await admin
+        .from("customers")
+        .select("id,is_admin")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (targetProfileError) return json({ error: `대상 계정 확인 실패: ${targetProfileError.message}` }, 400);
+      if (!targetProfile) return json({ error: "대상 계정을 찾을 수 없습니다." }, 404);
+
+      if (targetProfile.is_admin === true) {
+        if (!isDeveloper) return json({ error: "관리자 계정 비밀번호는 개발관리자만 변경할 수 있습니다." }, 403);
+        const { data: grant } = await admin.from("admin_security_grants")
+          .select("password_verified_until,email_verified_until")
+          .eq("user_id", caller.id)
+          .maybeSingle();
+        const now = Date.now();
+        if (!grant?.password_verified_until || new Date(grant.password_verified_until).getTime() < now || !grant?.email_verified_until || new Date(grant.email_verified_until).getTime() < now) {
+          return json({ error: "현재 비밀번호와 메일 인증을 먼저 완료하세요." }, 403);
+        }
+      }
+
       const { error } = await admin.auth.admin.updateUserById(targetId, { password });
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, message: "비밀번호가 변경되었습니다." });
