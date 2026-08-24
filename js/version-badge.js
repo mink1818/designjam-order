@@ -1,5 +1,5 @@
 (()=>{
-  const RELEASE_VERSION='V6.6.49';
+  const RELEASE_VERSION='V6.6.54';
   function addBadge(version){
     let b=document.getElementById('appVersionBadge');
     if(!b){
@@ -9,6 +9,12 @@
     }
     b.textContent=version;
   }
-  function init(){addBadge(RELEASE_VERSION);}
+  async function init(){
+    addBadge(RELEASE_VERSION);
+    try{
+      const res=await fetch('/version.json?ts='+Date.now(),{cache:'no-store'});
+      if(res.ok){const data=await res.json();if(data?.version)addBadge('V'+String(data.version).replace(/^V/i,''));}
+    }catch(_){/* offline: bundled release version stays visible */}
+  }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();

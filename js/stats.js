@@ -167,7 +167,7 @@ function calculateStats(){
   const monthAmount=monthOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
   const paymentMap=new Map();paymentRecords.forEach(row=>{const k=`order::${row.order_number}`,old=paymentMap.get(k);if(!old||(!old.confirmed_by&&row.confirmed_by)||((!!old.confirmed_by)===(!!row.confirmed_by)&&new Date(row.updated_at||0)>new Date(old.updated_at||0)))paymentMap.set(k,row)});
   let receivableAmount=0,receivableOrderCount=0,partialPaymentCount=0,unpaidOrderCount=0;
-  groupOrders(rawOrders).forEach(order=>{
+  groupOrders(rawOrders).filter(order=>order.status==='출고완료').forEach(order=>{
     const key=`${order.orderNumber}::${String(order.customerId||'')}`;
     const record=paymentMap.get(`order::${order.orderNumber}`);if(!record)return;
     const total=orderTotals(order).amount,paid=Math.max(0,Number(record.paid_amount||0)),balance=Math.max(0,total-paid);
@@ -293,7 +293,7 @@ function receivablePaymentFor(order){
 }
 function receivableSnapshot(){
   const map=new Map();
-  groupOrders(rawOrders).forEach(o=>{
+  groupOrders(rawOrders).filter(o=>o.status==='출고완료').forEach(o=>{
     const payment=receivablePaymentFor(o);
     if(!payment)return; // 기존 누적 미수금과 동일: 입금관리 대상 주문만 집계
     const key=receivableCustomerIdentity(o);if(!key)return;
@@ -302,7 +302,7 @@ function receivableSnapshot(){
     let x=map.get(key);
     if(!x)x={key,name:meta.business_name||o.customerName||'거래처명 미입력',alias:meta.customer_tag||'',balance:0,lastTrade:''};
     x.balance+=balance;
-    const day=localDateKey(o.createdAt);if(day>x.lastTrade)x.lastTrade=day;
+    const day=localDateKey(o.completedAt||o.createdAt);if(day>x.lastTrade)x.lastTrade=day;
     map.set(key,x);
   });
   return [...map.values()];
@@ -318,12 +318,12 @@ function renderReceivableCustomerList(){
 function renderReceivableLookup(){
   const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}
   const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value;const rows=new Map();
-  groupOrders(rawOrders).filter(o=>receivableCustomerIdentity(o)===key&&(!start||localDateKey(o.createdAt)>=start)&&(!end||localDateKey(o.createdAt)<=end)).forEach(o=>{
+  groupOrders(rawOrders).filter(o=>o.status==='출고완료'&&receivableCustomerIdentity(o)===key&&(!start||localDateKey(o.completedAt||o.createdAt)>=start)&&(!end||localDateKey(o.completedAt||o.createdAt)<=end)).forEach(o=>{
     const payment=receivablePaymentFor(o);if(!payment)return;
-    const d=localDateKey(o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,Math.max(0,Number(payment.paid_amount||0))),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
+    const d=localDateKey(o.completedAt||o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,Math.max(0,Number(payment.paid_amount||0))),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
     x.total+=t.amount;x.shipping+=o.shippingFee;x.balance+=Math.max(0,t.amount-paid);x.count++;rows.set(d,x)
   });
-  const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>날짜</th><th>주문금액</th><th>배송비</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 미수금 내역이 없습니다.</p>';
+  const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>출고완료일</th><th>주문금액</th><th>배송비</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 미수금 내역이 없습니다.</p>';
 }
 
 function renderAuditSummary(s){

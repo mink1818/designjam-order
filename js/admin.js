@@ -495,10 +495,13 @@ function renderOrderItemEditor(group, index) {
     <div class="order-edit-head"><span>품번</span><span>수량(죽)</span><span>단가(1죽)</span><span>금액</span><span>관리</span></div>
     <div class="order-edit-rows">${rows}</div>
     <div class="order-edit-actions">
-      <button type="button" onclick="addOrderItemEditRow(${index})">+ 없는 품번 추가</button>
+      <div class="order-edit-add-actions">
+        <button type="button" class="order-edit-add-auto" onclick="addOrderItemEditRow(${index},'auto')">+ 품번 자동추가</button>
+        <button type="button" class="order-edit-add-manual" onclick="addOrderItemEditRow(${index},'manual')">+ 수기 직접입력</button>
+      </div>
       <button type="button" class="order-edit-save" onclick="saveOrderItems('${escapeAdminAttr(group.orderNumber)}',${index})">주문 품목 저장</button>
     </div>
-    <small>여기서 수정하면 작업지시서·피킹검증·거래명세서에 같이 반영됩니다.</small>
+    <small><b>품번 자동추가</b>: 등록 상품의 출고지·거래처 단가를 자동 조회합니다. · <b>수기 직접입력</b>: 입력한 품번·단가를 그대로 사용합니다.</small>
   </section>`;
 }
 
@@ -984,7 +987,7 @@ function updateOrderEditRowTotal(row) {
   if (total) total.value = qty * price;
 }
 
-async function autofillNewOrderItem(row){if(!row?.classList.contains('new-order-edit-row'))return;const input=row.querySelector('.order-edit-number'),parsed=splitWarehouseItemNumber(input?.value),key=inventoryKey(parsed.itemNumber);if(!key)return;const found=adminProductCatalogMap.get(key);if(!found)return;const customerId=row.closest('.order-item-editor')?.dataset.customerId||'';let price=Number(found.price||0);if(customerId){try{const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error){const special=(data||[]).find(x=>inventoryKey(x.item_number)===key);if(special)price=Number(special.price||price)}}catch(_){}}input.value=`${found.warehouse_code||parsed.warehouseCode||''}${found.warehouse_code||parsed.warehouseCode?'-':''}${found.item_number}`;const priceInput=row.querySelector('.order-edit-price');if(priceInput)priceInput.value=price;updateOrderEditRowTotal(row)}
+async function autofillNewOrderItem(row){if(!row?.classList.contains('new-order-edit-row')||row.dataset.entryMode==='manual')return;const input=row.querySelector('.order-edit-number'),parsed=splitWarehouseItemNumber(input?.value),key=inventoryKey(parsed.itemNumber);if(!key)return;const found=adminProductCatalogMap.get(key);if(!found)return;const customerId=row.closest('.order-item-editor')?.dataset.customerId||'';let price=Number(found.price||0);if(customerId){try{const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error){const special=(data||[]).find(x=>inventoryKey(x.item_number)===key);if(special)price=Number(special.price||price)}}catch(_){}}input.value=`${found.warehouse_code||parsed.warehouseCode||''}${found.warehouse_code||parsed.warehouseCode?'-':''}${found.item_number}`;const priceInput=row.querySelector('.order-edit-price');if(priceInput)priceInput.value=price;updateOrderEditRowTotal(row)}
 function bindOrderEditRow(row) {
   const numberInput=row.querySelector('.order-edit-number');if(numberInput&&!numberInput.dataset.autoPriceBound){numberInput.dataset.autoPriceBound='1';numberInput.addEventListener('change',()=>autofillNewOrderItem(row));numberInput.addEventListener('blur',()=>autofillNewOrderItem(row));}
   row.querySelectorAll(".order-edit-qty,.order-edit-price").forEach(input => input.addEventListener("input", () => updateOrderEditRowTotal(row)));
@@ -1025,12 +1028,13 @@ async function prepareOrderItemEditor(orderNumber, index, editable, isDone) {
   alert('피킹을 시작한 주문은 품번·수량·단가를 바로 수정할 수 없습니다.\n피킹 화면의 전용 초기화 기능으로 대기 상태를 확인한 뒤 다시 시도해주세요.');
 }
 
-function addOrderItemEditRow(index) {
+function addOrderItemEditRow(index, mode = "auto") {
   const editor = document.getElementById(`order-item-editor-${index}`);
   const rows = editor?.querySelector(".order-edit-rows");
   if (!rows) return;
-  rows.insertAdjacentHTML("beforeend", `<div class="order-edit-item-row new-order-edit-row" data-order-edit-row>
-    <input class="order-edit-number" type="text" placeholder="품번(예: S-1001)">
+  const isManual = mode === "manual";
+  rows.insertAdjacentHTML("beforeend", `<div class="order-edit-item-row new-order-edit-row ${isManual ? 'manual-order-edit-row' : 'auto-order-edit-row'}" data-order-edit-row data-entry-mode="${isManual ? 'manual' : 'auto'}">
+    <input class="order-edit-number" type="text" placeholder="${isManual ? '수기 품번(예: S-1001)' : '등록 품번(예: S-1001)'}">
     <input class="order-edit-qty" type="number" min="1" step="1" value="1" aria-label="수량(죽)">
     <input class="order-edit-price" type="number" min="0" step="50" value="0" aria-label="1죽 단가">
     <input class="order-edit-row-total" type="number" min="0" step="1" value="0" aria-label="금액">
