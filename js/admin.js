@@ -114,7 +114,9 @@ const requestedAdminStatus = new URLSearchParams(location.search).get("status");
 if (["전체", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let orderRevisionMap = {};
+let orderRevisionHistoryMap = {};
 let orderAdminChangeMap = {};
+let orderAdminChangeHistoryMap = {};
 let paymentAccounts = [];
 let orderPaymentRecords = new Map();
 const requestedPaymentFilter = adminUrlParams.get('payment') || '';
@@ -473,7 +475,24 @@ function canDeletePendingOrder(group){return group.status==='주문접수'&&canE
 
 function revisionSnapshotMap(snapshot){const map=new Map();(Array.isArray(snapshot)?snapshot:[]).forEach(item=>{const warehouse=String(item.warehouse_code||'').toUpperCase(),number=String(item.item_number||'').trim();map.set(`${warehouse}|${number}`,{warehouse,number,qty:Number(item.qty||0),price:Number(item.price||0)})});return map}
 function changedItemKeys(beforeSnapshot,afterSnapshot){const before=revisionSnapshotMap(beforeSnapshot),after=revisionSnapshotMap(afterSnapshot),keys=new Set();for(const key of new Set([...before.keys(),...after.keys()])){const a=before.get(key),b=after.get(key);if(!a||!b||a.qty!==b.qty||a.price!==b.price)keys.add(key)}return keys}
-function itemEditHistoryBadges(group,item){const key=`${String(item.warehouse_code||'').toUpperCase()}|${String(item.item_number||'').trim()}`;const customerKeys=changedItemKeys(group.revisionRecord?.original_snapshot,group.revisionRecord?.revised_snapshot);const adminKeys=changedItemKeys(group.adminChangeRecord?.before_snapshot,group.adminChangeRecord?.after_snapshot);return `${customerKeys.has(key)?'<small class="item-edit-history-badge customer" title="고객이 수정한 품번">고객수정</small>':''}${adminKeys.has(key)?'<small class="item-edit-history-badge admin" title="관리자가 수정한 품번">관리자수정</small>':''}`}
+function orderItemHistoryFlags(group,item){
+ const key=`${String(item.warehouse_code||'').toUpperCase()}|${String(item.item_number||'').trim()}`;
+ const customerRows=group.revisionHistory||[];const adminRows=group.adminChangeHistory||[];
+ return {customer:customerRows.some(row=>changedItemKeys(row.original_snapshot,row.revised_snapshot).has(key)),admin:adminRows.some(row=>changedItemKeys(row.before_snapshot,row.after_snapshot).has(key))};
+}
+function itemEditHistoryBadges(group,item){const flags=orderItemHistoryFlags(group,item);return `${flags.customer?'<small class="item-edit-history-badge customer" title="고객이 수정한 품번">고객수정</small>':''}${flags.admin?'<small class="item-edit-history-badge admin" title="관리자가 수정한 품번">관리자수정</small>':''}`}
+function itemEditHistoryClass(group,item){const flags=orderItemHistoryFlags(group,item);return flags.customer&&flags.admin?' edit-both':flags.customer?' edit-customer':flags.admin?' edit-admin':''}
+function describeSnapshotChanges(beforeSnapshot,afterSnapshot){
+ const before=revisionSnapshotMap(beforeSnapshot),after=revisionSnapshotMap(afterSnapshot),keys=[...new Set([...before.keys(),...after.keys()])].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
+ return keys.map(key=>{const a=before.get(key),b=after.get(key),label=`${b?.warehouse||a?.warehouse?`${b?.warehouse||a?.warehouse}-`:''}${b?.number||a?.number||'-'}`;if(!a)return`<li class="history-added"><b>${escapeAdminHtml(label)}</b><span>품번 추가 · ${b.qty}죽${b.price?` · 단가 ${b.price.toLocaleString()}원`:''}</span></li>`;if(!b)return`<li class="history-deleted"><b>${escapeAdminHtml(label)}</b><span>품번 삭제 · 기존 ${a.qty}죽</span></li>`;const parts=[];if(a.qty!==b.qty)parts.push(`수량 ${a.qty}죽 → ${b.qty}죽`);if(a.price!==b.price)parts.push(`단가 ${a.price.toLocaleString()}원 → ${b.price.toLocaleString()}원`);return parts.length?`<li class="history-changed"><b>${escapeAdminHtml(label)}</b><span>${parts.join(' · ')}</span></li>`:''}).filter(Boolean).join('');
+}
+function renderOrderEditHistory(group,index){
+ const entries=[...(group.revisionHistory||[]).map(row=>({kind:'customer',time:row.completed_at||row.started_at,before:row.original_snapshot,after:row.revised_snapshot,label:'고객 수정'})),...(group.adminChangeHistory||[]).map(row=>({kind:'admin',time:row.changed_at,before:row.before_snapshot,after:row.after_snapshot,label:'관리자 수정',reason:row.change_reason}))].filter(row=>row.time).sort((a,b)=>new Date(a.time)-new Date(b.time));
+ if(!entries.length)return `<section class="order-edit-history-box empty"><strong>수정이력</strong><small>수정 기록 없음</small></section>`;
+ return `<section class="order-edit-history-box" onclick="event.stopPropagation()"><button type="button" class="order-edit-history-toggle" onclick="toggleOrderEditHistory(${index})"><span>수정이력</span><b>${entries.length}회</b><em>펼치기</em></button><div id="order-edit-history-${index}" class="order-edit-history-list" hidden>${entries.map((entry,i)=>{const changes=describeSnapshotChanges(entry.before,entry.after);return `<article class="order-edit-history-entry ${entry.kind}"><header><b>${i+1}차 · ${entry.label}</b><time>${formatOrderDateTime(entry.time)}</time></header>${entry.reason?`<small>${escapeAdminHtml(entry.reason)}</small>`:''}<ul>${changes||'<li>품목 외 주문정보 수정</li>'}</ul></article>`}).join('')}</div></section>`;
+}
+function toggleOrderEditHistory(index){const box=document.getElementById(`order-edit-history-${index}`);if(!box)return;box.hidden=!box.hidden;const btn=box.previousElementSibling;if(btn){const em=btn.querySelector('em');if(em)em.textContent=box.hidden?'펼치기':'접기'}}
+window.toggleOrderEditHistory=toggleOrderEditHistory;
 function renderOrderRevisionPanel(group){
  const state=group.revisionStatus;if(!state)return'';const revision=group.revisionRecord||{},before=revisionSnapshotMap(revision.original_snapshot),after=revisionSnapshotMap(revision.revised_snapshot),keys=[...new Set([...before.keys(),...after.keys()])].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
  const changes=keys.map(key=>{const oldItem=before.get(key),newItem=after.get(key),label=`${newItem?.warehouse||oldItem?.warehouse?`${newItem?.warehouse||oldItem?.warehouse}-`:''}${newItem?.number||oldItem?.number||'-'}`;if(!oldItem)return`<li class="revision-added"><b>${escapeAdminHtml(label)}</b> 신규 ${newItem.qty}죽</li>`;if(!newItem)return`<li class="revision-deleted"><b>${escapeAdminHtml(label)}</b> ${oldItem.qty}죽 → 삭제</li>`;if(oldItem.qty!==newItem.qty)return`<li class="revision-changed"><b>${escapeAdminHtml(label)}</b> ${oldItem.qty}죽 → ${newItem.qty}죽</li>`;return''}).filter(Boolean).join('');
@@ -616,7 +635,9 @@ function renderOrderCards(groups) {
 
   groups.forEach((group, index) => {
     group.revisionRecord=orderRevisionMap[group.orderNumber]||null;
+    group.revisionHistory=orderRevisionHistoryMap[group.orderNumber]||[];
     group.adminChangeRecord=orderAdminChangeMap[group.orderNumber]||null;
+    group.adminChangeHistory=orderAdminChangeHistoryMap[group.orderNumber]||[];
     const customerChanged=Boolean(group.revisionRecord||group.revisionStatus);
     const adminChanged=Boolean(group.adminChangeRecord);
     const editBadges=`${customerChanged?`<small class="order-edit-origin-badge customer" title="고객 주문 수정 이력${group.revisionRecord?.completed_at?` · ${formatOrderDateTime(group.revisionRecord.completed_at)}`:''}">고객 수정</small>`:''}${adminChanged?`<small class="order-edit-origin-badge admin" title="${escapeAdminAttr(group.adminChangeRecord?.change_reason||'관리자 주문 수정')}${group.adminChangeRecord?.changed_at?` · ${formatOrderDateTime(group.adminChangeRecord.changed_at)}`:''}">관리자 수정</small>`:''}`;
@@ -666,7 +687,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   ${group.status === "출고완료" || String(group.pickingStatus || '').includes('검증완료') ? "disabled" : ""}
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
-          <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${itemEditHistoryBadges(group,item)}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
+          <strong class="order-item-number-highlight${itemEditHistoryClass(group,item)}">${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${itemEditHistoryBadges(group,item)}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
           <span class="admin-item-pricing"><b>출고 ${shippedQty}죽</b>${itemSoldoutQty?`<small>주문 ${orderedQty}죽 · 품절 ${itemSoldoutQty}죽</small>`:''}<small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
           <em>출고금액 ${rowTotal.toLocaleString()}원</em>
         </label>
@@ -711,7 +732,7 @@ class="order-detail">
         ${renderOrderItemEditor(group, index)}
         ${canDeletePendingOrder(group)?`<div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deletePendingAdminOrder('${escapeAdminAttr(group.orderNumber)}')">주문접수건 삭제</button><small>피킹 시작 전 주문만 삭제할 수 있으며 삭제이력에 보관됩니다.</small></div>`:''}
 
-        <section class="admin-order-tag-editor" onclick="event.stopPropagation()"><strong>관리표시</strong><input id="admin-order-tag-${index}" type="text" maxlength="40" value="${escapeAdminAttr(group.orderAdminTag||'')}" placeholder="예: 휴대폰주문, 퀵배송, 확인필요" onkeydown="if(event.key==='Enter'){event.preventDefault();saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})}"><button type="button" class="cart-btn" onclick="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})">저장</button>${group.showOrderAdminTag&&group.orderAdminTag?`<button type="button" class="admin-order-tag-delete" onclick="deleteOrderAdminTag('${escapeAdminAttr(group.orderNumber)}')">삭제</button>`:''}<small>관리자만 표시 · 자유입력</small></section>
+        <div class="order-admin-meta-row"><section class="admin-order-tag-editor compact-admin-tag" onclick="event.stopPropagation()"><strong>관리표시</strong><input id="admin-order-tag-${index}" type="text" maxlength="40" value="${escapeAdminAttr(group.orderAdminTag||'')}" placeholder="예: 확인필요" onkeydown="if(event.key==='Enter'){event.preventDefault();saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})}"><button type="button" class="cart-btn" onclick="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})">저장</button>${group.showOrderAdminTag&&group.orderAdminTag?`<button type="button" class="admin-order-tag-delete" onclick="deleteOrderAdminTag('${escapeAdminAttr(group.orderNumber)}')">삭제</button>`:''}<small>관리자만 표시</small></section>${renderOrderEditHistory(group,index)}</div>
         <div class="order-party-summary">${group.isProxy&&group.proxyCreatedByName?`<p class="proxy-created-by-admin"><strong>대신주문 접수자</strong> ${escapeAdminHtml(group.proxyCreatedByName)} · ${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')} · 접수 ${formatOrderDateTime(group.createdAt)}</p>`:''}<p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
         <section class="order-party-editor" id="order-party-editor-${index}" hidden><div class="order-party-edit-grid"><label>거래처명<input data-party="customer" value="${escapeAdminAttr(group.customerName||'')}"></label><label>대표자명<input data-party="owner" value="${escapeAdminAttr(group.customerOwnerName||'')}"></label><label>실제 납품처명<input data-party="delivery" value="${escapeAdminAttr(group.deliveryName||'')}"></label><label>납품처 연락처<input data-party="phone" value="${escapeAdminAttr(group.deliveryPhone||'')}"></label><label class="wide">납품처 주소<input data-party="address" value="${escapeAdminAttr(group.deliveryAddress||'')}"></label><label class="wide">주문 메모<textarea data-party="memo" rows="3">${escapeAdminHtml(group.memo||'')}</textarea></label></div><div class="v3-card-actions"><button type="button" class="cart-btn" onclick="saveOrderPartyInfo('${escapeAdminAttr(group.orderNumber)}',${index})">정보 저장</button><button type="button" class="cart-btn gray-btn" onclick="toggleOrderPartyEditor(${index})">취소</button></div></section>
         ${group.memo ? `<div class="customer-order-memo"><strong>거래처 주문메모</strong><p>${escapeAdminHtml(group.memo).replaceAll("\n", "<br>")}</p></div>` : ""}
@@ -1336,17 +1357,17 @@ async function loadAdminFeatureData(orderRows=[]){
     }
   }catch(e){console.warn("주문별 관리자 메모 불러오기 실패",e)}
   try{
-    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderRevisionMap={};
-    if(orderNumbers.length){const {data,error}=await supabaseClient.from('order_revision_history').select('order_number,original_snapshot,revised_snapshot,revision_status,started_at,completed_at').in('order_number',orderNumbers).order('started_at',{ascending:false});if(error)throw error;(data||[]).forEach(row=>{if(!orderRevisionMap[row.order_number])orderRevisionMap[row.order_number]=row})}
-  }catch(e){console.warn('고객 주문변경 이력 불러오기 실패',e);orderRevisionMap={}}
+    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderRevisionMap={};orderRevisionHistoryMap={};
+    if(orderNumbers.length){const {data,error}=await supabaseClient.from('order_revision_history').select('order_number,original_snapshot,revised_snapshot,revision_status,started_at,completed_at').in('order_number',orderNumbers).order('started_at',{ascending:false});if(error)throw error;(data||[]).forEach(row=>{if(!orderRevisionMap[row.order_number])orderRevisionMap[row.order_number]=row;(orderRevisionHistoryMap[row.order_number]||(orderRevisionHistoryMap[row.order_number]=[])).push(row)});Object.values(orderRevisionHistoryMap).forEach(rows=>rows.sort((a,b)=>new Date(a.completed_at||a.started_at)-new Date(b.completed_at||b.started_at)))}
+  }catch(e){console.warn('고객 주문변경 이력 불러오기 실패',e);orderRevisionMap={};orderRevisionHistoryMap={}}
   try{
-    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderAdminChangeMap={};
+    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderAdminChangeMap={};orderAdminChangeHistoryMap={};
     if(orderNumbers.length){
       const {data,error}=await supabaseClient.from('order_change_history').select('order_number,change_reason,changed_at,before_snapshot,after_snapshot').in('order_number',orderNumbers).order('changed_at',{ascending:false});
       if(error)throw error;
-      (data||[]).forEach(row=>{if(!orderAdminChangeMap[row.order_number])orderAdminChangeMap[row.order_number]=row});
+      (data||[]).forEach(row=>{if(!orderAdminChangeMap[row.order_number])orderAdminChangeMap[row.order_number]=row;(orderAdminChangeHistoryMap[row.order_number]||(orderAdminChangeHistoryMap[row.order_number]=[])).push(row)});Object.values(orderAdminChangeHistoryMap).forEach(rows=>rows.sort((a,b)=>new Date(a.changed_at)-new Date(b.changed_at)));
     }
-  }catch(e){console.warn('관리자 주문수정 이력 불러오기 실패',e);orderAdminChangeMap={}}
+  }catch(e){console.warn('관리자 주문수정 이력 불러오기 실패',e);orderAdminChangeMap={};orderAdminChangeHistoryMap={}}
   try{
     const {data,error}=await supabaseClient.from("payment_accounts").select("*").eq("is_active",true).order("is_default",{ascending:false}).order("created_at",{ascending:true});
     if(error) throw error;
