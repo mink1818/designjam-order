@@ -216,11 +216,11 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
   const sortedCompactRows=[...compactRows.values()].map(row=>({...row,itemNumbers:row.itemNumbers.sort(compareStatementItemNumber)})).sort((a,b)=>compareStatementItemNumber(a.itemNumbers[0],b.itemNumbers[0]));
   const itemRows = sortedCompactRows.map((row, index) => {
     return `
-      <tr class="${row.shippedQty === 0 ? "soldout-row" : ""}">
+      <tr class="${row.soldoutQty > 0 ? (row.shippedQty === 0 ? "soldout-row" : "partial-soldout-row") : ""}">
         <td>${index + 1}</td>
         <td class="statement-category"><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
-        <td class="statement-qty"><span>${row.shippedQty.toLocaleString()}죽</span>${row.soldoutQty ? `<small>품절 ${row.soldoutQty}죽</small>` : ""}</td>
+        <td class="statement-qty"><span>${row.shippedQty.toLocaleString()}죽</span>${row.soldoutQty ? `<small class="statement-soldout-alert">${row.shippedQty === 0 ? "전체품절" : "일부품절"} ${row.soldoutQty}죽</small>` : ""}</td>
         <td class="statement-unit-price"><span>${row.price.toLocaleString()}원</span><small>/죽</small></td>
         <td class="statement-row-total">${row.shippedQty > 0 ? `<span>${row.rowTotal.toLocaleString()}</span><small>원</small>` : "-"}</td>
       </tr>

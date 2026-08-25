@@ -763,3 +763,14 @@ body {
   .statement-unit-price span,.statement-unit-price small,
   .statement-row-total span,.statement-row-total small{display:inline!important}
 }
+
+/* V6.6.57 거래명세서 품절 강조 */
+.soldout-row{background:#ffe4e6!important}
+.soldout-row td{color:#881337!important;border-color:#fda4af!important}
+.partial-soldout-row{background:#fff1f2!important}
+.partial-soldout-row td{border-color:#fecdd3!important}
+.partial-soldout-row .statement-item-list{font-weight:850;color:#9f1239!important}
+.statement-soldout-alert{display:inline-block!important;margin-top:3px;padding:2px 7px;border-radius:999px;background:#dc2626!important;color:#fff!important;font-size:11px!important;font-weight:950!important;line-height:1.35;white-space:nowrap}
+.partial-soldout-row .statement-soldout-alert{background:#e11d48!important}
+@media(max-width:700px){.statement-soldout-alert{padding:2px 5px;font-size:9.5px!important}}
+@media print{.soldout-row{background:#ffe4e6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.partial-soldout-row{background:#fff1f2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.statement-soldout-alert{background:#dc2626!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}

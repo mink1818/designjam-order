@@ -2417,6 +2417,16 @@ async function submitOrder() {
 
   const memo =
     document.getElementById("orderMemo")?.value.trim() || "";
+  // V6.6.57: 고객 주문도 접수 직전 선택된 저장 납품처를 input에 다시 동기화한다.
+  const destinationSelect=document.getElementById('deliveryDestinationSelect');
+  if(destinationSelect&&/^\d+$/.test(destinationSelect.value)){
+    const {data:selected}=await supabaseClient.from('customer_delivery_destinations').select('delivery_name,delivery_phone,delivery_address').eq('id',Number(destinationSelect.value)).eq('customer_id',currentUser.id).maybeSingle();
+    if(selected){
+      document.getElementById('deliveryName').value=selected.delivery_name||'';
+      document.getElementById('deliveryPhone').value=selected.delivery_phone||'';
+      document.getElementById('deliveryAddress').value=selected.delivery_address||'';
+    }
+  }
   const deliveryName=document.getElementById('deliveryName')?.value.trim()||'';
   const deliveryPhone=document.getElementById('deliveryPhone')?.value.trim()||'';
   const deliveryAddress=document.getElementById('deliveryAddress')?.value.trim()||'';
@@ -2485,6 +2495,13 @@ async function submitOrder() {
     p_delivery_address:deliveryAddress
   });
   if(deliverySave.error)console.warn('납품처 목록 저장 실패:',deliverySave.error.message);
+  const deliveryVerify=await supabaseClient.from('orders').select('delivery_name').eq('order_number',orderNumber).limit(1).maybeSingle();
+  if(deliveryVerify.error||String(deliveryVerify.data?.delivery_name||'').trim()!==deliveryName){
+    orderSubmissionInProgress=false;
+    if(submitButton){submitButton.disabled=false;submitButton.textContent=revisionContext?'주문 수정완료':'주문 접수하기';}
+    alert('실제 납품처 저장 검증에 실패했습니다. 거래처명으로 잘못 저장되는 것을 막기 위해 완료 처리를 중단했습니다.');
+    return;
+  }
   const destinationChoice=document.getElementById('deliveryDestinationSelect')?.value||'';
   if(destinationChoice==='new'&&hasAdvancedCustomerAccess()){
     const destinationSave=await supabaseClient.rpc('save_premium_customer_delivery_destination',{

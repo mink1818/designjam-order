@@ -299,6 +299,19 @@ async function submit(){
  const priceReady=await reloadSelectedCustomerPrices();
  if(!priceReady){showError('거래처별 단가 확인에 실패했습니다. 단가 조회 상태를 확인한 뒤 다시 접수하세요.');return}
  const lines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0))})).filter(x=>x.item_number);
+ // V6.6.57: 접수 직전에 현재 선택된 실제 납품처를 다시 확정한다.
+ // select의 화면 선택값과 input 값이 비동기 로딩/빠른 클릭 때문에 어긋나는 경우를 차단한다.
+ const deliverySelect=$('proxyDeliverySelect');
+ const selectedDestination=proxyDestinations.find(row=>String(row.id)===String(deliverySelect?.value||''));
+ if(selectedDestination){
+   $('proxyDeliveryName').value=selectedDestination.delivery_name||'';
+   $('proxyDeliveryPhone').value=selectedDestination.delivery_phone||'';
+   $('proxyDeliveryAddress').value=selectedDestination.delivery_address||'';
+ }else if(deliverySelect?.value==='registered'&&customer){
+   $('proxyDeliveryName').value=customer.business_name||'';
+   $('proxyDeliveryPhone').value=customer.phone||'';
+   $('proxyDeliveryAddress').value=customer.address||'';
+ }
  const deliveryName=($('proxyDeliveryName')?.value||'').trim();const deliveryPhone=($('proxyDeliveryPhone')?.value||'').trim();const deliveryAddress=($('proxyDeliveryAddress')?.value||'').trim();
  if(!deliveryName){showError('납품처명을 입력하세요.');return}
  if(!lines.length){showError('주문 품번을 한 개 이상 입력하세요.');return}
@@ -326,7 +339,9 @@ async function submit(){
   const deliverySave=await supabaseClient.rpc('save_order_delivery_info',{p_order_number:order,p_owner_name:ownerName,p_delivery_name:deliveryName,p_delivery_phone:deliveryPhone,p_delivery_address:deliveryAddress});
   if(deliverySave.error)throw new Error(`납품처 저장 실패: ${deliverySave.error.message}`);
   const deliveryConfirm=await supabaseClient.from('orders').update({customer_owner_name:ownerName||null,delivery_name:deliveryName,delivery_phone:deliveryPhone||null,delivery_address:deliveryAddress||null}).eq('order_number',order);
-  if(deliveryConfirm.error){const check=await supabaseClient.from('orders').select('delivery_name').eq('order_number',order).limit(1).maybeSingle();if(check.error||String(check.data?.delivery_name||'').trim()!==deliveryName)throw new Error(`실제 납품처 최종저장 실패: ${deliveryConfirm.error.message}`)}
+  if(deliveryConfirm.error)throw new Error(`실제 납품처 최종저장 실패: ${deliveryConfirm.error.message}`);
+  const deliveryCheck=await supabaseClient.from('orders').select('delivery_name,delivery_phone,delivery_address').eq('order_number',order).limit(1).maybeSingle();
+  if(deliveryCheck.error||String(deliveryCheck.data?.delivery_name||'').trim()!==deliveryName)throw new Error('실제 납품처 저장 검증에 실패했습니다. 주문관리에서 거래처명으로 잘못 표시되는 것을 방지하기 위해 접수를 중단했습니다.');
   const adminTag=String($('proxyAdminTag')?.value||'').trim();
   if(adminTag){const tagSave=await supabaseClient.from('order_admin_metadata').upsert({order_number:order,admin_tag:adminTag,show_tag:true,updated_at:new Date().toISOString()},{onConflict:'order_number'});if(tagSave.error)throw new Error(`관리자 표시 저장 실패: ${tagSave.error.message} · V6.6.20-ORDER-ADMIN-TAG.sql을 먼저 실행해주세요.`)}
   if(selectedCustomerId()&&$('proxyDeliverySelect')?.value==='new'){

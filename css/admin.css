@@ -2865,10 +2865,18 @@ html[data-theme=dark] .stats-receivable-suggestions,html[data-theme=dark] .stats
 @media(max-width:760px){.order-edit-actions{display:flex!important;flex-direction:column;align-items:stretch;gap:8px}.order-edit-add-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.order-edit-actions .order-edit-add-actions button{width:100%!important;padding:7px 6px!important;font-size:12.5px!important}.order-edit-actions>.order-edit-save{width:100%!important;padding:8px 10px!important;font-size:13px!important}}
 
 
-/* V6.6.55 접힌 주문에서도 고객/관리자 수정 이력 즉시 확인 */
+/* V6.6.57 접힌 주문에서도 고객/관리자 수정 이력 즉시 확인 */
 .order-edit-origin-badge{display:inline-flex;align-items:center;margin-left:5px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:950;line-height:1.3;vertical-align:middle;white-space:nowrap}
 .order-edit-origin-badge.customer{background:#fff7ed;border:1px solid #fb923c;color:#9a3412}
 .order-edit-origin-badge.admin{background:#eff6ff;border:1px solid #60a5fa;color:#1d4ed8}
 html[data-theme=dark] .order-edit-origin-badge.customer{background:#4a2a16;border-color:#fb923c;color:#fed7aa!important}
 html[data-theme=dark] .order-edit-origin-badge.admin{background:#172f55;border-color:#60a5fa;color:#bfdbfe!important}
 @media(max-width:760px){.order-edit-origin-badge{margin-left:3px;padding:1px 5px;font-size:9.5px}}
+
+/* V6.6.57 상세 품번별 수정 이력 배지 */
+.item-edit-history-badge{display:inline-flex;align-items:center;margin-left:5px;padding:2px 6px;border-radius:999px;font-size:9.5px;font-weight:950;line-height:1.25;vertical-align:middle;white-space:nowrap;text-decoration:none}
+.item-edit-history-badge.customer{background:#fff7ed;border:1px solid #fb923c;color:#9a3412}
+.item-edit-history-badge.admin{background:#eff6ff;border:1px solid #60a5fa;color:#1d4ed8}
+html[data-theme=dark] .item-edit-history-badge.customer{background:#4a2a16;border-color:#fb923c;color:#fed7aa!important}
+html[data-theme=dark] .item-edit-history-badge.admin{background:#172f55;border-color:#60a5fa;color:#bfdbfe!important}
+@media(max-width:760px){.item-edit-history-badge{margin-left:3px;padding:1px 4px;font-size:8.8px}}

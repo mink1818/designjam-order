@@ -471,7 +471,9 @@ function canEditOrderItems(group) {
 }
 function canDeletePendingOrder(group){return group.status==='주문접수'&&canEditOrderItems(group)}
 
-function revisionSnapshotMap(snapshot){const map=new Map();(Array.isArray(snapshot)?snapshot:[]).forEach(item=>{const warehouse=String(item.warehouse_code||'').toUpperCase(),number=String(item.item_number||'').trim();map.set(`${warehouse}|${number}`,{warehouse,number,qty:Number(item.qty||0)})});return map}
+function revisionSnapshotMap(snapshot){const map=new Map();(Array.isArray(snapshot)?snapshot:[]).forEach(item=>{const warehouse=String(item.warehouse_code||'').toUpperCase(),number=String(item.item_number||'').trim();map.set(`${warehouse}|${number}`,{warehouse,number,qty:Number(item.qty||0),price:Number(item.price||0)})});return map}
+function changedItemKeys(beforeSnapshot,afterSnapshot){const before=revisionSnapshotMap(beforeSnapshot),after=revisionSnapshotMap(afterSnapshot),keys=new Set();for(const key of new Set([...before.keys(),...after.keys()])){const a=before.get(key),b=after.get(key);if(!a||!b||a.qty!==b.qty||a.price!==b.price)keys.add(key)}return keys}
+function itemEditHistoryBadges(group,item){const key=`${String(item.warehouse_code||'').toUpperCase()}|${String(item.item_number||'').trim()}`;const customerKeys=changedItemKeys(group.revisionRecord?.original_snapshot,group.revisionRecord?.revised_snapshot);const adminKeys=changedItemKeys(group.adminChangeRecord?.before_snapshot,group.adminChangeRecord?.after_snapshot);return `${customerKeys.has(key)?'<small class="item-edit-history-badge customer" title="고객이 수정한 품번">고객수정</small>':''}${adminKeys.has(key)?'<small class="item-edit-history-badge admin" title="관리자가 수정한 품번">관리자수정</small>':''}`}
 function renderOrderRevisionPanel(group){
  const state=group.revisionStatus;if(!state)return'';const revision=group.revisionRecord||{},before=revisionSnapshotMap(revision.original_snapshot),after=revisionSnapshotMap(revision.revised_snapshot),keys=[...new Set([...before.keys(),...after.keys()])].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
  const changes=keys.map(key=>{const oldItem=before.get(key),newItem=after.get(key),label=`${newItem?.warehouse||oldItem?.warehouse?`${newItem?.warehouse||oldItem?.warehouse}-`:''}${newItem?.number||oldItem?.number||'-'}`;if(!oldItem)return`<li class="revision-added"><b>${escapeAdminHtml(label)}</b> 신규 ${newItem.qty}죽</li>`;if(!newItem)return`<li class="revision-deleted"><b>${escapeAdminHtml(label)}</b> ${oldItem.qty}죽 → 삭제</li>`;if(oldItem.qty!==newItem.qty)return`<li class="revision-changed"><b>${escapeAdminHtml(label)}</b> ${oldItem.qty}죽 → ${newItem.qty}죽</li>`;return''}).filter(Boolean).join('');
@@ -664,7 +666,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   ${group.status === "출고완료" || String(group.pickingStatus || '').includes('검증완료') ? "disabled" : ""}
   onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
 >
-          <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
+          <strong>${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${itemEditHistoryBadges(group,item)}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
           <span class="admin-item-pricing"><b>출고 ${shippedQty}죽</b>${itemSoldoutQty?`<small>주문 ${orderedQty}죽 · 품절 ${itemSoldoutQty}죽</small>`:''}<small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
           <em>출고금액 ${rowTotal.toLocaleString()}원</em>
         </label>
@@ -1340,7 +1342,7 @@ async function loadAdminFeatureData(orderRows=[]){
   try{
     const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderAdminChangeMap={};
     if(orderNumbers.length){
-      const {data,error}=await supabaseClient.from('order_change_history').select('order_number,change_reason,changed_at').in('order_number',orderNumbers).order('changed_at',{ascending:false});
+      const {data,error}=await supabaseClient.from('order_change_history').select('order_number,change_reason,changed_at,before_snapshot,after_snapshot').in('order_number',orderNumbers).order('changed_at',{ascending:false});
       if(error)throw error;
       (data||[]).forEach(row=>{if(!orderAdminChangeMap[row.order_number])orderAdminChangeMap[row.order_number]=row});
     }
