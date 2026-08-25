@@ -2863,3 +2863,12 @@ html[data-theme=dark] .stats-receivable-suggestions,html[data-theme=dark] .stats
 /* V6.6.54 관리자 주문수정: 자동 품번추가 + 수기 직접입력 병행 */
 .order-edit-actions{align-items:center;justify-content:space-between}.order-edit-add-actions{display:flex;gap:6px;flex-wrap:wrap}.order-edit-actions .order-edit-add-actions button{width:auto!important;padding:7px 10px!important;font-size:13px!important;line-height:1.2}.order-edit-add-auto{background:#dbeafe!important;color:#174b84!important}.order-edit-add-manual{background:#f1f5f9!important;color:#334155!important}.manual-order-edit-row{background:rgba(100,116,139,.05)}
 @media(max-width:760px){.order-edit-actions{display:flex!important;flex-direction:column;align-items:stretch;gap:8px}.order-edit-add-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.order-edit-actions .order-edit-add-actions button{width:100%!important;padding:7px 6px!important;font-size:12.5px!important}.order-edit-actions>.order-edit-save{width:100%!important;padding:8px 10px!important;font-size:13px!important}}
+
+
+/* V6.6.55 접힌 주문에서도 고객/관리자 수정 이력 즉시 확인 */
+.order-edit-origin-badge{display:inline-flex;align-items:center;margin-left:5px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:950;line-height:1.3;vertical-align:middle;white-space:nowrap}
+.order-edit-origin-badge.customer{background:#fff7ed;border:1px solid #fb923c;color:#9a3412}
+.order-edit-origin-badge.admin{background:#eff6ff;border:1px solid #60a5fa;color:#1d4ed8}
+html[data-theme=dark] .order-edit-origin-badge.customer{background:#4a2a16;border-color:#fb923c;color:#fed7aa!important}
+html[data-theme=dark] .order-edit-origin-badge.admin{background:#172f55;border-color:#60a5fa;color:#bfdbfe!important}
+@media(max-width:760px){.order-edit-origin-badge{margin-left:3px;padding:1px 5px;font-size:9.5px}}
