@@ -4,7 +4,7 @@ const supabaseClient=window.supabase.createClient(supabaseUrl,supabaseKey);
 const ADMIN_SESSION_KEY="designjam_admin_session";
 const ADMIN_EMAILS=new Set(["900smk@naver.com","sm0727sm@hanmail.net","p1028p@naver.com"]);
 const PAGE_SIZE=30;
-let allCustomers=[],memberFilter="전체",currentRows=[],visibleCount=PAGE_SIZE;
+let allCustomers=[],memberFilter="전체",currentRows=[],currentPage=1;
 let adminCustomerMeta=new Map();
 const list=document.getElementById('customerList'),search=document.getElementById('memberSearch'),sort=document.getElementById('memberSort');
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -28,7 +28,9 @@ async function checkAdminAccess(){
 async function withTimeout(promise,ms=15000){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인한 뒤 새로고침해 주세요.')),ms)})]);}finally{clearTimeout(timer)}}
 async function fetchAllMemberOrderStats(){const rows=[];for(let from=0;;from+=1000){const result=await withTimeout(supabaseClient.from('orders').select('customer_id,customer_name,total,qty,price,soldout_qty,is_soldout,created_at,order_number').order('created_at',{ascending:false}).range(from,from+999),18000);if(result.error)throw result.error;rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)break}return rows}
 const memberNameKey=value=>String(value||'').trim().normalize('NFKC').toLowerCase().replace(/[\s_.·,()\[\]{}\-/]+/g,'');
-async function loadCustomers(){
+async function loadCustomers(options={}){
+ const preservePage=options?.preservePage===true;
+ const previousPage=currentPage;
  list.innerHTML='<p class="customer-loading">거래처 정보를 불러오는 중...</p>';
  try{
  const [{data,error},metaResult]=await Promise.all([withTimeout(supabaseClient.from('customers').select('*').order('created_at',{ascending:false}),15000),withTimeout(supabaseClient.from('customer_admin_metadata').select('*'),15000).catch(()=>({data:[]}))]);
@@ -44,7 +46,7 @@ async function loadCustomers(){
  const customerByName=new Map(customers.map(c=>[memberNameKey(c.business_name),c.id]));
  orders.forEach(o=>{const customerId=customerIds.has(String(o.customer_id))?o.customer_id:customerByName.get(memberNameKey(o.customer_name));if(!customerId)return;const s=stats[customerId]||(stats[customerId]={total:0,last:null,orders:new Set()}),ordered=Math.max(0,Number(o.qty||0)),soldout=Math.min(ordered,Math.max(0,Number(o.soldout_qty||(o.is_soldout?ordered:0)))),shipped=Math.max(0,ordered-soldout);s.total+=shipped*Number(o.price||0);s.orders.add(o.order_number);if(!s.last||new Date(o.created_at)>new Date(s.last))s.last=o.created_at;});
  allCustomers=customers.map(c=>({...c,total_sales:stats[c.id]?.total||0,order_count:stats[c.id]?.orders.size||0,last_order_at:stats[c.id]?.last||c.last_order_at||null}));
- visibleCount=PAGE_SIZE;updateCounts();renderFilteredCustomers();
+ if(!preservePage)currentPage=1;else currentPage=Math.max(1,previousPage);updateCounts();renderFilteredCustomers();
  }catch(error){list.innerHTML=`<div class="product-card"><h2>거래처 불러오기 실패</h2><p>${esc(error.message||'알 수 없는 오류')}</p><button class="cart-btn" type="button" onclick="loadCustomers()">다시 불러오기</button></div>`;}
 }
 function updateCounts(){
@@ -52,7 +54,7 @@ function updateCounts(){
  document.getElementById('approvedCount').textContent=allCustomers.filter(c=>c.approved&&!c.blocked).length;
  document.getElementById('blockedCount').textContent=allCustomers.filter(c=>c.blocked).length;
 }
-function setMemberFilter(v){memberFilter=v;visibleCount=PAGE_SIZE;document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter===v));renderFilteredCustomers();}
+function setMemberFilter(v){memberFilter=v;currentPage=1;document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter===v));renderFilteredCustomers();}
 window.setMemberFilter=setMemberFilter;
 function renderFilteredCustomers(){
  const q=String(search.value||'').toLowerCase().replace(/\s/g,'');
@@ -69,12 +71,26 @@ function customerState(c){return c.blocked?{text:'차단',cls:'blocked'}:c.appro
 function isOnline(c){return !!c.last_seen_at&&(Date.now()-new Date(c.last_seen_at).getTime())<=5*60*1000;}
 function lastSeenText(c){if(!c.last_seen_at)return '접속 기록 없음';if(isOnline(c))return '실시간 접속중';return '최근 '+new Date(c.last_seen_at).toLocaleString('ko-KR');}
 function renderCustomers(){
- if(!currentRows.length){list.innerHTML='<div class="product-card"><h2>검색 결과가 없습니다</h2></div>';return;}
- const shown=currentRows.slice(0,visibleCount);
+ if(!currentRows.length){currentPage=1;list.innerHTML='<div class="product-card"><h2>검색 결과가 없습니다</h2></div>';return;}
+ const totalPages=Math.max(1,Math.ceil(currentRows.length/PAGE_SIZE));
+ currentPage=Math.min(Math.max(1,currentPage),totalPages);
+ const start=(currentPage-1)*PAGE_SIZE;
+ const shown=currentRows.slice(start,start+PAGE_SIZE);
+ const pageButtons=Array.from({length:totalPages},(_,i)=>i+1).map(page=>`<button type="button" class="member-page-btn${page===currentPage?' active':''}" onclick="goCustomerPage(${page})" ${page===currentPage?'aria-current="page"':''}>${page}</button>`).join('');
  list.innerHTML=`
-  <div class="customer-list-head"><span>검색결과 <b>${currentRows.length}</b>곳</span><span>현재 <b>${shown.length}</b>곳 표시</span></div>
+  <div class="customer-list-head"><span>검색결과 <b>${currentRows.length}</b>곳</span><span><b>${currentPage}</b> / ${totalPages}페이지 · ${start+1}~${start+shown.length}번째</span></div>
   <div class="compact-customer-list">${shown.map(renderCustomerRow).join('')}</div>
-  ${visibleCount<currentRows.length?`<button class="cart-btn customer-more-btn" onclick="showMoreCustomers()">다음 ${Math.min(PAGE_SIZE,currentRows.length-visibleCount)}곳 더 보기</button>`:''}`;
+  <nav class="member-pagination" aria-label="거래처 페이지">
+   <button type="button" class="member-page-btn member-page-nav" onclick="goCustomerPage(${currentPage-1})" ${currentPage<=1?'disabled':''}>‹ 이전</button>
+   <div class="member-page-numbers">${pageButtons}</div>
+   <button type="button" class="member-page-btn member-page-nav" onclick="goCustomerPage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>다음 ›</button>
+  </nav>`;
+}
+function goCustomerPage(page){
+ const totalPages=Math.max(1,Math.ceil(currentRows.length/PAGE_SIZE));
+ currentPage=Math.min(Math.max(1,Number(page)||1),totalPages);
+ renderCustomers();
+ window.scrollTo({top:0,behavior:'smooth'});
 }
 function renderCustomerRow(c){
  const state=customerState(c);const owner=c.owner_name||c.representative||'-';const grade=c.customer_grade||'일반';const meta=adminCustomerMeta.get(String(c.id))||{};
@@ -105,7 +121,7 @@ function toggleCustomerDetail(id){
  const detail=card.querySelector('.compact-customer-detail');const btn=card.querySelector('.compact-customer-summary-row');const open=detail.hasAttribute('hidden');
  if(open){detail.removeAttribute('hidden');card.classList.add('open');btn.setAttribute('aria-expanded','true');}else{detail.setAttribute('hidden','');card.classList.remove('open');btn.setAttribute('aria-expanded','false');}
 }
-function showMoreCustomers(){visibleCount+=PAGE_SIZE;renderCustomers();}
+function showMoreCustomers(){goCustomerPage(currentPage+1);}
 function openCustomerOrders(id,name){location.href=`admin.html?status=${encodeURIComponent('전체')}&period=all&customer=${encodeURIComponent(id)}&search=${encodeURIComponent(name)}`;}
 function openProxyOrder(id){location.href=`proxy-order.html?customer=${encodeURIComponent(id)}`;}
 async function saveCustomer(id){
@@ -118,7 +134,7 @@ async function saveCustomer(id){
  const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);
  const metaPayload={customer_id:id,customer_code:(card.querySelector('[data-admin-meta="customer_code"]')?.value||'').trim(),customer_tag:(card.querySelector('[data-admin-meta="customer_tag"]')?.value||'').trim(),show_order_tag:true,updated_at:new Date().toISOString()};
  const metaSave=await supabaseClient.from('customer_admin_metadata').upsert(metaPayload,{onConflict:'customer_id'});if(metaSave.error)return alert('고객코드·거래처 애칭 저장 실패: '+metaSave.error.message+'\n\nV6.6.20 SQL을 먼저 실행하세요.');
- alert('거래처 정보가 저장되었습니다. 변경 이력도 기록했습니다.');loadCustomers();
+ alert('거래처 정보가 저장되었습니다. 변경 이력도 기록했습니다.');await loadCustomers({preservePage:true});
 }
 async function approveCustomer(id){const {error}=await supabaseClient.from('customers').update({approved:true,blocked:false}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
 async function toggleBlock(id,blocked){if(!confirm(blocked?'차단을 해제할까요?':'이 거래처를 차단할까요?'))return;const {error}=await supabaseClient.from('customers').update({blocked:!blocked}).eq('id',id);if(error)return alert(error.message);loadCustomers();}
@@ -141,8 +157,8 @@ async function setCustomerPassword(id,button){
  catch(error){alert('비밀번호 변경 실패: '+error.message+'\n\nEdge Function 배포 여부를 확인하세요.');}
  finally{button.disabled=false;button.textContent='비밀번호 변경';}
 }
-window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.openCustomerOrders=openCustomerOrders;window.openProxyOrder=openProxyOrder;window.setCustomerPassword=setCustomerPassword;
-search.addEventListener('input',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});sort.addEventListener('change',()=>{visibleCount=PAGE_SIZE;renderFilteredCustomers();});
+window.loadCustomers=loadCustomers;window.saveCustomer=saveCustomer;window.approveCustomer=approveCustomer;window.toggleBlock=toggleBlock;window.toggleCustomerDetail=toggleCustomerDetail;window.showMoreCustomers=showMoreCustomers;window.goCustomerPage=goCustomerPage;window.openCustomerOrders=openCustomerOrders;window.openProxyOrder=openProxyOrder;window.setCustomerPassword=setCustomerPassword;
+search.addEventListener('input',()=>{currentPage=1;renderFilteredCustomers();});sort.addEventListener('change',()=>{currentPage=1;renderFilteredCustomers();});
 document.addEventListener('DOMContentLoaded',async()=>{if(await checkAdminAccess()){document.querySelector('[data-filter="전체"]')?.classList.add('active');const f=new URLSearchParams(location.search).get('filter');if(f==='waiting'){memberFilter='승인대기';document.querySelectorAll('.admin-filter button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='승인대기'));}await loadCustomers();loadLoginStats();setInterval(()=>{if(document.visibilityState==='visible')loadLoginStats()},300000);setInterval(()=>{if(document.visibilityState==='visible')refreshCustomerPresence()},300000);supabaseClient.channel('customer-presence-admin-v6639').on('postgres_changes',{event:'UPDATE',schema:'public',table:'customers'},payload=>{if(payload.new?.last_seen_at)applyCustomerPresence(payload.new.id,payload.new.last_seen_at)}).subscribe();}});
 
 let loginStatsLoading=false,presenceLoading=false;
