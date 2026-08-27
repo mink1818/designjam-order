@@ -1,13 +1,13 @@
 const CACHE_NAME='design-socks-v6-6-59';
 const APP_SHELL=[
-  '/offline.html?v=66180',
-  '/css/main.css?v=66180',
-  '/css/admin.css?v=66180',
-  '/css/statement.css?v=66180',
-  '/customer-share-document.html?v=66180',
+  '/offline.html?v=66200',
+  '/css/main.css?v=66200',
+  '/css/admin.css?v=66200',
+  '/css/statement.css?v=66200',
+  '/customer-share-document.html?v=66200',
   '/css/customer-share-document.css?v=66040',
-  '/js/customer-share-document.js?v=66180',
-  '/js/pwa.js?v=66180',
+  '/js/customer-share-document.js?v=66200',
+  '/js/pwa.js?v=66200',
   '/js/version-badge.js?v=66659',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
@@ -42,7 +42,7 @@ self.addEventListener('fetch',event=>{
     }).catch(async()=>{
       const cached=await caches.match(req);
       if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=66180');
+      if(req.mode==='navigate') return caches.match('/offline.html?v=66200');
       throw new Error('offline');
     })
   );

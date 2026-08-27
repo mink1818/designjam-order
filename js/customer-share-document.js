@@ -13,7 +13,36 @@ area.addEventListener('blur',event=>{const key=event.target?.dataset?.field||'';
 function displayItemNumber(value){const clean=String(value||'').trim().replace(/^[SBI](?:[-_\s]+|(?=\d))/i,'');if(/A$/i.test(clean))return`${clean.slice(0,-1)} 아동`;if(/M$/i.test(clean))return`${clean.slice(0,-1)} 무지`;return clean}
 function render(){const f=items[0],rows=items.map(x=>({...x,...soldoutInfo(x)})),productAmount=rows.reduce((s,x)=>s+x.shipped*Number(x.price||0),0),qty=rows.reduce((s,x)=>s+x.shipped,0),savedShippingRow=items.find(x=>x.shipping_fee_manual===true),shippingFee=savedShippingRow?Math.max(0,Number(savedShippingRow.shipping_fee||0)):4000;area.innerHTML=`<header class="share-head"><div><h1 data-field="title">거래 내역서</h1><p class="brand" data-field="brand">${esc(f.customer_name||'상호명')}</p></div><div data-field="date">${new Date(f.created_at).toLocaleDateString('ko-KR')}</div></header><section class="share-meta"><div><strong data-field="label_recipient">받는 곳</strong><span data-field="recipient">${esc(f.delivery_name||'')}</span></div><div><strong data-field="label_owner">담당자</strong><span data-field="owner"></span></div><div><strong data-field="label_phone">연락처</strong><span data-field="phone">${esc(f.delivery_phone||'')}</span></div><div><strong data-field="label_address">주소</strong><span data-field="address">${esc(f.delivery_address||'')}</span></div><div><strong data-field="label_order">주문번호</strong><span data-field="order_number">${esc(f.order_number)}</span></div><div><strong data-field="label_memo">메모</strong><span data-field="memo">${esc(f.memo||'')}</span></div></section><p class="share-calc-note">품절·일부품절 수량은 자동 차감됩니다. 수량·단가·배송비를 수정하면 최종금액이 자동 계산됩니다.</p><table class="share-table"><thead><tr><th data-field="head_no">번호</th><th data-field="head_item">품번</th><th data-field="head_status">출고상태</th><th data-field="head_qty">출고수량</th><th data-field="head_price">단가</th><th data-field="head_amount">금액</th></tr></thead><tbody>${rows.map((x,i)=>`<tr class="${x.label?'share-soldout-row':''}"><td data-field="row_${i}_no">${i+1}</td><td data-field="row_${i}_item">${esc(displayItemNumber(x.item_number))}</td><td data-field="row_${i}_status">${x.label?`<span class="share-soldout-badge">${esc(x.label)}</span>`:'정상출고'}</td><td data-field="row_${i}_qty">${x.shipped}죽</td><td data-field="row_${i}_price">${Number(x.price||0).toLocaleString()}원</td><td data-field="row_${i}_amount">${(x.shipped*Number(x.price||0)).toLocaleString()}원</td></tr>`).join('')}</tbody></table><section class="share-total"><p><span data-field="label_total_qty">총 출고수량</span><strong data-field="total_qty">${qty}죽</strong></p><p><span data-field="label_product_amount">상품금액</span><strong data-field="product_amount">${productAmount.toLocaleString()}원</strong></p><p><span data-field="label_shipping_fee">배송비</span><strong data-field="shipping_fee">${shippingFee.toLocaleString()}원</strong></p><p class="share-grand-total"><span data-field="label_total_amount">최종금액</span><strong data-field="total_amount">${(productAmount+shippingFee).toLocaleString()}원</strong></p></section><footer class="share-footer"><p data-field="footer_text">위 내용과 같이 거래하였음을 확인합니다.</p><h2 data-field="footer_brand">${esc(f.customer_name||'')}</h2></footer>`;editAll();recalculateShareAmounts()}
 function populate(){recipientSelect.innerHTML='<option value="">저장 납품처 선택</option>'+profiles.map(p=>`<option value="${esc(p.recipient_key)}">${esc(p.recipient_name||'이름 없음')}</option>`).join('');recipientSelect.value=activeKey}
-function applyProfile(p){if(!p)return;activeKey=p.recipient_key;for(const [k,v] of Object.entries(p.document_json||{})){if(/^(?:total_qty|product_amount|total_amount|shipping_fee|row_\d+_(?:qty|status|amount))$/.test(k))continue;const n=area.querySelector(`[data-field="${CSS.escape(k)}"]`);if(n)n.textContent=v??''}recalculateShareAmounts();populate()}
+function applyProfile(p){
+  if(!p)return;
+  activeKey=p.recipient_key;
+  // 저장 프로필은 '납품처/담당자 연락처'와 문서 라벨만 재사용한다.
+  // 주문번호, 주문일, 거래처명, 메모, 품번, 수량, 단가, 금액, 품절상태 등
+  // 현재 주문 데이터는 과거 저장 문서(document_json)가 절대 덮어쓰지 못하게 한다.
+  const allowedProfileFields=new Set([
+    'recipient','owner','phone','address',
+    'title','label_recipient','label_owner','label_phone','label_address','label_order','label_memo',
+    'head_no','head_item','head_status','head_qty','head_price','head_amount',
+    'label_total_qty','label_product_amount','label_shipping_fee','label_total_amount','footer_text'
+  ]);
+  const saved=p.document_json||{};
+  for(const k of allowedProfileFields){
+    if(!(k in saved))continue;
+    const n=area.querySelector(`[data-field="${CSS.escape(k)}"]`);
+    if(n)n.textContent=saved[k]??'';
+  }
+  // 납품처 프로필의 정규 컬럼을 우선 적용해 오래된 document_json 오염도 방지한다.
+  const recipient=area.querySelector('[data-field="recipient"]');
+  const owner=area.querySelector('[data-field="owner"]');
+  const phone=area.querySelector('[data-field="phone"]');
+  const address=area.querySelector('[data-field="address"]');
+  if(recipient)recipient.textContent=p.recipient_name||recipient.textContent||'';
+  if(owner)owner.textContent=p.owner_name||owner.textContent||'';
+  if(phone)phone.textContent=p.phone||phone.textContent||'';
+  if(address)address.textContent=p.delivery_address||address.textContent||'';
+  recalculateShareAmounts();
+  populate();
+}
 async function start(){const {data:{user}}=await supabaseClient.auth.getUser();if(!user)return location.replace('login.html');const {data:c}=await supabaseClient.from('customers').select('customer_grade,is_admin').eq('id',user.id).single();if(c?.is_admin||!['우수','우수고객','VIP','VVIP'].includes(String(c?.customer_grade||'')))return location.replace('order.html');customerId=user.id;const r=await supabaseClient.from('orders').select('*').eq('order_number',orderNumber).eq('customer_id',user.id).order('id');if(r.error||!r.data?.length){area.innerHTML='<h2>주문을 찾을 수 없습니다.</h2>';document.body.classList.add('auth-ready');return}items=r.data;render();const pr=await supabaseClient.from('customer_share_document_profiles').select('*').eq('customer_id',user.id).order('updated_at',{ascending:false});profiles=pr.data||[];const k=keyFor(items[0].delivery_name,items[0].delivery_address),found=profiles.find(p=>p.recipient_key===k);if(found)applyProfile(found);populate();document.body.classList.add('auth-ready')}
 recipientSelect.onchange=()=>applyProfile(profiles.find(p=>p.recipient_key===recipientSelect.value));
 document.getElementById('newRecipientBtn').onclick=()=>{activeKey='';['recipient','owner','phone','address'].forEach(k=>{const n=area.querySelector(`[data-field="${k}"]`);if(n)n.textContent='' });recipientSelect.value=''};
