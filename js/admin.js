@@ -171,7 +171,11 @@ function getAdminStockStatus(item) {
   return { warning: false, kind: "enough", stock, text: `재고 ${stock}죽` };
 }
 
-if (adminSearch) adminSearch.addEventListener("input", () => { adminPage = 1; loadOrders(); });
+let adminOrderSearchTimer=null;
+if (adminSearch) adminSearch.addEventListener("input", () => {
+  adminPage = 1; clearTimeout(adminOrderSearchTimer);
+  adminOrderSearchTimer=setTimeout(()=>loadOrders(),280);
+});
 
 function setAdminFilter(status) {
   adminFilter = status;
@@ -214,7 +218,9 @@ async function deleteOrderAdminTag(orderNumber){
 window.deleteOrderAdminTag=deleteOrderAdminTag;
 
 async function loadOrders() {
-  adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
+  const hadOrders = Boolean(adminOrders?.querySelector('.order-card'));
+  if (!hadOrders) adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
+  else adminOrders.classList.add('orders-refreshing');
 
   let data = [];
 
@@ -1331,6 +1337,9 @@ async function initializeAdminPage() {
     }
 
     showAdmin();
+    // 대용량 주문 조회가 끝날 때까지 전체 화면을 가리지 않습니다.
+    document.body.classList.add("auth-ready");
+    document.body.classList.remove("auth-pending","admin-page-leaving");
     await loadOrders();
   } catch (error) {
     console.error("관리자 페이지 초기화 실패:", error);

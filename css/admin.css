@@ -790,55 +790,32 @@ button {
   .completed-toolbar label, .completed-toolbar select, .completed-toolbar span { width: 100%; }
 }
 
-/* V3.6.1 관리자 화면 전환 깜빡임 방지 */
+/* V6.6.63 체감속도 우선 화면 전환
+   페이지 이동 때 기존 화면을 숨기지 않고 브라우저가 새 화면을 준비할 때까지 유지합니다.
+   권한 확인 중에도 빈 흰 화면 대신 실제 화면 골격을 즉시 보여줍니다. */
 body.auth-pending,
 body.admin-page-leaving { visibility: visible; }
 body.auth-pending > *,
-body.admin-page-leaving > * { visibility: hidden !important; }
-body.auth-pending::before,
-body.admin-page-leaving::before {
-  content: "디자인 삭스 관리자\A화면을 불러오는 중...";
-  white-space: pre-line;
-  position: fixed;
-  inset: 0;
-  z-index: 2147483646;
-  display: grid;
-  place-items: center;
-  padding-top: 54px;
-  box-sizing: border-box;
-  background:
-    radial-gradient(circle at 50% calc(50% - 48px), #24589f 0 7px, transparent 8px),
-    linear-gradient(180deg, #f7faff 0%, #eef4fb 100%);
-  color: #173d73;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.8;
+body.admin-page-leaving > * { visibility: visible !important; }
+body.auth-pending::before {
+  content: "불러오는 중...";
+  position: fixed; right: 12px; top: 10px; z-index: 2147483646;
+  padding: 7px 11px; border-radius: 999px;
+  background: rgba(23,61,115,.92); color: #fff;
+  font-size: 12px; font-weight: 800; line-height: 1;
+  box-shadow: 0 3px 12px rgba(0,0,0,.14);
+  pointer-events: none;
 }
-body.auth-pending::after,
-body.admin-page-leaving::after {
-  content: "";
-  position: fixed;
-  left: 50%;
-  top: calc(50% - 43px);
-  z-index: 2147483647;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  border: 3px solid rgba(36,88,159,.18);
-  border-top-color: #24589f;
-  border-radius: 50%;
-  animation: adminGateSpin .75s linear infinite;
+body.auth-pending::after {
+  content: ""; position: fixed; right: 96px; top: 14px; z-index: 2147483647;
+  width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff; border-radius: 50%; animation: adminGateSpin .7s linear infinite;
+  pointer-events: none;
 }
-body.auth-pending.auth-ready > * { visibility: visible !important; }
-body.auth-pending.auth-ready::before,
-body.auth-pending.auth-ready::after { display: none; }
+body.admin-page-leaving::before, body.admin-page-leaving::after { display:none !important; }
+body.auth-pending.auth-ready::before, body.auth-pending.auth-ready::after { display:none; }
 @keyframes adminGateSpin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  body.auth-pending::after,
-  body.admin-page-leaving::after { animation: none; }
-}
-
+@media (prefers-reduced-motion: reduce) { body.auth-pending::after { animation:none; } }
 
 /* ===== V2 현재 로그인 정보 ===== */
 .session-status {
@@ -2900,3 +2877,6 @@ html[data-theme=dark] .item-edit-history-badge.admin{background:#172f55;border-c
 .order-edit-history-entry header{display:flex;align-items:center;justify-content:space-between;gap:8px}.order-edit-history-entry header b{font-size:13.5px}.order-edit-history-entry time{font-size:12px;color:#64748b;white-space:nowrap}.order-edit-history-entry>small{display:block;margin-top:4px;color:#64748b;font-size:12px;line-height:1.4}.order-edit-history-entry ul{display:grid;gap:5px;margin:8px 0 0;padding:0;list-style:none}.order-edit-history-entry li{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.5}.order-edit-history-entry li b{flex:0 0 auto;min-width:68px}.order-edit-history-entry .history-added b{color:#166534}.order-edit-history-entry .history-deleted b{color:#b42318}.order-edit-history-entry .history-changed b{color:#9a3412}
 html[data-theme=dark] .order-item-number-highlight.edit-customer{background:#4a2a16;box-shadow:inset 0 0 0 1px #fb923c}html[data-theme=dark] .order-item-number-highlight.edit-admin{background:#172f55;box-shadow:inset 0 0 0 1px #60a5fa}html[data-theme=dark] .order-item-number-highlight.edit-both{background:linear-gradient(90deg,#4a2a16 0 50%,#172f55 50% 100%)}html[data-theme=dark] .order-edit-history-box,html[data-theme=dark] .order-edit-history-list,html[data-theme=dark] .order-edit-history-entry{background:#182433!important;border-color:#40536b!important}html[data-theme=dark] .order-edit-history-toggle{color:#eef4ff!important}
 @media(max-width:760px){.order-admin-meta-row{display:grid;grid-template-columns:1fr;gap:7px;margin:8px 0 11px}.compact-admin-tag{grid-template-columns:auto minmax(70px,1fr) auto!important;padding:8px!important}.compact-admin-tag .admin-order-tag-delete{grid-column:auto}.compact-admin-tag small{display:none}.order-edit-history-toggle{padding:9px 10px;gap:6px}.order-edit-history-toggle span{font-size:13.5px}.order-edit-history-toggle b,.order-edit-history-toggle em{font-size:11.5px}.order-edit-history-list{max-height:280px;padding:7px}.order-edit-history-entry{padding:9px}.order-edit-history-entry header{align-items:flex-start;flex-wrap:wrap}.order-edit-history-entry header b{font-size:13px}.order-edit-history-entry time{font-size:11.5px}.order-edit-history-entry>small{font-size:11.5px}.order-edit-history-entry li{font-size:12.5px;line-height:1.45;overflow-wrap:anywhere}.order-edit-history-entry li b{min-width:62px}.order-item-number-highlight{padding:2px 3px}}
+
+/* V6.6.63 주문목록 재조회 중에도 기존 목록 유지 */
+#adminOrders.orders-refreshing{opacity:.82;transition:opacity .12s ease}
