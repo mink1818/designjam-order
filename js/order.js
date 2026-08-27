@@ -61,7 +61,8 @@ async function loadMyOrders() {
   }
 
   let legacyOrders = [];
-  if (customer.business_name) {
+  if (customer.business_name && !(idOrders || []).length) {
+    // UUID 주문이 없는 구형 계정에만 거래처명 기반 레거시 조회를 수행합니다.
     const { data: nameOrders, error: nameOrderError } = await supabaseClient
       .from("orders")
       .select("*")

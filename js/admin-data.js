@@ -1,14 +1,59 @@
+let adminFullOrdersCache = null;
+let adminFullOrdersPromise = null;
+let adminActiveOrdersCache = null;
+let adminActiveOrdersCacheAt = 0;
+const ADMIN_ACTIVE_CACHE_MS = 15000;
+
+async function fetchAllOrdersForAdmin() {
+  if (adminFullOrdersCache) return adminFullOrdersCache;
+  if (adminFullOrdersPromise) return adminFullOrdersPromise;
+  adminFullOrdersPromise = (async()=>{
+    const rows=[];
+    for(let from=0;;from+=1000){
+      const {data,error}=await supabaseClient.from("orders").select("*").order("created_at",{ascending:false}).order("id",{ascending:false}).range(from,from+999);
+      if(error)throw error;
+      rows.push(...(data||[]));
+      if(!data||data.length<1000)break;
+    }
+    adminFullOrdersCache=rows;
+    return rows;
+  })().finally(()=>{adminFullOrdersPromise=null});
+  return adminFullOrdersPromise;
+}
+
+function warmAdminFullOrders(){
+  if(adminFullOrdersCache||adminFullOrdersPromise)return;
+  const run=()=>fetchAllOrdersForAdmin().catch(error=>console.warn('과거 주문 백그라운드 준비 생략:',error.message));
+  if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:2500}); else setTimeout(run,900);
+}
+
 async function fetchOrders() {
-  // Supabase 한 번 응답 상한(1000행)을 넘는 과거 주문도 미입금 누적 조회에서 빠지지 않게 모두 불러옵니다.
+  // 첫 진입의 주문접수/출고대기는 전체 과거 주문 수천 행을 기다리지 않고 현재 진행 주문만 먼저 받습니다.
+  // 전체/출고완료/미입금/검색처럼 과거 데이터가 필요한 경우에만 전체 주문 캐시를 사용합니다.
+  const keyword=String(document.getElementById('adminSearch')?.value||'').trim();
+  const needsHistory = Boolean(keyword) || requestedPaymentFilter==='unpaid' || adminFilter==='전체' || adminFilter==='출고완료';
+  if(needsHistory)return fetchAllOrdersForAdmin();
+
+  const now=Date.now();
+  if(adminActiveOrdersCache && now-adminActiveOrdersCacheAt<ADMIN_ACTIVE_CACHE_MS){
+    warmAdminFullOrders();
+    return adminActiveOrdersCache;
+  }
   const rows=[];
   for(let from=0;;from+=1000){
-    const {data,error}=await supabaseClient.from("orders").select("*").order("created_at",{ascending:false}).order("id",{ascending:false}).range(from,from+999);
+    const {data,error}=await supabaseClient.from('orders').select('*').eq('status','주문접수').order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
     if(error)throw error;
     rows.push(...(data||[]));
     if(!data||data.length<1000)break;
   }
+  adminActiveOrdersCache=rows;
+  adminActiveOrdersCacheAt=now;
+  warmAdminFullOrders();
   return rows;
 }
+
+function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;}
+window.invalidateAdminOrderCache=invalidateAdminOrderCache;
 
 async function fetchInventorySnapshot() {
   const rows = [];

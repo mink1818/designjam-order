@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  // V6.6.63: 화면을 먼저 지워버리는 전환 효과를 제거해 흰 화면 체감을 없앱니다.
+  // V6.6.64: 화면을 먼저 지워버리는 전환 효과를 제거해 흰 화면 체감을 없앱니다.
   const begin = () => {};
   window.designSocksAdminTransition = begin;
   const prefetched = new Set();
