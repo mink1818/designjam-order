@@ -16,16 +16,16 @@
 <style>
 .member-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:18px 0 8px}.member-page-numbers{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}.member-page-btn{min-width:40px;height:40px;padding:0 12px;border:1px solid #b8c5d3;border-radius:9px;background:#fff;color:#17324d;font-weight:800;cursor:pointer}.member-page-btn.active{background:#173f70;color:#fff;border-color:#173f70}.member-page-btn:disabled{opacity:.4;cursor:default}.member-page-nav{min-width:76px}html[data-theme=dark] .member-page-btn{background:#182431;color:#e8eef5;border-color:#43566a}html[data-theme=dark] .member-page-btn.active{background:#356da8;color:#fff;border-color:#356da8}@media(max-width:640px){.member-pagination{gap:7px}.member-page-btn{min-width:36px;height:38px;padding:0 9px}.member-page-nav{min-width:68px}}
 </style></head>
-<body class="auth-pending" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.67"><header><h1>🏢 거래처관리</h1><p>승인·등급·관리자 메모</p></header>
+<body class="auth-pending" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.68"><header><h1>🏢 거래처관리</h1><p>승인·등급·관리자 메모</p></header>
 <main class="container">
 <div class="dashboard member-status-dashboard"><div><strong id="onlineCount">0</strong><span>현재 접속</span></div><div><strong id="todayLoginCount">0</strong><span>오늘 로그인</span></div><div><strong id="yesterdayLoginCount">0</strong><span>어제 로그인</span></div><div><strong id="waitingCount">0</strong><span>승인대기</span></div><div><strong id="approvedCount">0</strong><span>승인완료</span></div><div><strong id="blockedCount">0</strong><span>차단</span></div></div>
 <div class="v3-toolbar"><input id="memberSearch" class="search" type="text" placeholder="상호·대표자·전화번호·이메일 검색"><select id="memberSort"><option value="seen">최근 접속순</option><option value="grade-desc">등급 높은순</option><option value="grade-asc">등급 낮은순</option><option value="new">최근 가입순</option><option value="order">최근 주문순</option><option value="order-count">주문 건수순</option><option value="sales">누적금액순</option><option value="name">거래처명순</option></select></div>
 <div class="admin-filter"><button data-filter="전체" onclick="setMemberFilter('전체')">전체</button><button data-filter="승인대기" onclick="setMemberFilter('승인대기')">승인대기</button><button data-filter="승인완료" onclick="setMemberFilter('승인완료')">승인완료</button><button data-filter="차단" onclick="setMemberFilter('차단')">차단</button></div>
 <div class="customer-list-guide">거래처를 누르면 상세정보·지정 비밀번호 변경 기능이 펼쳐집니다. 전체 거래처를 선택한 정렬 기준으로 먼저 정렬한 뒤 30곳씩 페이지로 나누어 표시합니다. 수정 후 저장해도 현재 페이지를 유지합니다.</div><div class="member-page-actions"><button class="cart-btn compact-refresh-btn" onclick="loadCustomers()">거래처 새로고침</button><button class="cart-btn proxy-order-main-btn" onclick="location.href='proxy-order.html'">관리자 대신 주문</button></div><div id="customerList"></div>
 </main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script><script src="js/members.js?v=66661"></script><script src="js/session-status.js?v=66390"></script><script src="js/pwa.js?v=66180"></script>
-<script src="js/admin-page-transition.js?v=66667"></script>
-<script src="js/version-badge.js?v=66667"></script>
+<script src="js/admin-page-transition.js?v=66668"></script>
+<script src="js/version-badge.js?v=66668"></script>
 <script src="js/back-navigation.js?v=66040"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
 <script src="js/admin-mobile-nav.js?v=66040"></script>
-<script src="js/admin-new-order-alert.js?v=66667"></script></body></html>
+<script src="js/admin-new-order-alert.js?v=66668"></script></body></html>
