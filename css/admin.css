@@ -2883,8 +2883,8 @@ html[data-theme=dark] .order-item-number-highlight.edit-customer{background:#4a2
 
 
 /* V6.6.65 관리자 주문목록 미입금 수기메모 - 접힘 상태 상시 표시 */
-/* V6.6.69 미입금 체크박스와 수기메모 일체형 */
+/* V6.6.70 미입금 체크박스와 수기메모 일체형 */
 body[data-session-page="admin"] .desktop-payment-combo{width:max-content;max-width:100%}
 body[data-session-page="admin"] .mobile-payment-combo{display:none}
 
-/* V6.6.69: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
+/* V6.6.70: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
