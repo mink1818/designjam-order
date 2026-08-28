@@ -130,12 +130,18 @@ let adminCustomerMetaMap = new Map();
 let adminProductCatalogMap = new Map();
 let adminOrderMetaMap = new Map();
 
-async function fetchCustomerIdentitySnapshot(){
-  const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('customers').select('id,business_name,owner_name,phone,address').range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows;
+let adminAuxCache={at:0,inventory:null,product:null,customerMeta:null,orderMeta:null};
+const ADMIN_AUX_CACHE_MS=60000;
+async function fetchCustomerIdentitySnapshot(ids=[]){
+  const unique=[...new Set((ids||[]).filter(Boolean).map(String))];
+  if(!unique.length)return [];
+  const {data,error}=await supabaseClient.from('customers').select('id,business_name,owner_name,phone,address').in('id',unique);
+  if(error)throw error;return data||[];
 }
 
-async function fetchAdminCustomerMetadata(){const {data,error}=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag');if(error){console.warn('V6.6.20 고객표시 조회 생략:',error.message);return[]}return data||[]}
-async function fetchAdminOrderMetadata(){const {data,error}=await supabaseClient.from('order_admin_metadata').select('order_number,admin_tag,show_tag');if(error){console.warn('V6.6.20 주문표시 조회 생략:',error.message);return[]}return data||[]}
+
+async function fetchAdminCustomerMetadata(ids=[]){const unique=[...new Set((ids||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag').in('customer_id',unique);if(error){console.warn('V6.6.20 고객표시 조회 생략:',error.message);return[]}return data||[]}
+async function fetchAdminOrderMetadata(nums=[]){const unique=[...new Set((nums||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('order_admin_metadata').select('order_number,admin_tag,show_tag').in('order_number',unique);if(error){console.warn('V6.6.20 주문표시 조회 생략:',error.message);return[]}return data||[]}
 async function fetchAdminProductCatalog(){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,price,warehouse_code');if(error){console.warn('상품단가표 조회 실패:',error.message);return[]}return data||[]}
 function catalogNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const p=JSON.parse(value);if(Array.isArray(p))return p.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>adminProductCatalogMap.set(inventoryKey(n),{item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()})))}
@@ -225,16 +231,20 @@ async function loadOrders() {
   let data = [];
 
 try {
-  const [orderRows, inventoryRows, customerRows, customerMetaRows, productCatalogRows, orderMetaRows] = await Promise.all([
-    fetchOrders(),
-    fetchInventorySnapshot(),
-    fetchCustomerIdentitySnapshot(),
-    fetchAdminCustomerMetadata(),
-    fetchAdminProductCatalog(),
-    fetchAdminOrderMetadata()
+  // V6.6.67: 주문 자체를 먼저 받고, 현재 화면에 필요한 고객/표시 데이터만 병렬 조회합니다.
+  const orderRows=await fetchOrders();
+  data=orderRows||[];
+  const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
+  const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
+  const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
+  const [inventoryRows,customerRows,customerMetaRows,productCatalogRows,orderMetaRows]=await Promise.all([
+    cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(),
+    fetchCustomerIdentitySnapshot(customerIds),
+    fetchAdminCustomerMetadata(customerIds),
+    cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(),
+    fetchAdminOrderMetadata(orderNumbers)
   ]);
-  // 관리자 주문화면은 현재 단가표가 아니라 주문 접수 당시 저장된 단가를 유지합니다.
-  data = orderRows;
+  adminAuxCache={at:Date.now(),inventory:inventoryRows,product:productCatalogRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
   adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
   adminCustomerMetaMap=new Map((customerMetaRows||[]).map(row=>[String(row.customer_id),row]));
   setAdminProductCatalog(productCatalogRows);
@@ -245,8 +255,7 @@ try {
   return;
 }
 
-  await loadAdminFeatureData(data);
-  await loadOrderPaymentRecords();
+  await Promise.all([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]);
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -449,8 +458,10 @@ function calculateGroupPaymentTotal(group){
   const productTotal=(group.items||[]).reduce((sum,item)=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0)));return sum+Math.max(0,ordered-soldout)*Number(item.price||0)},0);
   return productTotal+Number(group.shipping_fee||0);
 }
-async function loadOrderPaymentRecords(){
-  const {data,error}=await supabaseClient.from('order_payment_records').select('id,order_number,customer_key,customer_name,order_amount,paid_amount,payment_status,payment_account,depositor_name,paid_at,memo,confirmed_by,confirmed_by_name,updated_at').limit(10000);
+async function loadOrderPaymentRecords(orderRows=[]){
+  const nums=[...new Set((orderRows||[]).map(r=>r.order_number).filter(Boolean))];
+  if(!nums.length){orderPaymentRecords=new Map();return;}
+  const {data,error}=await supabaseClient.from('order_payment_records').select('id,order_number,customer_key,customer_name,order_amount,paid_amount,payment_status,payment_account,depositor_name,paid_at,memo,confirmed_by,confirmed_by_name,updated_at').in('order_number',nums).limit(10000);
   if(error){console.warn('입금정보 조회 실패:',error.message);orderPaymentRecords=new Map();return}
   orderPaymentRecords=new Map();(data||[]).forEach(row=>{orderPaymentRecords.set(paymentRecordKey(row.order_number,row.customer_key),row);const k=`order::${String(row.order_number||'')}`,old=orderPaymentRecords.get(k);if(!old||(!old.confirmed_by&&row.confirmed_by)||((!!old.confirmed_by)===(!!row.confirmed_by)&&new Date(row.updated_at||0)>new Date(old.updated_at||0)))orderPaymentRecords.set(k,row)});
 }
@@ -470,7 +481,7 @@ async function saveUnpaidInlineMemo(input,orderNumber,customerId,customerName,to
   input.disabled=false;
   if(error){alert('미입금 메모 저장 실패: '+error.message);return}
   orderPaymentRecords.set(paymentRecordKey(orderNumber,customerId),data);orderPaymentRecords.set(`order::${String(orderNumber||'')}`,data);
-  input.value=String(data?.memo||memo||'');input.classList.add('saved');setTimeout(()=>input.classList.remove('saved'),900);
+  input.value=String(data?.memo||memo||'');document.querySelectorAll('[data-unpaid-memo-order]').forEach(el=>{if(el!==input&&el.dataset.unpaidMemoOrder===String(orderNumber))el.value=input.value;});input.classList.add('saved');setTimeout(()=>input.classList.remove('saved'),900);
 }
 function unpaidMemoKeydown(event,input,orderNumber,customerId,customerName,total){if(event.key==='Enter'){event.preventDefault();input.blur();}}
 window.saveUnpaidInlineMemo=saveUnpaidInlineMemo;window.unpaidMemoKeydown=unpaidMemoKeydown;
@@ -730,15 +741,14 @@ summaryTotal += Number(group.shipping_fee || 0);
     <span class="mobile-order-date">${isDone ? `출고 ${formatMobileOrderDate(group.completedAt)}` : formatMobileOrderDate(group.createdAt)}</span>
     <strong class="mobile-order-qty">${summaryQty}죽</strong>
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
-    ${paymentTracked?`<label class="order-payment-check mobile-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}
+    ${paymentTracked?`<div class="payment-memo-combo mobile-payment-combo" onclick="event.stopPropagation()"><label class="order-payment-check mobile-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label><div class="unpaid-inline-memo"><span>메모</span><input type="text" maxlength="80" data-unpaid-memo-order="${escapeAdminAttr(group.orderNumber)}" value="${escapeAdminAttr(paymentRecord.memo||'')}" placeholder="미입금 메모" aria-label="미입금 수기메모" onkeydown="unpaidMemoKeydown(event,this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})" onblur="saveUnpaidInlineMemo(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})"></div></div>`:''}
   </div>
   <div class="order-status-stack">
-    ${paymentTracked?`<label class="order-payment-check desktop-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}
+    ${paymentTracked?`<div class="payment-memo-combo desktop-payment-combo" onclick="event.stopPropagation()"><label class="order-payment-check desktop-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label><div class="unpaid-inline-memo"><span>메모</span><input type="text" maxlength="80" data-unpaid-memo-order="${escapeAdminAttr(group.orderNumber)}" value="${escapeAdminAttr(paymentRecord.memo||'')}" placeholder="미입금 메모" aria-label="미입금 수기메모" onkeydown="unpaidMemoKeydown(event,this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})" onblur="saveUnpaidInlineMemo(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})"></div></div>`:''}
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
-  ${paymentTracked?`<div class="unpaid-inline-memo" onclick="event.stopPropagation()"><span>미입금 메모</span><input type="text" maxlength="80" value="${escapeAdminAttr(paymentRecord.memo||'')}" placeholder="수기 메모 입력" aria-label="미입금 수기메모" onkeydown="unpaidMemoKeydown(event,this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})" onblur="saveUnpaidInlineMemo(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})"></div>`:''}
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
 </div>

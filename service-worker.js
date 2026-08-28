@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-6-59';
+const CACHE_NAME='design-socks-v6-6-67';
 const APP_SHELL=[
   '/offline.html?v=66200',
   '/css/main.css?v=66200',
@@ -8,7 +8,7 @@ const APP_SHELL=[
   '/css/customer-share-document.css?v=66040',
   '/js/customer-share-document.js?v=66200',
   '/js/pwa.js?v=66200',
-  '/js/version-badge.js?v=66659',
+  '/js/version-badge.js?v=66667',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',
@@ -35,16 +35,16 @@ self.addEventListener('fetch',event=>{
   if(req.method!=='GET') return;
   const url=new URL(req.url);
   if(url.origin!==self.location.origin) return;
-  event.respondWith(
-    fetch(req,{cache:'no-store'}).then(res=>{
-      if(res && res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}
-      return res;
-    }).catch(async()=>{
-      const cached=await caches.match(req);
-      if(cached) return cached;
-      if(req.mode==='navigate') return caches.match('/offline.html?v=66200');
-      throw new Error('offline');
-    })
-  );
+  if(req.mode==='navigate'){
+    event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}return res;}).catch(async()=>await caches.match(req)||await caches.match('/offline.html?v=66200')));
+    return;
+  }
+  // JS/CSS/이미지는 캐시를 즉시 사용하고 뒤에서 최신본으로 교체해 화면 체감속도를 높입니다.
+  event.respondWith((async()=>{
+    const cached=await caches.match(req);
+    const network=fetch(req).then(res=>{if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}return res;}).catch(()=>null);
+    if(cached){event.waitUntil(network);return cached;}
+    const res=await network;if(res)return res;throw new Error('offline');
+  })());
 });
 self.addEventListener('message',event=>{if(event.data==='SKIP_WAITING')self.skipWaiting();});
