@@ -2883,31 +2883,8 @@ html[data-theme=dark] .order-item-number-highlight.edit-customer{background:#4a2
 
 
 /* V6.6.65 관리자 주문목록 미입금 수기메모 - 접힘 상태 상시 표시 */
-body[data-session-page="admin"] .unpaid-inline-memo{grid-column:3;display:flex;align-items:center;gap:6px;min-width:0;margin-top:-2px;padding:4px 6px;border:1px solid #fecaca;border-radius:8px;background:#fff7f7;cursor:default}
-body[data-session-page="admin"] .unpaid-inline-memo span{flex:0 0 auto;font-size:10px;font-weight:900;color:#b91c1c;white-space:nowrap}
-body[data-session-page="admin"] .unpaid-inline-memo input{width:150px;min-width:0;height:26px;box-sizing:border-box;padding:4px 7px;border:1px solid #fca5a5;border-radius:6px;background:#fff;font-size:11px;color:#334155;outline:none}
-body[data-session-page="admin"] .unpaid-inline-memo input:focus{border-color:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.10)}
-body[data-session-page="admin"] .unpaid-inline-memo input.saved{border-color:#22c55e;background:#f0fdf4}
-@media(min-width:761px){body[data-session-page="admin"] .compact-order-header:has(.unpaid-inline-memo){grid-template-rows:auto auto}body[data-session-page="admin"] .unpaid-inline-memo{grid-row:2;justify-self:end;width:min(280px,100%)}body[data-session-page="admin"] .unpaid-inline-memo input{flex:1;width:auto}}
-@media(max-width:760px){body[data-session-page="admin"] .compact-order-header:has(.unpaid-inline-memo){grid-template-rows:auto auto auto auto!important}body[data-session-page="admin"] .unpaid-inline-memo{grid-column:1!important;grid-row:4!important;width:100%;box-sizing:border-box;margin-top:1px;padding:4px 6px}body[data-session-page="admin"] .unpaid-inline-memo input{flex:1;width:auto;height:28px;font-size:12px}}
-html[data-theme="dark"] body[data-session-page="admin"] .unpaid-inline-memo{border-color:#7f1d1d;background:#2b171a}html[data-theme="dark"] body[data-session-page="admin"] .unpaid-inline-memo input{border-color:#7f1d1d;background:#111827;color:#e5e7eb}
-/* V6.6.68 미입금 체크박스와 수기메모 일체형 */
-body[data-session-page="admin"] .payment-memo-combo{display:flex;align-items:stretch;min-width:0;max-width:100%;border:1px solid #fecaca;border-radius:9px;background:#fff7f7;overflow:hidden}
-body[data-session-page="admin"] .payment-memo-combo .order-payment-check{margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;flex:0 0 auto}
-body[data-session-page="admin"] .payment-memo-combo .unpaid-inline-memo{display:flex!important;align-items:center;gap:5px;min-width:0;width:auto!important;margin:0!important;padding:3px 5px!important;border:0!important;border-left:1px solid #fecaca!important;border-radius:0!important;background:transparent!important;cursor:default;grid-column:auto!important;grid-row:auto!important}
-body[data-session-page="admin"] .payment-memo-combo .unpaid-inline-memo span{font-size:10px;font-weight:900;color:#b91c1c;white-space:nowrap}
-body[data-session-page="admin"] .payment-memo-combo .unpaid-inline-memo input{width:132px;min-width:65px;height:25px;box-sizing:border-box;padding:3px 6px;border:1px solid #fca5a5;border-radius:5px;background:#fff;font-size:11px;color:#334155;outline:none}
+/* V6.6.69 미입금 체크박스와 수기메모 일체형 */
 body[data-session-page="admin"] .desktop-payment-combo{width:max-content;max-width:100%}
 body[data-session-page="admin"] .mobile-payment-combo{display:none}
-@media(max-width:760px){body[data-session-page="admin"] .desktop-payment-combo{display:none!important}body[data-session-page="admin"] .mobile-payment-combo{display:flex!important;width:100%;grid-column:1/-1;box-sizing:border-box}body[data-session-page="admin"] .mobile-payment-combo .order-payment-check{display:flex!important;flex:0 0 auto;min-width:76px}body[data-session-page="admin"] .mobile-payment-combo .unpaid-inline-memo{flex:1}body[data-session-page="admin"] .mobile-payment-combo .unpaid-inline-memo input{flex:1;width:auto;min-width:0;height:27px;font-size:12px}}
-html[data-theme="dark"] body[data-session-page="admin"] .payment-memo-combo{border-color:#7f1d1d;background:#2b171a}html[data-theme="dark"] body[data-session-page="admin"] .payment-memo-combo .unpaid-inline-memo{border-left-color:#7f1d1d!important}
 
-/* V6.6.68: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
-body[data-session-page="admin"] .collapsed-unpaid-memo{display:block;max-width:210px;padding:5px 7px;border-left:1px solid #fecaca;font-size:11px;font-weight:800;color:#991b1b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:stretch;line-height:25px}
-body[data-session-page="admin"] .collapsed-unpaid-memo[hidden]{display:none!important}
-body[data-session-page="admin"] .expanded-unpaid-memo{min-width:220px;flex:1}
-body[data-session-page="admin"] .expanded-unpaid-memo label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:900;color:#991b1b}
-body[data-session-page="admin"] .expanded-unpaid-memo input{flex:1;min-width:100px;height:32px;box-sizing:border-box;padding:5px 8px;border:1px solid #fca5a5;border-radius:7px;background:#fff;color:#334155}
-body[data-session-page="admin"] .expanded-unpaid-memo input.saved{border-color:#22c55e;background:#f0fdf4}
-@media(max-width:760px){body[data-session-page="admin"] .mobile-payment-combo:not(.has-unpaid-memo){width:max-content!important}body[data-session-page="admin"] .collapsed-unpaid-memo{flex:1;max-width:none;min-width:0;line-height:27px}body[data-session-page="admin"] .order-payment-detail{gap:8px}body[data-session-page="admin"] .expanded-unpaid-memo{min-width:100%;order:3}body[data-session-page="admin"] .expanded-unpaid-memo label{width:100%;box-sizing:border-box}body[data-session-page="admin"] .expanded-unpaid-memo input{min-width:0}}
-html[data-theme="dark"] body[data-session-page="admin"] .collapsed-unpaid-memo{border-left-color:#7f1d1d;color:#fecaca}html[data-theme="dark"] body[data-session-page="admin"] .expanded-unpaid-memo label{color:#fecaca}html[data-theme="dark"] body[data-session-page="admin"] .expanded-unpaid-memo input{background:#111827;border-color:#7f1d1d;color:#e5e7eb}
+/* V6.6.69: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
