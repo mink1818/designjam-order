@@ -460,6 +460,21 @@ async function saveOrderPayment(orderNumber,customerId,customerName,total,paidAm
   if(error){alert('입금상태 저장 실패: '+error.message+'\n\nV6.6.3-PAYMENT-RECEIVABLES.sql 실행 여부를 확인해주세요.');return false}
   orderPaymentRecords.set(paymentRecordKey(orderNumber,customerId),data);orderPaymentRecords.set(`order::${String(orderNumber||'')}`,data);return true;
 }
+async function saveUnpaidInlineMemo(input,orderNumber,customerId,customerName,total){
+  const memo=String(input?.value||'').trim();
+  const old=getOrderPaymentRecord(orderNumber,customerId)||{};
+  if(!old.id)return;
+  if(String(old.memo||'').trim()===memo)return;
+  input.disabled=true;
+  const {data,error}=await supabaseClient.rpc('admin_save_order_payment',{p_order_number:orderNumber,p_customer_key:String(customerId||''),p_customer_name:customerName||'',p_order_amount:Number(total||0),p_paid_amount:Math.max(0,Number(old.paid_amount||0)),p_payment_account:old.payment_account||null,p_depositor_name:old.depositor_name||null,p_paid_at:old.paid_at||null,p_memo:memo||null});
+  input.disabled=false;
+  if(error){alert('미입금 메모 저장 실패: '+error.message);return}
+  orderPaymentRecords.set(paymentRecordKey(orderNumber,customerId),data);orderPaymentRecords.set(`order::${String(orderNumber||'')}`,data);
+  input.value=String(data?.memo||memo||'');input.classList.add('saved');setTimeout(()=>input.classList.remove('saved'),900);
+}
+function unpaidMemoKeydown(event,input,orderNumber,customerId,customerName,total){if(event.key==='Enter'){event.preventDefault();input.blur();}}
+window.saveUnpaidInlineMemo=saveUnpaidInlineMemo;window.unpaidMemoKeydown=unpaidMemoKeydown;
+
 async function toggleOrderPaid(input,orderNumber,customerId,total,customerName){
   input.disabled=true;const next=input.checked?total:0;
   if(!input.checked&&!confirm('이 주문을 미입금으로 변경할까요?')){input.checked=true;input.disabled=false;return}
@@ -723,6 +738,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
+  ${paymentTracked?`<div class="unpaid-inline-memo" onclick="event.stopPropagation()"><span>미입금 메모</span><input type="text" maxlength="80" value="${escapeAdminAttr(paymentRecord.memo||'')}" placeholder="수기 메모 입력" aria-label="미입금 수기메모" onkeydown="unpaidMemoKeydown(event,this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})" onblur="saveUnpaidInlineMemo(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}','${escapeAdminAttr(group.customerName||'')}',${summaryTotal})"></div>`:''}
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
 </div>

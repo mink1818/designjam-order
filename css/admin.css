@@ -2880,3 +2880,14 @@ html[data-theme=dark] .order-item-number-highlight.edit-customer{background:#4a2
 
 /* V6.6.63 주문목록 재조회 중에도 기존 목록 유지 */
 #adminOrders.orders-refreshing{opacity:.82;transition:opacity .12s ease}
+
+
+/* V6.6.65 관리자 주문목록 미입금 수기메모 - 접힘 상태 상시 표시 */
+body[data-session-page="admin"] .unpaid-inline-memo{grid-column:3;display:flex;align-items:center;gap:6px;min-width:0;margin-top:-2px;padding:4px 6px;border:1px solid #fecaca;border-radius:8px;background:#fff7f7;cursor:default}
+body[data-session-page="admin"] .unpaid-inline-memo span{flex:0 0 auto;font-size:10px;font-weight:900;color:#b91c1c;white-space:nowrap}
+body[data-session-page="admin"] .unpaid-inline-memo input{width:150px;min-width:0;height:26px;box-sizing:border-box;padding:4px 7px;border:1px solid #fca5a5;border-radius:6px;background:#fff;font-size:11px;color:#334155;outline:none}
+body[data-session-page="admin"] .unpaid-inline-memo input:focus{border-color:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.10)}
+body[data-session-page="admin"] .unpaid-inline-memo input.saved{border-color:#22c55e;background:#f0fdf4}
+@media(min-width:761px){body[data-session-page="admin"] .compact-order-header:has(.unpaid-inline-memo){grid-template-rows:auto auto}body[data-session-page="admin"] .unpaid-inline-memo{grid-row:2;justify-self:end;width:min(280px,100%)}body[data-session-page="admin"] .unpaid-inline-memo input{flex:1;width:auto}}
+@media(max-width:760px){body[data-session-page="admin"] .compact-order-header:has(.unpaid-inline-memo){grid-template-rows:auto auto auto auto!important}body[data-session-page="admin"] .unpaid-inline-memo{grid-column:1!important;grid-row:4!important;width:100%;box-sizing:border-box;margin-top:1px;padding:4px 6px}body[data-session-page="admin"] .unpaid-inline-memo input{flex:1;width:auto;height:28px;font-size:12px}}
+html[data-theme="dark"] body[data-session-page="admin"] .unpaid-inline-memo{border-color:#7f1d1d;background:#2b171a}html[data-theme="dark"] body[data-session-page="admin"] .unpaid-inline-memo input{border-color:#7f1d1d;background:#111827;color:#e5e7eb}
