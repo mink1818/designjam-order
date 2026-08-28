@@ -73,14 +73,16 @@
     </article>
   </section>
 
-  <div class="v3-section-heading stats-group-title stats-ranking-heading"><div><h2>⑤ 월별 판매·거래처 토탈 랭킹</h2><span id="monthlyRankingPeriod">선택 월 기준 TOP 10</span></div><label>랭킹 확인 월<input id="monthlyRankingMonth" type="month"></label></div><section class="stats-ranking-grid">
+  <div class="v3-section-heading stats-group-title stats-ranking-heading"><div><h2>⑤ 판매·거래처 랭킹</h2><span id="monthlyRankingPeriod">당월 기준 TOP 10</span></div><div class="stats-ranking-period-controls"><label>랭킹 기간<select id="rankingPeriodMode"><option value="month" selected>월별</option><option value="total">토탈</option></select></label><label id="rankingMonthLabel">조회 월<input id="monthlyRankingMonth" type="month"></label></div></div><section class="stats-ranking-grid">
     <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2>월간 품번 판매량 TOP 10</h2><span>품절·일부품절 제외 · 단위 죽</span></div>
+      <div class="v3-section-heading"><h2 id="topProductsTitle">월간 품번 판매량 TOP 10</h2><span>품절·일부품절 제외 · 단위 죽</span></div>
       <div id="topProductsList" class="stats-ranking-list"></div>
+      <button type="button" id="toggleTopProducts" class="stats-ranking-more" hidden>TOP 100 펼쳐보기</button>
     </article>
     <article class="product-card stats-panel">
-      <div class="v3-section-heading"><h2>월간 거래처 매출 TOP 10</h2><span id="topCustomersCaption">선택 월 전체 거래처 중 상위 10곳 · 배송비 포함</span></div>
+      <div class="v3-section-heading"><h2 id="topCustomersTitle">월간 거래처 매출 TOP 10</h2><span id="topCustomersCaption">당월 전체 거래처 중 상위 10곳 · 배송비 포함</span></div>
       <div id="topCustomersList" class="stats-ranking-list"></div>
+      <button type="button" id="toggleTopCustomers" class="stats-ranking-more" hidden>TOP 100 펼쳐보기</button>
     </article>
   </section>
 
@@ -92,13 +94,13 @@
   <p id="statsMessage" class="stats-message" role="status"></p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/stats.js?v=66654"></script>
+<script src="js/stats.js?v=66672"></script>
 <script src="js/session-status.js?v=66390"></script>
 <script src="js/pwa.js?v=66180"></script>
-<script src="js/admin-page-transition.js?v=66670"></script>
-<script src="js/version-badge.js?v=66670"></script>
+<script src="js/admin-page-transition.js?v=66672"></script>
+<script src="js/version-badge.js?v=66672"></script>
 <script src="js/back-navigation.js?v=66040"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
 <script src="js/admin-mobile-nav.js?v=66040"></script>
-<script src="js/admin-new-order-alert.js?v=66670"></script></body>
+<script src="js/admin-new-order-alert.js?v=66672"></script></body>
 </html>

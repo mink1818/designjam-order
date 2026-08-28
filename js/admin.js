@@ -231,7 +231,7 @@ async function loadOrders() {
   let data = [];
 
 try {
-  // V6.6.70: 주문 자체를 먼저 받고, 현재 화면에 필요한 고객/표시 데이터만 병렬 조회합니다.
+  // V6.6.72: 주문 자체를 먼저 받고, 현재 화면에 필요한 고객/표시 데이터만 병렬 조회합니다.
   const orderRows=await fetchOrders();
   data=orderRows||[];
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];

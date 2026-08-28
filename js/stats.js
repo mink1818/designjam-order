@@ -13,6 +13,7 @@ let categoryNameMap=new Map();
 let mainCategoryNameMap=new Map();
 let currentRange='month';
 let currentStats=null;
+let rankingExpanded={product:false,customer:false};
 
 const $=id=>document.getElementById(id);
 const money=v=>Number(v||0).toLocaleString('ko-KR');
@@ -212,12 +213,28 @@ function compareText(current,previous,unit){
   if(!previous)return current?`전월 데이터 없음 · ${money(current)}${unit}`:`0${unit}`;const rate=Math.round((current-previous)/previous*100);return `${rate>0?'▲ ':rate<0?'▼ ':''}${Math.abs(rate)}% · ${money(current)}${unit}`;
 }
 
+function getRankingAnalytics(a){
+  const mode=$('rankingPeriodMode')?.value||'month';
+  if(mode==='total'){let orders=groupOrders(rawOrders);if($('completedOnlyCheck').checked)orders=orders.filter(o=>o.status==='출고완료');return {mode,label:'전체 기간',data:aggregateOrderSet(orders)};}
+  return {mode,label:`${a.selectedMonth.replace('-','년 ')}월`,data:a.current};
+}
+
+function renderRankings(a){
+  const r=getRankingAnalytics(a),limitProduct=rankingExpanded.product?100:10,limitCustomer=rankingExpanded.customer?100:10;
+  $('monthlyRankingPeriod').textContent=`${r.label} 기준 TOP ${rankingExpanded.product||rankingExpanded.customer?'100':'10'}`;
+  if($('rankingMonthLabel'))$('rankingMonthLabel').hidden=r.mode==='total';
+  if($('topProductsTitle'))$('topProductsTitle').textContent=`${r.mode==='total'?'토탈':'월간'} 품번 판매량 TOP ${rankingExpanded.product?'100':'10'}`;
+  if($('topCustomersTitle'))$('topCustomersTitle').textContent=`${r.mode==='total'?'토탈':'월간'} 거래처 매출 TOP ${rankingExpanded.customer?'100':'10'}`;
+  renderRanking('topProductsList',r.data.products,'product',limitProduct);renderRanking('topCustomersList',r.data.customers,'customer',limitCustomer);
+  const pBtn=$('toggleTopProducts'),cBtn=$('toggleTopCustomers');if(pBtn){pBtn.hidden=r.data.products.length<=10;pBtn.textContent=rankingExpanded.product?'TOP 10만 보기':`TOP ${Math.min(100,r.data.products.length)} 펼쳐보기`;}if(cBtn){cBtn.hidden=r.data.customers.length<=10;cBtn.textContent=rankingExpanded.customer?'TOP 10만 보기':`TOP ${Math.min(100,r.data.customers.length)} 펼쳐보기`;}
+  const caption=$('topCustomersCaption');if(caption)caption.textContent=`${r.label} 전체 ${money(r.data.customers.length)}곳 중 상위 ${rankingExpanded.customer?Math.min(100,r.data.customers.length):Math.min(10,r.data.customers.length)}곳 · 배송비 포함`;
+}
+
 function renderPeriodAnalytics(){
-  const a=buildPeriodAnalytics(),mode=$('salesChartMode')?.value||'daily';$('monthlyRankingPeriod').textContent=`${a.selectedMonth.replace('-','년 ')}월 토탈 기준 TOP 10`;
+  const a=buildPeriodAnalytics(),mode=$('salesChartMode')?.value||'daily';
   const chart={daily:{title:`${a.selectedMonth.replace('-','년 ')}월 일 매출`,caption:'선택 월 전체 날짜',rows:a.daily,limit:31},monthly:{title:`${a.selectedYear}년 월 매출`,caption:'1월~12월',rows:a.monthly,limit:12},yearly:{title:'연 매출',caption:'전체 주문 이력',rows:a.yearly,limit:0}}[mode];$('salesChartTitle').textContent=chart.title;$('salesChartCaption').textContent=chart.caption;renderBarChart('salesChart',chart.rows,'amount',v=>`${Math.round(v/10000).toLocaleString()}만`,chart.limit);
   $('monthlyCompareCards').innerHTML=`<article><span>선택 월 매출</span><strong>${compareText(a.current.amount,a.previous.amount,'원')}</strong></article><article><span>선택 월 출고수량</span><strong>${compareText(a.current.qty,a.previous.qty,'죽')}</strong></article><article><span>선택 월 주문건수</span><strong>${compareText(a.current.orders,a.previous.orders,'건')}</strong></article>`;
-  renderRanking('topProductsList',a.current.products,'product');renderRanking('topCustomersList',a.current.customers,'customer');const caption=$('topCustomersCaption');if(caption)caption.textContent=`${a.selectedMonth.replace('-','년 ')}월 전체 ${money(a.current.customers.length)}곳 중 상위 10곳 · 배송비 포함`;
-  return a;
+  renderRankings(a);return a;
 }
 
 function fillStatusPeriodYears(){
@@ -338,8 +355,8 @@ function renderBarChart(targetId,rows,valueKey,formatter,limit=0){
   box.innerHTML=`<div class="stats-bars">${show.map(r=>{const value=Number(r[valueKey]||0),label=String(r.label||r.date||'');const h=value?Math.max(4,Math.round(value/max*100)):0;return `<div class="stats-bar-item" title="${esc(label)} · ${esc(formatter(value))}"><div class="stats-bar-value">${value?esc(formatter(value)):'-'}</div><div class="stats-bar-track"><i style="height:${h}%"></i></div><small>${esc(label.includes('-')?label.slice(5):label)}</small></div>`;}).join('')}</div>`;
 }
 
-function renderRanking(targetId,rows,type){
-  const box=$(targetId),items=rows.slice(0,10);if(!items.length){box.innerHTML='<p class="empty-copy">표시할 데이터가 없습니다.</p>';return;}
+function renderRanking(targetId,rows,type,limit=10){
+  const box=$(targetId),items=rows.slice(0,Math.min(100,limit));if(!items.length){box.innerHTML='<p class="empty-copy">표시할 데이터가 없습니다.</p>';return;}
   const max=Math.max(...items.map(x=>type==='product'?x.qty:x.amount),1);
   box.innerHTML=items.map((x,i)=>{const value=type==='product'?`${qty(x.qty)}죽`:`${money(x.amount)}원`;const width=Math.max(3,Math.round((type==='product'?x.qty:x.amount)/max*100));const sub=type==='product'?`${money(x.amount)}원`:`${x.orders.toLocaleString()}건 · ${qty(x.qty)}죽`;return `<div class="stats-rank-row"><b>${i+1}</b><div><strong>${esc(x.name)}</strong><small>${sub}</small><span><i style="width:${width}%"></i></span></div><em>${value}</em></div>`;}).join('');
 }
@@ -374,7 +391,7 @@ function bindEvents(){
   $('statsRangeButtons').querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{currentRange=btn.dataset.range;$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));renderAll();}));
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
   $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
-  $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;renderAll()});$('salesChartMode').addEventListener('change',renderAll);
+  $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;rankingExpanded={product:false,customer:false};renderAll()});$('rankingPeriodMode')?.addEventListener('change',()=>{rankingExpanded={product:false,customer:false};renderAll()});$('toggleTopProducts')?.addEventListener('click',()=>{rankingExpanded.product=!rankingExpanded.product;renderRankings(currentStats?.periodAnalytics||buildPeriodAnalytics())});$('toggleTopCustomers')?.addEventListener('click',()=>{rankingExpanded.customer=!rankingExpanded.customer;renderRankings(currentStats?.periodAnalytics||buildPeriodAnalytics())});$('salesChartMode').addEventListener('change',renderAll);
   $('receivableCustomer')?.addEventListener('change',renderReceivableLookup);$('receivableStart')?.addEventListener('change',renderReceivableLookup);$('receivableEnd')?.addEventListener('change',renderReceivableLookup);$('receivableListFilter')?.addEventListener('change',renderReceivableCustomerList);
   $('statusPeriodMode')?.addEventListener('change',updateStatusPeriodControls);$('statusPeriodDate')?.addEventListener('change',renderStatusPeriod);$('statusPeriodMonth')?.addEventListener('change',renderStatusPeriod);$('statusPeriodYear')?.addEventListener('change',renderStatusPeriod);
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
