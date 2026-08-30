@@ -2883,11 +2883,11 @@ html[data-theme=dark] .order-item-number-highlight.edit-customer{background:#4a2
 
 
 /* V6.6.65 관리자 주문목록 미입금 수기메모 - 접힘 상태 상시 표시 */
-/* V6.6.73 미입금 체크박스와 수기메모 일체형 */
+/* V6.6.75 미입금 체크박스와 수기메모 일체형 */
 body[data-session-page="admin"] .desktop-payment-combo{width:max-content;max-width:100%}
 body[data-session-page="admin"] .mobile-payment-combo{display:none}
 
-/* V6.6.73: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
+/* V6.6.75: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
 
-/* V6.6.73 통계 월별/토탈 TOP100 랭킹 */
+/* V6.6.75 통계 월별/토탈 TOP100 랭킹 */
 .stats-ranking-period-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.stats-ranking-period-controls label{display:grid;gap:4px;min-width:120px;color:#334155;font-weight:900}.stats-ranking-period-controls select,.stats-ranking-period-controls input{min-height:40px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.stats-ranking-more{width:100%;margin-top:10px;min-height:40px;border:1px solid #b8c9dc;border-radius:9px;background:#f5f9fd;color:#24589d;font-weight:900;cursor:pointer}.stats-ranking-more:hover{background:#eaf3fc}@media(max-width:600px){.stats-ranking-period-controls{display:grid;grid-template-columns:1fr 1fr;width:100%}.stats-ranking-period-controls label{min-width:0}.stats-ranking-period-controls select,.stats-ranking-period-controls input{width:100%}}

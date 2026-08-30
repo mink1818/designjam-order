@@ -18,7 +18,7 @@
       rowGap: 0,
       font: [25, 21, 16],
       textY: 8.6,
-      barcodeX: 9.666737,
+      barcodeX: 9.666757,
       barcodeY: 14,
       barcodeW: 50,
       barcodeH: 17.5,

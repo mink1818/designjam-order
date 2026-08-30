@@ -1,10 +1,24 @@
 (function(){
 'use strict';
-const MANAGER_ALLOWED=new Set(['admin-home.html','picking.html','proxy-order.html','scanner.html']);let profile=null;
+const MANAGER_ALLOWED=new Set(['admin-home.html','admin.html','picking.html','proxy-order.html','scanner.html','products.html']);
+const EMPLOYEE_ALLOWED=new Set(['admin-home.html','picking.html','proxy-order.html','scanner.html']);let profile=null;
 async function loadRole(){if(profile)return profile;const {data:sessionData}=await supabaseClient.auth.getSession();const user=sessionData?.session?.user||null;if(!user)return null;const {data,error}=await supabaseClient.from('customers').select('id,email,is_admin,blocked,admin_role').eq('id',user.id).maybeSingle();if(error){console.warn('관리자 권한 확인 오류:',error);return undefined;}profile=data||null;return profile;}
 function managerTarget(element){const raw=element.getAttribute('href')||element.dataset?.link||element.getAttribute('onclick')||'';const match=raw.match(/([a-z0-9-]+\.html)/i);return match?.[1]||''}
-function hideManagerUnauthorizedMenus(){document.querySelectorAll('a,button,[data-link]').forEach(element=>{const target=managerTarget(element);if(target&&!MANAGER_ALLOWED.has(target)){element.hidden=true;element.classList.add('manager-restricted-menu');element.style.setProperty('display','none','important')}});document.querySelectorAll('.global-admin-search,.v3-metric-grid,.v3-dashboard-section:last-of-type,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')})}
-async function enforce(){const page=location.pathname.split('/').pop()||'admin.html';if(document.body?.dataset?.sessionPage==='customer')return;const p=await loadRole();if(p===undefined)return;if(!p){if(page!=='admin.html')location.replace('admin.html');return}if(!p.is_admin||p.blocked){location.replace('admin.html');return}document.documentElement.dataset.adminRole=p.admin_role||'admin';if(['employee','manager'].includes(p.admin_role)){hideManagerUnauthorizedMenus();setTimeout(hideManagerUnauthorizedMenus,100);if(!MANAGER_ALLOWED.has(page)){alert('매니저는 작업지시서·피킹검증, 관리자 대신주문, ERP 재고센터만 사용할 수 있습니다. 주문관리 권한은 없습니다.');location.replace('picking.html');return}}else if(page!=='ai-inquiries.html'&&!document.querySelector('script[data-ai-inquiry-alert]')){const script=document.createElement('script');script.src='js/admin-ai-inquiry-alert.js?v=66040';script.dataset.aiInquiryAlert='1';document.body.appendChild(script)}}
+function hideRestrictedMenus(allowed){document.querySelectorAll('a,button,[data-link]').forEach(element=>{const target=managerTarget(element);if(target&&!allowed.has(target)){element.hidden=true;element.classList.add('manager-restricted-menu');element.style.setProperty('display','none','important')}});document.querySelectorAll('.global-admin-search,.v3-metric-grid,.v3-dashboard-section:last-of-type,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')})}
+function applyManagerBarcodeOnly(page){
+  if(page==='admin-home.html'){
+    const productButton=[...document.querySelectorAll('.v3-menu-card')].find(el=>managerTarget(el)==='products.html');
+    if(productButton){const b=productButton.querySelector('b'),span=productButton.querySelector('span');if(b)b.textContent='🖨 바코드관리';if(span)span.textContent='상품 품번 바코드 조회·라벨 출력';}
+  }
+  if(page==='products.html'){
+    document.documentElement.classList.add('manager-barcode-only');
+    const keep=document.getElementById('barcodeManagement');
+    document.querySelectorAll('main.products-admin-page > *').forEach(el=>{if(el!==keep){el.hidden=true;el.style.setProperty('display','none','important')}});
+    if(keep){keep.hidden=false;keep.style.removeProperty('display');setTimeout(()=>keep.scrollIntoView({block:'start'}),0);}
+  }
+}
+function hideManagerUnauthorizedMenus(){hideRestrictedMenus(MANAGER_ALLOWED)}
+async function enforce(){const page=location.pathname.split('/').pop()||'admin.html';if(document.body?.dataset?.sessionPage==='customer')return;const p=await loadRole();if(p===undefined)return;if(!p){if(page!=='admin.html')location.replace('admin.html');return}if(!p.is_admin||p.blocked){location.replace('admin.html');return}document.documentElement.dataset.adminRole=p.admin_role||'admin';if(p.admin_role==='manager'){hideManagerUnauthorizedMenus();applyManagerBarcodeOnly(page);setTimeout(()=>{hideManagerUnauthorizedMenus();applyManagerBarcodeOnly(page)},100);if(!MANAGER_ALLOWED.has(page)){alert('매니저 계정은 허용된 업무 화면만 사용할 수 있습니다.');location.replace('admin-home.html');return}}else if(p.admin_role==='employee'){hideRestrictedMenus(EMPLOYEE_ALLOWED);setTimeout(()=>hideRestrictedMenus(EMPLOYEE_ALLOWED),100);if(!EMPLOYEE_ALLOWED.has(page)){alert('직원 계정은 허용된 작업 화면만 사용할 수 있습니다.');location.replace('picking.html');return}}else if(page!=='ai-inquiries.html'&&!document.querySelector('script[data-ai-inquiry-alert]')){const script=document.createElement('script');script.src='js/admin-ai-inquiry-alert.js?v=66040';script.dataset.aiInquiryAlert='1';document.body.appendChild(script)}}
 async function requireSecurity(level='password'){
   const p=await loadRole();
   if(!p)throw new Error('로그인이 필요합니다.');
