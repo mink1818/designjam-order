@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-6-72';
+const CACHE_NAME='design-socks-v6-6-76';
 const APP_SHELL=[
   '/offline.html?v=66200',
   '/css/main.css?v=66200',
@@ -8,10 +8,10 @@ const APP_SHELL=[
   '/css/customer-share-document.css?v=66040',
   '/js/customer-share-document.js?v=66200',
   '/js/pwa.js?v=66200',
-  '/js/version-badge.js?v=66675',
-  '/customer-notes.html?v=66675',
-  '/css/customer-notes.css?v=66675',
-  '/js/customer-notes.js?v=66675',
+  '/js/version-badge.js?v=66676',
+  '/customer-notes.html?v=66676',
+  '/css/customer-notes.css?v=66676',
+  '/js/customer-notes.js?v=66676',
   '/js/back-navigation.js?v=66040',
   '/js/free-handwriting-ocr.js?v=66040',
   '/js/emergency-notice-modal.js?v=66040',
@@ -42,12 +42,14 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}return res;}).catch(async()=>await caches.match(req)||await caches.match('/offline.html?v=66200')));
     return;
   }
-  // JS/CSS/이미지는 캐시를 즉시 사용하고 뒤에서 최신본으로 교체해 화면 체감속도를 높입니다.
+  // Vercel Edge Request 절감: 버전이 붙은 JS/CSS/이미지는 cache-first로 제공합니다.
+  // 캐시에 있으면 서버에 재요청하지 않습니다. 새 배포는 새 서비스워커/버전 URL로 갱신됩니다.
   event.respondWith((async()=>{
     const cached=await caches.match(req);
-    const network=fetch(req).then(res=>{if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}return res;}).catch(()=>null);
-    if(cached){event.waitUntil(network);return cached;}
-    const res=await network;if(res)return res;throw new Error('offline');
+    if(cached) return cached;
+    const res=await fetch(req);
+    if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}
+    return res;
   })());
 });
 self.addEventListener('message',event=>{if(event.data==='SKIP_WAITING')self.skipWaiting();});

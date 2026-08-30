@@ -1,5 +1,5 @@
 (()=>{
-  const RELEASE_VERSION='V6.6.75';
+  const RELEASE_VERSION='V6.6.76';
   function addBadge(version){
     let b=document.getElementById('appVersionBadge');
     if(!b){
@@ -11,9 +11,19 @@
   }
   async function init(){
     addBadge(RELEASE_VERSION);
+    // Vercel Edge Request 절감: 화면 이동마다 version.json을 강제 조회하지 않습니다.
+    // 같은 브라우저에서는 최대 6시간에 한 번만 배포 버전을 확인합니다.
+    const CHECK_KEY='ds_version_check_at';
+    const CHECK_TTL=6*60*60*1000;
+    const last=Number(localStorage.getItem(CHECK_KEY)||0);
+    if(Date.now()-last<CHECK_TTL) return;
     try{
-      const res=await fetch('/version.json?ts='+Date.now(),{cache:'no-store'});
-      if(res.ok){const data=await res.json();if(data?.version)addBadge('V'+String(data.version).replace(/^V/i,''));}
+      const res=await fetch('/version.json',{cache:'no-cache'});
+      if(res.ok){
+        const data=await res.json();
+        localStorage.setItem(CHECK_KEY,String(Date.now()));
+        if(data?.version)addBadge('V'+String(data.version).replace(/^V/i,''));
+      }
     }catch(_){/* offline: bundled release version stays visible */}
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();

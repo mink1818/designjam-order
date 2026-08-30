@@ -1,0 +1,10 @@
+V6.6.76 Vercel Edge Requests 절감 최적화
+
+- V6.6.75 매니저 업무권한 포함
+- 정적 JS/CSS/이미지: 서비스워커 cache-first 적용
+  * 캐시 적중 시 Vercel 백그라운드 재요청 제거
+  * 신규 파일/캐시 미스일 때만 네트워크 요청
+- version.json 확인: 화면마다 timestamp/no-store 호출 제거, 브라우저당 최대 6시간 1회
+- service worker 강제 reg.update(): 화면마다 실행 제거, 최대 24시간 1회
+- HTML navigation은 최신 업무 데이터/배포 반영을 위해 network-first 유지
+- 추가 SQL 없음
