@@ -145,6 +145,16 @@ async function loadStatement() {
     return;
   }
 
+  // 관리자 거래명세서는 출고완료 주문에서만 출력할 수 있습니다.
+  if (!data.every(row => String(row.status || '').trim() === '출고완료')) {
+    statementArea.innerHTML = `
+      <h2>출고완료 후 거래명세서를 출력할 수 있습니다.</h2>
+      <p>주문번호: ${escapeHtml(orderNumber)}</p>
+      <button type="button" class="cart-btn" onclick="location.href='admin.html?view=orders&search=${encodeURIComponent(orderNumber)}'">주문관리로 돌아가기</button>
+    `;
+    return;
+  }
+
   currentStatementCustomerId = data[0].customer_id || null;
   try {
     const account = data[0].payment_account_number ? {bank_name:data[0].payment_bank_name,account_number:data[0].payment_account_number,account_holder:data[0].payment_account_holder} : (await supabaseClient.from("payment_accounts").select("bank_name,account_number,account_holder").eq("is_default",true).eq("is_active",true).maybeSingle()).data;

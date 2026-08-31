@@ -1,4 +1,4 @@
-V6.6.76 Vercel Edge Requests 절감 최적화
+V6.6.77 Vercel Edge Requests 절감 최적화
 
 - V6.6.75 매니저 업무권한 포함
 - 정적 JS/CSS/이미지: 서비스워커 cache-first 적용

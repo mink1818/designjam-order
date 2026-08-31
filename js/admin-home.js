@@ -25,7 +25,20 @@ async function guardAdminHome(){
   if(!isAdminEmail(user.email) && !(profile?.is_admin===true && profile?.blocked!==true)){ await supabaseClient.auth.signOut(); location.replace("admin.html"); return false; }
   sessionStorage.setItem(ADMIN_SESSION_KEY,user.id); localStorage.setItem(ADMIN_SESSION_KEY,user.id);
   currentAdmin=user;
-  if(['employee','manager'].includes(profile?.admin_role)){document.documentElement.dataset.adminRole='manager';const allowed=['picking.html','proxy-order.html','scanner.html'];document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')})}
+  if(profile?.admin_role==='manager'){
+    document.documentElement.dataset.adminRole='manager';
+    const allowed=['admin.html','picking.html','proxy-order.html','scanner.html','products.html'];
+    document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});
+    // 매니저 메인 운영현황은 오늘 주문/출고 대기/당일 출고완료 3개만 허용합니다.
+    const managerMetrics=new Set(['todayOrderCount','pendingOrderCount','todayDoneCount']);
+    document.querySelectorAll('.v3-metric-card').forEach(card=>{const strong=card.querySelector('strong');if(!strong||!managerMetrics.has(strong.id)){card.hidden=true;card.style.setProperty('display','none','important')}});
+    document.querySelectorAll('.v3-dashboard-section:last-of-type,.global-admin-search,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')});
+  }else if(profile?.admin_role==='employee'){
+    document.documentElement.dataset.adminRole='employee';
+    const allowed=['picking.html','proxy-order.html','scanner.html'];
+    document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});
+    document.querySelectorAll('.v3-metric-grid,.v3-dashboard-section:last-of-type,.global-admin-search,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')});
+  }
   document.body.classList.add("auth-ready");
   requestAnimationFrame(()=>{
     document.body.classList.remove("auth-pending");

@@ -825,13 +825,13 @@ class="order-detail">
         ${String(group.pickingStatus || '').includes('검증완료') ? `<button class="cart-btn picking-edit-btn" type="button" onclick="editVerifiedPicking('${escapeAdminAttr(group.orderNumber)}')">일부품절·피킹수량 수정</button>` : ''}
         <button class="cart-btn work-print-btn" type="button" onclick="openWorkSheet('${group.orderNumber}')">출고지별 작업지시서 출력</button>
 
-        <button
+        ${isDone ? `<button
   class="cart-btn statement-btn"
   type="button"
   onclick="openStatement('${group.orderNumber}')"
 >
   거래명세서 출력
-</button>
+</button>` : ''}
       </div>
       </div>
     `;
