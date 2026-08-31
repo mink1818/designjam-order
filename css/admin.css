@@ -2883,18 +2883,37 @@ html[data-theme=dark] .order-item-number-highlight.edit-customer{background:#4a2
 
 
 /* V6.6.65 관리자 주문목록 미입금 수기메모 - 접힘 상태 상시 표시 */
-/* V6.6.78 미입금 체크박스와 수기메모 일체형 */
+/* V6.6.79 미입금 체크박스와 수기메모 일체형 */
 body[data-session-page="admin"] .desktop-payment-combo{width:max-content;max-width:100%}
 body[data-session-page="admin"] .mobile-payment-combo{display:none}
 
-/* V6.6.78: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
+/* V6.6.79: 접힘 상태는 작성된 미입금 메모만 표시, 입력은 상세에서 */
 
-/* V6.6.78 통계 월별/토탈 TOP100 랭킹 */
+/* V6.6.79 통계 월별/토탈 TOP100 랭킹 */
 .stats-ranking-period-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.stats-ranking-period-controls label{display:grid;gap:4px;min-width:120px;color:#334155;font-weight:900}.stats-ranking-period-controls select,.stats-ranking-period-controls input{min-height:40px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.stats-ranking-more{width:100%;margin-top:10px;min-height:40px;border:1px solid #b8c9dc;border-radius:9px;background:#f5f9fd;color:#24589d;font-weight:900;cursor:pointer}.stats-ranking-more:hover{background:#eaf3fc}@media(max-width:600px){.stats-ranking-period-controls{display:grid;grid-template-columns:1fr 1fr;width:100%}.stats-ranking-period-controls label{min-width:0}.stats-ranking-period-controls select,.stats-ranking-period-controls input{width:100%}}
 
-/* V6.6.78 고객 주문메모 확인 관리 */
+/* V6.6.79 고객 주문메모 확인 관리 */
 .customer-order-memo-badge.memo-unchecked{background:#fee2e2!important;color:#b91c1c!important;border:1px solid #ef4444!important;animation:memoPulse 1.8s ease-in-out infinite}
 .customer-order-memo-badge.memo-checked{background:#ecfdf5!important;color:#047857!important;border:1px solid #6ee7b7!important}
 .customer-memo-alert{margin:12px 0;padding:14px;border-radius:12px}.customer-memo-alert.unacknowledged{background:#fff1f2;border:2px solid #ef4444}.customer-memo-alert.acknowledged{background:#f0fdf4;border:1px solid #86efac}.customer-memo-alert strong{display:block;font-size:15px}.customer-memo-alert p{margin:8px 0;font-size:14px;font-weight:800;line-height:1.55}.customer-memo-alert small{display:block;color:#64748b}.customer-memo-ack-btn{margin-top:8px!important;background:#b91c1c!important;color:#fff!important}.proxy-manual-memo{background:#f8fafc;border:1px solid #cbd5e1}
 @keyframes memoPulse{50%{box-shadow:0 0 0 3px rgba(239,68,68,.13)}}
 @media(max-width:760px){.customer-memo-alert{padding:11px}.customer-memo-alert p{font-size:13.5px}.customer-order-memo-badge.memo-unchecked{font-size:10px!important}}
+
+
+/* V6.6.79 고객메모 확인필요 강력 경고 UI */
+.customer-order-memo-badge.memo-unchecked{
+  display:inline-flex!important;align-items:center!important;gap:4px!important;
+  background:#dc2626!important;color:#fff!important;border:2px solid #991b1b!important;
+  border-radius:8px!important;padding:5px 9px!important;font-size:12px!important;font-weight:1000!important;
+  letter-spacing:-.2px!important;box-shadow:0 2px 8px rgba(185,28,28,.38)!important;
+  animation:memoUrgentPulse 1.25s ease-in-out infinite!important;
+}
+.customer-memo-alert.unacknowledged{
+  background:#fff1f2!important;border:3px solid #dc2626!important;
+  box-shadow:0 3px 12px rgba(220,38,38,.16)!important;
+}
+.customer-memo-alert.unacknowledged strong{color:#b91c1c!important;font-size:16px!important;font-weight:1000!important}
+.customer-memo-alert.unacknowledged p{color:#7f1d1d!important;font-weight:900!important}
+.customer-memo-ack-btn{background:#b91c1c!important;color:#fff!important;border:1px solid #7f1d1d!important;font-weight:1000!important}
+@keyframes memoUrgentPulse{0%,100%{box-shadow:0 2px 8px rgba(185,28,28,.35)}50%{box-shadow:0 0 0 4px rgba(239,68,68,.20),0 3px 12px rgba(185,28,28,.45)}}
+@media(max-width:760px){.customer-order-memo-badge.memo-unchecked{font-size:11px!important;padding:5px 8px!important}.customer-memo-alert.unacknowledged{border-width:2px!important}}
