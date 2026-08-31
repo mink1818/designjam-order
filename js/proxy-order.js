@@ -329,7 +329,7 @@ async function submit(){
  const btn=$('submitProxyOrder');btn.disabled=true;btn.textContent='주문 저장 중...';
  try{
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
-  // V6.6.79: 대신주문은 관리자가 직접 입력한 메모만 주문 메모로 저장한다.
+  // V6.6.80: 대신주문은 관리자가 직접 입력한 메모만 주문 메모로 저장한다.
   const finalMemo=memo;
   const rows=lines.map(x=>{const found=findItem(x.item_number);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:x.qty,price:x.price,total:x.qty*x.price}});
   const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{

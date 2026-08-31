@@ -231,7 +231,7 @@ async function loadOrders() {
   let data = [];
 
 try {
-  // V6.6.79: 주문 자체를 먼저 받고, 현재 화면에 필요한 고객/표시 데이터만 병렬 조회합니다.
+  // V6.6.80: 주문 자체를 먼저 받고, 현재 화면에 필요한 고객/표시 데이터만 병렬 조회합니다.
   const orderRows=await fetchOrders();
   data=orderRows||[];
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
@@ -1522,7 +1522,7 @@ async function acknowledgeCustomerMemo(orderNumber){
   const profile=(()=>{try{return JSON.parse(sessionStorage.getItem('designjam_admin_profile')||localStorage.getItem('designjam_admin_profile')||'{}')}catch{return {}}})();
   const payload={order_number:orderNumber,customer_memo_acknowledged_at:new Date().toISOString(),customer_memo_acknowledged_by:profile.userId||null,customer_memo_acknowledged_by_name:name,updated_at:new Date().toISOString()};
   const {error}=await supabaseClient.from('order_admin_metadata').upsert(payload,{onConflict:'order_number'});
-  if(error)return alert('고객메모 확인 저장 실패: '+error.message+'\n\nSQL/V6.6.79-CUSTOMER-MEMO-ACK.sql 실행 여부를 확인해주세요.');
+  if(error)return alert('고객메모 확인 저장 실패: '+error.message+'\n\nSQL/V6.6.80-CUSTOMER-MEMO-ACK.sql 실행 여부를 확인해주세요.');
   await loadOrders();
 }
 window.acknowledgeCustomerMemo=acknowledgeCustomerMemo;

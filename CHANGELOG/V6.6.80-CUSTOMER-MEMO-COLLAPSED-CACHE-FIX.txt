@@ -1,0 +1,6 @@
+V6.6.80
+- 접힌 주문의 고객메모 확인필요 배지를 진한 빨간색으로 강제 표시
+- admin.css 캐시 버전 66680으로 갱신
+- service worker cache를 v6-6-80으로 갱신
+- PWA service worker 등록 버전 66680으로 갱신
+- 기능/DB 변경 없음, 추가 SQL 없음
