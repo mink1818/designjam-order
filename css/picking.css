@@ -221,3 +221,20 @@ body.picking-page label.warehouse-outbound-check{background:#1e293b!important;co
 body.picking-page label.warehouse-outbound-check span,
 body.picking-page label.warehouse-outbound-check b,
 body.picking-page label.warehouse-outbound-check small{color:#e8f1fa!important}
+
+/* V6.6.81 피킹 품번 상품사진 빠른보기 */
+.pick-item-number-cell{display:flex!important;align-items:center;gap:7px;justify-content:flex-start!important;min-width:0}
+.pick-photo-button{flex:0 0 auto;width:32px;height:30px;padding:0!important;border:1px solid #94a3b8!important;border-radius:7px;background:#fff!important;color:#0f172a!important;font-size:16px!important;line-height:1;cursor:pointer;box-shadow:none!important}
+.pick-photo-button:hover,.pick-photo-button:focus-visible{background:#eef6ff!important;border-color:#2563eb!important;outline:2px solid rgba(37,99,235,.18)}
+.picking-product-photo-modal{position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:18px}
+.picking-product-photo-dialog{width:min(760px,96vw);max-height:94vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.4)}
+.picking-product-photo-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid #e2e8f0}
+.picking-product-photo-head>div{display:flex;flex-direction:column;min-width:0}.picking-product-photo-head strong{font-size:22px;color:#0f172a}.picking-product-photo-head span{font-size:13px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picking-photo-close{width:42px;height:42px;border:0!important;border-radius:10px;background:#e2e8f0!important;color:#0f172a!important;font-size:28px!important;line-height:1;cursor:pointer}
+.picking-product-photo-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:300px;background:#f8fafc;padding:12px}
+.picking-product-photo-stage img{display:block;max-width:100%;max-height:72vh;object-fit:contain;border-radius:10px;cursor:zoom-in}
+.picking-photo-prev,.picking-photo-next{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:54px;border:0!important;border-radius:12px;background:rgba(15,23,42,.72)!important;color:#fff!important;font-size:36px!important;line-height:1;cursor:pointer}.picking-photo-prev{left:12px}.picking-photo-next{right:12px}
+.picking-photo-counter{text-align:center;padding:9px 12px 13px;color:#475569;font-weight:800}
+.picking-photo-empty{min-height:330px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#64748b;font-size:42px}.picking-photo-empty strong{font-size:18px;color:#334155}.picking-photo-empty span{font-size:15px}
+html[data-theme="dark"] .picking-product-photo-dialog{background:#172033}.picking-product-photo-head{color:#0f172a}html[data-theme="dark"] .picking-product-photo-head{border-color:#334155}html[data-theme="dark"] .picking-product-photo-head strong{color:#f8fafc}html[data-theme="dark"] .picking-product-photo-head span{color:#cbd5e1}html[data-theme="dark"] .picking-product-photo-stage{background:#0f172a}html[data-theme="dark"] .picking-photo-counter{color:#e2e8f0}html[data-theme="dark"] .picking-photo-empty strong{color:#f8fafc}
+@media(max-width:900px){.pick-photo-button{width:36px;height:34px;font-size:17px!important}.picking-product-photo-modal{padding:6px}.picking-product-photo-dialog{width:100%;max-height:98vh;border-radius:13px}.picking-product-photo-stage{min-height:55vh;padding:7px}.picking-product-photo-stage img{max-height:75vh}.picking-photo-prev,.picking-photo-next{width:42px;height:50px}.picking-product-photo-head strong{font-size:20px}}
