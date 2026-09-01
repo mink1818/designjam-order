@@ -1,8 +1,8 @@
-const CACHE_NAME='design-socks-v6-6-81';
+const CACHE_NAME='design-socks-v6-6-82';
 const APP_SHELL=[
   '/offline.html?v=66200',
   '/css/main.css?v=66200',
-  '/css/admin.css?v=66681',
+  '/css/admin.css?v=66682',
   '/css/statement.css?v=66200',
   '/customer-share-document.html?v=66200',
   '/css/customer-share-document.css?v=66040',
