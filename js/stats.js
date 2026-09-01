@@ -257,15 +257,49 @@ function renderStatusPeriod(){
   $('statusAll').textContent=`${money(all)}건`;$('statusPending').textContent=`${money(pending)}건`;$('statusDone').textContent=`${money(done)}건`;$('statusShippingFee').textContent=`${money(shipping)}원`;$('statusShippingOrders').textContent=`배송비 발생 ${money(shippingOrders)}건`;if($('statusPeriodCaption'))$('statusPeriodCaption').textContent=caption;
 }
 
+function statsRangeLabel(s){
+  if(currentRange==='today') return '오늘';
+  if(currentRange==='week') return '이번 주';
+  if(currentRange==='month') return '이번 달';
+  if(currentRange==='lastMonth') return '지난달';
+  if(currentRange==='year') return '올해';
+  if(currentRange==='lastYear') return '작년';
+  if(currentRange==='all') return '전체기간';
+  return '선택기간';
+}
+
+function openStatsMetricDetail(target){
+  const routes={
+    sales:'admin.html?status=전체', orders:'admin.html?status=전체', receivable:'payments.html',
+    payment:'payments.html', qty:'admin.html?status=전체', done:'admin.html?status=출고완료',
+    proxy:'proxy-order.html', customers:'members.html', deleted:'deleted-orders.html',
+    deletedAmount:'deleted-orders.html', changed:'admin.html?status=전체', completion:'admin.html?status=출고완료'
+  };
+  if(routes[target]) location.href=routes[target];
+}
+
 function renderMetrics(s){
+  const period=statsRangeLabel(s);
   const cards=[
-    ['당일 매출',money(s.todayAmount),'원'],['당일 주문건수',money(s.todayOrderCount),'건'],['누적 미수금',money(s.receivableAmount),'원'],['미입금·일부입금',money(s.receivableOrderCount),`건 · 미입금 ${money(s.unpaidOrderCount)} / 일부 ${money(s.partialPaymentCount)}`],['이번 달 매출',money(s.monthAmount),'원'],['현재 주문건수',money(s.orderCount),'건'],['관리자 대신주문',money(s.proxyOrderCount),'건'],['거래처 수',money(s.customerCount),'곳'],['삭제 주문',money(s.deletedCount),'건'],['삭제·취소 금액',money(s.deletedAmount),'원'],['변경 주문',money(s.changedOrderCount),'건'],['출고완료율',money(s.completionRate),'%']
+    [`${period} 매출`,money(s.totalAmount),'원','sales'],
+    [`${period} 주문건수`,money(s.orderCount),'건','orders'],
+    ['누적 미수금',money(s.receivableAmount),'원','receivable'],
+    ['미입금·일부입금',money(s.receivableOrderCount),`건 · 미입금 ${money(s.unpaidOrderCount)} / 일부 ${money(s.partialPaymentCount)}`,'payment'],
+    [`${period} 판매수량`,money(s.totalQty),'죽','qty'],
+    [`${period} 출고완료`,money(s.doneCount),'건','done'],
+    ['관리자 대신주문',money(s.proxyOrderCount),'건','proxy'],
+    ['거래처 수',money(s.customerCount),'곳','customers'],
+    ['삭제 주문',money(s.deletedCount),'건','deleted'],
+    ['삭제·취소 금액',money(s.deletedAmount),'원','deletedAmount'],
+    ['변경 주문',money(s.changedOrderCount),'건','changed'],
+    ['출고완료율',money(s.completionRate),'%','completion']
   ];
-  $('statsCards').innerHTML=cards.map(([label,value,unit])=>{const detail=label==='당일 매출'?'sales':label==='당일 주문건수'?'orders':'';return `<${detail?'button':'div'} ${detail?`type="button" data-today-detail="${detail}"`:''} class="v3-metric-card${detail?' stats-clickable-metric':''}"><span>${label}</span><strong>${value}</strong><small>${unit}${detail?' · 눌러서 상세보기':''}</small></${detail?'button':'div'}>`}).join('');
-  document.querySelectorAll('[data-today-detail]').forEach(btn=>btn.addEventListener('click',()=>renderTodayDetail(btn.dataset.todayDetail)));
+  $('statsCards').innerHTML=cards.map(([label,value,unit,target])=>`<button type="button" data-metric-detail="${target}" class="v3-metric-card stats-clickable-metric"><span>${label}</span><strong>${value}</strong><small>${unit} · 상세보기</small></button>`).join('');
+  document.querySelectorAll('[data-metric-detail]').forEach(btn=>btn.addEventListener('click',()=>openStatsMetricDetail(btn.dataset.metricDetail)));
   renderStatusPeriod();renderReceivableLookup();
   const start=s.start?localDateKey(s.start):'전체 시작';const end=s.end?localDateKey(s.end):'현재';$('statsPeriodLabel').textContent=`집계 기간: ${start} ~ ${end}${s.completedOnly?' · 출고완료만 포함':''}`;
 }
+
 
 
 function renderTodayDetail(mode){

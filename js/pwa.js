@@ -219,7 +219,7 @@
         const applied=sessionStorage.getItem('ds_sw_reloaded_version');
         if(current&&applied!==current){reloading=true;sessionStorage.setItem('ds_sw_reloaded_version',current);location.reload()}
       });
-      navigator.serviceWorker.register('/service-worker.js?v=66684').then(reg=>{
+      navigator.serviceWorker.register('/service-worker.js?v=66685').then(reg=>{
         // Vercel Edge Request 절감: 매 화면 진입마다 강제 업데이트하지 않고 하루 1회만 확인합니다.
         const swUpdateKey='ds_sw_update_at';
         const lastSwUpdate=Number(localStorage.getItem(swUpdateKey)||0);
