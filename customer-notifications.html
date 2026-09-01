@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>거래처 알림 | DESIGN SOCKS</title>
+<link rel="stylesheet" href="css/admin.css?v=66683">
+<meta name="theme-color" content="#112437">
+</head>
+<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.6.83">
+<header><h1>🔔 거래처 알림</h1><p>거래처의 최근 주문을 선택해 팝업 메시지를 보냅니다.</p></header>
+<main class="container customer-notification-page">
+  <section class="product-card cn-search-card">
+    <label><strong>1. 거래처 선택</strong><input id="cnCustomerSearch" type="search" placeholder="거래처명·대표자명 검색" autocomplete="off"></label>
+    <div id="cnCustomerResults" class="cn-customer-results"><p class="cn-empty">거래처명을 입력하세요.</p></div>
+  </section>
+  <section id="cnWorkspace" hidden>
+    <section class="product-card cn-selected"><div><small>선택 거래처</small><h2 id="cnCustomerName">-</h2><p id="cnCustomerMeta"></p></div><button id="cnChangeCustomer" type="button">거래처 변경</button></section>
+    <section class="product-card"><div class="cn-title"><div><strong>2. 최근 주문 선택</strong><small>알림과 연결할 주문 1건을 선택하세요.</small></div></div><div id="cnOrders" class="cn-order-list"></div></section>
+    <section class="product-card cn-compose">
+      <div class="cn-title"><div><strong>3. 알림 메시지</strong><small id="cnOrderTarget">주문을 선택하세요.</small></div><button id="cnManageTemplates" type="button">저장 메시지 관리</button></div>
+      <select id="cnTemplate"><option value="">자주 쓰는 메시지 선택</option></select>
+      <textarea id="cnMessage" rows="5" maxlength="1000" placeholder="거래처에 전달할 내용을 입력하세요."></textarea>
+      <button id="cnSend" class="cart-btn" type="button" disabled>🔔 거래처에 알림 보내기</button>
+      <div id="cnTemplateManager" class="cn-template-manager" hidden><h3>자주 쓰는 메시지</h3><input id="cnTemplateTitle" maxlength="40" placeholder="메시지 이름 (예: 배송마감)"><textarea id="cnTemplateBody" rows="3" maxlength="1000" placeholder="금일 배송이 마감되어 내일 발송 예정입니다."></textarea><div class="cn-template-actions"><button id="cnTemplateSave" type="button">저장</button><button id="cnTemplateCancel" type="button">취소</button></div><div id="cnTemplateList"></div></div>
+    </section>
+    <section class="product-card"><div class="cn-title"><div><strong>최근 보낸 알림</strong><small>선택한 거래처 기준 최근 20건</small></div></div><div id="cnHistory"></div></section>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/customer-notifications-admin.js?v=66683"></script>
+<script src="js/admin-security.js?v=66683"></script>
+<script src="js/session-status.js?v=66390"></script>
+<script src="js/pwa.js?v=66683"></script>
+<script src="js/version-badge.js?v=66683"></script>
+<script src="js/back-navigation.js?v=66040"></script>
+</body></html>

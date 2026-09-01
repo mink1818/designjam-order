@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const MANAGER_ALLOWED=new Set(['admin-home.html','admin.html','picking.html','proxy-order.html','scanner.html','products.html']);
+const MANAGER_ALLOWED=new Set(['admin-home.html','admin.html','customer-notifications.html','picking.html','proxy-order.html','scanner.html','products.html']);
 const EMPLOYEE_ALLOWED=new Set(['admin-home.html','picking.html','proxy-order.html','scanner.html']);let profile=null;
 async function loadRole(){if(profile)return profile;const {data:sessionData}=await supabaseClient.auth.getSession();const user=sessionData?.session?.user||null;if(!user)return null;const {data,error}=await supabaseClient.from('customers').select('id,email,is_admin,blocked,admin_role').eq('id',user.id).maybeSingle();if(error){console.warn('관리자 권한 확인 오류:',error);return undefined;}profile=data||null;return profile;}
 function managerTarget(element){const raw=element.getAttribute('href')||element.dataset?.link||element.getAttribute('onclick')||'';const match=raw.match(/([a-z0-9-]+\.html)/i);return match?.[1]||''}

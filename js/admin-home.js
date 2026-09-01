@@ -27,7 +27,7 @@ async function guardAdminHome(){
   currentAdmin=user;
   if(profile?.admin_role==='manager'){
     document.documentElement.dataset.adminRole='manager';
-    const allowed=['admin.html','picking.html','proxy-order.html','scanner.html','products.html'];
+    const allowed=['admin.html','customer-notifications.html','picking.html','proxy-order.html','scanner.html','products.html'];
     document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});
     // 매니저 메인 운영현황은 오늘 주문/출고 대기/당일 출고완료 3개만 허용합니다.
     const managerMetrics=new Set(['todayOrderCount','pendingOrderCount','todayDoneCount']);
