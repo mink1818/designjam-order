@@ -11,7 +11,7 @@ let paymentRecords=[];
 let productGroupMap=new Map();
 let categoryNameMap=new Map();
 let mainCategoryNameMap=new Map();
-let currentRange='month';
+let currentRange='today';
 let currentStats=null;
 let rankingExpanded={product:false,customer:false};
 
@@ -128,12 +128,17 @@ function orderTotals(order){
   return {amount:amount+Number(order.shippingFee||0),productAmount:amount,qty:quantity};
 }
 
+// 매출·판매 통계의 기준일은 실제 출고완료 시각입니다.
+function statsOrderDate(order){
+  if(!order||order.status!=='출고완료'||!order.completedAt)return null;
+  const d=new Date(order.completedAt);return Number.isNaN(d.getTime())?null:d;
+}
+
 function calculateStats(){
   const {start,end}=getRangeBounds(currentRange);
-  const completedOnly=$('completedOnlyCheck').checked;
-  let rows=rawOrders.filter(r=>{const d=new Date(r.created_at);return (!start||d>=start)&&(!end||d<=end);});
-  let orders=groupOrders(rows);
-  if(completedOnly)orders=orders.filter(o=>o.status==='출고완료');
+  const completedOnly=true;
+  // 핵심 운영지표는 출고완료 주문만, 실제 출고완료일 기준으로 집계합니다.
+  let orders=groupOrders(rawOrders).filter(o=>{const d=statsOrderDate(o);return d&&(!start||d>=start)&&(!end||d<=end);});
   const daily=new Map(),products=new Map(),customers=new Map(),categories=new Map(),warehouseSales=new Map(['S','B','I'].map(code=>[code,{code,qty:0,amount:0}]));
   let totalAmount=0,totalQty=0,doneCount=0,pendingCount=0,proxyOrderCount=0;
   orders.forEach(order=>{
@@ -151,7 +156,7 @@ function calculateStats(){
     });
     const orderAmount=productAmount+Number(order.shippingFee||0);totalAmount+=orderAmount;totalQty+=orderQty;
     if(order.status==='출고완료')doneCount++;else pendingCount++;
-    const day=localDateKey(order.createdAt);const d=daily.get(day)||{date:day,amount:0,qty:0,orders:0};d.amount+=orderAmount;d.qty+=orderQty;d.orders++;daily.set(day,d);
+    const day=localDateKey(order.completedAt);const d=daily.get(day)||{date:day,amount:0,qty:0,orders:0};d.amount+=orderAmount;d.qty+=orderQty;d.orders++;daily.set(day,d);
     const displayCustomerName=String(order.customerName||'').trim()||'거래처 미입력';const customerKey=normalizeStatsCustomerName(displayCustomerName)||order.customerId||'거래처 미입력';const c=customers.get(customerKey)||{name:displayCustomerName,amount:0,qty:0,orders:0};c.amount+=orderAmount;c.qty+=orderQty;c.orders++;customers.set(customerKey,c);
   });
   const inRange=(value)=>{const d=new Date(value);return (!start||d>=start)&&(!end||d<=end)};
@@ -160,11 +165,10 @@ function calculateStats(){
   const changes=orderChangeHistory.filter(x=>inRange(x.changed_at));const changedOrderCount=new Set(changes.map(x=>x.order_number)).size;
   const todayKey=localDateKey(new Date());
   const todayOrders=groupOrders(rawOrders).filter(order=>order.status==='출고완료'&&localDateKey(order.completedAt)===todayKey);
-  const todayCreatedOrders=groupOrders(rawOrders).filter(order=>localDateKey(order.createdAt)===todayKey);
-  const todayOrderCount=todayCreatedOrders.length;
+  const todayOrderCount=todayOrders.length;
   const todayAmount=todayOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
   const nowMonth=new Date(),monthStart=new Date(nowMonth.getFullYear(),nowMonth.getMonth(),1);
-  const monthOrders=groupOrders(rawOrders).filter(order=>new Date(order.createdAt)>=monthStart&&(!completedOnly||order.status==='출고완료'));
+  const monthOrders=groupOrders(rawOrders).filter(order=>{const d=statsOrderDate(order);return d&&d>=monthStart;});
   const monthAmount=monthOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
   const paymentMap=new Map();paymentRecords.forEach(row=>{const k=`order::${row.order_number}`,old=paymentMap.get(k);if(!old||(!old.confirmed_by&&row.confirmed_by)||((!!old.confirmed_by)===(!!row.confirmed_by)&&new Date(row.updated_at||0)>new Date(old.updated_at||0)))paymentMap.set(k,row)});
   let receivableAmount=0,receivableOrderCount=0,partialPaymentCount=0,unpaidOrderCount=0;
@@ -181,7 +185,7 @@ function calculateStats(){
 }
 
 function availableYears(){
-  const years=groupOrders(rawOrders).map(o=>new Date(o.createdAt).getFullYear()).filter(Number.isFinite);const nowYear=new Date().getFullYear();return [...new Set([nowYear,...years])].sort((a,b)=>b-a);
+  const years=groupOrders(rawOrders).map(o=>statsOrderDate(o)).filter(Boolean).map(d=>d.getFullYear()).filter(Number.isFinite);const nowYear=new Date().getFullYear();return [...new Set([nowYear,...years])].sort((a,b)=>b-a);
 }
 
 function fillAnalysisYears(){
@@ -200,12 +204,12 @@ function aggregateOrderSet(orders){
 }
 
 function buildPeriodAnalytics(){
-  let allOrders=groupOrders(rawOrders);if($('completedOnlyCheck').checked)allOrders=allOrders.filter(o=>o.status==='출고완료');
+  let allOrders=groupOrders(rawOrders).filter(o=>statsOrderDate(o));
   const selectedYear=Number($('statsAnalysisYear').value)||new Date().getFullYear();const selectedMonth=$('statsAnalysisMonth').value||`${selectedYear}-01`;const [monthYear,monthNumber]=selectedMonth.split('-').map(Number);
-  const yearlyMap=new Map();allOrders.forEach(o=>{const y=new Date(o.createdAt).getFullYear();if(!Number.isFinite(y))return;const t=orderTotals(o);const row=yearlyMap.get(y)||{label:String(y),amount:0,qty:0,orders:0};row.amount+=t.amount;row.qty+=t.qty;row.orders++;yearlyMap.set(y,row);});
-  const monthly=Array.from({length:12},(_,i)=>({label:`${i+1}월`,amount:0,qty:0,orders:0,shippingFee:0,shippingOrders:0}));allOrders.forEach(o=>{const d=new Date(o.createdAt);if(d.getFullYear()!==selectedYear)return;const t=orderTotals(o),row=monthly[d.getMonth()],fee=Math.max(0,Number(o.shippingFee||0));row.amount+=t.amount;row.qty+=t.qty;row.orders++;row.shippingFee+=fee;if(fee>0)row.shippingOrders++;});
-  const daysInMonth=new Date(monthYear,monthNumber,0).getDate();const daily=Array.from({length:daysInMonth},(_,i)=>({label:`${i+1}일`,amount:0,qty:0,orders:0}));const monthOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===monthYear&&d.getMonth()+1===monthNumber;});monthOrders.forEach(o=>{const d=new Date(o.createdAt),t=orderTotals(o),row=daily[d.getDate()-1];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
-  const previousDate=new Date(monthYear,monthNumber-2,1);const previousOrders=allOrders.filter(o=>{const d=new Date(o.createdAt);return d.getFullYear()===previousDate.getFullYear()&&d.getMonth()===previousDate.getMonth();});
+  const yearlyMap=new Map();allOrders.forEach(o=>{const y=statsOrderDate(o).getFullYear();if(!Number.isFinite(y))return;const t=orderTotals(o);const row=yearlyMap.get(y)||{label:String(y),amount:0,qty:0,orders:0};row.amount+=t.amount;row.qty+=t.qty;row.orders++;yearlyMap.set(y,row);});
+  const monthly=Array.from({length:12},(_,i)=>({label:`${i+1}월`,amount:0,qty:0,orders:0,shippingFee:0,shippingOrders:0}));allOrders.forEach(o=>{const d=statsOrderDate(o);if(d.getFullYear()!==selectedYear)return;const t=orderTotals(o),row=monthly[d.getMonth()],fee=Math.max(0,Number(o.shippingFee||0));row.amount+=t.amount;row.qty+=t.qty;row.orders++;row.shippingFee+=fee;if(fee>0)row.shippingOrders++;});
+  const daysInMonth=new Date(monthYear,monthNumber,0).getDate();const daily=Array.from({length:daysInMonth},(_,i)=>({label:`${i+1}일`,amount:0,qty:0,orders:0}));const monthOrders=allOrders.filter(o=>{const d=statsOrderDate(o);return d.getFullYear()===monthYear&&d.getMonth()+1===monthNumber;});monthOrders.forEach(o=>{const d=statsOrderDate(o),t=orderTotals(o),row=daily[d.getDate()-1];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
+  const previousDate=new Date(monthYear,monthNumber-2,1);const previousOrders=allOrders.filter(o=>{const d=statsOrderDate(o);return d.getFullYear()===previousDate.getFullYear()&&d.getMonth()===previousDate.getMonth();});
   return {selectedYear,selectedMonth,yearly:[...yearlyMap.values()].sort((a,b)=>Number(a.label)-Number(b.label)),monthly,daily,current:aggregateOrderSet(monthOrders),previous:aggregateOrderSet(previousOrders)};
 }
 
@@ -215,7 +219,7 @@ function compareText(current,previous,unit){
 
 function getRankingAnalytics(a){
   const mode=$('rankingPeriodMode')?.value||'month';
-  if(mode==='total'){let orders=groupOrders(rawOrders);if($('completedOnlyCheck').checked)orders=orders.filter(o=>o.status==='출고완료');return {mode,label:'전체 기간',data:aggregateOrderSet(orders)};}
+  if(mode==='total'){let orders=groupOrders(rawOrders).filter(o=>statsOrderDate(o));return {mode,label:'전체 기간',data:aggregateOrderSet(orders)};}
   return {mode,label:`${a.selectedMonth.replace('-','년 ')}월`,data:a.current};
 }
 
@@ -251,7 +255,6 @@ function updateStatusPeriodControls(){
 
 function renderStatusPeriod(){
   if(!rawOrders.length)return;const mode=$('statusPeriodMode')?.value||'monthly';let orders=groupOrders(rawOrders),caption='';
-  if($('completedOnlyCheck')?.checked)orders=orders.filter(o=>o.status==='출고완료');
   orders=orders.filter(o=>{const d=new Date(o.createdAt);if(Number.isNaN(d.getTime()))return false;if(mode==='daily'){const key=$('statusPeriodDate')?.value||localDateKey(new Date());caption=`${key.replace(/-/g,'. ')} 기준`;return localDateKey(d)===key;}if(mode==='yearly'){const y=Number($('statusPeriodYear')?.value)||new Date().getFullYear();caption=`${y}년 기준`;return d.getFullYear()===y;}const key=$('statusPeriodMonth')?.value||localDateKey(new Date()).slice(0,7),[y,m]=key.split('-').map(Number);caption=`${y}년 ${m}월 기준`;return d.getFullYear()===y&&d.getMonth()+1===m;});
   const all=orders.length,done=orders.filter(o=>o.status==='출고완료').length,pending=all-done,shipping=orders.reduce((sum,o)=>sum+Math.max(0,Number(o.shippingFee||0)),0),shippingOrders=orders.filter(o=>Number(o.shippingFee||0)>0).length;
   $('statusAll').textContent=`${money(all)}건`;$('statusPending').textContent=`${money(pending)}건`;$('statusDone').textContent=`${money(done)}건`;$('statusShippingFee').textContent=`${money(shipping)}원`;$('statusShippingOrders').textContent=`배송비 발생 ${money(shippingOrders)}건`;if($('statusPeriodCaption'))$('statusPeriodCaption').textContent=caption;
@@ -424,7 +427,7 @@ function exportExcel(){
 function bindEvents(){
   $('statsRangeButtons').querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{currentRange=btn.dataset.range;$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));renderAll();}));
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
-  $('completedOnlyCheck').addEventListener('change',renderAll);$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
+  $('completedOnlyCheck').checked=true;$('completedOnlyCheck').disabled=true;$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
   $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;rankingExpanded={product:false,customer:false};renderAll()});$('rankingPeriodMode')?.addEventListener('change',()=>{rankingExpanded={product:false,customer:false};renderAll()});$('toggleTopProducts')?.addEventListener('click',()=>{rankingExpanded.product=!rankingExpanded.product;renderRankings(currentStats?.periodAnalytics||buildPeriodAnalytics())});$('toggleTopCustomers')?.addEventListener('click',()=>{rankingExpanded.customer=!rankingExpanded.customer;renderRankings(currentStats?.periodAnalytics||buildPeriodAnalytics())});$('salesChartMode').addEventListener('change',renderAll);
   $('receivableCustomer')?.addEventListener('change',renderReceivableLookup);$('receivableStart')?.addEventListener('change',renderReceivableLookup);$('receivableEnd')?.addEventListener('change',renderReceivableLookup);$('receivableListFilter')?.addEventListener('change',renderReceivableCustomerList);
   $('statusPeriodMode')?.addEventListener('change',updateStatusPeriodControls);$('statusPeriodDate')?.addEventListener('change',renderStatusPeriod);$('statusPeriodMonth')?.addEventListener('change',renderStatusPeriod);$('statusPeriodYear')?.addEventListener('change',renderStatusPeriod);
