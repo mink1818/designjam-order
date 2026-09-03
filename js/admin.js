@@ -237,16 +237,23 @@ try {
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
   const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
   const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
+  // V6.6.92: 주문 본문 조회 성공 후 부가 조회 하나가 일시 실패해도 전체 주문목록을 실패 처리하지 않습니다.
+  // 첫 진입에서 Supabase 요청이 동시에 몰릴 때 발생하던 "다시 불러오기" 현상을 방지합니다.
+  const safeAux = (promise, fallback, label) => Promise.resolve(promise).catch(error => {
+    console.warn(label + ' 조회 지연/실패:', error);
+    return fallback;
+  });
   const [inventoryRows,customerRows,customerMetaRows,productCatalogRows,orderMetaRows]=await Promise.all([
-    cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(),
-    fetchCustomerIdentitySnapshot(customerIds),
-    fetchAdminCustomerMetadata(customerIds),
-    cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(),
-    fetchAdminOrderMetadata(orderNumbers),
-    // V6.6.89: 주문 부가정보/입금정보도 같은 시점에 병렬 조회해 첫 화면 대기시간을 줄입니다.
-    loadAdminFeatureData(data),
-    loadOrderPaymentRecords(data)
+    safeAux(cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(), adminAuxCache.inventory||[], '재고'),
+    safeAux(fetchCustomerIdentitySnapshot(customerIds), [], '거래처'),
+    safeAux(fetchAdminCustomerMetadata(customerIds), [], '거래처 메타'),
+    safeAux(cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(), adminAuxCache.product||[], '상품'),
+    safeAux(fetchAdminOrderMetadata(orderNumbers), [], '주문 메타')
   ]);
+  // 화면 표시를 막지 않는 부가정보는 백그라운드에서 병렬 갱신합니다.
+  Promise.allSettled([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]).then(()=>{
+    if(window.__adminRenderedGroups?.length) scheduleAdminOrderSnapshotRefresh?.(180);
+  });
   adminAuxCache={at:Date.now(),inventory:inventoryRows,product:productCatalogRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
   adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
   adminCustomerMetaMap=new Map((customerMetaRows||[]).map(row=>[String(row.customer_id),row]));
