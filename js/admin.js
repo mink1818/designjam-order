@@ -237,24 +237,13 @@ try {
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
   const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
   const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
-  // V6.6.94: 주문 본문 조회 성공 후 부가 조회 하나가 일시 실패해도 전체 주문목록을 실패 처리하지 않습니다.
-  // 첫 진입에서 Supabase 요청이 동시에 몰릴 때 발생하던 "다시 불러오기" 현상을 방지합니다.
-  const safeAux = (promise, fallback, label) => Promise.resolve(promise).catch(error => {
-    console.warn(label + ' 조회 지연/실패:', error);
-    return fallback;
-  });
   const [inventoryRows,customerRows,customerMetaRows,productCatalogRows,orderMetaRows]=await Promise.all([
-    safeAux(cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(), adminAuxCache.inventory||[], '재고'),
-    safeAux(fetchCustomerIdentitySnapshot(customerIds), [], '거래처'),
-    safeAux(fetchAdminCustomerMetadata(customerIds), [], '거래처 메타'),
-    safeAux(cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(), adminAuxCache.product||[], '상품'),
-    safeAux(fetchAdminOrderMetadata(orderNumbers), [], '주문 메타')
+    cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(),
+    fetchCustomerIdentitySnapshot(customerIds),
+    fetchAdminCustomerMetadata(customerIds),
+    cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(),
+    fetchAdminOrderMetadata(orderNumbers)
   ]);
-  // V6.6.95: 주문 카드가 참조하는 수정이력/입금정보는 첫 렌더 전에 준비합니다.
-  // V6.6.89에서 이를 백그라운드로 돌린 뒤 첫 진입만 렌더 오류가 나고,
-  // '다시 불러오기' 때는 이미 준비되어 정상 표시되는 레이스가 생겼습니다.
-  // 두 작업은 서로 병렬로 실행해 대기시간 증가는 최소화합니다.
-  await Promise.allSettled([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]);
   adminAuxCache={at:Date.now(),inventory:inventoryRows,product:productCatalogRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
   adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
   adminCustomerMetaMap=new Map((customerMetaRows||[]).map(row=>[String(row.customer_id),row]));
@@ -262,9 +251,11 @@ try {
   adminOrderMetaMap=new Map((orderMetaRows||[]).map(row=>[String(row.order_number),row]));
   setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
-  console.warn('주문 본문/필수정보 조회 실패:', error);
+  console.warn("주문 불러오기 실패:", error);
   return false;
 }
+
+  await Promise.all([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]);
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -395,8 +386,6 @@ try {
   renderOrderCards(pageGroups);
   renderAdminPagination(totalPages);
   syncAdminFilterTabs();
-  adminOrders.classList.remove('orders-refreshing');
-  return true;
 }
 
 async function loadCustomerOrderChangeAlerts(){
