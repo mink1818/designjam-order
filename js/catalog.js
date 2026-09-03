@@ -2352,7 +2352,7 @@ function showOrderForm() {
         class="order-input"
         rows="5"
         maxlength="1000"
-        placeholder="예: 빠른출고, 오후배송"
+        placeholder="배송 주소 또는 연락처가 변경된 경우 기입해주세요"
       >${escapeHtml(pastedDelivery.memo || getOrderRevisionContext()?.memo || '')}</textarea>
 
       <button

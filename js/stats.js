@@ -149,7 +149,7 @@ function calculateStats(){
       const price=Number(item.price||0),amount=price*q;
       orderQty+=q;productAmount+=amount;
       const num=String(item.item_number||'품번 미입력');
-      const savedCode=String(item.warehouse_code||'').trim().toUpperCase();const prefix=num.toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/);const warehouse=['S','B','I'].includes(savedCode)?savedCode:(prefix?.[1]||'');if(warehouse){const w=warehouseSales.get(warehouse);w.qty+=q;w.amount+=amount;}
+      const savedCode=String(item.warehouse_code||'').trim().toUpperCase();const prefix=num.toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/);const groupWarehouse=String(productGroupMap.get(normalizeStatsItemNumber(num))?.warehouse_code||'').trim().toUpperCase();const warehouse=['S','B','I'].includes(savedCode)?savedCode:(['S','B','I'].includes(groupWarehouse)?groupWarehouse:(prefix?.[1]||''));if(warehouse){const w=warehouseSales.get(warehouse);w.qty+=q;w.amount+=amount;}
       const p=products.get(num)||{name:num,qty:0,amount:0};p.qty+=q;p.amount+=amount;products.set(num,p);
       const group=productGroupMap.get(normalizeStatsItemNumber(num));const child=categoryNameMap.get(String(group?.category_id||''));const category=String(mainCategoryNameMap.get(String(child?.main_category_id||group?.main_category_id||''))||child?.name||group?.main_category_name||group?.main_category||group?.category_name||group?.category||'미분류');
       const c=categories.get(category)||{name:category,qty:0,amount:0};c.qty+=q;c.amount+=amount;categories.set(category,c);
