@@ -2353,7 +2353,7 @@ function showOrderForm() {
         rows="5"
         maxlength="1000"
         placeholder="배송 주소 또는 연락처가 변경된 경우 기입해주세요"
-      >${escapeHtml(pastedDelivery.memo || getOrderRevisionContext()?.memo || '')}</textarea>
+      >${escapeHtml(getOrderRevisionContext()?.memo || '')}</textarea>
 
       <button
         id="submitOrderButton"
