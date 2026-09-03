@@ -28,23 +28,38 @@ function warmAdminFullOrders(){
 }
 
 async function fetchOrders() {
+  // V6.6.93: 첫 화면에서 Supabase 세션/DB 연결이 막 준비되는 순간의 일시 오류는
+  // 사용자에게 실패 화면을 보여주지 않고 짧게 자동 재시도합니다.
+  const runWithQuickRetry = async (runner) => {
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try { return await runner(); } catch (error) {
+        lastError = error;
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 180 : 420));
+      }
+    }
+    throw lastError;
+  };
   // 첫 진입의 주문접수/출고대기는 전체 과거 주문 수천 행을 기다리지 않고 현재 진행 주문만 먼저 받습니다.
   // 전체/출고완료/미입금/검색처럼 과거 데이터가 필요한 경우에만 전체 주문 캐시를 사용합니다.
   const keyword=String(document.getElementById('adminSearch')?.value||'').trim();
   const needsHistory = Boolean(keyword) || requestedPaymentFilter==='unpaid' || adminFilter==='전체' || adminFilter==='출고완료';
-  if(needsHistory)return fetchAllOrdersForAdmin();
+  if(needsHistory)return runWithQuickRetry(()=>fetchAllOrdersForAdmin());
 
   const now=Date.now();
   if(adminActiveOrdersCache && now-adminActiveOrdersCacheAt<ADMIN_ACTIVE_CACHE_MS){
     return adminActiveOrdersCache;
   }
-  const rows=[];
-  for(let from=0;;from+=1000){
-    const {data,error}=await supabaseClient.from('orders').select('*').eq('status','주문접수').order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
-    if(error)throw error;
-    rows.push(...(data||[]));
-    if(!data||data.length<1000)break;
-  }
+  const rows=await runWithQuickRetry(async()=>{
+    const result=[];
+    for(let from=0;;from+=1000){
+      const {data,error}=await supabaseClient.from('orders').select('*').eq('status','주문접수').order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+      if(error)throw error;
+      result.push(...(data||[]));
+      if(!data||data.length<1000)break;
+    }
+    return result;
+  });
   adminActiveOrdersCache=rows;
   adminActiveOrdersCacheAt=now;
   // V6.6.89: 과거 전체 주문은 사용자가 전체/출고완료/검색을 열 때만 조회합니다.

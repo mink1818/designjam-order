@@ -237,7 +237,7 @@ try {
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
   const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
   const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
-  // V6.6.92: 주문 본문 조회 성공 후 부가 조회 하나가 일시 실패해도 전체 주문목록을 실패 처리하지 않습니다.
+  // V6.6.93: 주문 본문 조회 성공 후 부가 조회 하나가 일시 실패해도 전체 주문목록을 실패 처리하지 않습니다.
   // 첫 진입에서 Supabase 요청이 동시에 몰릴 때 발생하던 "다시 불러오기" 현상을 방지합니다.
   const safeAux = (promise, fallback, label) => Promise.resolve(promise).catch(error => {
     console.warn(label + ' 조회 지연/실패:', error);
