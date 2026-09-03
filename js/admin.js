@@ -1355,10 +1355,15 @@ async function initializeAdminPage() {
     }
 
     showAdmin();
-    // 대용량 주문 조회가 끝날 때까지 전체 화면을 가리지 않습니다.
+    // 인증은 이미 완료되었습니다. 주문 데이터 조회 오류가 나더라도 로그인 화면으로 되돌리지 않습니다.
     document.body.classList.add("auth-ready");
     document.body.classList.remove("auth-pending","admin-page-leaving");
-    await loadOrders();
+    try {
+      await loadOrders();
+    } catch (loadError) {
+      console.error("주문 목록 초기 로딩 실패:", loadError);
+      if (adminOrders) adminOrders.innerHTML = '<div class="product-card"><p>주문 목록을 불러오지 못했습니다.</p><button class="cart-btn" type="button" onclick="loadOrders()">다시 불러오기</button></div>';
+    }
   } catch (error) {
     console.error("관리자 페이지 초기화 실패:", error);
     showLogin();
