@@ -704,12 +704,6 @@ summaryTotal += Number(group.shipping_fee || 0);
 
         itemHtml += `
         <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${orderedQty}" data-soldout-qty="${itemSoldoutQty}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.warehouse_code?`${String(item.warehouse_code).toUpperCase()}-${item.item_number}`:item.item_number)}" data-copy-qty="${shippedQty}">
-          <input 
-  type="checkbox" 
-  ${item.is_soldout ? "checked" : ""}
-  ${group.status === "출고완료" || String(group.pickingStatus || '').includes('검증완료') ? "disabled" : ""}
-  onchange="toggleSoldout(${item.id}, this.checked); recalcOrderCard('order-${index}')"
->
           <strong class="order-item-number-highlight${itemEditHistoryClass(group,item)}">${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${itemEditHistoryBadges(group,item)}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
           <span class="admin-item-pricing"><b>출고 ${shippedQty}죽</b>${itemSoldoutQty?`<small>주문 ${orderedQty}죽 · 품절 ${itemSoldoutQty}죽</small>`:''}<small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
           <em>출고금액 ${rowTotal.toLocaleString()}원</em>
