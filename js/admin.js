@@ -237,6 +237,9 @@ try {
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
   const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
   const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
+  // 주문 부가정보도 동시에 시작해 순차 네트워크 대기 시간을 없앱니다.
+  const featurePromise=loadAdminFeatureData(data);
+  const paymentPromise=loadOrderPaymentRecords(data);
   const [inventoryRows,customerRows,customerMetaRows,productCatalogRows,orderMetaRows]=await Promise.all([
     cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(),
     fetchCustomerIdentitySnapshot(customerIds),
@@ -250,12 +253,11 @@ try {
   setAdminProductCatalog(productCatalogRows);
   adminOrderMetaMap=new Map((orderMetaRows||[]).map(row=>[String(row.order_number),row]));
   setAdminInventorySnapshot(inventoryRows);
+  await Promise.all([featurePromise,paymentPromise]);
 } catch (error) {
   console.warn("주문 불러오기 실패:", error);
   return false;
 }
-
-  await Promise.all([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]);
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
@@ -386,6 +388,10 @@ try {
   renderOrderCards(pageGroups);
   renderAdminPagination(totalPages);
   syncAdminFilterTabs();
+  // 초기 진입 코드는 true를 정상 완료 신호로 사용합니다.
+  // 반환값이 없으면 목록과 건수까지 정상 렌더링한 뒤에도 실패 화면으로 덮어씌워집니다.
+  adminOrders.classList.remove('orders-refreshing');
+  return true;
 }
 
 async function loadCustomerOrderChangeAlerts(){
@@ -1397,32 +1403,21 @@ initializeAdminPage();
 function escapeAdminHtml(value){return String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 function escapeAdminAttr(value){return escapeAdminHtml(value)}
 async function loadAdminFeatureData(orderRows=[]){
-  try{
-    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];
-    customerNotes={};
-    if(orderNumbers.length){
-      const {data,error}=await supabaseClient.from("admin_order_notes").select("order_number,note").in("order_number",orderNumbers);
-      if(error) throw error;
-      customerNotes=Object.fromEntries((data||[]).map(x=>[x.order_number,x.note||""]));
-    }
-  }catch(e){console.warn("주문별 관리자 메모 불러오기 실패",e)}
-  try{
-    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderRevisionMap={};orderRevisionHistoryMap={};
-    if(orderNumbers.length){const {data,error}=await supabaseClient.from('order_revision_history').select('order_number,original_snapshot,revised_snapshot,revision_status,started_at,completed_at').in('order_number',orderNumbers).order('started_at',{ascending:false});if(error)throw error;(data||[]).forEach(row=>{if(!orderRevisionMap[row.order_number])orderRevisionMap[row.order_number]=row;(orderRevisionHistoryMap[row.order_number]||(orderRevisionHistoryMap[row.order_number]=[])).push(row)});Object.values(orderRevisionHistoryMap).forEach(rows=>rows.sort((a,b)=>new Date(a.completed_at||a.started_at)-new Date(b.completed_at||b.started_at)))}
-  }catch(e){console.warn('고객 주문변경 이력 불러오기 실패',e);orderRevisionMap={};orderRevisionHistoryMap={}}
-  try{
-    const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];orderAdminChangeMap={};orderAdminChangeHistoryMap={};
-    if(orderNumbers.length){
-      const {data,error}=await supabaseClient.from('order_change_history').select('order_number,change_reason,changed_at,before_snapshot,after_snapshot').in('order_number',orderNumbers).order('changed_at',{ascending:false});
-      if(error)throw error;
-      (data||[]).forEach(row=>{if(!orderAdminChangeMap[row.order_number])orderAdminChangeMap[row.order_number]=row;(orderAdminChangeHistoryMap[row.order_number]||(orderAdminChangeHistoryMap[row.order_number]=[])).push(row)});Object.values(orderAdminChangeHistoryMap).forEach(rows=>rows.sort((a,b)=>new Date(a.changed_at)-new Date(b.changed_at)));
-    }
-  }catch(e){console.warn('관리자 주문수정 이력 불러오기 실패',e);orderAdminChangeMap={};orderAdminChangeHistoryMap={}}
-  try{
-    const {data,error}=await supabaseClient.from("payment_accounts").select("*").eq("is_active",true).order("is_default",{ascending:false}).order("created_at",{ascending:true});
-    if(error) throw error;
-    paymentAccounts=data||[];
-  }catch(e){console.warn("저장 계좌 불러오기 실패",e);paymentAccounts=[]}
+  const orderNumbers=[...new Set(orderRows.map(r=>r.order_number).filter(Boolean))];
+  const [notes,revisions,adminChanges,accounts]=await Promise.all([
+    (async()=>{try{if(!orderNumbers.length)return[];const {data,error}=await supabaseClient.from("admin_order_notes").select("order_number,note").in("order_number",orderNumbers);if(error)throw error;return data||[]}catch(e){console.warn("주문별 관리자 메모 불러오기 실패",e);return[]}})(),
+    (async()=>{try{if(!orderNumbers.length)return[];const {data,error}=await supabaseClient.from('order_revision_history').select('order_number,original_snapshot,revised_snapshot,revision_status,started_at,completed_at').in('order_number',orderNumbers).order('started_at',{ascending:false});if(error)throw error;return data||[]}catch(e){console.warn('고객 주문변경 이력 불러오기 실패',e);return[]}})(),
+    (async()=>{try{if(!orderNumbers.length)return[];const {data,error}=await supabaseClient.from('order_change_history').select('order_number,change_reason,changed_at,before_snapshot,after_snapshot').in('order_number',orderNumbers).order('changed_at',{ascending:false});if(error)throw error;return data||[]}catch(e){console.warn('관리자 주문수정 이력 불러오기 실패',e);return[]}})(),
+    (async()=>{try{const {data,error}=await supabaseClient.from("payment_accounts").select("*").eq("is_active",true).order("is_default",{ascending:false}).order("created_at",{ascending:true});if(error)throw error;return data||[]}catch(e){console.warn("저장 계좌 불러오기 실패",e);return[]}})()
+  ]);
+  customerNotes=Object.fromEntries(notes.map(x=>[x.order_number,x.note||""]));
+  orderRevisionMap={};orderRevisionHistoryMap={};
+  revisions.forEach(row=>{if(!orderRevisionMap[row.order_number])orderRevisionMap[row.order_number]=row;(orderRevisionHistoryMap[row.order_number]||(orderRevisionHistoryMap[row.order_number]=[])).push(row)});
+  Object.values(orderRevisionHistoryMap).forEach(rows=>rows.sort((a,b)=>new Date(a.completed_at||a.started_at)-new Date(b.completed_at||b.started_at)));
+  orderAdminChangeMap={};orderAdminChangeHistoryMap={};
+  adminChanges.forEach(row=>{if(!orderAdminChangeMap[row.order_number])orderAdminChangeMap[row.order_number]=row;(orderAdminChangeHistoryMap[row.order_number]||(orderAdminChangeHistoryMap[row.order_number]=[])).push(row)});
+  Object.values(orderAdminChangeHistoryMap).forEach(rows=>rows.sort((a,b)=>new Date(a.changed_at)-new Date(b.changed_at)));
+  paymentAccounts=accounts;
 }
 
 function renderPaymentAccountEditor(group,index,isDone){
