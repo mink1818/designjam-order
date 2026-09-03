@@ -242,7 +242,10 @@ try {
     fetchCustomerIdentitySnapshot(customerIds),
     fetchAdminCustomerMetadata(customerIds),
     cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(),
-    fetchAdminOrderMetadata(orderNumbers)
+    fetchAdminOrderMetadata(orderNumbers),
+    // V6.6.89: 주문 부가정보/입금정보도 같은 시점에 병렬 조회해 첫 화면 대기시간을 줄입니다.
+    loadAdminFeatureData(data),
+    loadOrderPaymentRecords(data)
   ]);
   adminAuxCache={at:Date.now(),inventory:inventoryRows,product:productCatalogRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
   adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
@@ -254,8 +257,6 @@ try {
   adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
   return;
 }
-
-  await Promise.all([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]);
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";

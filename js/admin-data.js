@@ -36,7 +36,6 @@ async function fetchOrders() {
 
   const now=Date.now();
   if(adminActiveOrdersCache && now-adminActiveOrdersCacheAt<ADMIN_ACTIVE_CACHE_MS){
-    warmAdminFullOrders();
     return adminActiveOrdersCache;
   }
   const rows=[];
@@ -48,7 +47,8 @@ async function fetchOrders() {
   }
   adminActiveOrdersCache=rows;
   adminActiveOrdersCacheAt=now;
-  warmAdminFullOrders();
+  // V6.6.89: 과거 전체 주문은 사용자가 전체/출고완료/검색을 열 때만 조회합니다.
+  // 주문접수 첫 화면 뒤에서 수천 건을 미리 받지 않아 로딩과 Supabase Egress를 함께 줄입니다.
   return rows;
 }
 
