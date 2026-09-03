@@ -250,10 +250,11 @@ try {
     safeAux(cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(), adminAuxCache.product||[], '상품'),
     safeAux(fetchAdminOrderMetadata(orderNumbers), [], '주문 메타')
   ]);
-  // 화면 표시를 막지 않는 부가정보는 백그라운드에서 병렬 갱신합니다.
-  Promise.allSettled([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]).then(()=>{
-    if(window.__adminRenderedGroups?.length) scheduleAdminOrderSnapshotRefresh?.(180);
-  });
+  // V6.6.95: 주문 카드가 참조하는 수정이력/입금정보는 첫 렌더 전에 준비합니다.
+  // V6.6.89에서 이를 백그라운드로 돌린 뒤 첫 진입만 렌더 오류가 나고,
+  // '다시 불러오기' 때는 이미 준비되어 정상 표시되는 레이스가 생겼습니다.
+  // 두 작업은 서로 병렬로 실행해 대기시간 증가는 최소화합니다.
+  await Promise.allSettled([loadAdminFeatureData(data),loadOrderPaymentRecords(data)]);
   adminAuxCache={at:Date.now(),inventory:inventoryRows,product:productCatalogRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
   adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
   adminCustomerMetaMap=new Map((customerMetaRows||[]).map(row=>[String(row.customer_id),row]));
@@ -261,13 +262,14 @@ try {
   adminOrderMetaMap=new Map((orderMetaRows||[]).map(row=>[String(row.order_number),row]));
   setAdminInventorySnapshot(inventoryRows);
 } catch (error) {
-  adminOrders.innerHTML = `<p>주문 불러오기 실패: ${error.message}</p>`;
-  return;
+  console.warn('주문 본문/필수정보 조회 실패:', error);
+  return false;
 }
 
   if (!data || data.length === 0) {
     adminOrders.innerHTML = "<div class='product-card'><h2>주문이 없습니다</h2></div>";
-    return;
+    adminOrders.classList.remove('orders-refreshing');
+    return true;
   }
 
   const grouped = {};
@@ -393,6 +395,8 @@ try {
   renderOrderCards(pageGroups);
   renderAdminPagination(totalPages);
   syncAdminFilterTabs();
+  adminOrders.classList.remove('orders-refreshing');
+  return true;
 }
 
 async function loadCustomerOrderChangeAlerts(){
@@ -1371,7 +1375,8 @@ async function initializeAdminPage() {
     let initialLoadError = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await loadOrders();
+        const loaded = await loadOrders();
+        if (loaded !== true) throw new Error('주문 목록 필수 조회가 완료되지 않았습니다.');
         initialLoadError = null;
         break;
       } catch (loadError) {
