@@ -923,10 +923,11 @@ function recalcOrderCard(cardId) {
   let productTotal = 0;
 
   rows.forEach(row => {
-    const checkbox = row.querySelector("input[type='checkbox']");
     const qty = Number(row.dataset.qty || 0);
     const recordedSoldout = Math.max(0, Number(row.dataset.soldoutQty || 0));
-    const soldoutQty = Math.min(qty, recordedSoldout > 0 ? recordedSoldout : (checkbox.checked ? qty : 0));
+    // 품절은 피킹에서 확정한 soldout_qty만 사용합니다.
+    // 주문관리 품번 체크박스는 V6.6.96에서 제거했으므로 DOM 체크박스를 참조하면 안 됩니다.
+    const soldoutQty = Math.min(qty, recordedSoldout);
     const shippedQty = Math.max(0, qty - soldoutQty);
     const unitPrice = Number(row.dataset.unitPrice || 0);
     qtyTotal += shippedQty;
