@@ -28,7 +28,7 @@ function warmAdminFullOrders(){
 }
 
 async function fetchOrders() {
-  // V6.6.93: 첫 화면에서 Supabase 세션/DB 연결이 막 준비되는 순간의 일시 오류는
+  // V6.6.94: 첫 화면에서 Supabase 세션/DB 연결이 막 준비되는 순간의 일시 오류는
   // 사용자에게 실패 화면을 보여주지 않고 짧게 자동 재시도합니다.
   const runWithQuickRetry = async (runner) => {
     let lastError = null;

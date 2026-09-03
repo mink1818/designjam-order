@@ -237,7 +237,7 @@ try {
   const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
   const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
   const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
-  // V6.6.93: 주문 본문 조회 성공 후 부가 조회 하나가 일시 실패해도 전체 주문목록을 실패 처리하지 않습니다.
+  // V6.6.94: 주문 본문 조회 성공 후 부가 조회 하나가 일시 실패해도 전체 주문목록을 실패 처리하지 않습니다.
   // 첫 진입에서 Supabase 요청이 동시에 몰릴 때 발생하던 "다시 불러오기" 현상을 방지합니다.
   const safeAux = (promise, fallback, label) => Promise.resolve(promise).catch(error => {
     console.warn(label + ' 조회 지연/실패:', error);
@@ -1365,10 +1365,27 @@ async function initializeAdminPage() {
     // 인증은 이미 완료되었습니다. 주문 데이터 조회 오류가 나더라도 로그인 화면으로 되돌리지 않습니다.
     document.body.classList.add("auth-ready");
     document.body.classList.remove("auth-pending","admin-page-leaving");
-    try {
-      await loadOrders();
-    } catch (loadError) {
-      console.error("주문 목록 초기 로딩 실패:", loadError);
+    // V6.6.94: 첫 진입 실패는 fetchOrders 단계뿐 아니라 주문 카드 렌더링/부가정보 적용 단계에서도
+    // 발생할 수 있었습니다. 따라서 초기 loadOrders 전체를 짧게 자동 재시도합니다.
+    // 수동으로 `다시 불러오기`를 누르면 정상 표시되던 동작을 자동화한 것입니다.
+    let initialLoadError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await loadOrders();
+        initialLoadError = null;
+        break;
+      } catch (loadError) {
+        initialLoadError = loadError;
+        console.warn(`주문 목록 초기 로딩 ${attempt + 1}차 실패, 자동 재시도:`, loadError);
+        invalidateAdminOrderCache?.();
+        if (attempt < 2) {
+          if (adminOrders) adminOrders.innerHTML = '<p>주문을 불러오는 중...</p>';
+          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 180 : 420));
+        }
+      }
+    }
+    if (initialLoadError) {
+      console.error("주문 목록 초기 로딩 최종 실패:", initialLoadError);
       if (adminOrders) adminOrders.innerHTML = '<div class="product-card"><p>주문 목록을 불러오지 못했습니다.</p><button class="cart-btn" type="button" onclick="loadOrders()">다시 불러오기</button></div>';
     }
   } catch (error) {
