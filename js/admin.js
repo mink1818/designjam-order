@@ -111,7 +111,7 @@ let adminFilter = "주문접수";
 let adminPage = 1;
 const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
-if (["전체", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
+if (["전체", "오늘주문", "미출고", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let orderRevisionMap = {};
 let orderRevisionHistoryMap = {};
@@ -191,7 +191,7 @@ function setAdminFilter(status) {
 }
 
 function syncAdminFilterTabs() {
-  const map = { 주문접수: "tabPending", 출고대기: "tabReady", 출고완료: "tabDone", 전체: "tabAll" };
+  const map = { 주문접수: "tabPending", 출고대기: "tabReady", 출고완료: "tabDone", 전체: "tabAll", 오늘주문: "tabAll", 미출고: "tabAll" };
   document.querySelectorAll(".order-status-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(map[adminFilter])?.classList.add("active");
   const toolbar = document.querySelector(".completed-toolbar");
@@ -347,9 +347,14 @@ try {
     .filter(group => {
       if (requestedCustomerId && String(group.customerId || "") !== requestedCustomerId) return false;
       const pickingVerified = String(group.pickingStatus || "").includes("검증완료");
+      if (adminFilter === "오늘주문") {
+        const created=new Date(group.createdAt),start=new Date();start.setHours(0,0,0,0);
+        if(Number.isNaN(created.getTime())||created<start)return false;
+      }
+      if (adminFilter === "미출고" && group.status === "출고완료") return false;
       if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified)) return false;
       if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified)) return false;
-      if (!["전체","주문접수","출고대기"].includes(adminFilter) && group.status !== adminFilter) return false;
+      if (!["전체","오늘주문","미출고","주문접수","출고대기"].includes(adminFilter) && group.status !== adminFilter) return false;
 
       // 미입금 조회는 PC·모바일 모두 출고완료 기간 필터와 무관하게 누적 표시합니다.
       if (requestedPaymentFilter!=='unpaid' && group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {

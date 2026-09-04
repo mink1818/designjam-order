@@ -53,20 +53,15 @@ async function loadDashboard(){
   const start=todayStartIso();
   const [todayOrders,pending,doneToday,customers,waiting,products]=await Promise.all([
     supabaseClient.from("orders").select("order_number").gte("created_at",start),
-    supabaseClient.from("orders").select("order_number,status,picking_status").eq("status","주문접수"),
+    supabaseClient.from("orders").select("order_number,status").neq("status","출고완료"),
     supabaseClient.from("orders").select("order_number").eq("status","출고완료").gte("shipped_at",start),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))
   ]);
   setText("todayOrderCount",uniqueOrders(todayOrders.data));
-  // 주문관리의 출고대기와 동일하게 피킹 최종검증이 완료된 주문만 집계합니다.
-  // 기존에는 출고완료가 아닌 주문을 모두 세어 주문접수까지 출고대기로 잘못 표시했습니다.
-  const readyOrderNumbers=new Set();
-  (pending.data||[]).forEach(row=>{
-    if(String(row.picking_status||'').includes('검증완료')&&row.order_number)readyOrderNumbers.add(row.order_number);
-  });
-  setText("pendingOrderCount",readyOrderNumbers.size);
+  // 출고 대기는 날짜와 피킹 단계에 관계없이 아직 출고완료되지 않은 누적 주문입니다.
+  setText("pendingOrderCount",uniqueOrders(pending.data));
   setText("todayDoneCount",uniqueOrders(doneToday.data));
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);

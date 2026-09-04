@@ -14,18 +14,25 @@
       .admin-new-order-open{background:#e7eef8;color:#173d73}.admin-new-order-ok{background:#173d73;color:#fff}@media(max-width:600px){.admin-new-order-box{padding:16px}.admin-new-order-box h3{font-size:19px}.admin-new-order-box p,.admin-new-order-list li{font-size:14px}}
       html[data-theme=dark] .admin-new-order-box{background:#172234;color:#eef5ff}.admin-new-order-list li{color:#172033}`;document.head.appendChild(style);
     const el=document.createElement('div');el.id='adminNewOrderAlert';el.className='admin-new-order-alert';el.hidden=true;el.innerHTML=`<section class="admin-new-order-box"><h3>🔔 신규 주문</h3><p id="adminNewOrderSummary"></p><ul id="adminNewOrderList" class="admin-new-order-list"></ul><div class="admin-new-order-actions"><button class="admin-new-order-open" type="button">주문관리 보기</button><button class="admin-new-order-ok" type="button">확인</button></div></section>`;document.body.appendChild(el);
-    el.querySelector('.admin-new-order-ok').onclick=ackAll; el.querySelector('.admin-new-order-open').onclick=()=>location.href='admin.html?view=orders&status=주문접수';
+    el.querySelector('.admin-new-order-ok').onclick=ackAll;
+    el.querySelector('.admin-new-order-open').onclick=async()=>{
+      if(await ackAll())location.href='admin.html?view=orders&status=오늘주문';
+    };
   }
   function render(){ensureUI();const el=document.getElementById('adminNewOrderAlert');if(!rows.length){el.hidden=true;return}el.hidden=false;document.getElementById('adminNewOrderSummary').textContent=rows.length===1?'새 주문이 접수되었습니다.':`새 주문 ${rows.length}건이 접수되었습니다.`;document.getElementById('adminNewOrderList').innerHTML=rows.slice(0,8).map(r=>`<li><b>${esc(r.customer_name||'거래처')}</b> · ${esc(r.order_number||'주문번호 없음')}<br><small>${new Date(r.created_at).toLocaleString('ko-KR')}</small></li>`).join('')+(rows.length>8?`<li>외 ${rows.length-8}건</li>`:'');}
   async function load(){if(!client)return;const {data,error}=await client.from('admin_new_order_alerts').select('order_number,customer_name,created_at').is('acknowledged_at',null).order('created_at',{ascending:true}).limit(50);if(error){console.warn('신규주문 알림 조회 생략:',error.message);return}rows=data||[];render();}
-  async function ackAll(){if(!client||!rows.length)return;const nums=rows.map(r=>r.order_number);const profile=(()=>{try{return JSON.parse(sessionStorage.getItem('designjam_admin_profile')||localStorage.getItem('designjam_admin_profile')||'{}')}catch(_){return{}}})();const {data:{user}}=await client.auth.getUser();const {error}=await client.from('admin_new_order_alerts').update({acknowledged_at:new Date().toISOString(),acknowledged_by:user?.id||null,acknowledged_by_name:profile.name||user?.email||'관리자'}).in('order_number',nums).is('acknowledged_at',null);if(error){alert('신규 주문 확인 처리 실패: '+error.message);return}rows=[];render();}
+  async function ackAll(){if(!client||!rows.length)return true;const nums=rows.map(r=>r.order_number);const profile=(()=>{try{return JSON.parse(sessionStorage.getItem('designjam_admin_profile')||localStorage.getItem('designjam_admin_profile')||'{}')}catch(_){return{}}})();const {data:{user}}=await client.auth.getUser();const {error}=await client.from('admin_new_order_alerts').update({acknowledged_at:new Date().toISOString(),acknowledged_by:user?.id||null,acknowledged_by_name:profile.name||user?.email||'관리자'}).in('order_number',nums).is('acknowledged_at',null);if(error){alert('신규 주문 확인 처리 실패: '+error.message);return false}rows=[];render();return true;}
   async function start(){
     client=window.supabaseClient||window.supabase?.createClient?.('https://dtjhuejmxrjkcxzvilgw.supabase.co','sb_publishable_kwXvFOCpknkDf9BKmcszrQ_Q7IBVg87',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     if(!client)return; const {data:{user}}=await client.auth.getUser(); if(!user)return;
-    const {data:p}=await client.from('customers').select('is_admin,blocked').eq('id',user.id).maybeSingle(); if(!p?.is_admin||p?.blocked)return;
+    const {data:p}=await client.from('customers').select('is_admin,blocked').eq('id',user.id).maybeSingle();
+    const allowedEmails=new Set(['900smk@naver.com','sm0727sm@hanmail.net','p1028p@naver.com']);
+    if((!p?.is_admin&&!allowedEmails.has(String(user.email||'').toLowerCase()))||p?.blocked)return;
     await load();
     channel=client.channel('admin-new-order-alerts-v66663').on('postgres_changes',{event:'*',schema:'public',table:'admin_new_order_alerts'},()=>load()).subscribe();
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+    // 실시간 연결이 잠시 끊겨도 신규 주문을 놓치지 않도록 안전 조회합니다.
+    setInterval(()=>{if(!document.hidden)load()},30000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0));else setTimeout(start,0);
 })();

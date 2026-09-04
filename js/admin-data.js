@@ -2,6 +2,8 @@ let adminFullOrdersCache = null;
 let adminFullOrdersPromise = null;
 let adminActiveOrdersCache = null;
 let adminActiveOrdersCacheAt = 0;
+let adminTodayOrdersCache = null;
+let adminTodayOrdersCacheAt = 0;
 const ADMIN_ACTIVE_CACHE_MS = 15000;
 
 async function fetchAllOrdersForAdmin() {
@@ -31,6 +33,17 @@ async function fetchOrders() {
   // 첫 진입의 주문접수/출고대기는 전체 과거 주문 수천 행을 기다리지 않고 현재 진행 주문만 먼저 받습니다.
   // 전체/출고완료/미입금/검색처럼 과거 데이터가 필요한 경우에만 전체 주문 캐시를 사용합니다.
   const keyword=String(document.getElementById('adminSearch')?.value||'').trim();
+  if(adminFilter==='오늘주문'&&!keyword&&requestedPaymentFilter!=='unpaid'){
+    const now=Date.now();
+    if(adminTodayOrdersCache&&now-adminTodayOrdersCacheAt<ADMIN_ACTIVE_CACHE_MS)return adminTodayOrdersCache;
+    const start=new Date();start.setHours(0,0,0,0);
+    const rows=[];
+    for(let from=0;;from+=1000){
+      const {data,error}=await supabaseClient.from('orders').select('*').gte('created_at',start.toISOString()).order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+      if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break;
+    }
+    adminTodayOrdersCache=rows;adminTodayOrdersCacheAt=now;warmAdminFullOrders();return rows;
+  }
   const needsHistory = Boolean(keyword) || requestedPaymentFilter==='unpaid' || adminFilter==='전체' || adminFilter==='출고완료';
   if(needsHistory)return fetchAllOrdersForAdmin();
 
@@ -52,7 +65,7 @@ async function fetchOrders() {
   return rows;
 }
 
-function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;}
+function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;adminTodayOrdersCache=null;adminTodayOrdersCacheAt=0;}
 window.invalidateAdminOrderCache=invalidateAdminOrderCache;
 
 async function fetchInventorySnapshot() {
