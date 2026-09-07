@@ -838,7 +838,7 @@ class="order-detail">
         ${paymentTracked?`<section class="order-payment-detail ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><div><strong>입금상태</strong><span>${paymentStatus}</span><small>주문금액 ${summaryTotal.toLocaleString()}원 · 입금 ${paidAmount.toLocaleString()}원 · 미수 ${Math.max(0,summaryTotal-paidAmount).toLocaleString()}원${paymentRecord.updated_at?`<br>최근 확인: ${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatOrderDateTime(paymentRecord.updated_at)}`:''}</small></div><span class="payment-detail-actions"><button type="button" onclick="togglePartialPaymentEditor(${index})">일부입금 입력</button><button type="button" class="gray-btn" onclick="showPaymentHistory(${index},'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}')">변경기록</button></span></section><div id="partial-payment-${index}" class="partial-payment-editor" hidden><label>현재까지 받은 금액<input type="number" min="0" step="100" value="${paidAmount}"></label><button type="button" onclick="savePartialPayment(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}')">저장</button></div><div id="payment-history-${index}" class="payment-history-list" hidden></div>`:''}
 
         ${renderOrderItemEditor(group, index)}
-        ${canDeletePendingOrder(group)?`<div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deletePendingAdminOrder('${escapeAdminAttr(group.orderNumber)}')">주문접수건 삭제</button><small>피킹 시작 전 주문만 삭제할 수 있으며 삭제이력에 보관됩니다.</small></div>`:''}
+        <div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deleteAdminOrderAnyStatus('${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.status)}','${escapeAdminAttr(group.pickingStatus||'대기')}')">주문 전체삭제</button><small>피킹중·출고대기·출고완료 주문도 삭제 가능하며, 차감된 재고는 자동 복원하고 삭제이력에 보관됩니다.</small></div>
 
         <div class="order-admin-meta-row"><section class="admin-order-tag-editor compact-admin-tag" onclick="event.stopPropagation()"><strong>관리표시</strong><input id="admin-order-tag-${index}" type="text" maxlength="40" value="${escapeAdminAttr(group.orderAdminTag||'')}" placeholder="예: 확인필요" onkeydown="if(event.key==='Enter'){event.preventDefault();saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})}"><button type="button" class="cart-btn" onclick="saveOrderAdminTag('${escapeAdminAttr(group.orderNumber)}',${index})">저장</button>${group.showOrderAdminTag&&group.orderAdminTag?`<button type="button" class="admin-order-tag-delete" onclick="deleteOrderAdminTag('${escapeAdminAttr(group.orderNumber)}')">삭제</button>`:''}<small>관리자만 표시</small></section>${renderOrderEditHistory(group,index)}</div>
         <div class="order-party-summary">${group.isProxy&&group.proxyCreatedByName?`<p class="proxy-created-by-admin"><strong>대신주문 접수자</strong> ${escapeAdminHtml(group.proxyCreatedByName)} · ${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')} · 접수 ${formatOrderDateTime(group.createdAt)}</p>`:''}<p><strong>거래처명</strong> ${escapeAdminHtml(group.customerName||'-')}${!group.isProxy?` · <strong>대표자명</strong> ${escapeAdminHtml(group.customerOwnerName||'-')}`:' · <strong>관리자 대신주문</strong>'}</p><p><strong>납품처명</strong> ${escapeAdminHtml(group.deliveryName||'-')}${group.deliveryPhone?` · ${escapeAdminHtml(group.deliveryPhone)}`:''}</p>${group.deliveryAddress?`<p><strong>납품주소</strong> ${escapeAdminHtml(group.deliveryAddress)}</p>`:''}<button type="button" class="cart-btn order-party-edit-toggle" onclick="toggleOrderPartyEditor(${index})">거래처·납품정보 수정</button></div>
@@ -999,6 +999,17 @@ async function deletePendingAdminOrder(orderNumber){
   await loadOrders();
 }
 window.deletePendingAdminOrder=deletePendingAdminOrder;
+
+async function deleteAdminOrderAnyStatus(orderNumber,status,pickingStatus){
+  if(!confirm(`주문을 전체삭제할까요?\n\n주문번호: ${orderNumber}\n상태: ${status} · ${pickingStatus}\n\n피킹으로 차감된 재고는 자동 복원되고 원본은 삭제주문 이력에 보관됩니다.`))return;
+  if(!confirm(`정말 삭제할까요?\n${orderNumber}\n\n삭제 후에는 삭제주문 이력에서만 확인·복원할 수 있습니다.`))return;
+  const {data,error}=await supabaseClient.rpc('admin_delete_order_any_status',{p_order_number:orderNumber,p_device_name:`주문관리 ${status} 주문삭제`});
+  if(error)return alert('주문삭제 실패: '+error.message+'\n\nSupabase에서 V6.7.8 SQL을 먼저 실행해주세요.');
+  invalidateAdminOrderCache?.();adminAuxCache.at=0;
+  alert(`주문삭제 완료\n삭제 품목: ${Number(data?.deleted_rows||0)}건\n재고 복원: ${Number(data?.restored_items||0)}품번 · ${Number(data?.restored_quantity||0)}개`);
+  await loadOrders();
+}
+window.deleteAdminOrderAnyStatus=deleteAdminOrderAnyStatus;
 
 function recalcOrderCard(cardId) {
   const card = document.getElementById(cardId);

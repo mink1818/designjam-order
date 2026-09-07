@@ -2947,7 +2947,7 @@ body[data-session-page="admin"] .pick-row.stock-row{grid-template-columns:minmax
  body[data-session-page="admin"] .admin-item-pricing{grid-column:1!important;}
  body[data-session-page="admin"] .pick-row.stock-row>em{grid-column:2!important;grid-row:1 / span 2!important;}
 }
-/* V6.7.7 I 포장완료 대기 탭 */
+/* V6.7.8 I 포장완료 대기 탭 */
 .order-status-tab.i-packed{border-color:#d97706!important;color:#92400e!important}.order-status-tab.i-packed.active{background:#d97706!important;color:#fff!important}html[data-theme="dark"] .order-status-tab.i-packed{border-color:#d39a42!important;color:#fde68a!important}html[data-theme="dark"] .order-status-tab.i-packed.active{background:#b45309!important;color:#fff!important}
-/* V6.7.7 주문접수·출고대기 목록 정렬 */
+/* V6.7.8 주문접수·출고대기 목록 정렬 */
 .order-sort-label{font-size:13px;font-weight:850;color:#475569;white-space:nowrap}.order-active-sort{min-width:190px;padding:10px 34px 10px 11px;border:1px solid #bcc9d6;border-radius:9px;background:#fff;color:#172033;font-weight:800}html[data-theme="dark"] .order-active-sort{background:#172234;color:#fff;border-color:#5b708a}html[data-theme="dark"] .order-sort-label{color:#cbd5e1}@media(max-width:760px){.order-toolbar-row{flex-wrap:wrap!important}.order-sort-label{display:none}.order-active-sort{width:100%}}
