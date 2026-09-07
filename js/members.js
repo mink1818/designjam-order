@@ -6,6 +6,7 @@ const ADMIN_EMAILS=new Set(["900smk@naver.com","sm0727sm@hanmail.net","p1028p@na
 const PAGE_SIZE=30;
 let allCustomers=[],memberFilter="전체",currentRows=[],currentPage=1;
 let adminCustomerMeta=new Map();
+let memberStatsPromise=null;
 const list=document.getElementById('customerList'),search=document.getElementById('memberSearch'),sort=document.getElementById('memberSort');
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const money=v=>Number(v||0).toLocaleString('ko-KR');
@@ -28,6 +29,12 @@ async function checkAdminAccess(){
 async function withTimeout(promise,ms=15000){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인한 뒤 새로고침해 주세요.')),ms)})]);}finally{clearTimeout(timer)}}
 async function fetchAllMemberOrderStats(){const rows=[];for(let from=0;;from+=1000){const result=await withTimeout(supabaseClient.from('orders').select('customer_id,customer_name,total,qty,price,soldout_qty,is_soldout,created_at,order_number').order('created_at',{ascending:false}).range(from,from+999),18000);if(result.error)throw result.error;rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)break}return rows}
 const memberNameKey=value=>String(value||'').trim().normalize('NFKC').toLowerCase().replace(/[\s_.·,()\[\]{}\-/]+/g,'');
+function applyMemberOrderStats(customers,orders=[]){
+ const stats={},customerIds=new Set(customers.map(c=>String(c.id))),customerByName=new Map(customers.map(c=>[memberNameKey(c.business_name),c.id]));
+ orders.forEach(o=>{const customerId=customerIds.has(String(o.customer_id))?o.customer_id:customerByName.get(memberNameKey(o.customer_name));if(!customerId)return;const s=stats[customerId]||(stats[customerId]={total:0,last:null,orders:new Set()}),ordered=Math.max(0,Number(o.qty||0)),soldout=Math.min(ordered,Math.max(0,Number(o.soldout_qty||(o.is_soldout?ordered:0)))),shipped=Math.max(0,ordered-soldout);s.total+=shipped*Number(o.price||0);s.orders.add(o.order_number);if(!s.last||new Date(o.created_at)>new Date(s.last))s.last=o.created_at;});
+ allCustomers=customers.map(c=>({...c,total_sales:stats[c.id]?.total||0,order_count:stats[c.id]?.orders.size||0,last_order_at:stats[c.id]?.last||c.last_order_at||null}));
+ updateCounts();renderFilteredCustomers();
+}
 async function loadCustomers(options={}){
  const preservePage=options?.preservePage===true;
  const previousPage=currentPage;
@@ -37,16 +44,16 @@ async function loadCustomers(options={}){
  adminCustomerMeta=new Map((metaResult.data||[]).map(row=>[String(row.customer_id),row]));
  if(error)throw error;
  const customers=(data||[]).filter(c=>!c.is_admin);
- let orders=[];
- try{
-   const result=await fetchAllMemberOrderStats();
-   const customerIds=new Set(customers.map(c=>String(c.id))),customerNames=new Set(customers.map(c=>memberNameKey(c.business_name)).filter(Boolean));orders=result.filter(o=>customerIds.has(String(o.customer_id))||customerNames.has(memberNameKey(o.customer_name)));
- }catch(statsError){console.warn('거래처 주문통계 생략:',statsError);}
- const stats={},customerIds=new Set(customers.map(c=>String(c.id)));
- const customerByName=new Map(customers.map(c=>[memberNameKey(c.business_name),c.id]));
- orders.forEach(o=>{const customerId=customerIds.has(String(o.customer_id))?o.customer_id:customerByName.get(memberNameKey(o.customer_name));if(!customerId)return;const s=stats[customerId]||(stats[customerId]={total:0,last:null,orders:new Set()}),ordered=Math.max(0,Number(o.qty||0)),soldout=Math.min(ordered,Math.max(0,Number(o.soldout_qty||(o.is_soldout?ordered:0)))),shipped=Math.max(0,ordered-soldout);s.total+=shipped*Number(o.price||0);s.orders.add(o.order_number);if(!s.last||new Date(o.created_at)>new Date(s.last))s.last=o.created_at;});
- allCustomers=customers.map(c=>({...c,total_sales:stats[c.id]?.total||0,order_count:stats[c.id]?.orders.size||0,last_order_at:stats[c.id]?.last||c.last_order_at||null}));
- if(!preservePage)currentPage=1;else currentPage=Math.max(1,previousPage);updateCounts();renderFilteredCustomers();
+ if(!preservePage)currentPage=1;else currentPage=Math.max(1,previousPage);
+ // 거래처 목록을 먼저 표시하고, 전체 주문 통계는 백그라운드에서 합산합니다.
+ allCustomers=customers.map(c=>({...c,total_sales:Number(c.total_sales||0),order_count:Number(c.order_count||0),last_order_at:c.last_order_at||null}));
+ updateCounts();renderFilteredCustomers();
+ if(!memberStatsPromise){
+   memberStatsPromise=fetchAllMemberOrderStats().then(rows=>{
+     const customerIds=new Set(customers.map(c=>String(c.id))),customerNames=new Set(customers.map(c=>memberNameKey(c.business_name)).filter(Boolean));
+     applyMemberOrderStats(customers,rows.filter(o=>customerIds.has(String(o.customer_id))||customerNames.has(memberNameKey(o.customer_name))));
+   }).catch(statsError=>console.warn('거래처 주문통계 생략:',statsError)).finally(()=>{memberStatsPromise=null});
+ }
  }catch(error){list.innerHTML=`<div class="product-card"><h2>거래처 불러오기 실패</h2><p>${esc(error.message||'알 수 없는 오류')}</p><button class="cart-btn" type="button" onclick="loadCustomers()">다시 불러오기</button></div>`;}
 }
 function updateCounts(){

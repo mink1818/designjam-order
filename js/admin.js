@@ -136,8 +136,11 @@ let adminCustomerMetaMap = new Map();
 let adminProductCatalogMap = new Map();
 let adminOrderMetaMap = new Map();
 
-let adminAuxCache={at:0,inventory:null,product:null,customerMeta:null,orderMeta:null};
-const ADMIN_AUX_CACHE_MS=60000;
+let adminAuxCache={at:0,key:'',inventory:null,product:null,customers:null,customerMeta:null,orderMeta:null};
+let adminAuxRefreshPromise=null;
+let adminAuxRefreshToken=0;
+let adminOrderLoadGeneration=0;
+const ADMIN_AUX_CACHE_MS=300000;
 async function fetchCustomerIdentitySnapshot(ids=[]){
   const unique=[...new Set((ids||[]).filter(Boolean).map(String))];
   if(!unique.length)return [];
@@ -233,9 +236,46 @@ async function deleteOrderAdminTag(orderNumber){
 }
 window.deleteOrderAdminTag=deleteOrderAdminTag;
 
-async function loadOrders() {
+function adminAuxKeyFor(rows=[]){
+  const numbers=[...new Set(rows.map(row=>String(row.order_number||'')).filter(Boolean))];
+  return `${rows.length}:${numbers.length}:${numbers[0]||''}:${numbers[numbers.length-1]||''}`;
+}
+function applyAdminAuxCache(cache=adminAuxCache){
+  adminCustomerIdentityMap=new Map((cache.customers||[]).map(row=>[String(row.id),row]));
+  adminCustomerMetaMap=new Map((cache.customerMeta||[]).map(row=>[String(row.customer_id),row]));
+  adminOrderMetaMap=new Map((cache.orderMeta||[]).map(row=>[String(row.order_number),row]));
+  setAdminProductCatalog(cache.product||[]);
+  setAdminInventorySnapshot(cache.inventory);
+}
+function refreshAdminAuxiliary(data,key){
+  if(adminAuxRefreshPromise&&adminAuxCache.key===key)return adminAuxRefreshPromise;
+  const refreshToken=++adminAuxRefreshToken;
+  const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
+  const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
+  adminAuxCache.key=key;
+  adminAuxCache.at=0;
+  adminAuxRefreshPromise=(async()=>{
+    const featurePromise=loadAdminFeatureData(data);
+    const paymentPromise=loadOrderPaymentRecords(data);
+    const [inventoryRows,customerRows,customerMetaRows,productCatalogRows,orderMetaRows]=await Promise.all([
+      adminAuxCache.inventory||fetchInventorySnapshot(),
+      fetchCustomerIdentitySnapshot(customerIds),
+      fetchAdminCustomerMetadata(customerIds),
+      adminAuxCache.product||fetchAdminProductCatalog(),
+      fetchAdminOrderMetadata(orderNumbers)
+    ]);
+    await Promise.all([featurePromise,paymentPromise]);
+    if(refreshToken!==adminAuxRefreshToken||adminAuxCache.key!==key)return;
+    adminAuxCache={at:Date.now(),key,inventory:inventoryRows,product:productCatalogRows,customers:customerRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
+    applyAdminAuxCache(adminAuxCache);
+  })().catch(error=>console.warn('주문 부가정보 백그라운드 조회 생략:',error)).finally(()=>{if(refreshToken===adminAuxRefreshToken)adminAuxRefreshPromise=null});
+  return adminAuxRefreshPromise;
+}
+
+async function loadOrders(options={}) {
+  const generation=++adminOrderLoadGeneration;
   const hadOrders = Boolean(adminOrders?.querySelector('.order-card'));
-  if (!hadOrders) adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
+  if (!hadOrders&&!options.quiet) adminOrders.innerHTML = "<p>주문을 불러오는 중...</p>";
   else adminOrders.classList.add('orders-refreshing');
 
   let data = [];
@@ -244,26 +284,16 @@ try {
   // V6.6.80: 주문 자체를 먼저 받고, 현재 화면에 필요한 고객/표시 데이터만 병렬 조회합니다.
   const orderRows=await fetchOrders();
   data=orderRows||[];
-  const customerIds=[...new Set(data.map(r=>r.customer_id).filter(Boolean))];
-  const orderNumbers=[...new Set(data.map(r=>r.order_number).filter(Boolean))];
-  const cacheFresh=Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
-  // 주문 부가정보도 동시에 시작해 순차 네트워크 대기 시간을 없앱니다.
-  const featurePromise=loadAdminFeatureData(data);
-  const paymentPromise=loadOrderPaymentRecords(data);
-  const [inventoryRows,customerRows,customerMetaRows,productCatalogRows,orderMetaRows]=await Promise.all([
-    cacheFresh&&adminAuxCache.inventory?Promise.resolve(adminAuxCache.inventory):fetchInventorySnapshot(),
-    fetchCustomerIdentitySnapshot(customerIds),
-    fetchAdminCustomerMetadata(customerIds),
-    cacheFresh&&adminAuxCache.product?Promise.resolve(adminAuxCache.product):fetchAdminProductCatalog(),
-    fetchAdminOrderMetadata(orderNumbers)
-  ]);
-  adminAuxCache={at:Date.now(),inventory:inventoryRows,product:productCatalogRows,customerMeta:customerMetaRows,orderMeta:orderMetaRows};
-  adminCustomerIdentityMap=new Map((customerRows||[]).map(row=>[String(row.id),row]));
-  adminCustomerMetaMap=new Map((customerMetaRows||[]).map(row=>[String(row.customer_id),row]));
-  setAdminProductCatalog(productCatalogRows);
-  adminOrderMetaMap=new Map((orderMetaRows||[]).map(row=>[String(row.order_number),row]));
-  setAdminInventorySnapshot(inventoryRows);
-  await Promise.all([featurePromise,paymentPromise]);
+  const auxKey=adminAuxKeyFor(data);
+  const cacheFresh=adminAuxCache.key===auxKey&&Date.now()-Number(adminAuxCache.at||0)<ADMIN_AUX_CACHE_MS;
+  if(cacheFresh)applyAdminAuxCache(adminAuxCache);
+  else if(!options.skipAuxRefresh){
+    const refresh=refreshAdminAuxiliary(data,auxKey);
+    if(requestedPaymentFilter==='unpaid')await refresh;
+    else refresh.then(()=>{
+      if(generation===adminOrderLoadGeneration&&adminAuxCache.key===auxKey&&adminAuxCache.at>0)loadOrders({skipAuxRefresh:true,quiet:true});
+    });
+  }
 } catch (error) {
   console.warn("주문 불러오기 실패:", error);
   return false;

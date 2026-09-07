@@ -2105,9 +2105,8 @@ async function startProductsPage() {
 
   if (!allowed) return;
 
-  await loadMainCategories();
-
-  await loadProductData();
+  // 서로 독립적인 세 목록을 동시에 받아 초기 화면 대기 시간을 줄입니다.
+  await Promise.all([loadMainCategories(), loadProductData()]);
 }
 
 

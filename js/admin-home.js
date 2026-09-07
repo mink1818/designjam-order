@@ -69,10 +69,13 @@ async function loadDashboard(){
   (products.data||[]).forEach(item=>{const itemKey=String(item.item_number||'').trim().toUpperCase(),key=`${String(item.warehouse_code||'').toUpperCase()}:${itemKey}`;if(itemKey)soldoutItems.add(key)});
   setText("soldoutCount",products.error?"-":soldoutItems.size);
   setText("dashboardUpdatedAt",`${new Date().toLocaleString("ko-KR")} 기준`);
-  await loadNotifications();
-  await loadHandwritingTrainingStatus();
-  await loadUnpaidCustomers();
-  await loadUnansweredInquiryCount();
+  // 핵심 운영 숫자를 먼저 보여준 뒤 무거운 상세 현황은 동시에 채웁니다.
+  Promise.allSettled([
+    loadNotifications(),
+    loadHandwritingTrainingStatus(),
+    loadUnpaidCustomers(),
+    loadUnansweredInquiryCount()
+  ]);
 }
 
 async function loadUnansweredInquiryCount(){
