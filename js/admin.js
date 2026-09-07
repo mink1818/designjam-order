@@ -106,12 +106,18 @@ const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 if (adminCompletedPeriod && adminUrlParams.get("period")) adminCompletedPeriod.value = adminUrlParams.get("period");
 const adminCompletedSort = document.getElementById("adminCompletedSort");
 if (adminCompletedSort && adminUrlParams.get("sort")) adminCompletedSort.value = adminUrlParams.get("sort");
+const adminActiveSort = document.getElementById("adminActiveSort");
+if (adminActiveSort) {
+  const requestedSort = adminUrlParams.get("orderSort");
+  if (["customer", "newest", "oldest", "order-number", "qty-desc"].includes(requestedSort)) adminActiveSort.value = requestedSort;
+  adminActiveSort.addEventListener("change", () => { adminPage = 1; loadOrders(); });
+}
 
 let adminFilter = "주문접수";
 let adminPage = 1;
 const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
-if (["전체", "오늘주문", "미출고", "주문접수", "출고대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
+if (["전체", "오늘주문", "미출고", "주문접수", "출고대기", "I포장완료대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let orderRevisionMap = {};
 let orderRevisionHistoryMap = {};
@@ -191,11 +197,15 @@ function setAdminFilter(status) {
 }
 
 function syncAdminFilterTabs() {
-  const map = { 주문접수: "tabPending", 출고대기: "tabReady", 출고완료: "tabDone", 전체: "tabAll", 오늘주문: "tabAll", 미출고: "tabAll" };
+  const map = { 주문접수: "tabPending", 출고대기: "tabReady", I포장완료대기: "tabIPacked", 출고완료: "tabDone", 전체: "tabAll", 오늘주문: "tabAll", 미출고: "tabAll" };
   document.querySelectorAll(".order-status-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(map[adminFilter])?.classList.add("active");
   const toolbar = document.querySelector(".completed-toolbar");
   if (toolbar) toolbar.hidden = adminFilter !== "출고완료" && adminFilter !== "전체";
+  const activeSortVisible = ["주문접수", "출고대기", "I포장완료대기"].includes(adminFilter);
+  if (adminActiveSort) adminActiveSort.hidden = !activeSortVisible;
+  const activeSortLabel = document.getElementById("adminActiveSortLabel");
+  if (activeSortLabel) activeSortLabel.hidden = !activeSortVisible;
 }
 
 function setAdminPage(page) {
@@ -334,9 +344,10 @@ try {
 
   document.getElementById("totalCount").textContent = groups.length;
   document.getElementById("pendingCount").textContent =
-    groups.filter(g => g.status === "주문접수" && !String(g.pickingStatus || "").includes("검증완료")).length;
+    groups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && !String(g.pickingStatus || "").includes("검증완료")).length;
   document.getElementById("readyCount").textContent =
-    groups.filter(g => g.status === "주문접수" && String(g.pickingStatus || "").includes("검증완료")).length;
+    groups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && String(g.pickingStatus || "").includes("검증완료")).length;
+  document.getElementById("iPackedCount").textContent = groups.filter(isAdminIPackedWaiting).length;
   document.getElementById("doneCount").textContent =
     groups.filter(g => g.status === "출고완료").length;
 
@@ -347,14 +358,16 @@ try {
     .filter(group => {
       if (requestedCustomerId && String(group.customerId || "") !== requestedCustomerId) return false;
       const pickingVerified = String(group.pickingStatus || "").includes("검증완료");
+      const iPackedWaiting = isAdminIPackedWaiting(group);
       if (adminFilter === "오늘주문") {
         const created=new Date(group.createdAt),start=new Date();start.setHours(0,0,0,0);
         if(Number.isNaN(created.getTime())||created<start)return false;
       }
       if (adminFilter === "미출고" && group.status === "출고완료") return false;
-      if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified)) return false;
-      if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified)) return false;
-      if (!["전체","오늘주문","미출고","주문접수","출고대기"].includes(adminFilter) && group.status !== adminFilter) return false;
+      if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified && !iPackedWaiting)) return false;
+      if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified && !iPackedWaiting)) return false;
+      if (adminFilter === "I포장완료대기" && !iPackedWaiting) return false;
+      if (!["전체","오늘주문","미출고","주문접수","출고대기","I포장완료대기"].includes(adminFilter) && group.status !== adminFilter) return false;
 
       // 미입금 조회는 PC·모바일 모두 출고완료 기간 필터와 무관하게 누적 표시합니다.
       if (requestedPaymentFilter!=='unpaid' && group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
@@ -377,7 +390,16 @@ try {
           const direction = adminCompletedSort?.value === "shipped-asc" ? 1 : -1;
           return direction * (new Date(a.completedAt || a.createdAt) - new Date(b.completedAt || b.createdAt));
         }
-        return new Date(b.createdAt) - new Date(a.createdAt);
+        const sortMode = adminActiveSort?.value || "customer";
+        if (sortMode === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
+        if (sortMode === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
+        if (sortMode === "order-number") return String(a.orderNumber || "").localeCompare(String(b.orderNumber || ""), "ko", { numeric: true, sensitivity: "base" });
+        if (sortMode === "qty-desc") {
+          const qty = group => (group.items || []).reduce((sum, item) => sum + Number(item.qty || 0), 0);
+          return qty(b) - qty(a) || new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        const customerOrder = String(a.customerName || "").localeCompare(String(b.customerName || ""), "ko", { numeric: true, sensitivity: "base" });
+        return customerOrder || new Date(b.createdAt) - new Date(a.createdAt);
       }
 
       if (a.status === "주문접수") return -1;
@@ -573,6 +595,22 @@ function getOrderWarehouseCode(item) {
   if (["S", "B", "I"].includes(saved)) return saved;
   const match = String(item?.item_number || "").trim().toUpperCase().match(/^([SBI])(?:[-\s]|(?=\d))/);
   return match ? match[1] : "기타";
+}
+
+function adminWarehouseOutboundComplete(group, code) {
+  const rows = (group?.items || []).filter(item => getOrderWarehouseCode(item) === code);
+  const field = `${String(code).toLowerCase()}_outbound_confirmed`;
+  return rows.length > 0 && rows.every(item => item[field] === true);
+}
+
+function isAdminIPackedWaiting(group) {
+  const items = group?.items || [];
+  return group?.status !== "출고완료" && items.some(item => getOrderWarehouseCode(item) === "I") && items.some(item => ["S", "B"].includes(getOrderWarehouseCode(item))) && adminWarehouseOutboundComplete(group, "I");
+}
+
+function isAdminAllWarehousePacked(group) {
+  const codes = [...new Set((group?.items || []).map(getOrderWarehouseCode).filter(code => ["S", "B", "I"].includes(code)))];
+  return codes.length > 0 && codes.every(code => adminWarehouseOutboundComplete(group, code));
 }
 
 function getOrderWarehouseLabel(code) {
@@ -864,6 +902,8 @@ class="order-detail">
 
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
   if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
+  const targetGroup=(window.__adminRenderedGroups||[]).find(group=>group.orderNumber===orderNumber);
+  if(currentStatus!=='출고완료'&&targetGroup&&isAdminIPackedWaiting(targetGroup)&&!isAdminAllWarehousePacked(targetGroup)){alert('B·S 포장이 아직 완료되지 않았습니다. 모든 출고지 포장완료 후 출고완료할 수 있습니다.');return;}
 
   if (currentStatus === "출고완료") {
     const proceed = confirm(
