@@ -938,18 +938,7 @@ class="order-detail">
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
   if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
   const targetGroup=(window.__adminRenderedGroups||[]).find(group=>group.orderNumber===orderNumber);
-  // 목록 캐시는 빠른 화면 표시용입니다. 출고완료 직전에는 포장 상태만 서버에서 다시 확인해
-  // 피킹 화면에서 방금 체크한 S/B/I 상태가 오래된 캐시에 막히지 않게 합니다.
-  if(currentStatus!=='출고완료'&&targetGroup&&isAdminIPackedWaiting(targetGroup)){
-    const {data:latestRows,error:latestError}=await supabaseClient.from('orders')
-      .select('id,item_number,warehouse_code,qty,soldout_qty,is_soldout,s_outbound_confirmed,b_outbound_confirmed,i_outbound_confirmed')
-      .eq('order_number',orderNumber);
-    if(!latestError&&latestRows?.length){
-      const latestById=new Map(latestRows.map(row=>[String(row.id),row]));
-      targetGroup.items=targetGroup.items.map(item=>({...item,...(latestById.get(String(item.id))||{})}));
-    }
-  }
-  if(currentStatus!=='출고완료'&&targetGroup&&isAdminIPackedWaiting(targetGroup)&&!isAdminAllWarehousePacked(targetGroup)){alert('B·S 포장이 아직 완료되지 않았습니다. 모든 출고지 포장완료 후 출고완료할 수 있습니다.');return;}
+  // I 포장완료 대기에서 누르는 출고완료 버튼 자체를 B·S 포장까지 끝났다는 최종 확인으로 사용합니다.
 
   if (currentStatus === "출고완료") {
     const proceed = confirm(
