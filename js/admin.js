@@ -630,7 +630,12 @@ function getOrderWarehouseCode(item) {
 function adminWarehouseOutboundComplete(group, code) {
   const rows = (group?.items || []).filter(item => getOrderWarehouseCode(item) === code);
   const field = `${String(code).toLowerCase()}_outbound_confirmed`;
-  return rows.length > 0 && rows.every(item => item[field] === true);
+  // 전량 품절 품목은 실제 포장할 물량이 없으므로 출고지 확인이 완료된 것으로 봅니다.
+  return rows.length > 0 && rows.every(item => {
+    const ordered=Math.max(0,Number(item.qty||0));
+    const soldout=Math.max(0,Number(item.soldout_qty||(item.is_soldout?ordered:0)));
+    return soldout>=ordered || item[field]===true;
+  });
 }
 
 function isAdminIPackedWaiting(group) {

@@ -440,7 +440,11 @@
         (item) => warehouseCode(item) === code,
       ),
       field = `${code.toLowerCase()}_outbound_confirmed`;
-    return rows.length > 0 && rows.every((item) => item[field] === true);
+    return rows.length > 0 && rows.every((item) => {
+      const ordered=Math.max(0,Number(item.qty||0));
+      const soldout=Math.max(0,Number(item.soldout_qty||(item.is_soldout?ordered:0)));
+      return soldout>=ordered || item[field]===true;
+    });
   }
   function iWaitingFor(group) {
     return ["S", "B"].filter(
