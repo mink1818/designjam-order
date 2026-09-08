@@ -219,14 +219,9 @@
         const applied=sessionStorage.getItem('ds_sw_reloaded_version');
         if(current&&applied!==current){reloading=true;sessionStorage.setItem('ds_sw_reloaded_version',current);location.reload()}
       });
-      navigator.serviceWorker.register('/service-worker.js?v=66694').then(reg=>{
-        // Vercel Edge Request 절감: 매 화면 진입마다 강제 업데이트하지 않고 하루 1회만 확인합니다.
-        const swUpdateKey='ds_sw_update_at';
-        const lastSwUpdate=Number(localStorage.getItem(swUpdateKey)||0);
-        if(Date.now()-lastSwUpdate>24*60*60*1000){
-          localStorage.setItem(swUpdateKey,String(Date.now()));
-          reg.update().catch(()=>{});
-        }
+      navigator.serviceWorker.register('/service-worker.js?v=67010').then(reg=>{
+        // 새 배포 내용을 지연 없이 받도록 화면 진입 시 서비스워커를 확인합니다.
+        reg.update().catch(()=>{});
         if(reg.waiting)reg.waiting.postMessage('SKIP_WAITING');
         reg.addEventListener('updatefound',()=>{
           const worker=reg.installing;if(!worker)return;
