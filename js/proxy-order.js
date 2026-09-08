@@ -58,7 +58,7 @@ function findItem(value){
  const candidates=items.filter(x=>{const itemKey=priceKey(x.item_number);return /^[\s\S]*\d[AM]$/.test(itemKey)&&itemKey.slice(0,-1)===key});
  return candidates.length===1?candidates[0]:null;
 }
-function proxyItemKind(itemNumber){const key=priceKey(itemNumber);if(/A$/.test(key))return'아동양말';if(/M$/.test(key))return'무지양말';return'일반양말'}
+function proxyItemKind(itemNumber){const key=priceKey(itemNumber);if(/A$/.test(key))return'아동양말';if(/M$/.test(key))return'무지양말';return'라코스테양말'}
 function proxyChoiceStorageKey(){return`${PROXY_ITEM_CHOICE_KEY}:${currentAdminId||'guest'}`}
 function loadProxyItemChoices(){try{return JSON.parse(localStorage.getItem(proxyChoiceStorageKey())||'{}')}catch{return{}}}
 function proxyChoiceBase(value){return priceKey(value).replace(/[AM]$/,'')}

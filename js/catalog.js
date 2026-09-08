@@ -1680,7 +1680,7 @@ function bulkItemType(number) {
   const value = normalizeBulkItemNumber(number);
   if (value.endsWith("A")) return "아동양말";
   if (value.endsWith("M")) return "무지양말";
-  return "일반양말";
+  return "라코스테양말";
 }
 
 function chooseBulkOrderCandidate(requestedNumber, candidates, rememberedRow = null) {
