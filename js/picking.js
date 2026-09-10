@@ -533,6 +533,27 @@
     location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(orderNumber)}&refresh=${Date.now()}`);
     return true;
   }
+  async function confirmAllProcessedWarehouses(group) {
+    if (!group?.items?.length) return true;
+    const updates = ["S", "B", "I"].map(async (code) => {
+      const ids = group.items
+        .filter((item) => warehouseCode(item) === code)
+        .filter((item) => Number(item.picked_qty || 0) + Number(item.soldout_qty || 0) >= Number(item.qty || 0))
+        .map((item) => item.id);
+      if (!ids.length) return;
+      const field = `${code.toLowerCase()}_outbound_confirmed`;
+      const { error } = await supabaseClient.from("orders").update({ [field]: true }).in("id", ids);
+      if (error) throw error;
+      group.items.forEach((item) => { if (ids.includes(item.id)) item[field] = true; });
+    });
+    try {
+      await Promise.all(updates);
+      return true;
+    } catch (error) {
+      renderWork("출고지 완료상태 저장 실패: " + error.message, "error", false);
+      return false;
+    }
+  }
   function displayItemNumber(item) {
     const code = String(item?.warehouse_code || "")
       .trim()
@@ -1523,24 +1544,29 @@
       !confirm("최종 검증 후 재고를 차감하고 주문관리의 출고대기로 이동할까요?")
     )
       return;
+    const orderNumber = active.orderNumber;
     const { data, error } = await supabaseClient.rpc("complete_order_picking", {
       p_order_number: active.orderNumber,
       p_device_name: `피킹검증 · ${currentPicker.name}`,
     });
-    if (error) return renderWork(error.message, "error");
+    if (error && !String(error.message || "").includes("이미 피킹 최종검증"))
+      return renderWork(error.message, "error");
+    // 최종검증 완료는 해당 주문의 포장 가능한 S·B·I 품목까지 완료한 것으로 확정합니다.
+    // 일부품절도 피킹수량+품절수량이 주문수량과 같으면 동일하게 출고대기로 이동합니다.
+    if (!(await confirmAllProcessedWarehouses(active))) return;
     await supabaseClient.rpc("release_order_picking", {
-      p_order_number: active.orderNumber,
+      p_order_number: orderNumber,
       p_force: false,
     });
     localStorage.setItem(
       "designjam_picking_verified",
-      JSON.stringify({ orderNumber: active.orderNumber, at: Date.now() }),
+      JSON.stringify({ orderNumber, at: Date.now() }),
     );
     alert(
-      `피킹 최종검증 완료\n담당자: ${currentPicker.name}\n거래처: ${data?.customer_name || active.customerName}\n주문번호: ${active.orderNumber}\n주문관리에서 송장정보 확인 후 출고완료하세요.`,
+      `피킹 최종검증 완료\n담당자: ${currentPicker.name}\n거래처: ${data?.customer_name || active.customerName}\n주문번호: ${orderNumber}\n주문관리 출고대기로 이동합니다.`,
     );
     location.replace(
-      `admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(active.orderNumber)}&refresh=${Date.now()}`,
+      `admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(orderNumber)}&refresh=${Date.now()}`,
     );
   }
   function printWorkSheet(warehouse = "") {
