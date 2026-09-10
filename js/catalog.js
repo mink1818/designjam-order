@@ -1747,7 +1747,7 @@ function parseCompactBulkItemTokens(line) {
 function parseCustomerBulkOrder(text) {
   const parsed = [];
   String(text || "").split(/\r?\n/).forEach(rawLine => {
-    const line = rawLine.trim();
+    const line = rawLine.normalize("NFKC").trim();
     if (!line) return;
     if (/^(?:납품처명?|배송처명?|연락처|전화(?:번호)?|주소|납품주소|배송주소|메모|요청사항)\s*[:：]/i.test(line)) return;
     if (/0\d{1,2}[\s-]?\d{3,4}[\s-]?\d{4}/.test(line.replace(/\s+/g, ""))) return;
@@ -1757,15 +1757,30 @@ function parseCustomerBulkOrder(text) {
       compactRows.forEach(row => expandBulkOrderRange(row.number).forEach(number => parsed.push({ number, qty: row.qty })));
       return;
     }
-    const cleaned = line
-      .replace(/[()\[\]]/g, " ")
-      .replace(/(죽씩|족씩|죽|족)/gi, " ")
-      .trim();
-    const separated = cleaned.match(/^(.+?)(?:[\t ,;|/.:ㅡ]+|-)(\d+)$/);
+    const itemLine = line.replace(/^[ㆍ·●○◆◇▪■□★☆*\s]*(?:품번|상품번호|품목)\s*[:：]?\s*/i, "").trim();
+    const parenthesized = itemLine.match(/^(.+?)\s*[（(]\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*[)）]\s*$/i);
+    if (parenthesized) {
+      const number = parenthesized[1].trim();
+      if (/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeBulkItemNumber(number))) {
+        parsed.push({ number, qty: Math.max(1, Math.floor(Number(parenthesized[2]) || 1)) });
+        return;
+      }
+    }
+    const quantityLabel = itemLine.match(/^(.+?)\s*(?:수량|수량은)\s*[:：]?\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*$/i);
+    const separatedQuantity = itemLine.match(/^(.+?)\s*(?:[~～〜ㅡᅳ]|[,./:xX×*=]|[-‐‑‒–—]|\s+)\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*$/i);
+    const hasQuantityWord = /(?:죽|족|씩|수량)/i.test(itemLine);
+    const rangeCandidate = itemLine.replace(/[～〜]/g, "~").replace(/\s+/g, "");
+    const expandedRange = !hasQuantityWord && /~/.test(rangeCandidate) ? expandBulkOrderRange(rangeCandidate) : [];
+    if (expandedRange.length > 1) {
+      expandedRange.forEach(number => parsed.push({ number, qty: 1 }));
+      return;
+    }
+    const separated = quantityLabel || separatedQuantity;
+    const cleaned = itemLine.replace(/[()\[\]]/g, " ").replace(/(죽씩|족씩|죽|족|씩)/gi, " ").trim();
     const exactRegistered = getBulkOrderItemIndex().some(row => row.normalized === normalizeBulkItemNumber(cleaned));
     const canUseSeparated = separated && !exactRegistered && !/^[SBI]$/i.test(separated[1].trim());
     const parts = cleaned
-      .split(/[\t,;|/.:\sㅡ]+/)
+      .split(/[\t,;|/.:\sㅡᅳ~～〜]+/)
       .map(value => value.trim())
       .filter(Boolean);
     if (!parts.length) return;
@@ -1960,7 +1975,7 @@ function renderCustomerBulkOrder() {
       ${hasVipPasteAccess()?`<div class="customer-order-photo-box"><strong>VIP 무료 주문사진 분석</strong><input type="file" accept="image/*" multiple onchange="selectCustomerOrderPhotos(this)"><div id="customerOrderPhotoList"></div><div class="customer-order-photo-actions"><button id="analyzeCustomerOrderPhotos" type="button" onclick="analyzeCustomerOrderPhotos()">사진에서 품번·수량 읽기</button><button id="clearCustomerOrderPhotos" type="button" onclick="clearCustomerOrderPhotos()" hidden>선택파일 전체삭제</button></div><small id="customerOrderPhotoStatus">카톡에서 저장한 주문 사진을 선택하세요. 첫 사용 때만 무료 모델을 내려받습니다.</small></div>`:''}
       ${hasVipPasteAccess()?'<p class="customer-bulk-order-help"><b>VIP 안내:</b> 납품처명·연락처·주소·메모까지 선택 적용할 수 있습니다. 인식 결과를 확인한 뒤 적용해 주세요.</p>':'<p class="customer-bulk-order-help"><b>안내:</b> 품번·수량만 자동 적용됩니다. 납품정보는 다음 주문 화면에서 입력해 주세요.</p>'}
       <p class="bulk-order-compact-note">중복 품번은 일반·아동·무지 중 선택 · 수량 생략 시 1죽 <span>예: 4001&nbsp;&nbsp;2죽 또는 4001 4002(2) 4003(3)</span></p>
-      <p class="customer-bulk-order-help">공백·탭·쉼표·마침표·슬래시·콜론·한글 ㅡ를 구분자로 인식하며, <b>죽·족·죽씩·족씩</b>도 사용할 수 있습니다.</p>
+      <p class="customer-bulk-order-help">관리자 대신주문과 동일하게 <b>품번, ~, ㅡ, -, 죽, 족, 씩, 수량</b> 표현을 인식합니다.</p>
       <div id="customerBulkOrderAnalysis" class="customer-smart-paste-preview" hidden></div>
       <div id="customerBulkOrderResult" class="customer-bulk-order-result" aria-live="polite"></div>
       <p class="customer-bulk-order-steps"><b>이용 순서</b><span>① 자동 분석</span><i>→</i><span>② 선택 항목 적용</span><i>→</i><span>③ 장바구니에서 품번·수량 확인</span></p>
