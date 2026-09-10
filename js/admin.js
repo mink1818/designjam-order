@@ -83,6 +83,7 @@ async function adminLogin() {
 const adminOrders = document.getElementById("adminOrders");
 const adminSearch = document.getElementById("adminSearch");
 const adminUrlParams = new URLSearchParams(location.search);
+if (adminUrlParams.has("refresh")) window.invalidateAdminOrderCache?.();
 
 function currentAdminDisplayName() {
   try {
@@ -196,6 +197,8 @@ function setAdminFilter(status) {
   adminFilter = status;
   adminPage = 1;
   syncAdminFilterTabs();
+  // 피킹 화면에서 방금 변경된 포장·검증 상태가 2분 캐시에 가려지지 않도록 탭 클릭 시 최신 주문을 조회합니다.
+  window.invalidateAdminOrderCache?.();
   loadOrders();
 }
 
@@ -457,7 +460,7 @@ async function loadCustomerOrderChangeAlerts(){
  const {data,error}=await supabaseClient.from('app_notifications').select('id,title,message,created_at,link_url').eq('recipient_id',user.id).eq('is_read',false).ilike('title','고객 주문%').order('created_at',{ascending:false}).limit(20);
  if(error||!data?.length){box.hidden=true;box.innerHTML='';return}
  box.hidden=false;box.innerHTML=`<div class="customer-change-alert-head"><strong>🔔 고객 주문 변경 ${data.length}건</strong><button type="button" id="readAllCustomerChanges">모두 확인</button></div>${data.map(row=>`<button type="button" class="customer-change-alert-item" data-id="${escapeAdminAttr(row.id)}" data-link="${escapeAdminAttr(row.link_url||'admin.html?view=orders')}"><b>${escapeAdminHtml(row.title)}</b><span>${escapeAdminHtml(row.message||'')}</span><small>${new Date(row.created_at).toLocaleString('ko-KR')}</small></button>`).join('')}`;
- box.querySelectorAll('.customer-change-alert-item').forEach(button=>button.onclick=async()=>{await supabaseClient.from('app_notifications').update({is_read:true}).eq('id',button.dataset.id);location.href=button.dataset.link||'admin.html?view=orders'});
+ box.querySelectorAll('.customer-change-alert-item').forEach(button=>button.onclick=()=>{void supabaseClient.from('app_notifications').update({is_read:true}).eq('id',button.dataset.id);location.href=button.dataset.link||'admin.html?view=orders'});
  box.querySelector('#readAllCustomerChanges').onclick=async()=>{await supabaseClient.from('app_notifications').update({is_read:true}).in('id',data.map(row=>row.id));loadCustomerOrderChangeAlerts()};
 }
 
@@ -641,7 +644,8 @@ function adminWarehouseOutboundComplete(group, code) {
 function isAdminIPackedWaiting(group) {
   const items = group?.items || [];
   const waitingForSB = ["S", "B"].some(code => items.some(item => getOrderWarehouseCode(item) === code) && !adminWarehouseOutboundComplete(group, code));
-  return group?.status !== "출고완료" && items.some(item => getOrderWarehouseCode(item) === "I") && items.some(item => ["S", "B"].includes(getOrderWarehouseCode(item))) && adminWarehouseOutboundComplete(group, "I") && waitingForSB;
+  const verified = String(group?.pickingStatus || "").includes("검증완료");
+  return group?.status !== "출고완료" && items.some(item => getOrderWarehouseCode(item) === "I") && items.some(item => ["S", "B"].includes(getOrderWarehouseCode(item))) && adminWarehouseOutboundComplete(group, "I") && (waitingForSB || !verified);
 }
 
 function isAdminAllWarehousePacked(group) {

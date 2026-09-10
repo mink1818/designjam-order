@@ -446,6 +446,19 @@
       return soldout>=ordered || item[field]===true;
     });
   }
+  function pickingVerified(group) {
+    return (group?.items || []).some((item) => String(item.picking_status || "").includes("검증완료"));
+  }
+  function allPackedWarehousesComplete(group) {
+    const codes = ["S", "B", "I"].filter((code) =>
+      (group?.items || []).some((item) => warehouseCode(item) === code),
+    );
+    return codes.length > 0 && codes.every((code) => warehouseOutboundComplete(group, code));
+  }
+  function mixedIPackedOrder(group) {
+    const items = group?.items || [];
+    return items.some((item) => warehouseCode(item) === "I") && items.some((item) => ["S", "B"].includes(warehouseCode(item)));
+  }
   function iWaitingFor(group) {
     return ["S", "B"].filter(
       (code) =>
@@ -459,8 +472,37 @@
       (group?.items || []).some((item) => warehouseCode(item) === "I") &&
       (group?.items || []).some((item) => ["S", "B"].includes(warehouseCode(item))) &&
       warehouseOutboundComplete(group, "I") &&
-      iWaitingFor(group).length > 0
+      (iWaitingFor(group).length > 0 || !pickingVerified(group))
     );
+  }
+  async function moveFullyPackedOrderToReady(group) {
+    if (!group || !mixedIPackedOrder(group) || !allPackedWarehousesComplete(group)) return false;
+    if (pickingVerified(group)) return true;
+    const quantitiesComplete = group.items.every(
+      (item) => Number(item.picked_qty || 0) + Number(item.soldout_qty || 0) === Number(item.qty || 0),
+    );
+    if (!quantitiesComplete) {
+      renderWork("S·B·I 포장 확인은 완료됐지만 피킹수량이 남아 있어 출고대기로 이동하지 못했습니다.", "error", false);
+      return false;
+    }
+    const { error } = await supabaseClient.rpc("complete_order_picking", {
+      p_order_number: group.orderNumber,
+      p_device_name: `S·B·I 포장완료 자동검증 · ${currentPicker.name}`,
+    });
+    if (error) {
+      renderWork("출고대기 자동이동 실패: " + error.message, "error", false);
+      return false;
+    }
+    await supabaseClient.rpc("release_order_picking", {
+      p_order_number: group.orderNumber,
+      p_force: false,
+    });
+    group.items.forEach((item) => {
+      item.picking_status = Number(item.soldout_qty || 0) > 0 ? "부분품절 검증완료" : "검증완료";
+      item.picking_session_active = false;
+    });
+    localStorage.setItem("designjam_picking_verified", JSON.stringify({ orderNumber: group.orderNumber, at: Date.now() }));
+    return true;
   }
   function displayItemNumber(item) {
     const code = String(item?.warehouse_code || "")
@@ -1096,9 +1138,14 @@
       return;
     }
     row[field] = Boolean(checked);
-    const allWarehousePacked = ["S", "B", "I"]
-      .filter((warehouse) => active.items.some((item) => warehouseCode(item) === warehouse))
-      .every((warehouse) => warehouseOutboundComplete(active, warehouse));
+    const allWarehousePacked = allPackedWarehousesComplete(active);
+    if (checked && allWarehousePacked && mixedIPackedOrder(active)) {
+      const moved = await moveFullyPackedOrderToReady(active);
+      if (moved) {
+        location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(active.orderNumber)}&refresh=${Date.now()}`);
+        return;
+      }
+    }
     renderList();
     renderWork(
       checked && allWarehousePacked
@@ -1130,9 +1177,14 @@
     buildGroups();
     active = groups.find((group) => group.orderNumber === active.orderNumber) || active;
     renderList();
-    const allWarehousePacked = ["S", "B", "I"]
-      .filter((warehouse) => active.items.some((item) => warehouseCode(item) === warehouse))
-      .every((warehouse) => warehouseOutboundComplete(active, warehouse));
+    const allWarehousePacked = allPackedWarehousesComplete(active);
+    if (next && allWarehousePacked && mixedIPackedOrder(active)) {
+      const moved = await moveFullyPackedOrderToReady(active);
+      if (moved) {
+        location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(active.orderNumber)}&refresh=${Date.now()}`);
+        return;
+      }
+    }
     renderWork(next ? (allWarehousePacked ? "모든 출고지 포장이 완료되어 주문관리의 출고대기로 이동했습니다." : "I 포장완료 대기로 이동했습니다.") : "I 포장완료를 취소했습니다.", "success", false);
   }
   async function setPickingSetting(field, value, message) {
@@ -1619,6 +1671,8 @@
     orders = orderRows;
     setInventory(inventoryRows);
     buildGroups();
+    const alreadyPacked = groups.filter((group) => mixedIPackedOrder(group) && allPackedWarehousesComplete(group) && !pickingVerified(group));
+    for (const group of alreadyPacked) await moveFullyPackedOrderToReady(group);
     const requestedGroup = requested
         ? groups.find((group) => group.orderNumber === requested)
         : null,

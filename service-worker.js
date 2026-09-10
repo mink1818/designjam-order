@@ -1,4 +1,4 @@
-const CACHE_NAME='design-socks-v6-7-12';
+const CACHE_NAME='design-socks-v6-7-14';
 const APP_SHELL=[
   '/offline.html?v=66200',
   '/css/main.css?v=67012',
@@ -7,8 +7,8 @@ const APP_SHELL=[
   '/customer-share-document.html?v=66200',
   '/css/customer-share-document.css?v=66040',
   '/js/customer-share-document.js?v=66200',
-  '/js/pwa.js?v=67012',
-  '/js/version-badge.js?v=67012',
+  '/js/pwa.js?v=67014',
+  '/js/version-badge.js?v=67014',
   '/customer-notes.html?v=66678',
   '/css/customer-notes.css?v=66678',
   '/js/customer-notes.js?v=66678',
@@ -31,7 +31,10 @@ self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
 self.addEventListener('activate',event=>{
-  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  event.waitUntil(Promise.all([
+    caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))),
+    self.registration.navigationPreload?.enable?.()
+  ]).then(()=>self.clients.claim()));
 });
 self.addEventListener('fetch',event=>{
   const req=event.request;
@@ -39,7 +42,14 @@ self.addEventListener('fetch',event=>{
   const url=new URL(req.url);
   if(url.origin!==self.location.origin) return;
   if(req.mode==='navigate'){
-    event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}return res;}).catch(async()=>await caches.match(req)||await caches.match('/offline.html?v=66200')));
+    event.respondWith((async()=>{
+      try{
+        // 서비스워커가 시작되는 동안 브라우저가 HTML 요청을 동시에 시작합니다.
+        const res=(await event.preloadResponse)||await fetch(req,{cache:'no-store'});
+        if(res&&res.ok){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy));}
+        return res;
+      }catch(_){return await caches.match(req)||await caches.match('/offline.html?v=66200');}
+    })());
     return;
   }
   // Vercel Edge Request 절감: 버전이 붙은 JS/CSS/이미지는 cache-first로 제공합니다.

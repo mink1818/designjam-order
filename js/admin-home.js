@@ -125,7 +125,7 @@ async function loadNotifications(){
   if(error){ box.innerHTML='<p class="empty-copy">알림 테이블 설치 후 표시됩니다.</p>'; return; }
   if(!data?.length){ box.innerHTML='<p class="empty-copy">새 알림이 없습니다.</p>'; return; }
   box.innerHTML=data.map(n=>`<button class="v3-notification-item ${n.is_read?'':'unread'}" data-id="${n.id}" data-link="${esc(n.link_url||'')}"><span>${n.is_read?'':'● '}${esc(n.title)}</span><small>${esc(n.message||'')} · ${new Date(n.created_at).toLocaleString('ko-KR')}</small></button>`).join('');
-  box.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',async()=>{ await supabaseClient.from('app_notifications').update({is_read:true}).eq('id',btn.dataset.id); const target=resolveAdminNotificationLink(btn.dataset.link); if(target) location.href=target; else loadNotifications(); }));
+  box.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{ const target=resolveAdminNotificationLink(btn.dataset.link); void supabaseClient.from('app_notifications').update({is_read:true}).eq('id',btn.dataset.id); if(target) location.href=target; else loadNotifications(); }));
 }
 
 function resolveAdminNotificationLink(rawLink){
