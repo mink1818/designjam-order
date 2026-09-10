@@ -504,6 +504,35 @@
     localStorage.setItem("designjam_picking_verified", JSON.stringify({ orderNumber: group.orderNumber, at: Date.now() }));
     return true;
   }
+  async function refreshOrderGroup(orderNumber) {
+    const { data, error } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .eq("order_number", orderNumber)
+      .order("id", { ascending: true });
+    if (error) throw error;
+    orders = orders.filter((row) => row.order_number !== orderNumber).concat(data || []);
+    buildGroups();
+    active = groups.find((group) => group.orderNumber === orderNumber) || null;
+    return active;
+  }
+  async function maybeMoveActiveIPackedOrderToReady() {
+    const orderNumber = active?.orderNumber;
+    if (!orderNumber || !warehouseOutboundComplete(active, "I")) return false;
+    let current;
+    try {
+      // 저장 직후 DB 값을 다시 읽어 여러 작업자가 처리한 B·S 상태까지 합쳐 판단합니다.
+      current = await refreshOrderGroup(orderNumber);
+    } catch (error) {
+      renderWork("출고지 완료상태 재확인 실패: " + error.message, "error", false);
+      return false;
+    }
+    if (!current || !mixedIPackedOrder(current) || !allPackedWarehousesComplete(current)) return false;
+    const moved = await moveFullyPackedOrderToReady(current);
+    if (!moved) return false;
+    location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(orderNumber)}&refresh=${Date.now()}`);
+    return true;
+  }
   function displayItemNumber(item) {
     const code = String(item?.warehouse_code || "")
       .trim()
@@ -895,6 +924,7 @@
     row.picked_qty = picked;
     row.soldout_qty = soldout;
     row.is_soldout = soldout >= Number(row.qty || 0);
+    if (await maybeMoveActiveIPackedOrderToReady()) return true;
     renderList();
     renderWork();
     return true;
@@ -1125,11 +1155,11 @@
     )
       return;
     const field = `${code.toLowerCase()}_outbound_confirmed`,
-      { error } = await supabaseClient
+      { data, error } = await supabaseClient
         .from("orders")
         .update({ [field]: Boolean(checked) })
         .eq("id", row.id)
-        .eq("picking_assigned_to", currentPicker.id);
+        .select("id");
     if (error) {
       renderWork(
         `${code} 출고기록 저장 실패: SQL/V6.5.13-LIVE-PICKING-RESERVATION.sql을 먼저 실행해 주세요. ${error.message}`,
@@ -1137,15 +1167,13 @@
       );
       return;
     }
-    row[field] = Boolean(checked);
-    const allWarehousePacked = allPackedWarehousesComplete(active);
-    if (checked && allWarehousePacked && mixedIPackedOrder(active)) {
-      const moved = await moveFullyPackedOrderToReady(active);
-      if (moved) {
-        location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(active.orderNumber)}&refresh=${Date.now()}`);
-        return;
-      }
+    if (!data?.length) {
+      renderWork(`${code} 출고기록이 저장되지 않았습니다. 새로고침 후 다시 눌러주세요.`, "error", false);
+      return;
     }
+    row[field] = Boolean(checked);
+    if (checked && await maybeMoveActiveIPackedOrderToReady()) return;
+    const allWarehousePacked = allPackedWarehousesComplete(active);
     renderList();
     renderWork(
       checked && allWarehousePacked
@@ -1177,14 +1205,8 @@
     buildGroups();
     active = groups.find((group) => group.orderNumber === active.orderNumber) || active;
     renderList();
+    if (next && await maybeMoveActiveIPackedOrderToReady()) return;
     const allWarehousePacked = allPackedWarehousesComplete(active);
-    if (next && allWarehousePacked && mixedIPackedOrder(active)) {
-      const moved = await moveFullyPackedOrderToReady(active);
-      if (moved) {
-        location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(active.orderNumber)}&refresh=${Date.now()}`);
-        return;
-      }
-    }
     renderWork(next ? (allWarehousePacked ? "모든 출고지 포장이 완료되어 주문관리의 출고대기로 이동했습니다." : "I 포장완료 대기로 이동했습니다.") : "I 포장완료를 취소했습니다.", "success", false);
   }
   async function setPickingSetting(field, value, message) {
