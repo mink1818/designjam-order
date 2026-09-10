@@ -640,7 +640,8 @@ function adminWarehouseOutboundComplete(group, code) {
 
 function isAdminIPackedWaiting(group) {
   const items = group?.items || [];
-  return group?.status !== "출고완료" && items.some(item => getOrderWarehouseCode(item) === "I") && items.some(item => ["S", "B"].includes(getOrderWarehouseCode(item))) && adminWarehouseOutboundComplete(group, "I");
+  const waitingForSB = ["S", "B"].some(code => items.some(item => getOrderWarehouseCode(item) === code) && !adminWarehouseOutboundComplete(group, code));
+  return group?.status !== "출고완료" && items.some(item => getOrderWarehouseCode(item) === "I") && items.some(item => ["S", "B"].includes(getOrderWarehouseCode(item))) && adminWarehouseOutboundComplete(group, "I") && waitingForSB;
 }
 
 function isAdminAllWarehousePacked(group) {
@@ -938,7 +939,7 @@ class="order-detail">
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
   if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
   const targetGroup=(window.__adminRenderedGroups||[]).find(group=>group.orderNumber===orderNumber);
-  // I 포장완료 대기에서 누르는 출고완료 버튼 자체를 B·S 포장까지 끝났다는 최종 확인으로 사용합니다.
+  // I 포장완료 대기는 S·B 포장이 모두 끝나면 출고대기로 자동 분류됩니다.
 
   if (currentStatus === "출고완료") {
     const proceed = confirm(

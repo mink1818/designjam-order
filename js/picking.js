@@ -458,7 +458,8 @@
       group?.status !== "출고완료" &&
       (group?.items || []).some((item) => warehouseCode(item) === "I") &&
       (group?.items || []).some((item) => ["S", "B"].includes(warehouseCode(item))) &&
-      warehouseOutboundComplete(group, "I")
+      warehouseOutboundComplete(group, "I") &&
+      iWaitingFor(group).length > 0
     );
   }
   function displayItemNumber(item) {
@@ -1095,9 +1096,14 @@
       return;
     }
     row[field] = Boolean(checked);
+    const allWarehousePacked = ["S", "B", "I"]
+      .filter((warehouse) => active.items.some((item) => warehouseCode(item) === warehouse))
+      .every((warehouse) => warehouseOutboundComplete(active, warehouse));
     renderList();
     renderWork(
-      `${displayItemNumber(row)} ${code} 출고체크를 ${checked ? "기록" : "해제"}했습니다.`,
+      checked && allWarehousePacked
+        ? "모든 출고지 포장이 완료되었습니다. 주문관리의 출고대기로 이동했습니다."
+        : `${displayItemNumber(row)} ${code} 출고체크를 ${checked ? "기록" : "해제"}했습니다.`,
       "success",
       false,
     );
@@ -1124,7 +1130,10 @@
     buildGroups();
     active = groups.find((group) => group.orderNumber === active.orderNumber) || active;
     renderList();
-    renderWork(next ? "I 포장완료 대기로 이동했습니다." : "I 포장완료를 취소했습니다.", "success", false);
+    const allWarehousePacked = ["S", "B", "I"]
+      .filter((warehouse) => active.items.some((item) => warehouseCode(item) === warehouse))
+      .every((warehouse) => warehouseOutboundComplete(active, warehouse));
+    renderWork(next ? (allWarehousePacked ? "모든 출고지 포장이 완료되어 주문관리의 출고대기로 이동했습니다." : "I 포장완료 대기로 이동했습니다.") : "I 포장완료를 취소했습니다.", "success", false);
   }
   async function setPickingSetting(field, value, message) {
     if (!active) return;
