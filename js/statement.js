@@ -310,7 +310,7 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
       <div class="statement-logistics-column">
         ${statementLogistics.bank?.account_number?`<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(statementLogistics.bank.bank_name||'')} ${escapeHtml(statementLogistics.bank.account_number)}</p><p>예금주: ${escapeHtml(statementLogistics.bank.account_holder||'')}</p></div>`:''}
         <div class="delivery-info"><strong>택배정보</strong><p>택배사: ${escapeHtml(statementLogistics.courier||'-')}</p><p>송장번호: ${escapeHtml(statementLogistics.tracking||'-')}</p></div>
-        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><button type="button" data-statement-action="add-parcel">+ 택배 추가</button></div><div class="statement-parcel-rows"></div></div>
+        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><small>숫자만 입력</small></div><div class="statement-parcel-rows"></div></div>
       </div>
       <section class="statement-summary">
         <div>
@@ -355,23 +355,26 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
   bindStatementExtras();
 }
 
-const STATEMENT_COURIERS=['로젠','한진','CJ','우체국','롯데','경동'];
-function normalizedParcelCounts(){return(statementLogistics.parcelCounts||[]).map(row=>({courier:String(row?.courier||'로젠').trim()||'로젠',qty:Math.max(0,Math.floor(Number(row?.qty||0)))})).filter(row=>row.qty>0)}
+const STATEMENT_FIXED_PARCELS=['로젠','한진','로젠'];
+function fixedStatementParcelCounts(){
+ const saved=Array.isArray(statementLogistics.parcelCounts)?statementLogistics.parcelCounts:[];
+ return STATEMENT_FIXED_PARCELS.map((courier,index)=>({courier,qty:Math.max(0,Math.floor(Number(saved[index]?.qty||0)))}));
+}
+function normalizedParcelCounts(){return fixedStatementParcelCounts()}
 function renderStatementParcelRows(){
  const box=statementArea.querySelector('.statement-parcel-rows');if(!box)return;
- const rows=statementLogistics.parcelCounts?.length?statementLogistics.parcelCounts:[{courier:'로젠',qty:0}];
- box.innerHTML=rows.map((row,index)=>`<div class="statement-parcel-row" data-parcel-index="${index}"><span>${index+1}.</span><select aria-label="택배사">${STATEMENT_COURIERS.map(name=>`<option value="${name}" ${String(row.courier||'')===name?'selected':''}>${name}</option>`).join('')}</select><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${Math.max(0,Math.floor(Number(row.qty||0)))}" aria-label="택배수량"><b>죽</b><button type="button" data-remove-parcel="${index}" aria-label="택배수량 삭제">삭제</button></div>`).join('');
- box.querySelectorAll('select,input').forEach(el=>el.addEventListener('input',collectStatementExtras));box.querySelectorAll('[data-remove-parcel]').forEach(button=>button.onclick=()=>{statementLogistics.parcelCounts.splice(Number(button.dataset.removeParcel),1);renderStatementParcelRows();scheduleStatementSave()});
+ const rows=fixedStatementParcelCounts();statementLogistics.parcelCounts=rows;
+ box.innerHTML=rows.map((row,index)=>`<label class="statement-parcel-row" data-parcel-index="${index}"><span>${index+1}.</span><strong>${row.courier}</strong><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${row.qty}" aria-label="${index+1}번 ${row.courier} 택배수량"><b>죽</b></label>`).join('');
+ box.querySelectorAll('input').forEach(el=>el.addEventListener('input',collectStatementExtras));
 }
 function collectStatementExtras(){
- statementLogistics.parcelCounts=[...statementArea.querySelectorAll('.statement-parcel-row')].map(row=>({courier:row.querySelector('select')?.value||'로젠',qty:Math.max(0,Math.floor(Number(row.querySelector('input')?.value||0)))}));
+ statementLogistics.parcelCounts=[...statementArea.querySelectorAll('.statement-parcel-row')].map((row,index)=>({courier:STATEMENT_FIXED_PARCELS[index],qty:Math.max(0,Math.floor(Number(row.querySelector('input')?.value||0)))}));
  statementLogistics.manualMemo=statementArea.querySelector('.statement-manual-memo [contenteditable]')?.innerText||'';
  statementLogistics.otherAmount=Math.max(0,Number(statementArea.querySelector('.statement-other-amount input')?.value||0));
  const total=statementArea.querySelector('[data-statement-final-total]');if(total)total.textContent=(Number(total.dataset.productTotal||0)+Number(total.dataset.shippingFee||0)+statementLogistics.otherAmount).toLocaleString()+'원';
  scheduleStatementSave();
 }
 function bindStatementExtras(){
- statementArea.querySelector('[data-statement-action="add-parcel"]')?.addEventListener('click',()=>{collectStatementExtras();statementLogistics.parcelCounts.push({courier:'로젠',qty:0});renderStatementParcelRows();scheduleStatementSave()});
  statementArea.querySelector('.statement-manual-memo [contenteditable]')?.addEventListener('input',collectStatementExtras);
  statementArea.querySelector('.statement-other-amount input')?.addEventListener('input',collectStatementExtras);
 }
