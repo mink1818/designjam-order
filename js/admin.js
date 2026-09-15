@@ -1220,7 +1220,26 @@ function updateOrderEditRowTotal(row) {
   if (total) total.value = qty * price;
 }
 
-async function autofillNewOrderItem(row){if(!row?.classList.contains('new-order-edit-row')||row.dataset.entryMode==='manual')return;const input=row.querySelector('.order-edit-number'),parsed=splitWarehouseItemNumber(input?.value),key=inventoryKey(parsed.itemNumber);if(!key)return;const found=adminProductCatalogMap.get(key);if(!found)return;const customerId=row.closest('.order-item-editor')?.dataset.customerId||'';let price=Number(found.price||0);if(customerId){try{const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error){const special=(data||[]).find(x=>inventoryKey(x.item_number)===key);if(special)price=Number(special.price||price)}}catch(_){}}input.value=`${found.warehouse_code||parsed.warehouseCode||''}${found.warehouse_code||parsed.warehouseCode?'-':''}${found.item_number}`;const priceInput=row.querySelector('.order-edit-price');if(priceInput)priceInput.value=price;updateOrderEditRowTotal(row)}
+async function autofillNewOrderItem(row){
+  if(!row?.classList.contains('new-order-edit-row')||row.dataset.entryMode==='manual'||row.dataset.autofillBusy==='1')return;
+  const input=row.querySelector('.order-edit-number'),requested=String(input?.value||'').trim(),parsed=splitWarehouseItemNumber(requested),key=inventoryKey(parsed.itemNumber);if(!key)return;
+  row.dataset.autofillBusy='1';input?.classList.add('field-saving');
+  try{
+    if(!adminProductCatalogMap.size||Date.now()-adminProductCatalogLoadedAt>60000)setAdminProductCatalog(await fetchAdminProductCatalog());
+    if(String(input?.value||'').trim()!==requested)return;
+    const resolution=resolveOrderEditPasteItem(requested);let found=resolution.item;
+    if(!found&&resolution.candidates.length>1)found=await chooseOrderEditPasteItem(requested,resolution.candidates);
+    if(!found){
+      const result=row.closest('.order-item-editor')?.querySelector('.order-edit-paste-result');
+      if(result)result.textContent=resolution.candidates.length>1?'품번 종류 선택을 취소했습니다.':'상품관리에 등록되지 않은 품번입니다: '+requested;
+      return;
+    }
+    const actualKey=inventoryKey(found.item_number),customerId=row.closest('.order-item-editor')?.dataset.customerId||'';let price=Number(found.price||0);
+    if(customerId){try{const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error){const special=(data||[]).find(x=>inventoryKey(x.item_number)===actualKey);if(special)price=Number(special.price||price)}}catch(_){}}
+    const warehouse=String(found.warehouse_code||parsed.warehouseCode||'').toUpperCase();input.value=`${warehouse?warehouse+'-':''}${found.item_number}`;const priceInput=row.querySelector('.order-edit-price');if(priceInput)priceInput.value=price;updateOrderEditRowTotal(row);
+    const result=row.closest('.order-item-editor')?.querySelector('.order-edit-paste-result');if(result)result.textContent=`품번 ${input.value} · 출고지와 단가를 자동 적용했습니다.`;
+  }catch(error){const result=row.closest('.order-item-editor')?.querySelector('.order-edit-paste-result');if(result)result.textContent='품번 자동조회 실패: '+(error?.message||error)}finally{delete row.dataset.autofillBusy;input?.classList.remove('field-saving')}
+}
 function bindOrderEditRow(row) {
   const numberInput=row.querySelector('.order-edit-number');if(numberInput&&!numberInput.dataset.autoPriceBound){numberInput.dataset.autoPriceBound='1';numberInput.addEventListener('change',()=>autofillNewOrderItem(row));numberInput.addEventListener('blur',()=>autofillNewOrderItem(row));}
   row.querySelectorAll(".order-edit-qty,.order-edit-price").forEach(input => input.addEventListener("input", () => updateOrderEditRowTotal(row)));
