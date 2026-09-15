@@ -2598,6 +2598,16 @@ async function submitOrder() {
 
   cart = [];
   clearSavedCart();
+  showCustomerOrderSuccessModal({orderNumber,totalQty,totalPrice,itemCount:orderItemsSorted.length,isRevision:Boolean(revisionContext)});
+}
+
+function showCustomerOrderSuccessModal({orderNumber,totalQty,totalPrice,itemCount,isRevision=false}){
+  document.getElementById('customerOrderSuccessModal')?.remove();
+  const modal=document.createElement('div');modal.id='customerOrderSuccessModal';modal.className='customer-order-success-modal';
+  modal.innerHTML=`<section class="customer-order-success-card" role="dialog" aria-modal="true" aria-labelledby="customerOrderSuccessTitle"><div class="customer-order-success-icon" aria-hidden="true">✓</div><h2 id="customerOrderSuccessTitle">${isRevision?'주문 수정이 완료되었습니다':'주문이 정상적으로 접수되었습니다'}</h2><p class="customer-order-success-assurance">시스템에 안전하게 저장되었습니다.</p><dl><div><dt>주문번호</dt><dd>${escapeHtml(orderNumber)}</dd></div><div><dt>접수시간</dt><dd>${escapeHtml(new Date().toLocaleString('ko-KR'))}</dd></div><div><dt>주문내용</dt><dd>${Number(itemCount).toLocaleString()}품번 · ${Number(totalQty).toLocaleString()}죽</dd></div><div><dt>상품금액</dt><dd>${Number(totalPrice).toLocaleString()}원</dd></div></dl><p class="customer-order-success-help">관리자 확인 전에는 <b>주문접수</b> 상태로 표시됩니다.<br>같은 주문을 다시 접수하지 않아도 됩니다.</p><div class="customer-order-success-actions"><button type="button" data-success-view>접수된 주문 확인</button><button type="button" data-success-close>확인</button></div></section>`;
+  modal.querySelector('[data-success-view]').addEventListener('click',()=>{sessionStorage.setItem('designjam_recent_order_number',orderNumber);location.href='order.html'});
+  modal.querySelector('[data-success-close]').addEventListener('click',()=>{modal.remove();document.body.classList.remove('customer-order-success-open')});
+  document.body.appendChild(modal);document.body.classList.add('customer-order-success-open');modal.querySelector('[data-success-view]')?.focus();
 }
 
 function resetOrder() {

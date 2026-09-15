@@ -11,6 +11,7 @@ let currentOrderUser = null;
 let defaultPaymentAccount = null;
 let customerShareDocumentAllowed = false;
 const CUSTOMER_SESSION_KEY = "designjam_customer_session";
+const RECENT_ORDER_NUMBER = sessionStorage.getItem('designjam_recent_order_number') || '';
 
 completedPeriod?.addEventListener("change", renderMyOrders);
 
@@ -205,7 +206,9 @@ function renderCompactActiveOrder(group) {
   const id = safeOrderId("active", group.orderNumber);
   const pickingStarted = group.items.some(item => Number(item.picked_qty || 0) > 0 || Number(item.soldout_qty || 0) > 0 || item.picking_session_active === true || Boolean(item.picking_started_at) || !["", "대기"].includes(String(item.picking_status || "대기")));
   const editable = group.status !== "출고완료" && !pickingStarted && group.revisionStatus !== '수정완료';
-  return `<article class="completed-order-row active-order-row">
+  const isRecent=RECENT_ORDER_NUMBER===String(group.orderNumber);
+  return `<article class="completed-order-row active-order-row ${isRecent?'recently-submitted-order':''}">
+    ${isRecent?'<div class="recent-order-confirmation">✓ 방금 정상 접수된 주문입니다</div>':''}
     <button class="completed-order-summary" type="button" onclick="toggleOrderDetail('${id}', this)">
       <span><strong>${formatDate(group.createdAt)}</strong><small>${escapeHtml(group.orderNumber)}</small></span>
       <span class="order-status-badge ${group.revisionStatus?'revision':''}">${escapeHtml(group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'수정완료·관리자 확인중':group.status||"주문접수")}</span>
