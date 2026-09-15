@@ -171,13 +171,22 @@ async function reloadSelectedCustomerPrices(){
  }catch(error){if(token!==selectedPriceLoadToken)return false;updateRegisteredPriceStatus(`전용단가 조회 실패: ${error.message}`,true);refreshAllLinePrices();return false;}
 }
 function parsePastedItemLine(line){
- const source=String(line||'').trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*[\)）]\s*$/);
+ const source=normalizePastedItemKindWords(line).trim();if(findItem(source))return{item:source,qty:1};let match=source.match(/^(.+?)\s*[\(（]\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*[\)）]\s*$/);
  if(!match)match=source.match(/^(.+?)\s*(?:[~～〜ㅡᅳ]|[,./:\-]|\s+)\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*$/);
  if(!match)return{item:source.replace(/[,.\/~～〜]+$/,'').trim(),qty:1};
  return{item:match[1].trim(),qty:Math.max(1,Number(match[2]))};
 }
+function normalizePastedItemKindWords(value){
+ let source=String(value||'').normalize('NFKC');
+ const convert=(name,suffix)=>{
+  source=source.replace(new RegExp(`((?:[SBI][-_]?)?\\d+)\\s*(?:${name})(?=\\s|[~～〜ㅡᅳ,./:\\-()（）]|\\d|$)`,'gi'),(_,number)=>number+suffix);
+  source=source.replace(new RegExp(`(?:${name})\\s*((?:[SBI][-_]?)?\\d+)`,'gi'),(_,number)=>number+suffix);
+ };
+ convert('아동(?:용)?(?:\\s*양말)?','A');convert('무지(?:\\s*양말)?','M');convert('라코스테(?:\\s*양말)?|일반(?:\\s*양말)?','');
+ return source.replace(/\s+(?=[AM](?:\s|[~～〜ㅡᅳ,./:\-()（）]|\d|$))/gi,'');
+}
 function parseCompactProxyItems(line){
- const source=String(line||'').normalize('NFKC');if(!/[（(]\s*\d+\s*[)）]/.test(source))return[];
+ const source=normalizePastedItemKindWords(line);if(!/[（(]\s*\d+\s*[)）]/.test(source))return[];
  const pattern=/(?:^|[\s,;|]+)((?:[SBI][-_]?)?\d+[AM]?)(?:\s*[（(]\s*(\d+)\s*(?:죽|족)?\s*[)）])?(?=$|[\s,;|]+)/gi,rows=[];let match;
  while((match=pattern.exec(source))!==null)rows.push({item:match[1],qty:Math.max(1,Math.floor(Number(match[2])||1))});
  return rows;
@@ -213,7 +222,7 @@ function smartPersonSection(text,label,nextLabel=''){
 }
 function exactProxyRegistered(value){const key=priceKey(value);return items.find(row=>priceKey(row.item_number)===key)||null}
 function smartProxyItems(text){
- let orderText=String(text||'');const receiverIndex=orderText.search(/(?:받는\s*사람|받는\s*분|수령인|수취인|배송받는\s*분)/i);if(receiverIndex>=0)orderText=orderText.slice(0,receiverIndex);orderText=orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g,' ');
+ let orderText=normalizePastedItemKindWords(text);const receiverIndex=orderText.search(/(?:받는\s*사람|받는\s*분|수령인|수취인|배송받는\s*분)/i);if(receiverIndex>=0)orderText=orderText.slice(0,receiverIndex);orderText=orderText.replace(/0\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g,' ');
  const tokens=orderText.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*\d+\s*(?:죽|족)?)?/gi)||[],out=[];
  tokens.forEach(raw=>{let token=raw.trim().replace(/\s*(?:죽|족)$/i,''),qty=1;const exact=exactProxyRegistered(token);if(!exact){const quantity=token.match(/^(.+?)\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*(\d+)$/i);if(quantity){token=quantity[1].trim();qty=Math.max(1,Number(quantity[2]))}}const range=expandPastedItemRange(token);if(range.length)range.forEach(item=>out.push({item,qty}));else if(/^(?:[SBI][-_]?)?\d+[AM]?$/i.test(normalizeItem(token)))out.push({item:token,qty})});return out;
 }

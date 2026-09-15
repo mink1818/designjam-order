@@ -28,7 +28,8 @@ let currentStatementOrderNumber = "거래명세서";
 let currentStatementCustomerName = "거래처";
 let currentStatementCustomerId = null;
 const statementParams = new URLSearchParams(location.search);
-let statementLogistics = { bank:null, courier:"", tracking:"" };
+let statementLogistics = { bank:null, courier:"", tracking:"", parcelCounts:[], manualMemo:"", otherAmount:0 };
+let statementSaveTimer = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -158,8 +159,8 @@ async function loadStatement() {
   currentStatementCustomerId = data[0].customer_id || null;
   try {
     const account = data[0].payment_account_number ? {bank_name:data[0].payment_bank_name,account_number:data[0].payment_account_number,account_holder:data[0].payment_account_holder} : (await supabaseClient.from("payment_accounts").select("bank_name,account_number,account_holder").eq("is_default",true).eq("is_active",true).maybeSingle()).data;
-    statementLogistics={bank:account||null,courier:data[0].courier||"",tracking:data[0].tracking_number||""};
-  } catch (_) { statementLogistics={bank:null,courier:data[0].courier||"",tracking:data[0].tracking_number||""}; }
+    statementLogistics={bank:account||null,courier:data[0].courier||"",tracking:data[0].tracking_number||"",parcelCounts:Array.isArray(data[0].statement_parcel_counts)?data[0].statement_parcel_counts:[],manualMemo:data[0].statement_manual_memo||"",otherAmount:Math.max(0,Number(data[0].other_amount||0))};
+  } catch (_) { statementLogistics={bank:null,courier:data[0].courier||"",tracking:data[0].tracking_number||"",parcelCounts:Array.isArray(data[0].statement_parcel_counts)?data[0].statement_parcel_counts:[],manualMemo:data[0].statement_manual_memo||"",otherAmount:Math.max(0,Number(data[0].other_amount||0))}; }
   let productGroups = [];
   try {
     const result = await supabaseClient.from("product_groups").select("title,item_numbers");
@@ -195,8 +196,8 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
     ? Math.max(0, Number(savedShippingRow.shipping_fee || 0))
     : 4000;
 
-  const finalTotal =
-    productTotal + shippingFee;
+  const otherAmount = Math.max(0, Number(statementLogistics.otherAmount || 0));
+  const finalTotal = productTotal + shippingFee + otherAmount;
 
   const totalQty = items.reduce((sum, item) => {
     const orderedQty = Number(item.qty || 0);
@@ -309,6 +310,7 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
       <div class="statement-logistics-column">
         ${statementLogistics.bank?.account_number?`<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(statementLogistics.bank.bank_name||'')} ${escapeHtml(statementLogistics.bank.account_number)}</p><p>예금주: ${escapeHtml(statementLogistics.bank.account_holder||'')}</p></div>`:''}
         <div class="delivery-info"><strong>택배정보</strong><p>택배사: ${escapeHtml(statementLogistics.courier||'-')}</p><p>송장번호: ${escapeHtml(statementLogistics.tracking||'-')}</p></div>
+        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><button type="button" data-statement-action="add-parcel">+ 택배 추가</button></div><div class="statement-parcel-rows"></div></div>
       </div>
       <section class="statement-summary">
         <div>
@@ -326,16 +328,22 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
           <strong>${shippingFee.toLocaleString()}원</strong>
         </div>
 
+        <div>
+          <span>기타금액</span>
+          <label class="statement-other-amount"><input type="number" inputmode="numeric" min="0" step="100" value="${otherAmount}" aria-label="기타금액">원</label>
+        </div>
+
         <div class="final-row">
           <span>최종금액</span>
-          <strong>${finalTotal.toLocaleString()}원</strong>
+          <strong data-statement-final-total data-product-total="${productTotal}" data-shipping-fee="${shippingFee}">${finalTotal.toLocaleString()}원</strong>
         </div>
       </section>
     </section>
 
     <section class="statement-manual-memo">
       <strong>수기메모</strong>
-      <div contenteditable="true" role="textbox" aria-label="수기메모" data-placeholder="거래명세서에 추가할 내용을 직접 입력하세요."></div>
+      <div contenteditable="true" role="textbox" aria-label="수기메모" data-placeholder="거래명세서에 추가할 내용을 직접 입력하세요.">${escapeHtml(statementLogistics.manualMemo||'')}</div>
+      <small class="statement-save-status" aria-live="polite">자동 저장됨</small>
     </section>
 
     <footer class="statement-footer">
@@ -343,6 +351,34 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
       <h2 data-profile-field="footer_name">${escapeHtml(footerName)}</h2>
     </footer>
   `;
+  renderStatementParcelRows();
+  bindStatementExtras();
+}
+
+const STATEMENT_COURIERS=['로젠','한진','CJ','우체국','롯데','경동'];
+function normalizedParcelCounts(){return(statementLogistics.parcelCounts||[]).map(row=>({courier:String(row?.courier||'로젠').trim()||'로젠',qty:Math.max(0,Math.floor(Number(row?.qty||0)))})).filter(row=>row.qty>0)}
+function renderStatementParcelRows(){
+ const box=statementArea.querySelector('.statement-parcel-rows');if(!box)return;
+ const rows=statementLogistics.parcelCounts?.length?statementLogistics.parcelCounts:[{courier:'로젠',qty:0}];
+ box.innerHTML=rows.map((row,index)=>`<div class="statement-parcel-row" data-parcel-index="${index}"><span>${index+1}.</span><select aria-label="택배사">${STATEMENT_COURIERS.map(name=>`<option value="${name}" ${String(row.courier||'')===name?'selected':''}>${name}</option>`).join('')}</select><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${Math.max(0,Math.floor(Number(row.qty||0)))}" aria-label="택배수량"><b>죽</b><button type="button" data-remove-parcel="${index}" aria-label="택배수량 삭제">삭제</button></div>`).join('');
+ box.querySelectorAll('select,input').forEach(el=>el.addEventListener('input',collectStatementExtras));box.querySelectorAll('[data-remove-parcel]').forEach(button=>button.onclick=()=>{statementLogistics.parcelCounts.splice(Number(button.dataset.removeParcel),1);renderStatementParcelRows();scheduleStatementSave()});
+}
+function collectStatementExtras(){
+ statementLogistics.parcelCounts=[...statementArea.querySelectorAll('.statement-parcel-row')].map(row=>({courier:row.querySelector('select')?.value||'로젠',qty:Math.max(0,Math.floor(Number(row.querySelector('input')?.value||0)))}));
+ statementLogistics.manualMemo=statementArea.querySelector('.statement-manual-memo [contenteditable]')?.innerText||'';
+ statementLogistics.otherAmount=Math.max(0,Number(statementArea.querySelector('.statement-other-amount input')?.value||0));
+ const total=statementArea.querySelector('[data-statement-final-total]');if(total)total.textContent=(Number(total.dataset.productTotal||0)+Number(total.dataset.shippingFee||0)+statementLogistics.otherAmount).toLocaleString()+'원';
+ scheduleStatementSave();
+}
+function bindStatementExtras(){
+ statementArea.querySelector('[data-statement-action="add-parcel"]')?.addEventListener('click',()=>{collectStatementExtras();statementLogistics.parcelCounts.push({courier:'로젠',qty:0});renderStatementParcelRows();scheduleStatementSave()});
+ statementArea.querySelector('.statement-manual-memo [contenteditable]')?.addEventListener('input',collectStatementExtras);
+ statementArea.querySelector('.statement-other-amount input')?.addEventListener('input',collectStatementExtras);
+}
+function scheduleStatementSave(){const status=statementArea.querySelector('.statement-save-status');if(status)status.textContent='저장 중...';clearTimeout(statementSaveTimer);statementSaveTimer=setTimeout(saveStatementExtras,120)}
+async function saveStatementExtras(){
+ const status=statementArea.querySelector('.statement-save-status');
+ try{const {error}=await supabaseClient.rpc('save_order_statement_extras',{p_order_number:currentStatementOrderNumber,p_manual_memo:String(statementLogistics.manualMemo||''),p_parcel_counts:normalizedParcelCounts(),p_other_amount:Math.max(0,Number(statementLogistics.otherAmount||0))});if(error)throw error;if(status)status.textContent='자동 저장됨'}catch(error){console.error(error);if(status)status.textContent='저장 실패 · SQL 적용 여부를 확인해주세요.'}
 }
 
 function printStatement() {

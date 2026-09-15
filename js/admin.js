@@ -1152,13 +1152,22 @@ function expandOrderEditPasteRange(value){
   for(let number=start;number<=end;number++)rows.push(`${startPrefix}${String(number).padStart(width,'0')}${startSuffix}`);return rows;
 }
 function parseOrderEditPaste(text){
-  const rows=[];String(text||'').normalize('NFKC').split(/\r?\n/).forEach(rawLine=>{const line=rawLine.trim();if(!line)return;
+  const rows=[];normalizeOrderEditItemKindWords(text).split(/\r?\n/).forEach(rawLine=>{const line=rawLine.trim();if(!line)return;
     const compact=[],pattern=/(?:^|[\s,;|]+)((?:[SBI][-_]?)?\d+[AM]?)[\s]*[（(][\s]*(\d+)[\s]*(?:죽|족)?[)）](?=$|[\s,;|]+)/gi;let match;while((match=pattern.exec(line))!==null)compact.push({item:match[1],qty:Math.max(1,Math.floor(Number(match[2])||1))});if(compact.length){rows.push(...compact);return;}
     const range=expandOrderEditPasteRange(line);if(range.length){range.forEach(item=>rows.push({item,qty:1}));return;}
-    const single=line.match(/^\s*((?:[SBI][-_]?)?\d+[AM]?)\s*(?:[-:/.xX×*=]|수량\s*[:：]?|\s+)\s*(\d+)\s*(?:죽|족)?\s*$/i);if(single){rows.push({item:single[1],qty:Math.max(1,Math.floor(Number(single[2])||1))});return;}
+    const single=line.match(/^\s*((?:[SBI][-_]?)?\d+[AM]?)\s*(?:[-:/.xX×*=~～〜ㅡᅳ]|수량\s*[:：]?|\s+)\s*(\d+)\s*(?:죽|족)?(?:씩)?\s*$/i);if(single){rows.push({item:single[1],qty:Math.max(1,Math.floor(Number(single[2])||1))});return;}
     const tokens=line.match(/(?:[SBI][-_]?)?\d+[AM]?(?:[~～](?:[SBI][-_]?)?\d+[AM]?)?(?:\s*(?:죽|족))?(?:\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*\d+\s*(?:죽|족)?)?/gi)||[];
     tokens.forEach(raw=>{let token=raw.trim().replace(/\s*(?:죽|족)$/i,''),qty=1;const quantity=token.match(/^(.+?)\s*(?:[-:/.xX×*=]|수량\s*[:：]?)\s*(\d+)$/i);if(quantity){token=quantity[1].trim();qty=Math.max(1,Math.floor(Number(quantity[2])||1))}const expanded=expandOrderEditPasteRange(token);if(expanded.length)expanded.forEach(item=>rows.push({item,qty}));else rows.push({item:token,qty})});
   });const merged=new Map();rows.forEach(row=>{const key=inventoryKey(row.item);if(!key)return;const current=merged.get(key)||{item:row.item,qty:0};current.qty+=Number(row.qty||1);merged.set(key,current)});return[...merged.values()];
+}
+function normalizeOrderEditItemKindWords(value){
+ let source=String(value||'').normalize('NFKC');
+ const convert=(name,suffix)=>{
+  source=source.replace(new RegExp(`((?:[SBI][-_]?)?\\d+)\\s*(?:${name})(?=\\s|[~～〜ㅡᅳ,./:\\-()（）]|\\d|$)`,'gi'),(_,number)=>number+suffix);
+  source=source.replace(new RegExp(`(?:${name})\\s*((?:[SBI][-_]?)?\\d+)`,'gi'),(_,number)=>number+suffix);
+ };
+ convert('아동(?:용)?(?:\\s*양말)?','A');convert('무지(?:\\s*양말)?','M');convert('라코스테(?:\\s*양말)?|일반(?:\\s*양말)?','');
+ return source.replace(/\s+(?=[AM](?:\s|[~～〜ㅡᅳ,./:\-()（）]|\d|$))/gi,'');
 }
 function analyzeOrderEditPaste(index){
   const input=document.getElementById(`order-edit-paste-${index}`),preview=document.getElementById(`order-edit-paste-preview-${index}`),apply=document.getElementById(`order-edit-paste-apply-${index}`),result=document.getElementById(`order-edit-paste-result-${index}`);if(!input||!preview||!apply)return;
