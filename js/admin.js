@@ -135,6 +135,7 @@ let adminInventoryAvailable = false;
 let adminCustomerIdentityMap = new Map();
 let adminCustomerMetaMap = new Map();
 let adminProductCatalogMap = new Map();
+let adminProductCatalogLoadedAt = 0;
 let adminOrderMetaMap = new Map();
 
 let adminAuxCache={at:0,key:'',inventory:null,product:null,customers:null,customerMeta:null,orderMeta:null};
@@ -152,9 +153,9 @@ async function fetchCustomerIdentitySnapshot(ids=[]){
 
 async function fetchAdminCustomerMetadata(ids=[]){const unique=[...new Set((ids||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag').in('customer_id',unique);if(error){console.warn('V6.6.20 고객표시 조회 생략:',error.message);return[]}return data||[]}
 async function fetchAdminOrderMetadata(nums=[]){const unique=[...new Set((nums||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('order_admin_metadata').select('order_number,admin_tag,show_tag,customer_memo_acknowledged_at,customer_memo_acknowledged_by,customer_memo_acknowledged_by_name').in('order_number',unique);if(error){console.warn('V6.6.20 주문표시 조회 생략:',error.message);return[]}return data||[]}
-async function fetchAdminProductCatalog(){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,price,warehouse_code');if(error){console.warn('상품단가표 조회 실패:',error.message);return[]}return data||[]}
+async function fetchAdminProductCatalog(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,price,warehouse_code').range(from,from+999);if(error){console.warn('상품단가표 조회 실패:',error.message);throw error}rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
 function catalogNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const p=JSON.parse(value);if(Array.isArray(p))return p.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
-function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>adminProductCatalogMap.set(inventoryKey(n),{item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()})))}
+function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>adminProductCatalogMap.set(inventoryKey(n),{item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()})));adminProductCatalogLoadedAt=Date.now()}
 function inventoryKey(value) {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -1202,13 +1203,13 @@ function chooseOrderEditPasteItem(requested,candidates){
 async function applyOrderEditPaste(index){
   const editor=document.getElementById(`order-item-editor-${index}`),preview=document.getElementById(`order-edit-paste-preview-${index}`),result=document.getElementById(`order-edit-paste-result-${index}`),apply=document.getElementById(`order-edit-paste-apply-${index}`);if(!editor||!preview)return;
   const analysis=orderEditPasteAnalyses.get(index)||[],selected=analysis.filter((_,rowIndex)=>preview.querySelector(`[data-order-paste-row="${rowIndex}"]`)?.checked);if(!selected.length)return alert('적용할 품번을 선택해주세요.');if(apply){apply.disabled=true;apply.textContent='적용 중...'}
-  try{if(!adminProductCatalogMap.size)setAdminProductCatalog(await fetchAdminProductCatalog());const customerId=editor.dataset.customerId||'',specialPrices=new Map();if(customerId){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error)(data||[]).forEach(row=>specialPrices.set(inventoryKey(row.item_number),Number(row.price||0)))}
-    const existing=new Map();editor.querySelectorAll('[data-order-edit-row]').forEach(row=>existing.set(orderEditRowKey(row.querySelector('.order-edit-number')?.value),row));let added=0,merged=0,unregistered=0,cancelled=0;
+  try{if(!adminProductCatalogMap.size||Date.now()-adminProductCatalogLoadedAt>60000)setAdminProductCatalog(await fetchAdminProductCatalog());const customerId=editor.dataset.customerId||'',specialPrices=new Map();if(customerId){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error)(data||[]).forEach(row=>specialPrices.set(inventoryKey(row.item_number),Number(row.price||0)))}
+    const existing=new Map();editor.querySelectorAll('[data-order-edit-row]').forEach(row=>existing.set(orderEditRowKey(row.querySelector('.order-edit-number')?.value),row));let added=0,merged=0,cancelled=0;const unregisteredItems=[];
     for(const pasted of selected){const parsed=splitWarehouseItemNumber(pasted.item),resolution=resolveOrderEditPasteItem(pasted.item);let catalog=resolution.item;if(!catalog&&resolution.candidates.length>1)catalog=await chooseOrderEditPasteItem(pasted.item,resolution.candidates);if(!catalog&&resolution.candidates.length>1){cancelled++;continue;}catalog=catalog||adminProductCatalogMap.get(inventoryKey(parsed.itemNumber))||adminProductCatalogMap.get(inventoryKey(pasted.item));const itemNumber=String(catalog?.item_number||parsed.itemNumber||pasted.item).trim(),warehouse=String(catalog?.warehouse_code||parsed.warehouseCode||'').toUpperCase(),key=`${warehouse}:${inventoryKey(itemNumber)}`,oldRow=existing.get(key);
       if(oldRow){const qtyInput=oldRow.querySelector('.order-edit-qty');qtyInput.value=Math.max(1,Number(qtyInput.value||0))+Number(pasted.qty||1);updateOrderEditRowTotal(oldRow);merged++;continue;}
-      const price=Number(specialPrices.get(inventoryKey(itemNumber))??catalog?.price??0);addOrderItemEditRow(index,catalog?'auto':'manual',{number:`${warehouse?warehouse+'-':''}${itemNumber}`,qty:Number(pasted.qty||1),price,focus:false});const newRow=editor.querySelector('.order-edit-rows')?.lastElementChild;if(newRow)existing.set(key,newRow);added++;if(!catalog)unregistered++;
+      const price=Number(specialPrices.get(inventoryKey(itemNumber))??catalog?.price??0);addOrderItemEditRow(index,catalog?'auto':'manual',{number:`${warehouse?warehouse+'-':''}${itemNumber}`,qty:Number(pasted.qty||1),price,focus:false});const newRow=editor.querySelector('.order-edit-rows')?.lastElementChild;if(newRow)existing.set(key,newRow);added++;if(!catalog)unregisteredItems.push(String(pasted.item));
     }
-    const input=document.getElementById(`order-edit-paste-${index}`);if(input)input.value='';preview.hidden=true;orderEditPasteAnalyses.delete(index);if(result)result.textContent=`적용 완료 · 새 품번 ${added}개${merged?` · 기존 품번 수량합산 ${merged}개`:''}${cancelled?` · 선택취소 ${cancelled}개`:''}${unregistered?` · 미등록 확인필요 ${unregistered}개`:''} · 아래 목록 확인 후 주문 품목 저장을 누르세요.`;
+    const input=document.getElementById(`order-edit-paste-${index}`);if(input)input.value='';preview.hidden=true;orderEditPasteAnalyses.delete(index);if(result)result.textContent=`적용 완료 · 새 품번 ${added}개${merged?` · 기존 품번 수량합산 ${merged}개`:''}${cancelled?` · 선택취소 ${cancelled}개`:''}${unregisteredItems.length?` · 상품관리 미등록: ${[...new Set(unregisteredItems)].join(', ')}`:''} · 아래 목록 확인 후 주문 품목 저장을 누르세요.`;
   }catch(error){if(result)result.textContent=`붙여넣기 적용 실패: ${error?.message||error}`;alert('붙여넣기 적용 중 오류가 발생했습니다. 다시 시도해주세요.')}finally{if(apply){apply.disabled=false;apply.textContent='선택 품번 적용';apply.hidden=true}}
 }
 
