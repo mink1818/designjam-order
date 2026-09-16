@@ -2972,7 +2972,7 @@ button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filt
  }
  body.printing-completed-orders #adminOrders .order-detail{display:none!important}
  body.printing-completed-orders #adminOrders .compact-order-header{
-  display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(125px,.72fr) minmax(115px,auto)!important;
+  display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(110px,.62fr) minmax(155px,auto)!important;
   grid-template-rows:auto!important;align-items:center!important;gap:6px!important;
   min-height:0!important;height:auto!important;padding:4px 7px!important;overflow:hidden!important;
  }
@@ -3001,7 +3001,10 @@ button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filt
  body.printing-completed-orders .order-status-stack .order-status-pill{
   width:auto!important;min-width:0!important;min-height:0!important;padding:2px 4px!important;font-size:7.5px!important;line-height:1!important;
  }
- body.printing-completed-orders .desktop-payment-check{min-width:0!important;padding:2px 4px!important;font-size:7.5px!important;line-height:1!important}
+ body.printing-completed-orders .desktop-payment-check{
+  display:inline-flex!important;width:auto!important;min-width:0!important;min-height:0!important;
+  padding:2px 4px!important;font-size:7.5px!important;line-height:1!important;white-space:nowrap!important;
+ }
  body.printing-completed-orders .desktop-payment-check input{width:9px!important;height:9px!important;margin:0 2px 0 0!important}
  body.printing-completed-orders .desktop-payment-check span,body.printing-completed-orders .desktop-payment-check small{font-size:7px!important}
  body.printing-completed-orders .order-expand-icon,body.printing-completed-orders .admin-note-badge,body.printing-completed-orders .order-card-edit-button{display:none!important}
