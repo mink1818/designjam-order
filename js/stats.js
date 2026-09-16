@@ -24,6 +24,18 @@ const parseDateInput=value=>{if(!value)return null;const [y,m,d]=value.split('-'
 const endOfDay=d=>{const x=new Date(d);x.setHours(23,59,59,999);return x;};
 const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
 
+function printWarehouseCategoryAnalysis(){
+  const period=$('statsPeriodLabel')?.textContent?.trim()||'';
+  const printPeriod=$('warehouseCategoryPrintPeriod');
+  if(printPeriod)printPeriod.textContent=period;
+  document.body.classList.add('printing-warehouse-category');
+  const restore=()=>document.body.classList.remove('printing-warehouse-category');
+  window.addEventListener('afterprint',restore,{once:true});
+  requestAnimationFrame(()=>setTimeout(()=>window.print(),60));
+}
+
+document.addEventListener('DOMContentLoaded',()=>$('printWarehouseCategory')?.addEventListener('click',printWarehouseCategoryAnalysis));
+
 async function guardAdmin(){
   const {data:{user}}=await supabaseClient.auth.getUser();
   const stored=sessionStorage.getItem(ADMIN_SESSION_KEY)||localStorage.getItem(ADMIN_SESSION_KEY);
@@ -80,8 +92,8 @@ function statsGroupItemNumbers(value){
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
   const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult,paymentsResult,customersResult]=await Promise.all([
-    fetchAllStatsRows('orders','created_at',true),
-    supabaseClient.from('product_groups').select('*'),
+    fetchAllStatsRows('orders','created_at',true,'id,order_number,customer_id,customer_name,created_at,shipped_at,completed_at,picking_verified_at,status,shipping_fee,item_number,qty,price,is_soldout,soldout_qty,warehouse_code,memo'),
+    supabaseClient.from('product_groups').select('item_numbers,category_id,main_category_id,main_category_name,main_category,category_name,category,warehouse_code'),
     supabaseClient.from('product_categories').select('id,name,main_category_id'),
     supabaseClient.from('product_main_categories').select('id,name'),
     fetchAllStatsRows('deleted_order_history','deleted_at',true),

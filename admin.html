@@ -14,7 +14,7 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/admin.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=6310">
 <title>디자인 삭스 주문관리 (관리자)</title>
-  <link rel="stylesheet" href="css/admin.css?v=67012">
+  <link rel="stylesheet" href="css/admin.css?v=67023">
 
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,7 +24,7 @@
   <link rel="icon" href="icons/admin-192.png?v=66040">
   <link rel="apple-touch-icon" href="icons/admin-180.png?v=66040">
 </head>
-<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.7.3">
+<body class="auth-pending login-stable" data-session-page="admin" data-pwa-app="admin" data-app-version="6.7.23">
 
 <header>
   <h1>🧦 디자인 삭스 관리자</h1>
@@ -87,19 +87,28 @@
 
   <div class="completed-toolbar">
     <label for="adminCompletedPeriod">출고완료 보관기간</label>
-    <select id="adminCompletedPeriod" onchange="loadOrders()">
+    <select id="adminCompletedPeriod">
       <option value="today">당일 출고완료</option>
       <option value="30">최근 30일</option>
       <option value="90">최근 3개월</option>
       <option value="180">최근 6개월</option>
       <option value="365">최근 1년</option>
       <option value="all">전체 기간</option>
+      <option value="custom">날짜 직접 선택</option>
     </select>
+    <div id="adminCompletedDateRange" class="completed-date-range" hidden>
+      <label for="adminCompletedStart">시작일</label>
+      <input id="adminCompletedStart" type="date" aria-label="출고완료 시작일">
+      <span>~</span>
+      <label for="adminCompletedEnd">종료일</label>
+      <input id="adminCompletedEnd" type="date" aria-label="출고완료 종료일">
+    </div>
     <label for="adminCompletedSort">출고완료 정렬</label>
     <select id="adminCompletedSort" onchange="loadOrders()">
       <option value="shipped-desc">최근 출고순</option>
       <option value="shipped-asc">오래된 출고순</option>
     </select>
+    <button id="adminCompletedPrint" class="completed-print-btn" type="button">🖨 출고완료 목록 인쇄</button>
     <span>출고완료 시간 기준으로 조회·정렬합니다.</span>
   </div>
 
@@ -111,13 +120,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/admin-config.js?v=66040"></script>
-<script src="js/admin-data.js?v=67008"></script>
+<script src="js/admin-data.js?v=67023"></script>
 <script src="js/admin-ui.js?v=66040"></script>
-<script src="js/admin.js?v=67022"></script>
+<script src="js/admin.js?v=67023"></script>
 
-<script src="js/pwa.js?v=67022"></script>
-<script src="js/admin-page-transition.js?v=67022"></script>
-<script src="js/version-badge.js?v=67022"></script>
+<script src="js/pwa.js?v=67023"></script>
+<script src="js/admin-page-transition.js?v=67023"></script>
+<script src="js/version-badge.js?v=67023"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
 <script src="js/admin-new-order-alert.js?v=67000"></script></body>
 </html>

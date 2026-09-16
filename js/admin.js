@@ -105,6 +105,10 @@ const requestedCustomerId = adminUrlParams.get("customer") || "";
 if (adminSearch && adminUrlParams.get("search")) adminSearch.value = adminUrlParams.get("search");
 const adminCompletedPeriod = document.getElementById("adminCompletedPeriod");
 if (adminCompletedPeriod && adminUrlParams.get("period")) adminCompletedPeriod.value = adminUrlParams.get("period");
+const adminCompletedStart = document.getElementById("adminCompletedStart");
+const adminCompletedEnd = document.getElementById("adminCompletedEnd");
+const adminCompletedDateRange = document.getElementById("adminCompletedDateRange");
+const adminCompletedPrint = document.getElementById("adminCompletedPrint");
 const adminCompletedSort = document.getElementById("adminCompletedSort");
 if (adminCompletedSort && adminUrlParams.get("sort")) adminCompletedSort.value = adminUrlParams.get("sort");
 const adminActiveSort = document.getElementById("adminActiveSort");
@@ -198,8 +202,7 @@ function setAdminFilter(status) {
   adminFilter = status;
   adminPage = 1;
   syncAdminFilterTabs();
-  // 피킹 화면에서 방금 변경된 포장·검증 상태가 2분 캐시에 가려지지 않도록 탭 클릭 시 최신 주문을 조회합니다.
-  window.invalidateAdminOrderCache?.();
+  // 탭 전환은 이미 받은 캐시를 즉시 사용합니다. 최신 서버값은 새로고침/실시간 갱신에서 반영합니다.
   loadOrders();
 }
 
@@ -209,10 +212,50 @@ function syncAdminFilterTabs() {
   document.getElementById(map[adminFilter])?.classList.add("active");
   const toolbar = document.querySelector(".completed-toolbar");
   if (toolbar) toolbar.hidden = adminFilter !== "출고완료" && adminFilter !== "전체";
+  syncCompletedDateControls();
   const activeSortVisible = ["주문접수", "출고대기", "I포장완료대기"].includes(adminFilter);
   if (adminActiveSort) adminActiveSort.hidden = !activeSortVisible;
   const activeSortLabel = document.getElementById("adminActiveSortLabel");
   if (activeSortLabel) activeSortLabel.hidden = !activeSortVisible;
+}
+
+function localDateInputValue(date = new Date()) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function syncCompletedDateControls() {
+  if (!adminCompletedDateRange) return;
+  const custom = adminCompletedPeriod?.value === "custom";
+  adminCompletedDateRange.hidden = !custom;
+  if (custom) {
+    const today = localDateInputValue();
+    if (adminCompletedStart && !adminCompletedStart.value) adminCompletedStart.value = today;
+    if (adminCompletedEnd && !adminCompletedEnd.value) adminCompletedEnd.value = today;
+  }
+}
+
+adminCompletedPeriod?.addEventListener("change", () => { adminPage = 1; syncCompletedDateControls(); loadOrders(); });
+adminCompletedStart?.addEventListener("change", () => { adminPage = 1; loadOrders(); });
+adminCompletedEnd?.addEventListener("change", () => { adminPage = 1; loadOrders(); });
+adminCompletedPrint?.addEventListener("click", printCompletedOrderList);
+
+function printCompletedOrderList() {
+  const groups = (window.__adminFilteredGroups || []).filter(group => group.status === "출고완료");
+  if (!groups.length) return alert("인쇄할 출고완료 주문이 없습니다.");
+  const previousPage = adminPage;
+  document.body.classList.add("printing-completed-orders");
+  renderOrderCards(groups);
+  document.querySelectorAll("#adminOrders .order-detail").forEach(detail => { detail.hidden = false; });
+  const restore = () => {
+    document.body.classList.remove("printing-completed-orders");
+    adminPage = previousPage;
+    const totalPages = Math.max(1, Math.ceil(groups.length / ADMIN_PAGE_SIZE));
+    renderOrderCards(groups.slice((adminPage - 1) * ADMIN_PAGE_SIZE, adminPage * ADMIN_PAGE_SIZE));
+    renderAdminPagination(totalPages);
+  };
+  window.addEventListener("afterprint", restore, { once: true });
+  requestAnimationFrame(() => setTimeout(() => window.print(), 60));
 }
 
 function setAdminPage(page) {
@@ -442,6 +485,8 @@ try {
       return 0;
     });
 
+  window.__adminFilteredGroups = filteredGroups;
+
   const totalPages = Math.max(1, Math.ceil(filteredGroups.length / ADMIN_PAGE_SIZE));
   if (adminPage > totalPages) adminPage = totalPages;
   const pageGroups = filteredGroups.slice((adminPage - 1) * ADMIN_PAGE_SIZE, adminPage * ADMIN_PAGE_SIZE);
@@ -484,6 +529,14 @@ function isWithinCompletedPeriod(completedAt) {
 
   const completed = new Date(completedAt);
   if (Number.isNaN(completed.getTime())) return true;
+
+  if (value === "custom") {
+    const start = adminCompletedStart?.value ? new Date(`${adminCompletedStart.value}T00:00:00`) : null;
+    const end = adminCompletedEnd?.value ? new Date(`${adminCompletedEnd.value}T23:59:59.999`) : null;
+    if (start && !Number.isNaN(start.getTime()) && completed < start) return false;
+    if (end && !Number.isNaN(end.getTime()) && completed > end) return false;
+    return true;
+  }
 
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);

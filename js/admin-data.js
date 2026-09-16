@@ -4,6 +4,7 @@ let adminActiveOrdersCache = null;
 let adminActiveOrdersCacheAt = 0;
 let adminTodayOrdersCache = null;
 let adminTodayOrdersCacheAt = 0;
+const adminCompletedOrdersCache = new Map();
 const ADMIN_ACTIVE_CACHE_MS = 120000;
 
 async function fetchAllOrdersForAdmin() {
@@ -38,7 +39,32 @@ async function fetchOrders() {
     }
     adminTodayOrdersCache=rows;adminTodayOrdersCacheAt=now;return rows;
   }
-  const needsHistory = Boolean(keyword) || requestedPaymentFilter==='unpaid' || adminFilter==='전체' || adminFilter==='출고완료';
+  if(adminFilter==='출고완료'&&!keyword&&requestedPaymentFilter!=='unpaid'){
+    const period=String(adminCompletedPeriod?.value||'today');
+    const startValue=String(adminCompletedStart?.value||'');
+    const endValue=String(adminCompletedEnd?.value||'');
+    const cacheKey=`${period}:${startValue}:${endValue}`;
+    const cached=adminCompletedOrdersCache.get(cacheKey);
+    if(cached&&Date.now()-cached.at<ADMIN_ACTIVE_CACHE_MS)return cached.rows;
+    let query=supabaseClient.from('orders').select('*').eq('status','출고완료');
+    if(period!=='all'){
+      let start=new Date();start.setHours(0,0,0,0);
+      let end=null;
+      if(period==='custom'){
+        start=startValue?new Date(`${startValue}T00:00:00`):null;
+        end=endValue?new Date(`${endValue}T23:59:59.999`):null;
+      }else if(period!=='today')start.setDate(start.getDate()-Number(period));
+      if(start&&!Number.isNaN(start.getTime()))query=query.gte('shipped_at',start.toISOString());
+      if(end&&!Number.isNaN(end.getTime()))query=query.lte('shipped_at',end.toISOString());
+    }
+    const rows=[];
+    for(let from=0;;from+=1000){
+      const {data,error}=await query.order('shipped_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+      if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break;
+    }
+    adminCompletedOrdersCache.set(cacheKey,{at:Date.now(),rows});return rows;
+  }
+  const needsHistory = Boolean(keyword) || requestedPaymentFilter==='unpaid' || adminFilter==='전체';
   if(needsHistory)return fetchAllOrdersForAdmin();
 
   const now=Date.now();
@@ -57,7 +83,7 @@ async function fetchOrders() {
   return rows;
 }
 
-function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;adminTodayOrdersCache=null;adminTodayOrdersCacheAt=0;}
+function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;adminTodayOrdersCache=null;adminTodayOrdersCacheAt=0;adminCompletedOrdersCache.clear();}
 window.invalidateAdminOrderCache=invalidateAdminOrderCache;
 
 async function fetchInventorySnapshot() {
