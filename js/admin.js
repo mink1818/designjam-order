@@ -246,7 +246,8 @@ function printCompletedOrderList() {
   const previousPage = adminPage;
   document.body.classList.add("printing-completed-orders");
   renderOrderCards(groups);
-  document.querySelectorAll("#adminOrders .order-detail").forEach(detail => { detail.hidden = false; });
+  // 인쇄 목록은 화면의 접힌 주문 요약 형태를 그대로 유지합니다.
+  document.querySelectorAll("#adminOrders .order-detail").forEach(detail => { detail.hidden = true; });
   const restore = () => {
     document.body.classList.remove("printing-completed-orders");
     adminPage = previousPage;
