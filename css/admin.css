@@ -2959,3 +2959,50 @@ body[data-session-page="admin"] .pick-row.stock-row{grid-template-columns:minmax
 /* V6.7.12 모든 버튼 클릭 촉감 */
 button{transition:transform .08s ease,filter .08s ease,box-shadow .08s ease}
 button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filter:brightness(.92);box-shadow:inset 0 2px 5px rgba(0,0,0,.24)!important}
+
+/* V6.7.26 출고완료 화면 목록 그대로 초압축 인쇄 */
+@media print{
+ body.printing-completed-orders{font-family:Arial,"Noto Sans KR",sans-serif!important}
+ body.printing-completed-orders #designjamSessionStatus,body.printing-completed-orders .session-status{display:none!important}
+ body.printing-completed-orders #adminOrders{display:block!important;margin:0!important;padding:0!important}
+ body.printing-completed-orders #adminOrders .order-card{
+  min-height:0!important;height:auto!important;margin:0 0 3px!important;padding:0!important;
+  border:1px solid #888!important;border-radius:4px!important;box-shadow:none!important;
+  break-inside:avoid!important;page-break-inside:avoid!important;
+ }
+ body.printing-completed-orders #adminOrders .order-detail{display:none!important}
+ body.printing-completed-orders #adminOrders .compact-order-header{
+  display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(125px,.72fr) minmax(115px,auto)!important;
+  grid-template-rows:auto!important;align-items:center!important;gap:6px!important;
+  min-height:0!important;height:auto!important;padding:4px 7px!important;overflow:hidden!important;
+ }
+ body.printing-completed-orders .order-primary{grid-column:1!important;grid-row:1!important;min-width:0!important}
+ body.printing-completed-orders .order-primary h2{
+  margin:0 0 1px!important;font-size:10.5px!important;line-height:1.1!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+ }
+ body.printing-completed-orders .order-primary h2 small{padding:1px 3px!important;margin-left:2px!important;font-size:7px!important;line-height:1!important}
+ body.printing-completed-orders .order-delivery-preview,
+ body.printing-completed-orders .order-summary-number{
+  display:inline!important;margin:0 6px 0 0!important;padding:0!important;
+  color:#222!important;font-size:8.5px!important;line-height:1.1!important;white-space:nowrap!important;
+ }
+ body.printing-completed-orders .order-summary-number{font-weight:700!important}
+ body.printing-completed-orders .order-compact-stats{
+  display:flex!important;grid-column:2!important;grid-row:1!important;justify-content:flex-end!important;
+  gap:5px!important;padding:0!important;border:0!important;font-size:9px!important;white-space:nowrap!important;
+ }
+ body.printing-completed-orders .order-compact-stats *{font-size:9px!important;min-width:0!important;margin:0!important}
+ body.printing-completed-orders .mobile-order-summary{display:none!important}
+ body.printing-completed-orders .order-status-stack{
+  display:flex!important;grid-column:3!important;grid-row:1!important;flex-direction:row!important;
+  justify-content:flex-end!important;align-items:center!important;gap:3px!important;min-width:0!important;width:auto!important;
+ }
+ body.printing-completed-orders .order-status-stack .order-status-pill{
+  width:auto!important;min-width:0!important;min-height:0!important;padding:2px 4px!important;font-size:7.5px!important;line-height:1!important;
+ }
+ body.printing-completed-orders .desktop-payment-check{min-width:0!important;padding:2px 4px!important;font-size:7.5px!important;line-height:1!important}
+ body.printing-completed-orders .desktop-payment-check input{width:9px!important;height:9px!important;margin:0 2px 0 0!important}
+ body.printing-completed-orders .desktop-payment-check span,body.printing-completed-orders .desktop-payment-check small{font-size:7px!important}
+ body.printing-completed-orders .order-expand-icon,body.printing-completed-orders .admin-note-badge,body.printing-completed-orders .order-card-edit-button{display:none!important}
+}
