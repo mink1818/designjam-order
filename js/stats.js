@@ -14,6 +14,7 @@ let mainCategoryNameMap=new Map();
 let currentRange='today';
 let currentStats=null;
 let rankingExpanded={product:false,customer:false};
+let statsAuxLoadPromise=null;
 
 const $=id=>document.getElementById(id);
 const money=v=>Number(v||0).toLocaleString('ko-KR');
@@ -91,22 +92,14 @@ function statsGroupItemNumbers(value){
 
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
-  const [ordersResult,groupsResult,categoriesResult,mainsResult,deletedResult,changesResult,paymentsResult,customersResult]=await Promise.all([
-    fetchAllStatsRows('orders','created_at',true,'id,order_number,customer_id,customer_name,created_at,shipped_at,completed_at,picking_verified_at,status,shipping_fee,item_number,qty,price,is_soldout,soldout_qty,warehouse_code,memo'),
-    supabaseClient.from('product_groups').select('item_numbers,category_id,main_category_id,main_category_name,main_category,category_name,category,warehouse_code'),
+  const [ordersResult,groupsResult,categoriesResult,mainsResult]=await Promise.all([
+    fetchAllStatsRows('orders','created_at',true,'id,order_number,customer_id,customer_name,created_at,shipped_at,picking_verified_at,status,shipping_fee,item_number,qty,price,is_soldout,soldout_qty,warehouse_code,memo'),
+    supabaseClient.from('product_groups').select('item_numbers,category_id,warehouse_code'),
     supabaseClient.from('product_categories').select('id,name,main_category_id'),
-    supabaseClient.from('product_main_categories').select('id,name'),
-    fetchAllStatsRows('deleted_order_history','deleted_at',true),
-    fetchAllStatsRows('order_change_history','changed_at',true),
-    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,customer_name,paid_amount,confirmed_by,updated_at'),
-    supabaseClient.from('customers').select('id,business_name,customer_tag')
+    supabaseClient.from('product_main_categories').select('id,name')
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
-  deletedOrders=deletedResult.error?[]:(deletedResult.data||[]);
-  orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
-  paymentRecords=paymentsResult.error?[]:(paymentsResult.data||[]);
-  customerStatsMeta=new Map((customersResult.data||[]).map(c=>[String(c.id),c]));
   categoryNameMap=new Map((categoriesResult.data||[]).map(x=>[String(x.id),x]));
   mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
@@ -114,15 +107,30 @@ async function loadSourceData(){
     const nums=statsGroupItemNumbers(g.item_numbers||g.items||g.product_numbers||[]);
     nums.forEach(n=>productGroupMap.set(normalizeStatsItemNumber(n),g));
   });
-  $('statsMessage').textContent='';
+  $('statsMessage').textContent='미납금액과 변경 이력을 추가로 집계하는 중입니다.';
+  statsAuxLoadPromise=Promise.all([
+    fetchAllStatsRows('deleted_order_history','deleted_at',true),
+    fetchAllStatsRows('order_change_history','changed_at',true),
+    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,customer_name,paid_amount,confirmed_by,updated_at'),
+    supabaseClient.from('customers').select('id,business_name,customer_tag')
+  ]).then(([deletedResult,changesResult,paymentsResult,customersResult])=>{
+    deletedOrders=deletedResult.error?[]:(deletedResult.data||[]);
+    orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
+    paymentRecords=paymentsResult.error?[]:(paymentsResult.data||[]);
+    customerStatsMeta=new Map((customersResult.data||[]).map(c=>[String(c.id),c]));
+    $('statsMessage').textContent='';
+  }).catch(error=>{
+    console.warn('통계 부가정보 조회 생략:',error);
+    $('statsMessage').textContent='기본 통계는 표시되었지만 미납금액·변경 이력 일부를 불러오지 못했습니다.';
+  });
 }
 
 function groupOrders(rows){
   const map=new Map();
   rows.forEach(row=>{
     const orderNumber=row.order_number||`row-${row.id}`;const customerIdentity=normalizeStatsCustomerName(row.customer_name)||String(row.customer_id||'unknown');const key=`${orderNumber}::${customerIdentity}`;
-    if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,completedAt:row.shipped_at||row.completed_at||row.picking_verified_at||null,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
-    const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.shipped_at||row.completed_at||row.picking_verified_at)g.completedAt=row.shipped_at||row.completed_at||row.picking_verified_at;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
+    if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,completedAt:row.shipped_at||row.picking_verified_at||null,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
+    const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.shipped_at||row.picking_verified_at)g.completedAt=row.shipped_at||row.picking_verified_at;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
   });
   return [...map.values()];
 }
@@ -439,11 +447,11 @@ function exportExcel(){
 function bindEvents(){
   $('statsRangeButtons').querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{currentRange=btn.dataset.range;$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));renderAll();}));
   $('applyCustomRangeBtn').addEventListener('click',()=>{if(!$('statsStartDate').value||!$('statsEndDate').value)return alert('시작일과 종료일을 모두 선택해 주세요.');if($('statsStartDate').value>$('statsEndDate').value)return alert('시작일은 종료일보다 늦을 수 없습니다.');currentRange='custom';$('statsRangeButtons').querySelectorAll('button').forEach(b=>b.classList.remove('active'));renderAll();});
-  $('completedOnlyCheck').checked=true;$('completedOnlyCheck').disabled=true;$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
+  $('completedOnlyCheck').checked=true;$('completedOnlyCheck').disabled=true;$('refreshStatsBtn').addEventListener('click',async()=>{try{await loadSourceData();fillAnalysisYears();renderAll();await statsAuxLoadPromise;renderAll();renderReceivableCustomerList();renderReceivableLookup();}catch(e){$('statsMessage').textContent='통계 새로고침 실패: '+e.message;}});$('exportStatsBtn').addEventListener('click',exportExcel);
   $('statsAnalysisYear').addEventListener('change',renderAll);$('statsAnalysisMonth').addEventListener('change',()=>{$('monthlyRankingMonth').value=$('statsAnalysisMonth').value;renderAll()});$('monthlyRankingMonth').addEventListener('change',()=>{$('statsAnalysisMonth').value=$('monthlyRankingMonth').value;const y=String($('monthlyRankingMonth').value||'').split('-')[0];if(y&&[...$('statsAnalysisYear').options].some(o=>o.value===y))$('statsAnalysisYear').value=y;rankingExpanded={product:false,customer:false};renderAll()});$('rankingPeriodMode')?.addEventListener('change',()=>{rankingExpanded={product:false,customer:false};renderAll()});$('toggleTopProducts')?.addEventListener('click',()=>{rankingExpanded.product=!rankingExpanded.product;renderRankings(currentStats?.periodAnalytics||buildPeriodAnalytics())});$('toggleTopCustomers')?.addEventListener('click',()=>{rankingExpanded.customer=!rankingExpanded.customer;renderRankings(currentStats?.periodAnalytics||buildPeriodAnalytics())});$('salesChartMode').addEventListener('change',renderAll);
   $('receivableCustomer')?.addEventListener('change',renderReceivableLookup);$('receivableStart')?.addEventListener('change',renderReceivableLookup);$('receivableEnd')?.addEventListener('change',renderReceivableLookup);$('receivableListFilter')?.addEventListener('change',renderReceivableCustomerList);
   $('statusPeriodMode')?.addEventListener('change',updateStatusPeriodControls);$('statusPeriodDate')?.addEventListener('change',renderStatusPeriod);$('statusPeriodMonth')?.addEventListener('change',renderStatusPeriod);$('statusPeriodYear')?.addEventListener('change',renderStatusPeriod);
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();initReceivableLookup();renderAll();}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
+document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();initReceivableLookup();renderAll();statsAuxLoadPromise?.then(()=>{renderAll();renderReceivableCustomerList();renderReceivableLookup();});}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
