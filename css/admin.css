@@ -3009,3 +3009,17 @@ button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filt
  body.printing-completed-orders .desktop-payment-check span,body.printing-completed-orders .desktop-payment-check small{font-size:7px!important}
  body.printing-completed-orders .order-expand-icon,body.printing-completed-orders .admin-note-badge,body.printing-completed-orders .order-card-edit-button{display:none!important}
 }
+/* 메인화면 거래처별 미입금 관리 */
+.unpaid-customer-list .unpaid-customer-group{background:#fff;border:1px solid #fecaca;border-radius:10px;overflow:hidden}
+.unpaid-customer-group>summary{display:grid;grid-template-columns:minmax(140px,1fr) auto auto auto;gap:12px;align-items:center;padding:12px;cursor:pointer;list-style:none}
+.unpaid-customer-group>summary::-webkit-details-marker{display:none}
+.unpaid-customer-group>summary:before{content:'▸';margin-right:6px;color:#b91c1c}
+.unpaid-customer-group[open]>summary:before{content:'▾'}
+.unpaid-customer-group>summary{grid-template-columns:auto minmax(120px,1fr) auto auto auto}
+.unpaid-customer-group summary strong,.unpaid-orders strong{color:#b91c1c}
+.unpaid-group-action{display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:700}
+.unpaid-group-action input,.unpaid-order-row input{width:19px;height:19px;cursor:pointer;accent-color:#16844c}
+.unpaid-orders{padding:4px 12px 12px;display:grid;gap:5px}
+.unpaid-order-row{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid #fee2e2;border-radius:7px;cursor:pointer}
+.unpaid-order-row span{flex:1;overflow-wrap:anywhere}
+@media(max-width:760px){.unpaid-customer-group>summary{grid-template-columns:auto minmax(0,1fr) auto;gap:5px}.unpaid-customer-group>summary strong{grid-column:2}.unpaid-group-action{grid-column:3;grid-row:1/3}.unpaid-order-row{flex-wrap:wrap}.unpaid-order-row strong{margin-left:auto}}
