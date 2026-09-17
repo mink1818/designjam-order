@@ -1304,7 +1304,7 @@ async function autofillNewOrderItem(row){
   }catch(error){const result=row.closest('.order-item-editor')?.querySelector('.order-edit-paste-result');if(result)result.textContent='품번 자동조회 실패: '+(error?.message||error)}finally{delete row.dataset.autofillBusy;input?.classList.remove('field-saving')}
 }
 function bindOrderEditRow(row) {
-  const numberInput=row.querySelector('.order-edit-number');if(numberInput&&!numberInput.dataset.autoPriceBound){numberInput.dataset.autoPriceBound='1';numberInput.addEventListener('change',()=>autofillNewOrderItem(row));numberInput.addEventListener('blur',()=>autofillNewOrderItem(row));}
+  const numberInput=row.querySelector('.order-edit-number');if(numberInput&&!numberInput.dataset.autoPriceBound){numberInput.dataset.autoPriceBound='1';const autofill=()=>{if(row.dataset.autofillBusy==='1')return;row.orderEditAutofill=autofillNewOrderItem(row)};numberInput.addEventListener('change',autofill);numberInput.addEventListener('blur',autofill);}
   row.querySelectorAll(".order-edit-qty,.order-edit-price").forEach(input => input.addEventListener("input", () => updateOrderEditRowTotal(row)));
   row.querySelector(".order-edit-row-total")?.addEventListener("input", event => {
     const qty = Math.max(1, Number(row.querySelector(".order-edit-qty")?.value || 1));
@@ -1366,6 +1366,20 @@ function bindOrderEditPasteGuard(index){const input=document.getElementById(`ord
 async function saveOrderItems(orderNumber, index) {
   const editor = document.getElementById(`order-item-editor-${index}`);
   if (!editor) return;
+  // A click on Save blurs the item field. Wait for that catalog lookup before reading the row.
+  const editRows=[...editor.querySelectorAll('[data-order-edit-row]')];
+  const button=editor.querySelector('.order-edit-save');
+  if(button?.disabled)return;
+  if(button){button.disabled=true;button.textContent='확인 중...'}
+  try{
+    await Promise.all(editRows.map(async row=>{
+      if(row.orderEditAutofill)await row.orderEditAutofill;
+      if(row.classList.contains('new-order-edit-row')&&row.dataset.entryMode!=='manual'&&!row.dataset.autofillBusy){
+        row.orderEditAutofill=autofillNewOrderItem(row);
+        await row.orderEditAutofill;
+      }
+    }));
+  }catch(error){alert('추가 품번 확인 실패: '+(error?.message||error));if(button){button.disabled=false;button.textContent='주문 품목 저장'}return}
   const items = [...editor.querySelectorAll("[data-order-edit-row]")].map(row => {
     const parsed = splitWarehouseItemNumber(row.querySelector(".order-edit-number")?.value);
     const oneJukPrice = Math.max(0, Number(row.querySelector(".order-edit-price")?.value || 0));
@@ -1377,12 +1391,13 @@ async function saveOrderItems(orderNumber, index) {
       price: oneJukPrice
     };
   });
-  if (!items.length || items.some(item => !item.item_number)) return alert("품번을 모두 입력해주세요.");
-  if(items.some(item=>!['S','B','I'].includes(String(item.warehouse_code||'').toUpperCase())))return alert('기타출고지 발생을 막기 위해 모든 품번 앞에 S-, B-, I- 출고지를 입력해주세요.');
-  if (items.some(item => !Number.isFinite(item.price) || item.price < 0)) return alert("단가를 확인해주세요.");
-  if (!confirm("주문 품목을 저장하면 작업지시서·피킹검증·거래명세서에 반영됩니다.\n계속할까요?")) return;
-  const button = editor.querySelector(".order-edit-save");
-  if (button) { button.disabled = true; button.textContent = "저장 중..."; }
+  const fail=message=>{alert(message);if(button){button.disabled=false;button.textContent='주문 품목 저장'}};
+  if (!items.length || items.some(item => !item.item_number)) return fail('품번을 모두 입력해주세요.');
+  if(items.some(item=>!['S','B','I'].includes(String(item.warehouse_code||'').toUpperCase())))return fail('출고지가 확인되지 않은 품번이 있습니다. 각 품번 앞에 S-, B-, I- 출고지를 입력하거나 등록 품번을 선택해주세요.');
+  if (items.some(item => !Number.isFinite(item.price) || item.price < 0)) return fail('단가를 확인해주세요.');
+  const seen=new Set();for(const item of items){const key=`${item.warehouse_code}:${inventoryKey(item.item_number)}`;if(seen.has(key))return fail(`중복 품번 ${item.warehouse_code}-${item.item_number}이 있습니다. 한 행으로 수량을 합쳐주세요.`);seen.add(key)}
+  if (!confirm("주문 품목을 저장하면 작업지시서·피킹검증·거래명세서에 반영됩니다.\n계속할까요?")){if(button){button.disabled=false;button.textContent='주문 품목 저장'}return}
+  if (button) button.textContent = "저장 중...";
   try {
     const { data, error } = await supabaseClient.rpc("admin_save_order_items", { p_order_number: orderNumber, p_items: items });
     if (error) throw error;
@@ -1390,7 +1405,7 @@ async function saveOrderItems(orderNumber, index) {
     alert("주문 품목을 저장했습니다.");
     await loadOrders();
   } catch (error) {
-    alert("주문 품목 저장 실패: " + error.message + "\nSQL/V6.4.2-ADMIN-ORDER-ITEM-EDIT.sql 적용 여부를 확인해주세요.");
+    alert("주문 품목 저장 실패: " + error.message);
     if (button) { button.disabled = false; button.textContent = "주문 품목 저장"; }
   }
 }
