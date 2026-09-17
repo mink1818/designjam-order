@@ -133,7 +133,7 @@ async function loadUnpaidCustomers(){
     orders.forEach(row=>{if(row.status!=='출고완료')return;const name=row.customer_name||'거래처 미입력',key=`order::${row.order_number}`;if(!orderMap.has(key))orderMap.set(key,{orderNumber:row.order_number,customerId:String(row.customer_id||''),name,total:0,shipping:0});const g=orderMap.get(key),ordered=Number(row.qty||0),soldout=Math.min(ordered,Number(row.soldout_qty||(row.is_soldout?ordered:0)));g.total+=Math.max(0,ordered-soldout)*Number(row.price||0);g.shipping=Math.max(g.shipping,Number(row.shipping_fee||0))});
     const customerMap=new Map();let unpaidOrders=0,unpaidTotal=0;
     orderMap.forEach((g,key)=>{const record=paymentMap.get(`order::${g.orderNumber}`);if(!record)return;const total=g.total+g.shipping,paid=Math.max(0,Number(record.paid_amount||0)),balance=Math.max(0,total-paid);if(balance<=0)return;unpaidOrders++;unpaidTotal+=balance;const ck=String(g.name||'거래처 미입력').normalize('NFKC').replace(/\s+/g,'').toLowerCase();if(!customerMap.has(ck))customerMap.set(ck,{...g,count:0,balance:0,orders:[]});const c=customerMap.get(ck);c.count++;c.balance+=balance;c.orders.push({...g,total,paid,balance,record})});
-    unpaidCustomerGroups=list;
+    unpaidCustomerGroups=[...customerMap.values()].sort((a,b)=>b.balance-a.balance);
     renderUnpaidCustomers();
   }catch(error){console.warn('미입금 현황 조회 실패:',error.message);box.innerHTML=`<p>미입금 내역을 불러오지 못했습니다: ${esc(error.message)}</p>`;setText('unpaidCustomerCount','-')}
 }
