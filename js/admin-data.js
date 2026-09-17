@@ -5,6 +5,7 @@ let adminActiveOrdersCacheAt = 0;
 let adminTodayOrdersCache = null;
 let adminTodayOrdersCacheAt = 0;
 const adminCompletedOrdersCache = new Map();
+const adminCompletedOrdersRequests = new Map();
 const ADMIN_ACTIVE_CACHE_MS = 120000;
 
 async function fetchAllOrdersForAdmin() {
@@ -46,23 +47,33 @@ async function fetchOrders() {
     const cacheKey=`${period}:${startValue}:${endValue}`;
     const cached=adminCompletedOrdersCache.get(cacheKey);
     if(cached&&Date.now()-cached.at<ADMIN_ACTIVE_CACHE_MS)return cached.rows;
-    let query=supabaseClient.from('orders').select('*').eq('status','출고완료');
+    if(adminCompletedOrdersRequests.has(cacheKey))return adminCompletedOrdersRequests.get(cacheKey);
+    let start=null,end=null;
     if(period!=='all'){
-      let start=new Date();start.setHours(0,0,0,0);
-      let end=null;
+      start=new Date();start.setHours(0,0,0,0);
       if(period==='custom'){
         start=startValue?new Date(`${startValue}T00:00:00`):null;
         end=endValue?new Date(`${endValue}T23:59:59.999`):null;
       }else if(period!=='today')start.setDate(start.getDate()-Number(period));
+    }
+    const page=(from,withCount=false)=>{
+      let query=supabaseClient.from('orders').select('*',withCount?{count:'exact'}:{}).eq('status','출고완료');
       if(start&&!Number.isNaN(start.getTime()))query=query.gte('shipped_at',start.toISOString());
       if(end&&!Number.isNaN(end.getTime()))query=query.lte('shipped_at',end.toISOString());
-    }
-    const rows=[];
-    for(let from=0;;from+=1000){
-      const {data,error}=await query.order('shipped_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
-      if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break;
-    }
-    adminCompletedOrdersCache.set(cacheKey,{at:Date.now(),rows});return rows;
+      return query.order('shipped_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+    };
+    const request=(async()=>{
+      const first=await page(0,true);if(first.error)throw first.error;
+      const rows=[...(first.data||[])],count=first.count??rows.length;
+      for(let from=1000;from<count;from+=4000){
+        const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,i)=>from+i*1000);
+        const pages=await Promise.all(offsets.map(offset=>page(offset)));
+        for(const result of pages){if(result.error)throw result.error;rows.push(...(result.data||[]))}
+      }
+      adminCompletedOrdersCache.set(cacheKey,{at:Date.now(),rows});return rows;
+    })().finally(()=>adminCompletedOrdersRequests.delete(cacheKey));
+    adminCompletedOrdersRequests.set(cacheKey,request);
+    return request;
   }
   const needsHistory = Boolean(keyword) || requestedPaymentFilter==='unpaid' || adminFilter==='전체';
   if(needsHistory)return fetchAllOrdersForAdmin();
@@ -83,7 +94,7 @@ async function fetchOrders() {
   return rows;
 }
 
-function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;adminTodayOrdersCache=null;adminTodayOrdersCacheAt=0;adminCompletedOrdersCache.clear();}
+function invalidateAdminOrderCache(){adminFullOrdersCache=null;adminActiveOrdersCache=null;adminActiveOrdersCacheAt=0;adminTodayOrdersCache=null;adminTodayOrdersCacheAt=0;adminCompletedOrdersCache.clear();adminCompletedOrdersRequests.clear();}
 window.invalidateAdminOrderCache=invalidateAdminOrderCache;
 
 async function fetchInventorySnapshot() {

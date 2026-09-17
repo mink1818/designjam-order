@@ -90,20 +90,36 @@ async function loadUnansweredInquiryCount(){
   }
 }
 
-async function fetchDashboardRows(table,columns,orderColumn){const rows=[];for(let from=0;;from+=1000){let q=supabaseClient.from(table).select(columns).range(from,from+999);if(orderColumn)q=q.order(orderColumn,{ascending:false}).order('id',{ascending:false});const {data,error}=await q;if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)return rows}}
+async function fetchDashboardRows(table,columns,orderColumn){
+  const page=(from,withCount=false)=>{let q=supabaseClient.from(table).select(columns,withCount?{count:'exact'}:{}).range(from,from+999);if(orderColumn)q=q.order(orderColumn,{ascending:false}).order('id',{ascending:false});return q};
+  const first=await page(0,true);if(first.error)throw first.error;
+  const rows=[...(first.data||[])],count=first.count??rows.length;
+  for(let from=1000;from<count;from+=4000){const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,i)=>from+i*1000);const pages=await Promise.all(offsets.map(offset=>page(offset)));for(const result of pages){if(result.error)throw result.error;rows.push(...(result.data||[]))}}
+  return rows;
+}
 // 수년간 쌓인 주문접수 행은 미입금 집계에 필요하지 않습니다.
-async function fetchCompletedUnpaidRows(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('orders').select('order_number,customer_id,customer_name,qty,price,soldout_qty,is_soldout,shipping_fee,status').eq('status','출고완료').order('id',{ascending:false}).range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)return rows}}
+async function fetchCompletedUnpaidRows(){
+  const columns='order_number,customer_id,customer_name,delivery_name,qty,price,soldout_qty,is_soldout,shipping_fee,status';
+  const query=(from,to,withCount=false)=>supabaseClient.from('orders').select(columns,withCount?{count:'exact'}:{}).eq('status','출고완료').order('id',{ascending:false}).range(from,to);
+  const first=await query(0,999,true);if(first.error)throw first.error;
+  const rows=[...(first.data||[])],count=first.count??rows.length;
+  for(let from=1000;from<count;from+=4000){
+    const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,i)=>from+i*1000);
+    const pages=await Promise.all(offsets.map(offset=>query(offset,offset+999)));
+    for(const page of pages){if(page.error)throw page.error;rows.push(...(page.data||[]))}
+  }
+  return rows;
+}
 let unpaidCustomerGroups=[];
 const unpaidCustomerKey=value=>String(value||'').normalize('NFKC').replace(/\s+/g,'').toLowerCase();
 function renderUnpaidCustomers(){
   const box=document.getElementById('unpaidCustomerList');if(!box)return;
-  const expanded=new Set([...box.querySelectorAll('.unpaid-customer-group[open]')].map(el=>el.dataset.customerKey));
+  const expanded=new Set([...box.querySelectorAll('.unpaid-customer-group details[open]')].map(el=>el.closest('.unpaid-customer-group').dataset.customerKey));
   const groups=unpaidCustomerGroups.filter(group=>group.orders.length).sort((a,b)=>b.balance-a.balance);
   const count=groups.reduce((n,g)=>n+g.orders.length,0),sum=groups.reduce((n,g)=>n+g.balance,0);
   setText('unpaidCustomerCount',count);
   setText('unpaidCustomerSummary',`${groups.length}곳 · ${count}건 · 미수금 ${sum.toLocaleString()}원`);
-  box.innerHTML=groups.length?groups.map((group,index)=>`<details class="unpaid-customer-group" data-customer-key="${esc(unpaidCustomerKey(group.name))}" ${expanded.has(unpaidCustomerKey(group.name))?'open':''}><summary><b>${esc(group.name)}</b><span>${group.orders.length}건</span><strong>${group.balance.toLocaleString()}원 미입금</strong><span class="unpaid-group-action"><input type="checkbox" aria-label="${esc(group.name)} 미입금 주문 ${group.orders.length}건 전체 입금완료" data-pay-group="${index}"><small>전체 입금완료</small></span></summary><div class="unpaid-orders">${group.orders.map(order=>`<label class="unpaid-order-row"><input type="checkbox" data-pay-order="${esc(order.orderNumber)}" data-customer="${esc(order.customerId)}" aria-label="${esc(order.orderNumber)} 입금완료"><span>${esc(order.orderNumber)} · ${esc(order.name)}</span><strong>${order.balance.toLocaleString()}원 미입금</strong></label>`).join('')}</div></details>`).join(''):'<p>미입금 거래처가 없습니다.</p>';
-  box.querySelectorAll('[data-pay-group]').forEach(input=>input.addEventListener('click',event=>event.stopPropagation()));
+  box.innerHTML=groups.length?groups.map((group,index)=>`<div class="unpaid-customer-group" data-customer-key="${esc(unpaidCustomerKey(group.name))}"><details ${expanded.has(unpaidCustomerKey(group.name))?'open':''}><summary><b>${esc(group.name)}</b><span>${group.orders.length}건</span><strong>${group.balance.toLocaleString()}원 미입금</strong></summary><div class="unpaid-orders">${group.orders.map(order=>`<div class="unpaid-order-row"><input type="checkbox" data-pay-order="${esc(order.orderNumber)}" data-customer="${esc(order.customerId)}" aria-label="${esc(order.orderNumber)} 입금완료"><span>${esc(order.orderNumber)} · 납품처 ${esc(order.deliveryName||'-')} · 주문 ${order.orderedQty.toLocaleString()}죽</span><strong>${order.balance.toLocaleString()}원 미입금</strong></div>`).join('')}</div></details><span class="unpaid-group-action"><input type="checkbox" aria-label="${esc(group.name)} 미입금 주문 ${group.orders.length}건 전체 입금완료" data-pay-group="${index}"><small>전체 입금완료</small></span></div>`).join(''):'<p>미입금 거래처가 없습니다.</p>';
   box.querySelectorAll('[data-pay-group]').forEach(input=>input.addEventListener('change',()=>completeUnpaidGroup(input,groups[Number(input.dataset.payGroup)])));
   box.querySelectorAll('[data-pay-order]').forEach(input=>input.addEventListener('change',()=>completeUnpaidOrder(input,input.dataset.payOrder,input.dataset.customer)));
 }
@@ -114,12 +130,15 @@ async function saveDashboardPayment(order){
   const group=unpaidCustomerGroups.find(g=>g.orders.includes(order));if(group){group.balance-=order.balance;group.count--;group.orders=group.orders.filter(o=>o!==order)}
 }
 async function completeUnpaidOrder(input,number,customer){
-  const order=unpaidCustomerGroups.flatMap(g=>g.orders).find(o=>o.orderNumber===number&&o.customerId===customer);if(!order)return;
+  const order=unpaidCustomerGroups.flatMap(g=>g.orders).find(o=>o.orderNumber===number&&o.customerId===customer);if(!order){input.checked=false;return}
+  if(!confirm(`${order.name} · 납품처 ${order.deliveryName||'-'}\n주문번호 ${order.orderNumber} · 주문 ${order.orderedQty.toLocaleString()}죽\n미입금 ${order.balance.toLocaleString()}원을 입금완료 처리할까요?`)){input.checked=false;return}
   input.disabled=true;
   try{await saveDashboardPayment(order);renderUnpaidCustomers()}catch(error){input.checked=false;input.disabled=false;alert('입금완료 저장 실패: '+error.message)}
 }
 async function completeUnpaidGroup(input,group){
-  if(!group)return;input.disabled=true;
+  if(!group){input.checked=false;return}
+  if(!confirm(`${group.name} 거래처의 미입금 주문 ${group.orders.length}건\n미입금 합계 ${group.balance.toLocaleString()}원을 모두 입금완료 처리할까요?`)){input.checked=false;return}
+  input.disabled=true;
   const orders=[...group.orders];let failures=[];
   // 한 거래처의 모든 주문을 기존 출고완료 입금 저장 함수와 동일한 RPC에 개별 기록합니다.
   for(let i=0;i<orders.length;i+=4){const result=await Promise.allSettled(orders.slice(i,i+4).map(saveDashboardPayment));failures.push(...result.filter(r=>r.status==='rejected').map(r=>r.reason?.message||'저장 실패'))}
@@ -130,7 +149,7 @@ async function loadUnpaidCustomers(){
   try{
     const [orders,payments]=await Promise.all([fetchCompletedUnpaidRows(),fetchDashboardRows('order_payment_records','order_number,customer_key,paid_amount,confirmed_by,updated_at,payment_account,depositor_name,paid_at,memo','updated_at')]);
     const paymentMap=new Map();payments.forEach(x=>{const k=`order::${x.order_number}`;const old=paymentMap.get(k);if(!old||(!old.confirmed_by&&x.confirmed_by)||new Date(x.updated_at||0)>new Date(old.updated_at||0))paymentMap.set(k,x)});const orderMap=new Map();
-    orders.forEach(row=>{if(row.status!=='출고완료')return;const name=row.customer_name||'거래처 미입력',key=`order::${row.order_number}`;if(!orderMap.has(key))orderMap.set(key,{orderNumber:row.order_number,customerId:String(row.customer_id||''),name,total:0,shipping:0});const g=orderMap.get(key),ordered=Number(row.qty||0),soldout=Math.min(ordered,Number(row.soldout_qty||(row.is_soldout?ordered:0)));g.total+=Math.max(0,ordered-soldout)*Number(row.price||0);g.shipping=Math.max(g.shipping,Number(row.shipping_fee||0))});
+    orders.forEach(row=>{if(row.status!=='출고완료')return;const name=row.customer_name||'거래처 미입력',key=`order::${row.order_number}`;if(!orderMap.has(key))orderMap.set(key,{orderNumber:row.order_number,customerId:String(row.customer_id||''),name,deliveryName:row.delivery_name||'',orderedQty:0,total:0,shipping:0});const g=orderMap.get(key),ordered=Number(row.qty||0),soldout=Math.min(ordered,Number(row.soldout_qty||(row.is_soldout?ordered:0)));g.orderedQty+=ordered;if(row.delivery_name)g.deliveryName=row.delivery_name;g.total+=Math.max(0,ordered-soldout)*Number(row.price||0);g.shipping=Math.max(g.shipping,Number(row.shipping_fee||0))});
     const customerMap=new Map();let unpaidOrders=0,unpaidTotal=0;
     orderMap.forEach((g,key)=>{const record=paymentMap.get(`order::${g.orderNumber}`);if(!record)return;const total=g.total+g.shipping,paid=Math.max(0,Number(record.paid_amount||0)),balance=Math.max(0,total-paid);if(balance<=0)return;unpaidOrders++;unpaidTotal+=balance;const ck=String(g.name||'거래처 미입력').normalize('NFKC').replace(/\s+/g,'').toLowerCase();if(!customerMap.has(ck))customerMap.set(ck,{...g,count:0,balance:0,orders:[]});const c=customerMap.get(ck);c.count++;c.balance+=balance;c.orders.push({...g,total,paid,balance,record})});
     unpaidCustomerGroups=[...customerMap.values()].sort((a,b)=>b.balance-a.balance);

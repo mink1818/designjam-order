@@ -5,6 +5,8 @@ const supabaseClient=window.supabase.createClient(
 const ADMIN_EMAILS=new Set(['900smk@naver.com','sm0727sm@hanmail.net','p1028p@naver.com']);
 const ADMIN_SESSION_KEY='designjam_admin_session';
 let rawOrders=[];
+let groupedOrdersCache=null;
+let groupedOrdersSource=null;
 let deletedOrders=[];
 let orderChangeHistory=[];
 let paymentRecords=[];
@@ -38,7 +40,8 @@ function printWarehouseCategoryAnalysis(){
 document.addEventListener('DOMContentLoaded',()=>$('printWarehouseCategory')?.addEventListener('click',printWarehouseCategoryAnalysis));
 
 async function guardAdmin(){
-  const {data:{user}}=await supabaseClient.auth.getUser();
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  const user=session?.user;
   const stored=sessionStorage.getItem(ADMIN_SESSION_KEY)||localStorage.getItem(ADMIN_SESSION_KEY);
   if(!user||(stored&&stored!==user.id)){location.replace('admin.html');return false;}
   const {data:p}=await supabaseClient.from('customers').select('is_admin,blocked').eq('id',user.id).maybeSingle();
@@ -64,13 +67,15 @@ function setDefaultDates(){
 }
 
 async function fetchAllStatsRows(table,orderColumn,ascending=true,columns='*'){
-  const rows=[];
-  for(let from=0;;from+=1000){
-    const result=await supabaseClient.from(table).select(columns).order(orderColumn,{ascending}).order('id',{ascending}).range(from,from+999);
-    if(result.error)return {data:rows,error:result.error};
-    rows.push(...(result.data||[]));
-    if(!result.data||result.data.length<1000)return {data:rows,error:null};
+  const page=(from,withCount=false)=>supabaseClient.from(table).select(columns,withCount?{count:'exact'}:{}).order(orderColumn,{ascending}).order('id',{ascending}).range(from,from+999);
+  const first=await page(0,true);if(first.error)return {data:[],error:first.error};
+  const rows=[...(first.data||[])],count=first.count??rows.length;
+  for(let from=1000;from<count;from+=4000){
+    const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,i)=>from+i*1000);
+    const pages=await Promise.all(offsets.map(offset=>page(offset)));
+    for(const result of pages){if(result.error)return {data:rows,error:result.error};rows.push(...(result.data||[]))}
   }
+  return {data:rows,error:null};
 }
 
 function normalizeStatsCustomerName(value){
@@ -100,6 +105,7 @@ async function loadSourceData(){
   ]);
   if(ordersResult.error) throw ordersResult.error;
   rawOrders=ordersResult.data||[];
+  groupedOrdersCache=null;groupedOrdersSource=null;
   categoryNameMap=new Map((categoriesResult.data||[]).map(x=>[String(x.id),x]));
   mainCategoryNameMap=new Map((mainsResult.data||[]).map(x=>[String(x.id),x.name]));
   productGroupMap=new Map();
@@ -126,13 +132,16 @@ async function loadSourceData(){
 }
 
 function groupOrders(rows){
+  if(rows===groupedOrdersSource&&groupedOrdersCache)return groupedOrdersCache;
   const map=new Map();
   rows.forEach(row=>{
     const orderNumber=row.order_number||`row-${row.id}`;const customerIdentity=normalizeStatsCustomerName(row.customer_name)||String(row.customer_id||'unknown');const key=`${orderNumber}::${customerIdentity}`;
     if(!map.has(key))map.set(key,{groupKey:key,orderNumber,createdAt:row.created_at,completedAt:row.shipped_at||row.picking_verified_at||null,status:row.status||'주문접수',customerId:row.customer_id||'',customerName:row.customer_name||'거래처 미입력',shippingFee:Number(row.shipping_fee||0),items:[]});
     const g=map.get(key);g.items.push(row);if(!g.createdAt&&row.created_at)g.createdAt=row.created_at;if(row.status)g.status=row.status;if(row.shipped_at||row.picking_verified_at)g.completedAt=row.shipped_at||row.picking_verified_at;if(row.customer_name)g.customerName=row.customer_name;if(row.customer_id)g.customerId=row.customer_id;g.shippingFee=Math.max(g.shippingFee,Number(row.shipping_fee||0));
   });
-  return [...map.values()];
+  const groups=[...map.values()];
+  if(rows===rawOrders){groupedOrdersSource=rows;groupedOrdersCache=groups}
+  return groups;
 }
 
 function effectiveItemQty(item){
