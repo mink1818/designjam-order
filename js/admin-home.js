@@ -119,15 +119,26 @@ function renderUnpaidCustomers(){
   const count=groups.reduce((n,g)=>n+g.orders.length,0),sum=groups.reduce((n,g)=>n+g.balance,0);
   setText('unpaidCustomerCount',count);
   setText('unpaidCustomerSummary',`${groups.length}곳 · ${count}건 · 미수금 ${sum.toLocaleString()}원`);
-  box.innerHTML=groups.length?groups.map((group,index)=>`<div class="unpaid-customer-group" data-customer-key="${esc(unpaidCustomerKey(group.name))}"><details ${expanded.has(unpaidCustomerKey(group.name))?'open':''}><summary><b>${esc(group.name)}</b><span>${group.orders.length}건</span><strong>${group.balance.toLocaleString()}원 미입금</strong></summary><div class="unpaid-orders">${group.orders.map(order=>`<div class="unpaid-order-row"><input type="checkbox" data-pay-order="${esc(order.orderNumber)}" data-customer="${esc(order.customerId)}" aria-label="${esc(order.orderNumber)} 입금완료"><span>${esc(order.orderNumber)} · 납품처 ${esc(order.deliveryName||'-')} · 주문 ${order.orderedQty.toLocaleString()}죽</span><strong>${order.balance.toLocaleString()}원 미입금</strong></div>`).join('')}</div></details><span class="unpaid-group-action"><input type="checkbox" aria-label="${esc(group.name)} 미입금 주문 ${group.orders.length}건 전체 입금완료" data-pay-group="${index}"><small>전체 입금완료</small></span></div>`).join(''):'<p>미입금 거래처가 없습니다.</p>';
+  box.innerHTML=groups.length?groups.map((group,index)=>`<div class="unpaid-customer-group" data-customer-key="${esc(unpaidCustomerKey(group.name))}"><details ${expanded.has(unpaidCustomerKey(group.name))?'open':''}><summary><b>${esc(group.name)}</b><span>${group.orders.length}건</span><strong>${group.balance.toLocaleString()}원 미입금</strong></summary><div class="unpaid-orders">${group.orders.map(order=>`<div class="unpaid-order-row"><input type="checkbox" data-pay-order="${esc(order.orderNumber)}" data-customer="${esc(order.customerId)}" aria-label="${esc(order.orderNumber)} 입금완료"><span>${esc(order.orderNumber)} · 납품처 ${esc(order.deliveryName||'-')} · 주문 ${order.orderedQty.toLocaleString()}죽${order.paid?` · 기입금 ${order.paid.toLocaleString()}원`:''}</span><strong>${order.balance.toLocaleString()}원 미입금</strong><span class="unpaid-partial-action"><input type="number" inputmode="numeric" min="1" step="1" max="${order.balance}" placeholder="추가입금액" aria-label="${esc(order.orderNumber)} 추가 입금액" data-partial-amount><button type="button" data-partial-order="${esc(order.orderNumber)}" data-customer="${esc(order.customerId)}">일부입금 저장</button></span></div>`).join('')}</div></details><span class="unpaid-group-action"><input type="checkbox" aria-label="${esc(group.name)} 미입금 주문 ${group.orders.length}건 전체 입금완료" data-pay-group="${index}"><small>전체 입금완료</small></span></div>`).join(''):'<p>미입금 거래처가 없습니다.</p>';
   box.querySelectorAll('[data-pay-group]').forEach(input=>input.addEventListener('change',()=>completeUnpaidGroup(input,groups[Number(input.dataset.payGroup)])));
   box.querySelectorAll('[data-pay-order]').forEach(input=>input.addEventListener('change',()=>completeUnpaidOrder(input,input.dataset.payOrder,input.dataset.customer)));
+  box.querySelectorAll('[data-partial-order]').forEach(button=>button.addEventListener('click',()=>saveUnpaidPartial(button,button.dataset.partialOrder,button.dataset.customer)));
 }
-async function saveDashboardPayment(order){
+async function saveDashboardPayment(order,paidAmount=order.total){
   const old=order.record||{};
-  const {error}=await supabaseClient.rpc('admin_save_order_payment',{p_order_number:order.orderNumber,p_customer_key:order.customerId,p_customer_name:order.name,p_order_amount:order.total,p_paid_amount:order.total,p_payment_account:old.payment_account||null,p_depositor_name:old.depositor_name||null,p_paid_at:old.paid_at||new Date().toISOString(),p_memo:old.memo||null});
+  const {error}=await supabaseClient.rpc('admin_save_order_payment',{p_order_number:order.orderNumber,p_customer_key:order.customerId,p_customer_name:order.name,p_order_amount:order.total,p_paid_amount:paidAmount,p_payment_account:old.payment_account||null,p_depositor_name:old.depositor_name||null,p_paid_at:old.paid_at||new Date().toISOString(),p_memo:old.memo||null});
   if(error)throw error;
-  const group=unpaidCustomerGroups.find(g=>g.orders.includes(order));if(group){group.balance-=order.balance;group.count--;group.orders=group.orders.filter(o=>o!==order)}
+  const group=unpaidCustomerGroups.find(g=>g.orders.includes(order));if(group){const difference=paidAmount-order.paid;group.balance-=difference;order.paid=paidAmount;order.balance=Math.max(0,order.total-paidAmount);order.record={...old,paid_amount:paidAmount};if(!order.balance){group.count--;group.orders=group.orders.filter(o=>o!==order)}}
+}
+async function saveUnpaidPartial(button,number,customer){
+  const order=unpaidCustomerGroups.flatMap(g=>g.orders).find(o=>o.orderNumber===number&&o.customerId===customer);
+  const input=button.closest('.unpaid-partial-action')?.querySelector('[data-partial-amount]');
+  if(!order||!input)return;
+  const raw=String(input.value||'').trim(),amount=Number(raw);
+  if(!/^\d+$/.test(raw)||!Number.isSafeInteger(amount)||amount<1||amount>order.balance)return alert(`추가입금액을 1원부터 미입금 ${order.balance.toLocaleString()}원까지 입력해주세요.`);
+  if(!confirm(`${order.name} · 주문번호 ${order.orderNumber}\n${amount.toLocaleString()}원을 추가 입금으로 저장할까요?\n누적 입금 ${(order.paid+amount).toLocaleString()}원 · 남은 미입금 ${(order.balance-amount).toLocaleString()}원`))return;
+  button.disabled=true;
+  try{await saveDashboardPayment(order,order.paid+amount);renderUnpaidCustomers()}catch(error){button.disabled=false;alert('일부입금 저장 실패: '+error.message)}
 }
 async function completeUnpaidOrder(input,number,customer){
   const order=unpaidCustomerGroups.flatMap(g=>g.orders).find(o=>o.orderNumber===number&&o.customerId===customer);if(!order){input.checked=false;return}
@@ -141,7 +152,7 @@ async function completeUnpaidGroup(input,group){
   input.disabled=true;
   const orders=[...group.orders];let failures=[];
   // 한 거래처의 모든 주문을 기존 출고완료 입금 저장 함수와 동일한 RPC에 개별 기록합니다.
-  for(let i=0;i<orders.length;i+=4){const result=await Promise.allSettled(orders.slice(i,i+4).map(saveDashboardPayment));failures.push(...result.filter(r=>r.status==='rejected').map(r=>r.reason?.message||'저장 실패'))}
+  for(let i=0;i<orders.length;i+=4){const result=await Promise.allSettled(orders.slice(i,i+4).map(order=>saveDashboardPayment(order)));failures.push(...result.filter(r=>r.status==='rejected').map(r=>r.reason?.message||'저장 실패'))}
   renderUnpaidCustomers();if(failures.length)alert(`${orders.length-failures.length}건 저장, ${failures.length}건 실패: ${failures[0]}`);
 }
 async function loadUnpaidCustomers(){

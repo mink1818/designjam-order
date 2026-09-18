@@ -3022,4 +3022,8 @@ button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filt
 .unpaid-orders{padding:4px 12px 12px;display:grid;gap:5px}
 .unpaid-order-row{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid #fee2e2;border-radius:7px;cursor:default}
 .unpaid-order-row span{flex:1;overflow-wrap:anywhere}
+.unpaid-order-row .unpaid-partial-action{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px}
+.unpaid-partial-action input{width:112px;min-width:0;padding:6px;border:1px solid #cbd5e1;border-radius:6px;font:inherit}
+.unpaid-partial-action button{padding:6px 9px;border:0;border-radius:6px;background:#24579c;color:#fff;cursor:pointer;font-weight:700}
+.unpaid-partial-action button:disabled{opacity:.5;cursor:wait}
 @media(max-width:760px){.unpaid-customer-group>details>summary{grid-template-columns:auto minmax(0,1fr);gap:5px;padding-right:115px}.unpaid-customer-group>details>summary strong{grid-column:2}.unpaid-group-action{right:5px;top:8px;flex-direction:column;gap:2px;font-size:10px}.unpaid-order-row{flex-wrap:wrap}.unpaid-order-row strong{margin-left:auto}}
