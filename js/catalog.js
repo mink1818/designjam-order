@@ -119,10 +119,10 @@ function toggleItemFavorite(event, number) {
     button.setAttribute('title', willActivate ? '즐겨찾기 해제' : '즐겨찾기 추가');
   }
 }
-function rememberViewedGroup(group){const rows=JSON.parse(localStorage.getItem('designjam_recent_viewed')||'[]');const now=new Date().toISOString();const next=[...(group.item_numbers||[]).map(number=>({number:String(number),title:group.title||'상품',image_url:group.image_url||'',viewed_at:now})),...rows];const seen=new Set();localStorage.setItem('designjam_recent_viewed',JSON.stringify(next.filter(x=>{const k=String(x.number);if(seen.has(k))return false;seen.add(k);return true}).slice(0,50)));}
+function rememberViewedGroup(group){const rows=JSON.parse(localStorage.getItem('designjam_recent_viewed')||'[]');const now=new Date().toISOString();const next=[...(group.item_numbers||[]).map(number=>({number:String(number),title:group.title||'상품',image_url:groupThumbnailUrl(group),viewed_at:now})),...rows];const seen=new Set();localStorage.setItem('designjam_recent_viewed',JSON.stringify(next.filter(x=>{const k=String(x.number);if(seen.has(k))return false;seen.add(k);return true}).slice(0,50)));}
 
 // 목록에는 저용량 WebP 썸네일을, 상품 상세·확대에는 image_url 원본을 사용한다.
-function groupThumbnailUrl(group){return String(group?.thumbnail_url||group?.image_url||'').trim();}
+function groupThumbnailUrl(group){return String(group?.thumbnail_url||group?.image_url||(Array.isArray(group?.image_urls)?group.image_urls.find(Boolean):'')||'').trim();}
 
 function openRequestedItemFromUrl() {
   const params = new URLSearchParams(location.search);
@@ -975,7 +975,7 @@ function renderGlobalSearchResults() {
             onclick="openGroup(${group.id})"
           >
             ${
-              group.image_url
+              groupThumbnailUrl(group)
                 ? `
                   <img
                     class="catalog-group-image"
@@ -1194,7 +1194,7 @@ function renderGroupCard(group) {
       onclick="openGroup(${group.id})"
     >
       ${
-        group.image_url
+        groupThumbnailUrl(group)
           ? `
             <img
               class="catalog-group-image"
@@ -2865,7 +2865,7 @@ function renderCustomerSearchResults(keyword=""){
     const numbers=(group.item_numbers||[]).map(String);
     const target=getGroupSearchMatch(group,keyword,group=>getGroupSearchText(group))?.target||numbers[0]||'';
     return `<button class="customer-search-result" type="button" data-search-group="${group.id}" data-search-item="${escapeAttribute(target)}">
-      ${group.image_url?`<img loading="lazy" decoding="async" src="${escapeAttribute(groupThumbnailUrl(group))}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
+      ${groupThumbnailUrl(group)?`<img loading="lazy" decoding="async" src="${escapeAttribute(groupThumbnailUrl(group))}" alt="">`:'<span class="search-result-no-image">🧦</span>'}
       <span><strong>${escapeHtml(group.title||'상품')}</strong><small>${escapeHtml(category?.name||'')} · ${numbers.map(escapeHtml).join(', ')}</small></span>
       <em>${formatGroupUnitPrice(group)}</em>
     </button>`;
@@ -3001,7 +3001,7 @@ function renderFrequentProducts(){
         ${visibleGroups.map(g=>`
           <button class="frequent-card" type="button" onclick="openGroup(${g.id})">
             <span class="frequent-card-image">
-              ${g.image_url
+              ${groupThumbnailUrl(g)
                 ? `<img loading="lazy" decoding="async" src="${escapeAttribute(groupThumbnailUrl(g))}" alt="${escapeAttribute(g.title)}">`
                 : `<span class="frequent-no-image" aria-hidden="true">🧦</span>`}
             </span>

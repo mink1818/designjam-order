@@ -923,12 +923,12 @@ function renderGroupList() {
           </div>
 
           ${
-            group.image_url
+            (group.image_url || (Array.isArray(group.image_urls) && group.image_urls.find(Boolean)))
               ? `
                 <img
                   class="admin-product-image"
                   src="${escapeAttribute(
-                    group.image_url
+                    (group.thumbnail_url || group.image_url || group.image_urls?.find(Boolean))
                   )}"
                   alt="${escapeAttribute(
                     group.title
@@ -2385,14 +2385,15 @@ async function uploadGroupImageSet(file) {
 }
 
 async function generateMissingGroupThumbnails() {
-  const targets = allGroups.filter(group => group.image_url && !group.thumbnail_url);
-  if (!targets.length) { alert("썸네일이 없는 상품사진이 없습니다."); return; }
+  const coverUrl = group => group.image_url || (Array.isArray(group.image_urls) ? group.image_urls.find(Boolean) : "") || "";
+  const targets = allGroups.filter(group => coverUrl(group) && !group.thumbnail_url);
+  if (!targets.length) { alert("썸네일을 만들 사진이 없습니다. 대표사진이나 추가사진을 먼저 등록해주세요."); return; }
   if (!confirm(`원본 사진은 그대로 두고 ${targets.length}개 목록용 썸네일을 생성할까요?`)) return;
   let completed = 0, failed = 0;
   showMessage("groupMessage", `목록용 썸네일을 생성하는 중입니다. 0 / ${targets.length}`);
   for (const group of targets) {
     try {
-      const response = await fetch(group.image_url, { mode: "cors" });
+      const response = await fetch(coverUrl(group), { mode: "cors" });
       if (!response.ok) throw new Error(`사진 불러오기 실패 (${response.status})`);
       const sourceFile = new File([await response.blob()], "original-image", { type: response.headers.get("content-type") || "image/jpeg" });
       const thumbnailUrl = await uploadImage(await createWebpThumbnail(sourceFile), "product-thumbnails", "31536000");
