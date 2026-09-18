@@ -1872,15 +1872,23 @@ soldoutItemsBox.innerHTML = itemNumbers
   })
   .join("");
 
-  document
-    .getElementById("groupCategory")
-    .scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
+  revealGroupEditor();
 }
 
 window.editGroup = editGroup;
+
+function revealGroupEditor() {
+  const editor = document.getElementById("groupEditor");
+  const accordion = editor?.closest("details.admin-accordion");
+  if (accordion) accordion.open = true;
+  if (editor?.classList.contains("admin-section-collapsed")) {
+    editor.querySelector(":scope > .admin-section-toggle")?.click();
+  }
+  requestAnimationFrame(() => {
+    editor?.scrollIntoView({ behavior: "instant", block: "start" });
+    document.getElementById("groupTitle")?.focus({ preventScroll: true });
+  });
+}
 
 /* 기존 상품 묶음을 새 상품 묶음으로 복제 */
 function cloneGroup(id) {
