@@ -139,6 +139,7 @@ let adminInventoryAvailable = false;
 let adminCustomerIdentityMap = new Map();
 let adminCustomerMetaMap = new Map();
 let adminProductCatalogMap = new Map();
+let adminProductCatalogRows = [];
 let adminProductCatalogLoadedAt = 0;
 let adminOrderMetaMap = new Map();
 
@@ -159,7 +160,7 @@ async function fetchAdminCustomerMetadata(ids=[]){const unique=[...new Set((ids|
 async function fetchAdminOrderMetadata(nums=[]){const unique=[...new Set((nums||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('order_admin_metadata').select('order_number,admin_tag,show_tag,customer_memo_acknowledged_at,customer_memo_acknowledged_by,customer_memo_acknowledged_by_name').in('order_number',unique);if(error){console.warn('V6.6.20 주문표시 조회 생략:',error.message);return[]}return data||[]}
 async function fetchAdminProductCatalog(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,price,warehouse_code').range(from,from+999);if(error){console.warn('상품단가표 조회 실패:',error.message);throw error}rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
 function catalogNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const p=JSON.parse(value);if(Array.isArray(p))return p.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
-function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>adminProductCatalogMap.set(inventoryKey(n),{item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()})));adminProductCatalogLoadedAt=Date.now()}
+function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();adminProductCatalogRows=[];(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>{const item={item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()},key=inventoryKey(n);adminProductCatalogRows.push(item);adminProductCatalogMap.set(`${item.warehouse_code}:${key}`,item);if(!adminProductCatalogMap.has(key))adminProductCatalogMap.set(key,item);else if(adminProductCatalogMap.get(key)?.warehouse_code!==item.warehouse_code)adminProductCatalogMap.set(key,null)}));adminProductCatalogLoadedAt=Date.now()}
 function inventoryKey(value) {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -657,7 +658,7 @@ function renderOrderItemEditor(group, index) {
       <button class="order-edit-remove-new" type="button" onclick="this.closest('[data-order-edit-row]').remove()">삭제</button>
     </div>`;
   }).join("");
-  return `<section id="order-item-editor-${index}" class="order-item-editor" data-customer-id="${escapeAdminAttr(group.customerId||'')}" hidden>
+  return `<section id="order-item-editor-${index}" class="order-item-editor" data-customer-id="${escapeAdminAttr(group.customerId||'')}" data-customer-name="${escapeAdminAttr(group.customerName||'')}" hidden>
     <div class="order-edit-paste-box">
       <strong>품번·수량 여러 개 붙여넣기</strong>
       <textarea id="order-edit-paste-${index}" rows="5" placeholder="관리자 대신주문처럼 붙여넣으세요.&#10;5031 2&#10;5032-3&#10;5033~5035"></textarea>
@@ -1228,20 +1229,24 @@ function analyzeOrderEditPaste(index){
   const rows=parseOrderEditPaste(input.value);orderEditPasteAnalyses.set(index,rows);preview.innerHTML=rows.length?`<strong>자동 분석 결과 · 적용할 품번 선택</strong><div class="order-edit-paste-checks">${rows.map((row,rowIndex)=>`<label><input type="checkbox" data-order-paste-row="${rowIndex}" checked><span><b>${escapeAdminHtml(row.item)}</b> ${Number(row.qty)}죽</span></label>`).join('')}</div>`:'<p>인식된 품번이 없습니다. 입력 내용을 확인해주세요.</p>';preview.hidden=false;apply.hidden=!rows.length;if(result)result.textContent=rows.length?`${rows.length.toLocaleString()}개 품번을 찾았습니다.`:'품번을 찾지 못했습니다.';
 }
 function orderEditRowKey(value){const parsed=splitWarehouseItemNumber(value);return`${String(parsed.warehouseCode||'').toUpperCase()}:${inventoryKey(parsed.itemNumber)}`}
+function orderEditPriceKey(value){return inventoryKey(splitWarehouseItemNumber(value).itemNumber)}
+async function fetchOrderEditCustomerPrices(editor){
+  const id=editor?.dataset.customerId||'',name=editor?.dataset.customerName||'',prices=new Map();
+  if(id){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:id});if(error)console.warn('주문수정 ID 전용단가 조회:',error.message);else(data||[]).forEach(row=>prices.set(orderEditPriceKey(row.item_number),Number(row.price)))}
+  // 관리자 대신주문과 동일하게 거래처명 전용단가가 ID 단가보다 우선합니다.
+  if(name){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:name});if(error)console.warn('주문수정 거래처명 전용단가 조회:',error.message);else(data||[]).forEach(row=>prices.set(orderEditPriceKey(row.item_number),Number(row.price)))}
+  return prices;
+}
 function orderEditItemKind(itemNumber){const key=inventoryKey(itemNumber);if(/A$/.test(key))return'아동양말';if(/M$/.test(key))return'무지양말';return'라코스테양말'}
 function resolveOrderEditPasteItem(value){
   const parsed=splitWarehouseItemNumber(value),key=inventoryKey(parsed.itemNumber);
   if(!key)return{item:null,candidates:[]};
-  if(/[AM]$/.test(key)){
-    const exact=adminProductCatalogMap.get(key)||null;
-    return{item:exact,candidates:exact?[exact]:[]};
-  }
-  if(!/\d$/.test(key)){
-    const exact=adminProductCatalogMap.get(key)||null;
-    return{item:exact,candidates:exact?[exact]:[]};
+  if(/[AM]$/.test(key)||!/\d$/.test(key)){
+    const unique=new Map();adminProductCatalogRows.forEach(item=>{const warehouse=String(item.warehouse_code||'').toUpperCase();if(inventoryKey(item.item_number)===key&&(!parsed.warehouseCode||!warehouse||warehouse===parsed.warehouseCode))unique.set(`${warehouse}:${key}`,item)});
+    const candidates=[...unique.values()];return{item:candidates.length===1?candidates[0]:null,candidates};
   }
   const unique=new Map();
-  adminProductCatalogMap.forEach(item=>{
+  adminProductCatalogRows.forEach(item=>{
     const itemKey=inventoryKey(item?.item_number);
     if(itemKey.replace(/[AM]$/,'')!==key)return;
     const warehouse=String(item?.warehouse_code||'').toUpperCase();
@@ -1266,11 +1271,11 @@ function chooseOrderEditPasteItem(requested,candidates){
 async function applyOrderEditPaste(index){
   const editor=document.getElementById(`order-item-editor-${index}`),preview=document.getElementById(`order-edit-paste-preview-${index}`),result=document.getElementById(`order-edit-paste-result-${index}`),apply=document.getElementById(`order-edit-paste-apply-${index}`);if(!editor||!preview)return;
   const analysis=orderEditPasteAnalyses.get(index)||[],selected=analysis.filter((_,rowIndex)=>preview.querySelector(`[data-order-paste-row="${rowIndex}"]`)?.checked);if(!selected.length)return alert('적용할 품번을 선택해주세요.');if(apply){apply.disabled=true;apply.textContent='적용 중...'}
-  try{if(!adminProductCatalogMap.size||Date.now()-adminProductCatalogLoadedAt>60000)setAdminProductCatalog(await fetchAdminProductCatalog());const customerId=editor.dataset.customerId||'',specialPrices=new Map();if(customerId){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error)(data||[]).forEach(row=>specialPrices.set(inventoryKey(row.item_number),Number(row.price||0)))}
+  try{if(!adminProductCatalogMap.size||Date.now()-adminProductCatalogLoadedAt>60000)setAdminProductCatalog(await fetchAdminProductCatalog());const specialPrices=await fetchOrderEditCustomerPrices(editor);
     const existing=new Map();editor.querySelectorAll('[data-order-edit-row]').forEach(row=>existing.set(orderEditRowKey(row.querySelector('.order-edit-number')?.value),row));let added=0,merged=0,cancelled=0;const unregisteredItems=[];
-    for(const pasted of selected){const parsed=splitWarehouseItemNumber(pasted.item),resolution=resolveOrderEditPasteItem(pasted.item);let catalog=resolution.item;if(!catalog&&resolution.candidates.length>1)catalog=await chooseOrderEditPasteItem(pasted.item,resolution.candidates);if(!catalog&&resolution.candidates.length>1){cancelled++;continue;}catalog=catalog||adminProductCatalogMap.get(inventoryKey(parsed.itemNumber))||adminProductCatalogMap.get(inventoryKey(pasted.item));const itemNumber=String(catalog?.item_number||parsed.itemNumber||pasted.item).trim(),warehouse=String(catalog?.warehouse_code||parsed.warehouseCode||'').toUpperCase(),key=`${warehouse}:${inventoryKey(itemNumber)}`,oldRow=existing.get(key);
+    for(const pasted of selected){const parsed=splitWarehouseItemNumber(pasted.item),resolution=resolveOrderEditPasteItem(pasted.item);let catalog=resolution.item;if(!catalog&&resolution.candidates.length>1)catalog=await chooseOrderEditPasteItem(pasted.item,resolution.candidates);if(!catalog&&resolution.candidates.length>1){cancelled++;continue;}const itemNumber=String(catalog?.item_number||parsed.itemNumber||pasted.item).trim(),warehouse=String(catalog?.warehouse_code||parsed.warehouseCode||'').toUpperCase(),key=`${warehouse}:${inventoryKey(itemNumber)}`,oldRow=existing.get(key);
       if(oldRow){const qtyInput=oldRow.querySelector('.order-edit-qty');qtyInput.value=Math.max(1,Number(qtyInput.value||0))+Number(pasted.qty||1);updateOrderEditRowTotal(oldRow);merged++;continue;}
-      const price=Number(specialPrices.get(inventoryKey(itemNumber))??catalog?.price??0);addOrderItemEditRow(index,catalog?'auto':'manual',{number:`${warehouse?warehouse+'-':''}${itemNumber}`,qty:Number(pasted.qty||1),price,focus:false});const newRow=editor.querySelector('.order-edit-rows')?.lastElementChild;if(newRow)existing.set(key,newRow);added++;if(!catalog)unregisteredItems.push(String(pasted.item));
+      const price=Number(specialPrices.get(orderEditPriceKey(itemNumber))??catalog?.price??0);addOrderItemEditRow(index,catalog?'auto':'manual',{number:`${warehouse?warehouse+'-':''}${itemNumber}`,qty:Number(pasted.qty||1),price,focus:false});const newRow=editor.querySelector('.order-edit-rows')?.lastElementChild;if(newRow)existing.set(key,newRow);added++;if(!catalog)unregisteredItems.push(String(pasted.item));
     }
     const input=document.getElementById(`order-edit-paste-${index}`);if(input)input.value='';preview.hidden=true;orderEditPasteAnalyses.delete(index);if(result)result.textContent=`적용 완료 · 새 품번 ${added}개${merged?` · 기존 품번 수량합산 ${merged}개`:''}${cancelled?` · 선택취소 ${cancelled}개`:''}${unregisteredItems.length?` · 상품관리 미등록: ${[...new Set(unregisteredItems)].join(', ')}`:''} · 아래 목록 확인 후 주문 품목 저장을 누르세요.`;
   }catch(error){if(result)result.textContent=`붙여넣기 적용 실패: ${error?.message||error}`;alert('붙여넣기 적용 중 오류가 발생했습니다. 다시 시도해주세요.')}finally{if(apply){apply.disabled=false;apply.textContent='선택 품번 적용';apply.hidden=true}}
@@ -1285,7 +1290,7 @@ function updateOrderEditRowTotal(row) {
 
 async function autofillNewOrderItem(row){
   if(!row?.classList.contains('new-order-edit-row')||row.dataset.entryMode==='manual'||row.dataset.autofillBusy==='1')return;
-  const input=row.querySelector('.order-edit-number'),requested=String(input?.value||'').trim(),parsed=splitWarehouseItemNumber(requested),key=inventoryKey(parsed.itemNumber);if(!key)return;
+  const input=row.querySelector('.order-edit-number'),requested=String(input?.value||'').trim(),revision=row.dataset.inputRevision||'',parsed=splitWarehouseItemNumber(requested),key=inventoryKey(parsed.itemNumber);if(!key)return;
   row.dataset.autofillBusy='1';input?.classList.add('field-saving');
   try{
     if(!adminProductCatalogMap.size||Date.now()-adminProductCatalogLoadedAt>60000)setAdminProductCatalog(await fetchAdminProductCatalog());
@@ -1297,19 +1302,21 @@ async function autofillNewOrderItem(row){
       if(result)result.textContent=resolution.candidates.length>1?'품번 종류 선택을 취소했습니다.':'상품관리에 등록되지 않은 품번입니다: '+requested;
       return;
     }
-    const actualKey=inventoryKey(found.item_number),customerId=row.closest('.order-item-editor')?.dataset.customerId||'';let price=Number(found.price||0);
-    if(customerId){try{const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:customerId});if(!error){const special=(data||[]).find(x=>inventoryKey(x.item_number)===actualKey);if(special)price=Number(special.price||price)}}catch(_){}}
-    const warehouse=String(found.warehouse_code||parsed.warehouseCode||'').toUpperCase();input.value=`${warehouse?warehouse+'-':''}${found.item_number}`;const priceInput=row.querySelector('.order-edit-price');if(priceInput)priceInput.value=price;updateOrderEditRowTotal(row);
+    const prices=await fetchOrderEditCustomerPrices(row.closest('.order-item-editor'));
+    if(String(input?.value||'').trim()!==requested||(row.dataset.inputRevision||'')!==revision||row.dataset.entryMode==='manual')return;
+    const price=Number(prices.get(orderEditPriceKey(found.item_number))??found.price??0);
+    const warehouse=String(found.warehouse_code||parsed.warehouseCode||'').toUpperCase();input.value=`${warehouse?warehouse+'-':''}${found.item_number}`;const priceInput=row.querySelector('.order-edit-price');if(priceInput&&row.dataset.priceManual!=='1')priceInput.value=price;row.dataset.autoResolved='1';updateOrderEditRowTotal(row);
     const result=row.closest('.order-item-editor')?.querySelector('.order-edit-paste-result');if(result)result.textContent=`품번 ${input.value} · 출고지와 단가를 자동 적용했습니다.`;
   }catch(error){const result=row.closest('.order-item-editor')?.querySelector('.order-edit-paste-result');if(result)result.textContent='품번 자동조회 실패: '+(error?.message||error)}finally{delete row.dataset.autofillBusy;input?.classList.remove('field-saving')}
 }
 function bindOrderEditRow(row) {
-  const numberInput=row.querySelector('.order-edit-number');if(numberInput&&!numberInput.dataset.autoPriceBound){numberInput.dataset.autoPriceBound='1';const autofill=()=>{if(row.dataset.autofillBusy==='1')return;row.orderEditAutofill=autofillNewOrderItem(row)};numberInput.addEventListener('change',autofill);numberInput.addEventListener('blur',autofill);}
+  const numberInput=row.querySelector('.order-edit-number');if(numberInput&&!numberInput.dataset.autoPriceBound){numberInput.dataset.autoPriceBound='1';numberInput.addEventListener('input',()=>{row.dataset.inputRevision=String(Number(row.dataset.inputRevision||0)+1);row.dataset.autoResolved='0'});const autofill=()=>{if(row.dataset.entryMode==='manual'||row.dataset.autofillBusy==='1'||row.dataset.autoResolved==='1')return;row.orderEditAutofill=autofillNewOrderItem(row)};numberInput.addEventListener('change',autofill);numberInput.addEventListener('blur',autofill);}
+  const priceInput=row.querySelector('.order-edit-price');if(priceInput&&!priceInput.dataset.manualBound){priceInput.dataset.manualBound='1';priceInput.addEventListener('input',()=>{row.dataset.priceManual='1'})}
   row.querySelectorAll(".order-edit-qty,.order-edit-price").forEach(input => input.addEventListener("input", () => updateOrderEditRowTotal(row)));
   row.querySelector(".order-edit-row-total")?.addEventListener("input", event => {
     const qty = Math.max(1, Number(row.querySelector(".order-edit-qty")?.value || 1));
     const price = row.querySelector(".order-edit-price");
-    if (price) price.value = Math.max(0, Number(event.target.value || 0)) / qty;
+    if (price) {price.value = Math.max(0, Number(event.target.value || 0)) / qty;row.dataset.priceManual='1'}
   });
   updateOrderEditRowTotal(row);
 }
@@ -1357,6 +1364,8 @@ function addOrderItemEditRow(index, mode = "auto", preset = {}) {
     <button class="order-edit-remove-new" type="button" onclick="this.closest('[data-order-edit-row]').remove()">삭제</button>
   </div>`);
   const row = rows.lastElementChild;
+  if(mode==='manual')row.dataset.manualOverride='1';
+  if(mode==='auto'&&preset.number)row.dataset.autoResolved='1';
   bindOrderEditRow(row);
   if(preset.focus!==false)row.querySelector(".order-edit-number")?.focus();
 }
@@ -1374,7 +1383,7 @@ async function saveOrderItems(orderNumber, index) {
   try{
     await Promise.all(editRows.map(async row=>{
       if(row.orderEditAutofill)await row.orderEditAutofill;
-      if(row.classList.contains('new-order-edit-row')&&row.dataset.entryMode!=='manual'&&!row.dataset.autofillBusy){
+      if(row.classList.contains('new-order-edit-row')&&row.dataset.entryMode!=='manual'&&row.dataset.autoResolved!=='1'&&!row.dataset.autofillBusy){
         row.orderEditAutofill=autofillNewOrderItem(row);
         await row.orderEditAutofill;
       }
@@ -1405,7 +1414,7 @@ async function saveOrderItems(orderNumber, index) {
     alert("주문 품목을 저장했습니다.");
     await loadOrders();
   } catch (error) {
-    alert("주문 품목 저장 실패: " + error.message);
+    alert("주문 품목 저장 실패: " + error.message + "\n신규 품번 단가가 달라지면 SQL/V6.7.36-ADMIN-ORDER-EDIT-PRICE.sql을 적용해주세요.");
     if (button) { button.disabled = false; button.textContent = "주문 품목 저장"; }
   }
 }
