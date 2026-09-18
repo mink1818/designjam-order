@@ -113,6 +113,54 @@ const BULK_IMAGE_FOLDER = "bulk-image-library";
 const BULK_IMAGE_PAGE_SIZE = 1000;
 let bulkImageLibrary = new Map();
 let uploadedGroupThumbnailUrl = "";
+let groupImageUploadPromise = null;
+let groupImageRevision = 0;
+
+function renderGroupImageControls() {
+  const url = document.getElementById("groupImage").value.trim();
+  const preview = document.getElementById("groupImagePreview");
+  preview.replaceChildren();
+  if (url) {
+    const image = document.createElement("img");
+    image.src = url;
+    image.alt = "현재 선택한 대표사진";
+    preview.appendChild(image);
+  }
+  document.getElementById("removeGroupImageButton").disabled = !url;
+  const list = document.getElementById("groupAdditionalImageList");
+  list.replaceChildren();
+  uploadedGroupImageUrls.forEach((imageUrl, index) => {
+    const row = document.createElement("div");
+    const image = document.createElement("img");
+    image.src = imageUrl;
+    image.alt = `추가사진 ${index + 1}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cart-btn gray-btn";
+    button.textContent = `추가사진 ${index + 1} 삭제`;
+    button.onclick = () => {
+      uploadedGroupImageUrls.splice(index, 1);
+      renderGroupImageControls();
+      showMessage("groupMessage", "추가사진 연결을 해제했습니다. ‘상품 묶음 저장’을 눌러 적용하세요.");
+    };
+    row.append(image, button);
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("groupImage").addEventListener("input", () => {
+  groupImageRevision++;
+  uploadedGroupThumbnailUrl = "";
+  renderGroupImageControls();
+});
+document.getElementById("removeGroupImageButton").addEventListener("click", () => {
+  groupImageRevision++;
+  document.getElementById("groupImage").value = "";
+  groupFile.value = "";
+  uploadedGroupThumbnailUrl = "";
+  renderGroupImageControls();
+  showMessage("groupMessage", "대표사진 연결을 해제했습니다. ‘상품 묶음 저장’을 눌러 적용하세요.");
+});
 
 coverFile.addEventListener("change", async () => {
   const file = coverFile.files[0];
@@ -196,8 +244,11 @@ groupFile.addEventListener("change", async () => {
   if (!file) return;
 
   groupFile.disabled = true;
+  const revision = ++groupImageRevision;
+  const saveButton = document.getElementById("saveGroupButton");
+  saveButton.disabled = true;
 
-  try {
+  groupImageUploadPromise = (async () => { try {
     showMessage(
       "groupMessage",
       "상품사진을 업로드하는 중입니다."
@@ -205,15 +256,17 @@ groupFile.addEventListener("change", async () => {
 
     const uploaded = await uploadGroupImageSet(file);
 
-    document.getElementById("groupImage").value =
-      uploaded.originalUrl;
+    if (revision !== groupImageRevision) return;
+    document.getElementById("groupImage").value = uploaded.originalUrl;
     uploadedGroupThumbnailUrl = uploaded.thumbnailUrl;
+    renderGroupImageControls();
 
     showMessage(
       "groupMessage",
-      "상품사진 업로드가 완료되었습니다."
+      "사진 업로드 완료. ‘상품 묶음 저장’을 눌러 적용하세요."
     );
   } catch (error) {
+    if (revision !== groupImageRevision) return;
     showMessage(
       "groupMessage",
       "상품사진 업로드 실패: " + error.message,
@@ -221,7 +274,9 @@ groupFile.addEventListener("change", async () => {
     );
   } finally {
     groupFile.disabled = false;
-  }
+    saveButton.disabled = false;
+  } })();
+  await groupImageUploadPromise;
 });
 
 groupFiles.addEventListener("change", async () => {
@@ -246,6 +301,7 @@ groupFiles.addEventListener("change", async () => {
   ...uploadedGroupImageUrls,
   ...urls
 ];
+    renderGroupImageControls();
 
     showMessage(
       "groupMessage",
@@ -1670,6 +1726,7 @@ window.deleteCategory = deleteCategory;
 
 /* 상품 묶음 저장 */
 async function saveGroup() {
+  if (groupImageUploadPromise) await groupImageUploadPromise;
   const id =
     document.getElementById("groupId").value;
 
@@ -1681,6 +1738,9 @@ async function saveGroup() {
 
   const imageUrl =
     document.getElementById("groupImage").value.trim();
+  const previous = allGroups.find(group => String(group.id) === String(id));
+  if (previous && imageUrl !== String(previous.image_url || "").trim() &&
+      uploadedGroupThumbnailUrl === previous.thumbnail_url) uploadedGroupThumbnailUrl = "";
 
   const itemNumbers = parseCommaList(
     document.getElementById("groupNumbers").value
@@ -1780,6 +1840,7 @@ async function saveGroup() {
 
 /* 상품 묶음 수정 폼에 불러오기 */
 function editGroup(id) {
+  groupImageRevision++;
   const group = allGroups.find(
     item => item.id === id
   );
@@ -1804,6 +1865,7 @@ function editGroup(id) {
   document.getElementById("groupImage").value =
     group.image_url || "";
   uploadedGroupThumbnailUrl = group.thumbnail_url || "";
+  groupFile.value = "";
 
     document.getElementById("groupDescription").value =
   group.description_text || "";
@@ -1815,6 +1877,7 @@ document.getElementById("groupBrand").value =
   Array.isArray(group.image_urls)
     ? [...group.image_urls]
     : [];
+  renderGroupImageControls();
 
     showMessage(
   "groupMessage",
@@ -1892,6 +1955,7 @@ function revealGroupEditor() {
 
 /* 기존 상품 묶음을 새 상품 묶음으로 복제 */
 function cloneGroup(id) {
+  groupImageRevision++;
   const group = allGroups.find(
     item => item.id === id
   );
@@ -1923,6 +1987,7 @@ function cloneGroup(id) {
   document.getElementById("groupImage").value =
     group.image_url || "";
   uploadedGroupThumbnailUrl = group.thumbnail_url || "";
+  groupFile.value = "";
 
   document.getElementById("groupNumbers").value =
     itemNumbers.join(", ");
@@ -1941,6 +2006,7 @@ function cloneGroup(id) {
     Array.isArray(group.image_urls)
       ? [...group.image_urls]
       : [];
+  renderGroupImageControls();
 
   /* 시작·끝 품번 표시 */
   if (itemNumbers.length > 0) {
@@ -2030,6 +2096,7 @@ resetGroupFiltersButton.addEventListener(
 
 /* 상품 묶음 입력 초기화 */
 function resetGroupForm() {
+  groupImageRevision++;
   document.getElementById("groupId").value = "";
   document.getElementById("groupCategory").value = "";
   document.getElementById("groupTitle").value = "";
@@ -2051,6 +2118,7 @@ endItem.value = "";
 itemPattern.value = "";
 
 uploadedGroupImageUrls = [];    // 추가
+renderGroupImageControls();
 
 renderSoldoutItems([], []);
 }
