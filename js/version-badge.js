@@ -1,5 +1,5 @@
 (()=>{
-  const RELEASE_VERSION='V6.7.40';
+  const RELEASE_VERSION='V6.7.41';
   function addBadge(version){
     let b=document.getElementById('appVersionBadge');
     if(!b){

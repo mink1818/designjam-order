@@ -469,7 +469,7 @@ try {
           const direction = adminCompletedSort?.value === "shipped-asc" ? 1 : -1;
           return direction * (new Date(a.completedAt || a.createdAt) - new Date(b.completedAt || b.createdAt));
         }
-        const sortMode = adminActiveSort?.value || "customer";
+        const sortMode = adminActiveSort?.value || "newest";
         if (sortMode === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
         if (sortMode === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
         if (sortMode === "order-number") return String(a.orderNumber || "").localeCompare(String(b.orderNumber || ""), "ko", { numeric: true, sensitivity: "base" });
