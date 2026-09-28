@@ -122,7 +122,9 @@ let adminFilter = "주문접수";
 let adminPage = 1;
 const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
-if (["전체", "오늘주문", "미출고", "주문접수", "출고대기", "I포장완료대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
+const adminDateScope = requestedAdminStatus === "오늘주문" || adminUrlParams.get("scope") === "today" ? "today" : "all";
+if (requestedAdminStatus === "오늘주문") adminFilter = "전체";
+else if (["전체", "미출고", "주문접수", "출고대기", "I포장완료대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let orderRevisionMap = {};
 let orderRevisionHistoryMap = {};
@@ -205,6 +207,15 @@ function setAdminFilter(status) {
   syncAdminFilterTabs();
   // 탭 전환은 이미 받은 캐시를 즉시 사용합니다. 최신 서버값은 새로고침/실시간 갱신에서 반영합니다.
   loadOrders();
+}
+
+function isAdminGroupInsideDateScope(group) {
+  if (adminDateScope !== "today") return true;
+  const created = new Date(group?.createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const end = new Date(start); end.setDate(end.getDate() + 1);
+  return created >= start && created < end;
 }
 
 function syncAdminFilterTabs() {
@@ -419,29 +430,28 @@ try {
   });
 
   const groups = Object.values(grouped);
+  const scopedGroups = groups.filter(isAdminGroupInsideDateScope);
   window.__adminRenderedGroups=groups;
 
-  document.getElementById("totalCount").textContent = groups.length;
+  document.getElementById("totalCount").textContent = scopedGroups.length;
   document.getElementById("pendingCount").textContent =
-    groups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && !String(g.pickingStatus || "").includes("검증완료")).length;
+    scopedGroups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && !String(g.pickingStatus || "").includes("검증완료")).length;
   document.getElementById("readyCount").textContent =
-    groups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && String(g.pickingStatus || "").includes("검증완료")).length;
-  document.getElementById("iPackedCount").textContent = groups.filter(isAdminIPackedWaiting).length;
+    scopedGroups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && String(g.pickingStatus || "").includes("검증완료")).length;
+  document.getElementById("iPackedCount").textContent = scopedGroups.filter(isAdminIPackedWaiting).length;
   document.getElementById("doneCount").textContent =
-    groups.filter(g => g.status === "출고완료").length;
+    scopedGroups.filter(g => g.status === "출고완료").length;
+  const scopeIndicator=document.getElementById('adminOrderScopeIndicator');
+  if(scopeIndicator){scopeIndicator.hidden=adminDateScope!=='today';scopeIndicator.textContent='오늘 주문 범위 · 상태 탭을 눌러도 오늘 주문만 표시';}
 
   const keyword = adminSearch?.value?.trim() || "";
   const normalizedKeyword=inventoryKey(keyword);const exactItemSearch=Boolean(keyword)&&groups.some(group=>group.items.some(item=>inventoryKey(item.item_number)===normalizedKeyword));
 
-  const filteredGroups = groups
+  const filteredGroups = scopedGroups
     .filter(group => {
       if (requestedCustomerId && String(group.customerId || "") !== requestedCustomerId) return false;
       const pickingVerified = String(group.pickingStatus || "").includes("검증완료");
       const iPackedWaiting = isAdminIPackedWaiting(group);
-      if (adminFilter === "오늘주문") {
-        const created=new Date(group.createdAt),start=new Date();start.setHours(0,0,0,0);
-        if(Number.isNaN(created.getTime())||created<start)return false;
-      }
       if (adminFilter === "미출고" && group.status === "출고완료") return false;
       if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified && !iPackedWaiting)) return false;
       if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified && !iPackedWaiting)) return false;
@@ -720,13 +730,18 @@ function getOrderWarehouseSections(items) {
   return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code).sort((a,b)=>String(a.item_number||'').localeCompare(String(b.item_number||''),'ko',{numeric:true,sensitivity:'base'})) })).filter(section => section.items.length);
 }
 
-function getCollapsedWarehouseQuantitySummary(items) {
+function getCollapsedWarehouseQuantities(items) {
   const quantities = { S: 0, B: 0, I: 0 };
   (items || []).forEach(item => {
     const code = getOrderWarehouseCode(item);
     if (Object.prototype.hasOwnProperty.call(quantities, code)) quantities[code] += Math.max(0, Number(item.qty || 0));
   });
-  return `S ${quantities.S} · B ${quantities.B} · I ${quantities.I}`;
+  return quantities;
+}
+
+function renderCollapsedWarehouseQuantitySummary(items) {
+  const quantities = getCollapsedWarehouseQuantities(items);
+  return ['S','B','I'].map(code => `<span class="collapsed-sbi-badge warehouse-${code.toLowerCase()} ${quantities[code] > 0 ? 'has-qty' : 'is-empty'}"><b>${code}</b> ${quantities[code]}</span>`).join('');
 }
 
 function fallbackCopyWithoutJump(text) {
@@ -874,7 +889,7 @@ summaryTotal += Number(group.shipping_fee || 0);
       itemHtml += `</div>`;
     });
 
-    const warehouseQuantitySummary = getCollapsedWarehouseQuantitySummary(group.items);
+    const warehouseQuantitySummary = renderCollapsedWarehouseQuantitySummary(group.items);
     html += `
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}" data-revision-status="${escapeAdminAttr(group.revisionStatus||'')}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">

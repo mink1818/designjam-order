@@ -56,19 +56,19 @@ async function loadDashboard(){
   // 미입금 상세는 운영 숫자와 동시에 시작해 대시보드의 나머지 조회를 기다리지 않습니다.
   void loadUnpaidCustomers();
   const [todayOrders,pending,doneToday,customers,waiting,products]=await Promise.all([
-    supabaseClient.from("orders").select("order_number").gte("created_at",start),
+    supabaseClient.from("orders").select("order_number,customer_id,customer_name").gte("created_at",start),
     // 주문관리의 `미출고` 화면과 똑같이 DB 상태가 주문접수인 주문만 집계합니다.
     // neq(출고완료)는 NULL/예외 상태를 다르게 처리해 메인 숫자와 클릭 후 목록이 어긋날 수 있습니다.
     supabaseClient.from("orders").select("order_number,customer_id,customer_name").eq("status","주문접수"),
-    supabaseClient.from("orders").select("order_number").eq("status","출고완료").gte("shipped_at",start),
+    supabaseClient.from("orders").select("order_number,customer_id,customer_name").eq("status","출고완료").gte("shipped_at",start),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))
   ]);
-  setText("todayOrderCount",uniqueOrders(todayOrders.data));
+  setText("todayOrderCount",uniqueOrderGroups(todayOrders.data));
   // 주문관리 `status=미출고`와 동일한 주문 집합입니다.
   setText("pendingOrderCount",uniqueOrderGroups(pending.data));
-  setText("todayDoneCount",uniqueOrders(doneToday.data));
+  setText("todayDoneCount",uniqueOrderGroups(doneToday.data));
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);
   const soldoutItems=new Set();
