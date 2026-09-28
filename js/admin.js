@@ -124,7 +124,7 @@ const ADMIN_PAGE_SIZE = 50;
 const requestedAdminStatus = new URLSearchParams(location.search).get("status");
 const adminDateScope = requestedAdminStatus === "오늘주문" || adminUrlParams.get("scope") === "today" ? "today" : "all";
 if (requestedAdminStatus === "오늘주문") adminFilter = "전체";
-else if (["전체", "미출고", "주문접수", "출고대기", "I포장완료대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
+else if (["전체", "미출고", "주문접수", "주문확인", "출고대기", "I포장완료대기", "출고완료"].includes(requestedAdminStatus)) adminFilter = requestedAdminStatus;
 let customerNotes = {};
 let orderRevisionMap = {};
 let orderRevisionHistoryMap = {};
@@ -218,14 +218,30 @@ function isAdminGroupInsideDateScope(group) {
   return created >= start && created < end;
 }
 
+function isAdminGroupCreatedToday(group) {
+  const created = new Date(group?.createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const end = new Date(start); end.setDate(end.getDate() + 1);
+  return created >= start && created < end;
+}
+
+function isAdminOrderReview(group) {
+  return group?.status === "주문접수" && !isAdminGroupCreatedToday(group) && !isAdminIPackedWaiting(group) && !String(group?.pickingStatus || "").includes("검증완료");
+}
+
+function isAdminOrderReceived(group) {
+  return group?.status === "주문접수" && isAdminGroupCreatedToday(group) && !isAdminIPackedWaiting(group) && !String(group?.pickingStatus || "").includes("검증완료");
+}
+
 function syncAdminFilterTabs() {
-  const map = { 주문접수: "tabPending", 출고대기: "tabReady", I포장완료대기: "tabIPacked", 출고완료: "tabDone", 전체: "tabAll", 오늘주문: "tabAll", 미출고: "tabAll" };
+  const map = { 주문접수: "tabPending", 주문확인: "tabReview", 출고대기: "tabReady", I포장완료대기: "tabIPacked", 출고완료: "tabDone", 전체: "tabAll", 오늘주문: "tabAll", 미출고: "tabAll" };
   document.querySelectorAll(".order-status-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(map[adminFilter])?.classList.add("active");
   const toolbar = document.querySelector(".completed-toolbar");
   if (toolbar) toolbar.hidden = adminFilter !== "출고완료" && adminFilter !== "전체";
   syncCompletedDateControls();
-  const activeSortVisible = ["주문접수", "출고대기", "I포장완료대기"].includes(adminFilter);
+  const activeSortVisible = ["주문접수", "주문확인", "출고대기", "I포장완료대기"].includes(adminFilter);
   if (adminActiveSort) adminActiveSort.hidden = !activeSortVisible;
   const activeSortLabel = document.getElementById("adminActiveSortLabel");
   if (activeSortLabel) activeSortLabel.hidden = !activeSortVisible;
@@ -435,7 +451,8 @@ try {
 
   document.getElementById("totalCount").textContent = scopedGroups.length;
   document.getElementById("pendingCount").textContent =
-    scopedGroups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && !String(g.pickingStatus || "").includes("검증완료")).length;
+    scopedGroups.filter(isAdminOrderReceived).length;
+  document.getElementById("reviewCount").textContent = scopedGroups.filter(isAdminOrderReview).length;
   document.getElementById("readyCount").textContent =
     scopedGroups.filter(g => g.status === "주문접수" && !isAdminIPackedWaiting(g) && String(g.pickingStatus || "").includes("검증완료")).length;
   document.getElementById("iPackedCount").textContent = scopedGroups.filter(isAdminIPackedWaiting).length;
@@ -454,9 +471,10 @@ try {
       const iPackedWaiting = isAdminIPackedWaiting(group);
       if (adminFilter === "미출고" && group.status === "출고완료") return false;
       if (adminFilter === "출고대기" && !(group.status === "주문접수" && pickingVerified && !iPackedWaiting)) return false;
-      if (adminFilter === "주문접수" && !(group.status === "주문접수" && !pickingVerified && !iPackedWaiting)) return false;
+      if (adminFilter === "주문접수" && !isAdminOrderReceived(group)) return false;
+      if (adminFilter === "주문확인" && !isAdminOrderReview(group)) return false;
       if (adminFilter === "I포장완료대기" && !iPackedWaiting) return false;
-      if (!["전체","오늘주문","미출고","주문접수","출고대기","I포장완료대기"].includes(adminFilter) && group.status !== adminFilter) return false;
+      if (!["전체","오늘주문","미출고","주문접수","주문확인","출고대기","I포장완료대기"].includes(adminFilter) && group.status !== adminFilter) return false;
 
       // 미입금 조회는 PC·모바일 모두 출고완료 기간 필터와 무관하게 누적 표시합니다.
       if (requestedPaymentFilter!=='unpaid' && group.status === "출고완료" && !isWithinCompletedPeriod(group.completedAt)) {
@@ -741,7 +759,7 @@ function getCollapsedWarehouseQuantities(items) {
 
 function renderCollapsedWarehouseQuantitySummary(items) {
   const quantities = getCollapsedWarehouseQuantities(items);
-  return ['S','B','I'].map(code => `<span class="collapsed-sbi-badge warehouse-${code.toLowerCase()} ${quantities[code] > 0 ? 'has-qty' : 'is-empty'}"><b>${code}</b> ${quantities[code]}</span>`).join('');
+  return ['S','B','I'].map(code => `<span class="collapsed-sbi-unit ${quantities[code] > 0 ? 'has-qty' : 'is-empty'}"><b>${code}</b>${quantities[code]}</span>`).join('<i>·</i>');
 }
 
 function fallbackCopyWithoutJump(text) {
@@ -907,7 +925,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   </div>
   <div class="order-status-stack">
     ${paymentTracked?`<label class="order-payment-check desktop-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}
-    <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':group.status}</span>
+    <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':isAdminOrderReview(group)?'주문확인':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>

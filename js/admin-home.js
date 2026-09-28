@@ -14,6 +14,11 @@ const normalizedDashboardCustomer = value => String(value||'').trim().normalize(
 const uniqueOrderGroups = rows => new Set((rows||[]).map(r=>`${String(r.order_number||'')}::${normalizedDashboardCustomer(r.customer_name)||String(r.customer_id||'')}`).filter(key=>!key.startsWith('::'))).size;
 const setText = (id,value) => { const el=document.getElementById(id); if(el) el.textContent=value; };
 const esc = value => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+const dashboardWarehouseCode = row => {const saved=String(row?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(saved))return saved;const match=String(row?.item_number||'').trim().toUpperCase().match(/^([SBI])(?:[-\s]|(?=\d))/);return match?match[1]:'기타'};
+function groupDashboardActiveOrders(rows){const map=new Map();(rows||[]).forEach(row=>{const key=`${String(row.order_number||'')}::${normalizedDashboardCustomer(row.customer_name)||String(row.customer_id||'')}`;if(!map.has(key))map.set(key,{orderNumber:row.order_number,createdAt:row.created_at,status:row.status,pickingStatus:row.picking_status||'대기',items:[]});const group=map.get(key);group.items.push(row);if(String(row.picking_status||'').includes('검증완료'))group.pickingStatus=row.picking_status;else if(row.picking_status==='피킹중'&&!String(group.pickingStatus).includes('검증완료'))group.pickingStatus='피킹중'});return[...map.values()]}
+function dashboardWarehouseComplete(group,code){const rows=(group.items||[]).filter(row=>dashboardWarehouseCode(row)===code),field=`${code.toLowerCase()}_outbound_confirmed`;return rows.length>0&&rows.every(row=>{const ordered=Math.max(0,Number(row.qty||0)),soldout=Math.max(0,Number(row.soldout_qty||(row.is_soldout?ordered:0)));return soldout>=ordered||row[field]===true})}
+function dashboardIPackedWaiting(group){const items=group.items||[],waiting=['S','B'].some(code=>items.some(row=>dashboardWarehouseCode(row)===code)&&!dashboardWarehouseComplete(group,code)),verified=String(group.pickingStatus||'').includes('검증완료');return items.some(row=>dashboardWarehouseCode(row)==='I')&&items.some(row=>['S','B'].includes(dashboardWarehouseCode(row)))&&dashboardWarehouseComplete(group,'I')&&(waiting||!verified)}
+const dashboardCreatedToday=group=>{const d=new Date(group.createdAt),start=new Date();start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+1);return !Number.isNaN(d.getTime())&&d>=start&&d<end};
 function parseSoldoutItems(value){if(Array.isArray(value))return value.map(String);const text=String(value||'').trim();if(!text)return[];try{const parsed=JSON.parse(text);if(Array.isArray(parsed))return parsed.map(String)}catch(_){}return text.replace(/^\{|\}$/g,'').split(',').map(v=>v.trim().replace(/^"|"$/g,'')).filter(Boolean)}
 async function fetchAllProductSoldouts(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('inventory_items').select('item_number,quantity,warehouse_code,category_name').lte('quantity',0).range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
 
@@ -32,7 +37,7 @@ async function guardAdminHome(){
     const allowed=['admin.html','customer-notifications.html','picking.html','proxy-order.html','scanner.html','products.html'];
     document.querySelectorAll('.v3-menu-card').forEach(button=>{const action=button.getAttribute('onclick')||'';if(!allowed.some(page=>action.includes(page))){button.hidden=true;button.classList.add('manager-restricted-menu');button.style.setProperty('display','none','important')}});
     // 매니저 메인 운영현황은 오늘 주문/출고 대기/당일 출고완료 3개만 허용합니다.
-    const managerMetrics=new Set(['todayOrderCount','pendingOrderCount','todayDoneCount']);
+    const managerMetrics=new Set(['todayOrderCount','orderReviewCount','pendingOrderCount','todayDoneCount']);
     document.querySelectorAll('.v3-metric-card').forEach(card=>{const strong=card.querySelector('strong');if(!strong||!managerMetrics.has(strong.id)){card.hidden=true;card.style.setProperty('display','none','important')}});
     document.querySelectorAll('.v3-dashboard-section:last-of-type,.global-admin-search,.unpaid-customer-panel').forEach(element=>{element.hidden=true;element.style.setProperty('display','none','important')});
   }else if(profile?.admin_role==='employee'){
@@ -59,15 +64,18 @@ async function loadDashboard(){
     supabaseClient.from("orders").select("order_number,customer_id,customer_name").gte("created_at",start),
     // 주문관리의 `미출고` 화면과 똑같이 DB 상태가 주문접수인 주문만 집계합니다.
     // neq(출고완료)는 NULL/예외 상태를 다르게 처리해 메인 숫자와 클릭 후 목록이 어긋날 수 있습니다.
-    supabaseClient.from("orders").select("order_number,customer_id,customer_name").eq("status","주문접수"),
+    supabaseClient.from("orders").select("order_number,customer_id,customer_name,created_at,status,picking_status,item_number,warehouse_code,qty,soldout_qty,is_soldout,s_outbound_confirmed,b_outbound_confirmed,i_outbound_confirmed").eq("status","주문접수"),
     supabaseClient.from("orders").select("order_number,customer_id,customer_name").eq("status","출고완료").gte("shipped_at",start),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))
   ]);
   setText("todayOrderCount",uniqueOrderGroups(todayOrders.data));
-  // 주문관리 `status=미출고`와 동일한 주문 집합입니다.
-  setText("pendingOrderCount",uniqueOrderGroups(pending.data));
+  const activeGroups=groupDashboardActiveOrders(pending.data);
+  const readyGroups=activeGroups.filter(group=>String(group.pickingStatus||'').includes('검증완료')&&!dashboardIPackedWaiting(group));
+  const reviewGroups=activeGroups.filter(group=>!dashboardCreatedToday(group)&&!String(group.pickingStatus||'').includes('검증완료')&&!dashboardIPackedWaiting(group));
+  setText("pendingOrderCount",readyGroups.length);
+  setText("orderReviewCount",reviewGroups.length);
   setText("todayDoneCount",uniqueOrderGroups(doneToday.data));
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);
