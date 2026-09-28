@@ -517,6 +517,11 @@ try {
 
   window.__adminFilteredGroups = filteredGroups;
 
+  // 선택한 탭의 숫자는 실제 최종 필터 목록과 항상 동일하게 표시합니다.
+  const selectedCountIds={주문접수:'pendingCount',주문확인:'reviewCount',출고대기:'readyCount',I포장완료대기:'iPackedCount',출고완료:'doneCount',전체:'totalCount'};
+  const selectedCount=document.getElementById(selectedCountIds[adminFilter]||'');
+  if(selectedCount)selectedCount.textContent=filteredGroups.length;
+
   const totalPages = Math.max(1, Math.ceil(filteredGroups.length / ADMIN_PAGE_SIZE));
   if (adminPage > totalPages) adminPage = totalPages;
   const pageGroups = filteredGroups.slice((adminPage - 1) * ADMIN_PAGE_SIZE, adminPage * ADMIN_PAGE_SIZE);
