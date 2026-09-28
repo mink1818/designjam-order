@@ -2688,6 +2688,15 @@ body.login-stable.auth-pending{visibility:hidden!important;opacity:0!important}b
 .collapsed-shipping-complete:hover{background:#11672f}.collapsed-shipping-complete:disabled{opacity:.65;cursor:wait}
 html[data-theme="dark"] .collapsed-shipping-complete{background:#22c55e;color:#052e16}
 @media(max-width:760px){body[data-session-page="admin"] .collapsed-shipping-complete{width:100%;min-width:0;min-height:30px;padding:5px 3px;font-size:11px}.order-status-stack:has(.collapsed-shipping-complete){grid-template-columns:1fr 1fr!important}}
+
+/* V6.7.52 주문관리 I 포장완료 대기 접힌 카드 빠른처리 */
+.admin-i-packed-quick-actions{display:flex!important;grid-column:1/-1;gap:4px;width:100%}
+.admin-i-packed-quick-actions button{flex:1;min-width:0;min-height:30px;padding:5px 6px;border:0;border-radius:7px;background:#1d4ed8;color:#fff;font-size:10px;font-weight:900;white-space:nowrap;cursor:pointer}
+.admin-i-packed-quick-actions button.soldout{background:#b42318}.admin-i-packed-quick-actions button.statement{background:#166534}
+.order-delivery-preview.i-packed-delivery-highlight{display:inline-flex!important;align-items:center;width:max-content;max-width:100%;margin:3px 0!important;padding:4px 9px;border:1px solid #f9a8d4;border-radius:8px;background:#fce7f3;color:#9d174d!important;font-size:14px!important;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-delivery-preview.i-packed-delivery-highlight strong{color:#831843!important;margin-right:4px}
+html[data-theme="dark"] .order-delivery-preview.i-packed-delivery-highlight{background:#5b1738!important;border-color:#db5893!important;color:#fbcfe8!important}html[data-theme="dark"] .order-delivery-preview.i-packed-delivery-highlight strong{color:#fbcfe8!important}
+@media(max-width:760px){body[data-session-page="admin"] .admin-i-packed-quick-actions{gap:3px}body[data-session-page="admin"] .admin-i-packed-quick-actions button{padding:5px 2px;font-size:9px}}
 .order-payment-check>small{display:block;max-width:105px;font-size:9px;line-height:1.15;white-space:normal}.order-payment-detail .payment-detail-actions{display:flex;gap:6px;padding:0;background:transparent}.order-payment-detail .gray-btn{background:#64748b}.payment-history-list{display:grid;gap:6px;margin:-5px 0 14px;padding:11px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc}.payment-history-list article{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;padding:8px;border-top:1px solid #e2e8f0}.payment-history-list small{color:#475569}
 .order-payment-check.excluded{border-color:#cbd5e1;background:#f1f5f9;color:#64748b;cursor:default}.order-payment-detail.excluded{border-color:#cbd5e1;background:#f8fafc;color:#64748b}
 .mobile-payment-check{display:none!important}

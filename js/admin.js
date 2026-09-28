@@ -919,7 +919,7 @@ summaryTotal += Number(group.shipping_fee || 0);
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
     <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<span class="customer-owner-name">(${escapeAdminHtml(group.customerOwnerName)})</span>`:''} ${group.isProxy?`<small class="proxy-order-badge">관리자 대신주문${group.proxyCreatedByName?` · ${escapeAdminHtml(group.proxyCreatedByName)}(${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')}) · ${formatHourMinute(group.createdAt)}`:''}</small>`:''} ${group.memo?(group.isProxy?'<small class="customer-order-memo-badge">📝 관리자 메모</small>':group.customerMemoAcknowledgedAt?'<small class="customer-order-memo-badge memo-checked">✓ 고객메모 확인</small>':'<small class="customer-order-memo-badge memo-unchecked">🔴 고객메모 확인필요</small>'):''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''} ${editBadges}</h2>
-    <p class="order-delivery-preview"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}${group.showCustomerTag&&group.customerTag?` <small class="admin-customer-alias-inline">${escapeAdminHtml(group.customerTag)}</small>`:''}${group.showOrderAdminTag&&group.orderAdminTag?` <small class="admin-order-tag-inline">${escapeAdminHtml(group.orderAdminTag)}</small>`:''}</p>
+    <p class="order-delivery-preview ${isAdminIPackedWaiting(group)?'i-packed-delivery-highlight':''}"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}${group.showCustomerTag&&group.customerTag?` <small class="admin-customer-alias-inline">${escapeAdminHtml(group.customerTag)}</small>`:''}${group.showOrderAdminTag&&group.orderAdminTag?` <small class="admin-order-tag-inline">${escapeAdminHtml(group.orderAdminTag)}</small>`:''}</p>
     <p class="order-summary-number">${isDone ? `출고 ${formatCompletedDateTime(group.completedAt)}` : formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
   <div class="order-compact-stats"><span class="collapsed-warehouse-qty">${warehouseQuantitySummary}</span><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
@@ -933,6 +933,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     ${paymentTracked?`<label class="order-payment-check desktop-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':isAdminOrderReview(group)?'주문확인':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+    ${isAdminIPackedWaiting(group)?`<span class="admin-i-packed-quick-actions"><button type="button" onclick="adminQuickIPackedBulk(event,'${escapeAdminAttr(group.orderNumber)}')">S·B 일괄피킹</button><button type="button" class="soldout" onclick="adminQuickIPackedSoldout(event,'${escapeAdminAttr(group.orderNumber)}')">품절 붙여넣기</button><button type="button" class="statement" onclick="event.stopPropagation();openStatement('${escapeAdminAttr(group.orderNumber)}')">거래명세서</button></span>`:''}
     ${!isDone&&isVerified?`<button class="collapsed-shipping-complete" type="button" onclick="quickCompleteCollapsedOrder(this,event,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'')}','${escapeAdminAttr(group.deliveryName||group.customerName||'')}',${summaryQty},${summaryTotal})">출고완료</button>`:''}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
@@ -1129,6 +1130,55 @@ async function quickCompleteCollapsedOrder(button,event,orderNumber,customerName
   }
 }
 window.quickCompleteCollapsedOrder=quickCompleteCollapsedOrder;
+
+function adminSoldoutPasteKey(value){return String(value||'').normalize('NFKC').trim().toUpperCase().replace(/\s+/g,'').replace(/[~～]/g,'-')}
+function parseAdminIPackedSoldout(text,group){
+  const rows=(group?.items||[]).filter(row=>['S','B'].includes(getOrderWarehouseCode(row))),tokens=[],pattern=/(?:^|[\s,，;:：/])((?:[SB]\s*[-_]\s*)?[A-Z0-9][A-Z0-9._~-]*)(?:\s*\(\s*(\d+)\s*\))?/gi;
+  let match;
+  while((match=pattern.exec(String(text||'').normalize('NFKC')))){
+    const raw=adminSoldoutPasteKey(match[1]);if(!raw||raw==='S'||raw==='B')continue;
+    const explicit=raw.match(/^([SB])[-_](.+)$/),code=explicit?.[1]||'',itemKey=adminSoldoutPasteKey(explicit?.[2]||raw),candidates=rows.filter(row=>(!code||getOrderWarehouseCode(row)===code)&&adminSoldoutPasteKey(String(row.item_number||'').replace(/^[SBI][-_\s]+/i,''))===itemKey);
+    if(!candidates.length){tokens.push({raw:match[1],error:'주문에 없는 S·B 품번'});continue}
+    if(candidates.length>1){tokens.push({raw:match[1],error:'S 또는 B 출고지를 붙여 구분해주세요'});continue}
+    const row=candidates[0],ordered=Math.max(0,Number(row.qty||0)),soldout=match[2]===undefined?ordered:Number(match[2]);
+    if(!Number.isInteger(soldout)||soldout<1||soldout>ordered){tokens.push({raw:match[1],error:`품절수량은 1~${ordered}죽이어야 합니다`});continue}
+    tokens.push({row,soldout,raw:match[1]});
+  }
+  const resolved=new Map();tokens.forEach(token=>{if(token.row)resolved.set(String(token.row.id),token)});
+  return{resolved,errors:tokens.filter(token=>token.error)};
+}
+async function adminClaimQuickOrder(orderNumber){
+  const {data:{user}}=await supabaseClient.auth.getUser();if(!user)throw new Error('관리자 로그인이 필요합니다.');
+  const group=(window.__adminRenderedGroups||[]).find(item=>item.orderNumber===orderNumber),liveRows=(group?.items||[]).filter(row=>row.picking_session_active===true),owner=String(liveRows.find(row=>row.picking_assigned_to)?.picking_assigned_to||'');
+  if(liveRows.length&&owner===String(user.id))return user;
+  if(liveRows.length&&owner&&owner!==String(user.id))throw new Error(`${group?.assignedName||'다른 관리자'} 계정이 피킹 중입니다.`);
+  const {data:previous,error:previousError}=await supabaseClient.from('orders').select('order_number').eq('picking_assigned_to',user.id).eq('picking_session_active',true).neq('order_number',orderNumber);
+  if(previousError)throw previousError;
+  for(const previousNumber of [...new Set((previous||[]).map(row=>row.order_number).filter(Boolean))])await supabaseClient.rpc('release_order_picking',{p_order_number:previousNumber,p_force:false});
+  const {error}=await supabaseClient.rpc('claim_order_picking',{p_order_number:orderNumber,p_device_name:'주문관리 접힌상태 빠른처리',p_force:false});if(error)throw error;
+  return user;
+}
+async function adminCompleteIPackedQuick(orderNumber,soldoutText=''){
+  const group=(window.__adminRenderedGroups||[]).find(item=>item.orderNumber===orderNumber);if(!group)throw new Error('주문을 찾지 못했습니다. 새로고침해주세요.');
+  if(!isAdminIPackedWaiting(group))throw new Error('I 포장완료 대기 주문이 아닙니다.');
+  const parsed=soldoutText?parseAdminIPackedSoldout(soldoutText,group):{resolved:new Map(),errors:[]};
+  if(soldoutText&&!parsed.resolved.size&&!parsed.errors.length)throw new Error('인식된 S·B 품번이 없습니다.');
+  if(parsed.errors.length)throw new Error(parsed.errors.map(item=>`${item.raw}: ${item.error}`).join('\n'));
+  const user=await adminClaimQuickOrder(orderNumber),rows=(group.items||[]).filter(row=>['S','B'].includes(getOrderWarehouseCode(row))),startedAt=new Date().toISOString();
+  if(!rows.length)throw new Error('S·B 품번이 없습니다.');
+  const allocations=rows.map(row=>{const ordered=Math.max(0,Number(row.qty||0)),soldout=parsed.resolved.get(String(row.id))?.soldout||0;return{row,soldout,picked:Math.max(0,ordered-soldout)}});
+  const results=await Promise.all(allocations.map(({row,soldout,picked})=>{const code=getOrderWarehouseCode(row),field=`${code.toLowerCase()}_outbound_confirmed`;return supabaseClient.from('orders').update({picked_qty:picked,soldout_qty:soldout,is_soldout:soldout>=Number(row.qty||0),picking_status:'피킹중',picking_started_at:startedAt,[field]:true}).eq('id',row.id).eq('picking_assigned_to',user.id)}));
+  const failed=results.find(result=>result.error);if(failed)throw failed.error;
+  const {error:completeError}=await supabaseClient.rpc('complete_order_picking',{p_order_number:orderNumber,p_device_name:`주문관리 접힌상태 일괄검증 · ${currentAdminDisplayName()||'관리자'}`});
+  if(completeError&&!String(completeError.message||'').includes('이미 피킹 최종검증'))throw completeError;
+  await supabaseClient.rpc('release_order_picking',{p_order_number:orderNumber,p_force:false});
+  localStorage.setItem('designjam_picking_verified',JSON.stringify({orderNumber,at:Date.now()}));invalidateAdminOrderCache?.();adminAuxCache.at=0;
+  const soldoutTotal=allocations.reduce((sum,item)=>sum+item.soldout,0);await loadOrders();
+  alert(`피킹 최종검증까지 완료했습니다.\n품절 ${soldoutTotal}죽 · 실제 출고수량만 재고에서 차감했습니다.\n주문은 출고대기로 이동했습니다.`);
+}
+async function adminQuickIPackedBulk(event,orderNumber){event?.preventDefault();event?.stopPropagation();if(!confirm('S·B 품번을 품절 없이 일괄피킹하고 최종검증까지 완료할까요?\n실제 출고수량이 ERP 재고에서 차감되고 주문은 출고대기로 이동합니다.'))return;try{await adminCompleteIPackedQuick(orderNumber)}catch(error){alert('빠른 일괄피킹 실패: '+(error?.message||error))}}
+async function adminQuickIPackedSoldout(event,orderNumber){event?.preventDefault();event?.stopPropagation();const group=(window.__adminRenderedGroups||[]).find(item=>item.orderNumber===orderNumber),text=prompt('S·B 품절 내용을 붙여넣으세요.\n전체품절: 3001, 16\n일부품절: 3002(2) = 2죽 품절');if(text===null)return;if(!text.trim())return alert('품절 내용을 입력해주세요.');try{const parsed=parseAdminIPackedSoldout(text,group);if(parsed.errors.length)throw new Error(parsed.errors.map(item=>`${item.raw}: ${item.error}`).join('\n'));const summary=[...parsed.resolved.values()].map(({row,soldout})=>`${getOrderWarehouseCode(row)}-${row.item_number} ${soldout}/${Number(row.qty||0)}죽 품절`).join('\n');if(!summary)throw new Error('인식된 S·B 품번이 없습니다.');if(!confirm(`아래 품절을 반영하고 최종검증까지 완료할까요?\n\n${summary}\n\n입력하지 않은 품번은 정상출고 처리됩니다.`))return;await adminCompleteIPackedQuick(orderNumber,text)}catch(error){alert('품절 적용 실패: '+(error?.message||error))}}
+window.adminQuickIPackedBulk=adminQuickIPackedBulk;window.adminQuickIPackedSoldout=adminQuickIPackedSoldout;
 
 async function deletePendingAdminOrder(orderNumber){
   if(!confirm(`주문접수건을 삭제할까요?\n${orderNumber}\n\n피킹을 시작한 주문은 삭제되지 않으며 삭제이력에 보관됩니다.`))return;
