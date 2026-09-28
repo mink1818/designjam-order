@@ -41,6 +41,7 @@ body {
 }
 
 #saveLongStatement { background:#0b7a43; }
+.screen-menu .statement-kakao-button{background:#f7df59;color:#3b2c00}
 .screen-menu button:disabled { opacity:.6; cursor:wait; }
 
 .statement-sheet {

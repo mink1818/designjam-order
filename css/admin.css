@@ -3161,3 +3161,4 @@ html[data-theme="dark"] body[data-session-page="admin"] .proxy-mobile-mark{backg
   margin-left:0!important;margin-right:0!important;
  }
 }
+.collapsed-kakao-search,.kakao-search-button{border:1px solid #f2c94c!important;background:#fff7cc!important;color:#5f4500!important;font-weight:800!important;cursor:pointer}.collapsed-kakao-search{padding:6px 9px;border-radius:8px;font-size:12px;white-space:nowrap}.member-kakao-action{display:flex!important;flex-direction:column;justify-content:flex-end}.member-kakao-action>span{font-weight:700;margin-bottom:6px}.member-kakao-action .kakao-search-button{min-height:42px;border-radius:9px}@media(max-width:700px){.collapsed-kakao-search{padding:5px 7px;font-size:11px}}

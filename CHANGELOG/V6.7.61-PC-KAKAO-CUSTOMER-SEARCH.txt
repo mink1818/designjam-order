@@ -1,0 +1,26 @@
+DESIGN SOCKS V6.7.61
+PC 카카오톡 거래처 검색 연동
+
+[DB]
+- customer_admin_metadata.kakao_search_name 컬럼만 추가
+- 기존 주문·재고·매출·거래처 데이터 수정 없음
+- SQL/V6.7.61-KAKAO-SEARCH-NAME.sql을 Supabase SQL Editor에서 1회 실행
+
+[ERP]
+- 거래처관리에서 거래처별 카카오톡 검색명 저장
+- 카카오톡 검색명이 없으면 ERP 거래처명 사용
+- 주문관리 접힌 카드에 작은 '카톡 찾기' 버튼 추가
+- 관리자 거래명세서 상단에 '카톡 찾기' 버튼 추가
+
+[WINDOWS]
+- windows-kakao-helper/1_INSTALL_KAKAO_HELPER.bat을 PC마다 1회 실행
+- 기존 Windows 스캐너와 완전히 독립
+- Windows UI Automation을 우선 사용하고 키보드 단축키로 보완
+- 카카오톡 검색 결과 화면에서 정지
+- 자동 대화방 선택, Enter 입력, 메시지 작성·전송 없음
+- 화면 좌표 클릭 없음
+
+[적용 순서]
+1. Supabase에서 V6.7.61 SQL 실행
+2. Vercel에 V6.7.61 배포
+3. 사용하는 Windows PC에서 카톡 찾기 보조 프로그램 설치

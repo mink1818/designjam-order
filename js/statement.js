@@ -27,6 +27,7 @@ const statementArea =
 let currentStatementOrderNumber = "거래명세서";
 let currentStatementCustomerName = "거래처";
 let currentStatementCustomerId = null;
+let currentStatementKakaoSearchName = "";
 const statementParams = new URLSearchParams(location.search);
 let statementLogistics = { bank:null, courier:"", tracking:"", parcelCounts:[], manualMemo:"", otherAmount:0 };
 let statementSaveTimer = null;
@@ -172,6 +173,13 @@ async function loadStatement() {
       const profile = await supabaseClient.from("customers").select("owner_name,representative").eq("id", data[0].customer_id).maybeSingle();
       customerOwnerName = profile.data?.owner_name || profile.data?.representative || "";
     } catch (_) {}
+  }
+  currentStatementKakaoSearchName=data[0].customer_name||"";
+  if(data[0].customer_id){
+    try{
+      const meta=await supabaseClient.from('customer_admin_metadata').select('kakao_search_name').eq('customer_id',data[0].customer_id).maybeSingle();
+      currentStatementKakaoSearchName=String(meta.data?.kakao_search_name||data[0].customer_name||'').trim();
+    }catch(_){}
   }
   // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.
   renderStatement(data, productGroups, customerOwnerName);
@@ -353,6 +361,13 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
   renderStatementParcelRows();
   bindStatementExtras();
 }
+
+function findStatementCustomerInKakao(){
+  const searchName=String(currentStatementKakaoSearchName||currentStatementCustomerName||'').trim();
+  if(!searchName)return alert('카카오톡에서 검색할 거래처명이 없습니다.');
+  location.href=`designsocks-kakao://search?name=${encodeURIComponent(searchName)}`;
+}
+window.findStatementCustomerInKakao=findStatementCustomerInKakao;
 
 const STATEMENT_FIXED_PARCELS=['로젠','한진','로젠'];
 function fixedStatementParcelCounts(){

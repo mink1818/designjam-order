@@ -158,7 +158,7 @@ async function fetchCustomerIdentitySnapshot(ids=[]){
 }
 
 
-async function fetchAdminCustomerMetadata(ids=[]){const unique=[...new Set((ids||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag').in('customer_id',unique);if(error){console.warn('V6.6.20 고객표시 조회 생략:',error.message);return[]}return data||[]}
+async function fetchAdminCustomerMetadata(ids=[]){const unique=[...new Set((ids||[]).filter(Boolean).map(String))];if(!unique.length)return[];let result=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,kakao_search_name,show_order_tag').in('customer_id',unique);if(result.error&&/kakao_search_name/i.test(result.error.message||'')){result=await supabaseClient.from('customer_admin_metadata').select('customer_id,customer_code,customer_tag,show_order_tag').in('customer_id',unique)}if(result.error){console.warn('V6.7.61 고객표시 조회 생략:',result.error.message);return[]}return result.data||[]}
 async function fetchAdminOrderMetadata(nums=[]){const unique=[...new Set((nums||[]).filter(Boolean).map(String))];if(!unique.length)return[];const {data,error}=await supabaseClient.from('order_admin_metadata').select('order_number,admin_tag,show_tag,customer_memo_acknowledged_at,customer_memo_acknowledged_by,customer_memo_acknowledged_by_name').in('order_number',unique);if(error){console.warn('V6.6.20 주문표시 조회 생략:',error.message);return[]}return data||[]}
 async function fetchAdminProductCatalog(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('product_groups').select('id,item_numbers,price,warehouse_code').range(from,from+999);if(error){console.warn('상품단가표 조회 실패:',error.message);throw error}rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
 function catalogNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const p=JSON.parse(value);if(Array.isArray(p))return p.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
@@ -397,6 +397,7 @@ try {
         customerOwnerName: visibleOrderOwnerName(ownerCandidate, isProxyOrder),
         customerCode: customerMeta.customer_code||'',
         customerTag: customerMeta.customer_tag||'',
+        kakaoSearchName: customerMeta.kakao_search_name||order.customer_name||'',
         showCustomerTag: !!customerMeta.customer_tag,
         orderAdminTag: orderMeta.admin_tag||'',
         showOrderAdminTag: orderMeta.show_tag===true,
@@ -934,6 +935,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':isAdminOrderReview(group)?'주문확인':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${!isDone&&isVerified?`<button class="collapsed-shipping-complete" type="button" onclick="quickCompleteCollapsedOrder(this,event,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'')}','${escapeAdminAttr(group.deliveryName||group.customerName||'')}',${summaryQty},${summaryTotal})">출고완료</button>`:''}
+    <button class="collapsed-kakao-search" type="button" title="PC 카카오톡에서 검색 결과만 표시" data-kakao-name="${escapeAdminAttr(group.kakaoSearchName||group.customerName||'')}" onclick="findOrderCustomerInKakao(event,this.dataset.kakaoName)">카톡 찾기</button>
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
@@ -1708,6 +1710,14 @@ function openStatement(orderNumber) {
 
   window.open(url, "_blank");
 }
+
+function findOrderCustomerInKakao(event,name){
+  event?.stopPropagation();
+  const searchName=String(name||'').trim();
+  if(!searchName)return alert('카카오톡에서 검색할 거래처명이 없습니다.');
+  location.href=`designsocks-kakao://search?name=${encodeURIComponent(searchName)}`;
+}
+window.findOrderCustomerInKakao=findOrderCustomerInKakao;
 
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;
