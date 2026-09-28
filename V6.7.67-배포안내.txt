@@ -1,0 +1,17 @@
+DESIGN SOCKS V6.7.67 배포 순서
+
+git add .
+git commit -m "release v6.7.67 separate S B drafts and qty comparison"
+git push origin main
+
+Vercel 배포 완료 후 Ctrl+F5로 새로고침합니다.
+
+확인 사항
+- 좌측 하단 V6.7.67
+- S 입력 후 B 탭 이동 시 B 입력창은 비어 있음
+- 다시 S 탭으로 오면 작성 중이던 S 내용은 유지됨
+- ERP 실제 출고죽수와 S/B 붙여넣기 창고죽수가 상단에 동시에 표시됨
+- 분석 항목 수량 수정·추가·삭제 시 창고죽수가 즉시 갱신됨
+
+정산 SQL을 아직 실행하지 않은 경우에만 다음 파일을 1회 실행합니다.
+SQL/V6.7.64-SBI-SETTLEMENT.sql

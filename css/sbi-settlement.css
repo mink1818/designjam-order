@@ -9,10 +9,11 @@
 .settlement-paste textarea{width:100%;margin:8px 0;font:inherit;line-height:1.55}
 .settlement-actions{display:flex;gap:8px}
 .settlement-actions button:disabled,.settlement-result-heading button:disabled{opacity:.45}
-.settlement-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.settlement-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .settlement-metric{background:#fff;border:1px solid #d7e1ec;border-radius:13px;padding:14px}
 .settlement-metric span{display:block;color:#64748b}
 .settlement-metric strong{font-size:24px;color:#173f70}
+.settlement-metric.warehouse-qty{border-color:#e4b84e;background:#fff9e8}.settlement-metric.warehouse-qty strong{color:#a35b00}
 .settlement-row{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(3,minmax(120px,1fr));gap:8px;align-items:center;padding:11px;border-bottom:1px solid #e3e9f0}
 .settlement-row.head{font-weight:900;background:#edf3f9;border-radius:8px}
 .settlement-row .minus{color:#c62828;font-weight:900}
