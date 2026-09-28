@@ -1,0 +1,23 @@
+DESIGN SOCKS V6.7.64 배포 순서
+
+1. Supabase SQL Editor에서 아래 파일 전체를 먼저 실행
+   SQL/V6.7.64-SBI-SETTLEMENT.sql
+
+2. 프로젝트 폴더에서 배포
+   git add .
+   git commit -m "release v6.7.64 sbi settlement"
+   git push
+
+3. 배포 후 확인
+   - 좌측 하단 버전 V6.7.64
+   - 관리자 메인 > S·B·I 정산
+   - S: 거래처별 카톡 여러 건 붙여넣기
+   - B: 하루 전체 카톡 붙여넣기
+   - I: 출고완료 금액 자동 집계
+
+계산 기준
+   I 정산 = I 고객 출고금액
+   S/B 정산 = 고객 출고금액 - 외부창고 원가
+   품절·일부품절은 ERP 실제 출고수량 기준
+   카톡에서 수량이 없거나 0×단가인 줄은 원가 계산 제외
+

@@ -1,0 +1,9 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>S·B·I 정산</title><link rel="stylesheet" href="css/admin.css?v=67064"><link rel="stylesheet" href="css/sbi-settlement.css?v=67064"></head>
+<body class="auth-pending" data-session-page="admin" data-pwa-app="admin" data-app-version="6.7.64"><header><h1>💰 S·B·I 정산</h1><p>출고완료 판매금액과 외부창고 원가 비교</p></header><main class="settlement-shell">
+<section class="settlement-toolbar"><label>정산일<input id="settlementDate" type="date"></label><div class="settlement-tabs"><button data-code="S" class="active">S 거래처별</button><button data-code="B">B 일일합계</button><button data-code="I">I 일일합계</button></div><button id="loadSettlement" type="button">출고금액 불러오기</button></section>
+<section class="settlement-summary" id="settlementSummary"></section>
+<section class="settlement-paste" id="settlementPaste"><h2>카톡 정산내용 붙여넣기</h2><p id="settlementHelp">S에서 받은 거래처별 메시지를 여러 개 이어서 붙여넣으세요.</p><textarea id="settlementInput" rows="14" placeholder="카톡 내용을 그대로 붙여넣으세요."></textarea><div class="settlement-actions"><button id="analyzeSettlement" type="button">자동 분석</button><button id="saveSettlement" type="button" disabled>분석결과 저장</button></div></section>
+<section class="settlement-results"><h2>분석·계산 결과</h2><div id="settlementResult"><p>정산일과 출고지를 선택한 뒤 불러오세요.</p></div></section>
+<section class="settlement-history"><h2>최근 저장 내역</h2><div id="settlementHistory"></div></section>
+</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script><script src="js/admin-config.js?v=66040"></script><script src="js/sbi-settlement.js?v=67064"></script><script src="js/session-status.js?v=67064"></script><script src="js/version-badge.js?v=67064"></script><script src="js/admin-mobile-nav.js?v=66040"></script></body></html>
+
