@@ -864,6 +864,7 @@ function renderOrderCards(groups) {
     const adminChanged=Boolean(group.adminChangeRecord);
     const editBadges=`${customerChanged?`<small class="order-edit-origin-badge customer" title="고객 주문 수정 이력${group.revisionRecord?.completed_at?` · ${formatOrderDateTime(group.revisionRecord.completed_at)}`:''}">고객 수정</small>`:''}${adminChanged?`<small class="order-edit-origin-badge admin" title="${escapeAdminAttr(group.adminChangeRecord?.change_reason||'관리자 주문 수정')}${group.adminChangeRecord?.changed_at?` · ${formatOrderDateTime(group.adminChangeRecord.changed_at)}`:''}">관리자 수정</small>`:''}`;
     const isDone = group.status === "출고완료";
+    const isVerified = String(group.pickingStatus || "").includes("검증완료");
     let itemHtml = "";
     let summaryQty = 0;
 let summaryTotal = 0;
@@ -932,6 +933,7 @@ summaryTotal += Number(group.shipping_fee || 0);
     ${paymentTracked?`<label class="order-payment-check desktop-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':isAdminOrderReview(group)?'주문확인':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+    ${!isDone&&isVerified?`<button class="collapsed-shipping-complete" type="button" onclick="quickCompleteCollapsedOrder(this,event,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'')}','${escapeAdminAttr(group.deliveryName||group.customerName||'')}',${summaryQty},${summaryTotal})">출고완료</button>`:''}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
@@ -1099,6 +1101,34 @@ async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대�
     alert("상태 변경 실패: " + error.message);
   }
 }
+
+async function quickCompleteCollapsedOrder(button,event,orderNumber,customerName,deliveryName,summaryQty,summaryTotal){
+  event?.preventDefault();event?.stopPropagation();
+  const card=button.closest('.order-card');
+  if(!card)return;
+  const shippingInput=card.querySelector(`.shipping-input[data-order="${CSS.escape(String(orderNumber))}"]`),
+    courierSelect=card.querySelector(`.courier-select[data-order="${CSS.escape(String(orderNumber))}"]`),
+    trackingInput=card.querySelector(`.tracking-input[data-order="${CSS.escape(String(orderNumber))}"]`),
+    rawShippingFee=String(shippingInput?.value??'').trim(),
+    shippingFee=Number(rawShippingFee)||0,
+    courier=getCourierValue(courierSelect?.closest('.order-detail'))||'로젠택배',
+    trackingNumber=String(trackingInput?.value||'').trim(),
+    missing=[];
+  if(!rawShippingFee||shippingFee<=0)missing.push('배송비');
+  if(!trackingNumber)missing.push('송장번호');
+  const warning=missing.length?`\n\n⚠ ${missing.join('와 ')}가 입력되지 않았습니다.`:'';
+  if(!confirm(`접힌 상태에서 출고완료 처리할까요?\n\n거래처: ${customerName}\n납품처: ${deliveryName}\n출고수량: ${Number(summaryQty||0).toLocaleString()}죽\n최종금액: ${Number(summaryTotal||0).toLocaleString()}원${warning}\n\n완료하면 매출·미입금·통계에 반영됩니다.`))return;
+  const original=button.textContent;button.disabled=true;button.textContent='처리 중...';
+  try{
+    await updateOrderStatus(orderNumber,'출고대기',shippingFee,courier,trackingNumber);
+    invalidateAdminOrderCache?.();adminAuxCache.at=0;
+    await loadOrders();
+  }catch(error){
+    button.disabled=false;button.textContent=original;
+    alert('출고완료 실패: '+(error?.message||error));
+  }
+}
+window.quickCompleteCollapsedOrder=quickCompleteCollapsedOrder;
 
 async function deletePendingAdminOrder(orderNumber){
   if(!confirm(`주문접수건을 삭제할까요?\n${orderNumber}\n\n피킹을 시작한 주문은 삭제되지 않으며 삭제이력에 보관됩니다.`))return;

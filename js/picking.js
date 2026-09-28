@@ -696,6 +696,14 @@
       })
       .join("");
   }
+  function renderSoldoutPastePanel() {
+    if (!["admin", "developer_admin"].includes(currentPicker.role)) return "";
+    const hasExternalRows = active?.items?.some((item) =>
+      ["S", "B"].includes(warehouseCode(item)),
+    );
+    if (!hasExternalRows) return "";
+    return `<section class="soldout-paste-panel"><div class="soldout-paste-copy"><strong>S·B 품절 붙여넣기 <small>관리자 전용</small></strong><span>전체품절: 3001, 16 · 일부품절: 3002(2) = 2죽 품절</span></div><textarea id="soldoutPasteInput" rows="3" placeholder="예: 품절 3001, 3002(2), 16&#10;또는 3001, 3002(2), 16 품절"></textarea><div class="soldout-paste-actions"><button type="button" id="applySoldoutPaste" class="pick-action">품절내용 적용</button><span id="soldoutPasteResult" aria-live="polite"></span></div></section>`;
+  }
   function orderPickCard(g, waiting = false) {
     const t = totals(g),
       shortages = g.items.filter((x) => stockStatus(x).warning),
@@ -706,7 +714,10 @@
         ? `${mine ? "내 작업" : "담당 " + (g.assignedName || "다른 관리자")}`
         : "",
       waitingFor = waiting ? iWaitingFor(g) : [];
-    return `<button class="order-pick-card ${waiting ? "i-packed-waiting-card" : ""} ${active?.orderNumber === g.orderNumber ? "active" : ""} ${shortages.length && !done ? "has-stock-warning" : ""} ${live ? "picking-live" : ""} ${mine ? "my-picking-order" : ""} ${g.revisionStatus ? "revision-locked" : ""}" data-order="${esc(g.orderNumber)}"><strong>${esc(g.customerName)} ${waiting ? `<em class="i-packed-badge">I 포장완료 · ${esc(waitingFor.join("·"))} 대기</em>` : ""} ${g.isProxy ? '<em class="proxy-order-badge">관리자 대신주문</em>' : ""} ${g.revisionStatus ? `<em class="pick-stock-order-badge">${esc(g.revisionStatus === "수정중" ? "고객 수정중" : "수정완료·관리자 확인필요")}</em>` : ""} ${live && !done ? `<em class="picking-live-badge">● ${esc(pickerLabel)} 피킹중</em>` : ""} ${done ? '<em class="proxy-order-badge">출고완료·결과확인</em>' : !g.revisionStatus && shortages.length ? `<em class="pick-stock-order-badge">⚠ 재고부족 ${shortages.length}품번</em>` : ""}</strong><span class="pick-delivery-name"><b>납품처</b> ${esc(g.deliveryName || g.customerName || "-")}</span>${live ? `<span class="pick-assignee"><b>담당자</b> ${esc(g.assignedName || "관리자")}${g.assignedDevice ? ` · ${esc(g.assignedDevice)}` : ""}</span>` : ""}<span class="pick-order-number">${esc(g.orderNumber)}</span><small class="pick-order-counts">${g.items.length}품번 · 총 ${t.ordered}죽 · 처리 ${t.processed}/${t.ordered}</small></button>`;
+    const quickActions = waiting && ["admin", "developer_admin"].includes(currentPicker.role)
+      ? `<span class="waiting-quick-actions"><button type="button" data-waiting-bulk="${esc(g.orderNumber)}">S·B 일괄피킹</button><button type="button" data-waiting-soldout="${esc(g.orderNumber)}">품절 붙여넣기</button><button type="button" data-waiting-statement="${esc(g.orderNumber)}">거래명세서</button></span>`
+      : "";
+    return `<article class="order-pick-card ${waiting ? "i-packed-waiting-card" : ""} ${active?.orderNumber === g.orderNumber ? "active" : ""} ${shortages.length && !done ? "has-stock-warning" : ""} ${live ? "picking-live" : ""} ${mine ? "my-picking-order" : ""} ${g.revisionStatus ? "revision-locked" : ""}" data-open-order="${esc(g.orderNumber)}" role="button" tabindex="0"><strong>${esc(g.customerName)} ${waiting ? `<em class="i-packed-badge">I 포장완료 · ${esc(waitingFor.join("·"))} 대기</em>` : ""} ${g.isProxy ? '<em class="proxy-order-badge">관리자 대신주문</em>' : ""} ${g.revisionStatus ? `<em class="pick-stock-order-badge">${esc(g.revisionStatus === "수정중" ? "고객 수정중" : "수정완료·관리자 확인필요")}</em>` : ""} ${live && !done ? `<em class="picking-live-badge">● ${esc(pickerLabel)} 피킹중</em>` : ""} ${done ? '<em class="proxy-order-badge">출고완료·결과확인</em>' : !g.revisionStatus && shortages.length ? `<em class="pick-stock-order-badge">⚠ 재고부족 ${shortages.length}품번</em>` : ""}</strong><span class="pick-delivery-name"><b>납품처</b> ${esc(g.deliveryName || g.customerName || "-")}</span>${live ? `<span class="pick-assignee"><b>담당자</b> ${esc(g.assignedName || "관리자")}${g.assignedDevice ? ` · ${esc(g.assignedDevice)}` : ""}</span>` : ""}<span class="pick-order-number">${esc(g.orderNumber)}</span><small class="pick-order-counts">${g.items.length}품번 · 총 ${t.ordered}죽 · 처리 ${t.processed}/${t.ordered}</small>${quickActions}</article>`;
   }
   function renderList() {
     const q = norm($("orderSearch").value),
@@ -833,7 +844,7 @@
         ? `<section class="i-pack-control ${iPacked ? "complete" : ""}"><div><strong>${iPacked ? "✓ I 포장완료" : "I 포장완료 처리"}</strong><span>${iPacked ? (waitingFor.length ? `${esc(waitingFor.join("·"))} 포장 완료까지 전용 대기목록에 보관됩니다.` : "B·S 포장까지 모두 완료되었습니다.") : iPickReady ? "I 상품 포장을 마쳤다면 완료 버튼을 누르세요." : "I 품번 피킹을 먼저 완료하세요."}</span></div><button type="button" id="toggleIPackComplete" class="pick-action ${iPacked ? "reset-btn" : "i-pack-complete-btn"}" ${!iPickReady || !mine ? "disabled" : ""}>${iPacked ? "I 포장완료 취소" : "I 포장완료"}</button></section>`
         : "";
     $("workArea").innerHTML =
-      `<div class="work-header"><div><h2>${esc(active.customerName)} ${active.isProxy ? '<small class="proxy-order-badge">관리자 대신주문</small>' : ""}</h2><p>납품처 ${esc(active.deliveryName || "-")}</p><p>주문번호 ${esc(active.orderNumber)} · ${new Date(active.createdAt).toLocaleString("ko-KR")}</p>${pickingActive ? `<p class="active-picker-banner"><b>피킹 담당자</b> ${esc(assignedName || "관리자")} ${mine ? "· 현재 내 작업" : ""}</p>` : ""}<div class="pick-order-summary"><span>품번 ${active.items.length}종</span><span>수량 ${t.ordered}죽</span></div><div class="warehouse-summary-list">${warehouseSummary}</div></div><div class="pick-progress"><b>총 ${t.ordered}죽</b><span class="picking-complete-text">피킹완료 ${completedCount}품번</span><span class="picking-incomplete-text">피킹미완료 ${incompleteCount}품번</span></div></div><div class="scan-quantity-control"><strong>바코드 1회 스캔수량</strong><button type="button" data-scan-qty="1" class="${scanIncrement === 1 ? "active" : ""}">1개</button><button type="button" data-scan-qty="10" class="${scanIncrement === 10 ? "active" : ""}">10개</button><button type="button" id="togglePickingSession" class="picking-session-button ${mine ? "active" : ""}" ${otherPicker ? "disabled" : ""}>${mine ? "내 피킹중·종료" : otherPicker ? `${esc(assignedName || "다른 관리자")} 피킹중` : "피킹시작"}</button>${otherPicker && canForce ? '<button type="button" id="forceReleasePicking" class="picking-force-release">관리자 담당해제</button>' : ""}<span>현재 ${scanIncrement}개씩 반영 · ${mine ? "내 계정으로 피킹중" : otherPicker ? "다른 계정 작업을 실시간 확인중" : "시작 대기"}</span></div><div class="pick-status ${type}">${message || (otherPicker ? `${esc(assignedName || "다른 관리자")} 계정이 피킹 중입니다. 이 화면은 실시간 확인 전용입니다.` : `바코드를 스캔하면 해당 품번의 피킹수량이 ${scanIncrement}개씩 올라갑니다.`)}</div>${renderWarehousePickSections(active.items)}<div class="pick-controls"><button class="pick-action print-btn" id="printWork">출고지별 작업지시서 인쇄</button><button class="pick-action reset-btn" id="resetPick">피킹 초기화</button>${canDelete ? `<button class="pick-action delete-order-btn" id="deleteWholeOrder">피킹 전 주문 전체삭제</button>` : ""}<button class="pick-action verify-btn" id="verifyPick" ${verified || !allOk || !mine ? "disabled" : ""}>${verified ? "피킹 최종검증 완료됨" : "피킹 최종검증 완료"}</button></div>`;
+      `<div class="work-header"><div><h2>${esc(active.customerName)} ${active.isProxy ? '<small class="proxy-order-badge">관리자 대신주문</small>' : ""}</h2><p>납품처 ${esc(active.deliveryName || "-")}</p><p>주문번호 ${esc(active.orderNumber)} · ${new Date(active.createdAt).toLocaleString("ko-KR")}</p>${pickingActive ? `<p class="active-picker-banner"><b>피킹 담당자</b> ${esc(assignedName || "관리자")} ${mine ? "· 현재 내 작업" : ""}</p>` : ""}<div class="pick-order-summary"><span>품번 ${active.items.length}종</span><span>수량 ${t.ordered}죽</span></div><div class="warehouse-summary-list">${warehouseSummary}</div></div><div class="pick-progress"><b>총 ${t.ordered}죽</b><span class="picking-complete-text">피킹완료 ${completedCount}품번</span><span class="picking-incomplete-text">피킹미완료 ${incompleteCount}품번</span></div></div><div class="scan-quantity-control"><strong>바코드 1회 스캔수량</strong><button type="button" data-scan-qty="1" class="${scanIncrement === 1 ? "active" : ""}">1개</button><button type="button" data-scan-qty="10" class="${scanIncrement === 10 ? "active" : ""}">10개</button><button type="button" id="togglePickingSession" class="picking-session-button ${mine ? "active" : ""}" ${otherPicker ? "disabled" : ""}>${mine ? "내 피킹중·종료" : otherPicker ? `${esc(assignedName || "다른 관리자")} 피킹중` : "피킹시작"}</button>${otherPicker && canForce ? '<button type="button" id="forceReleasePicking" class="picking-force-release">관리자 담당해제</button>' : ""}<span>현재 ${scanIncrement}개씩 반영 · ${mine ? "내 계정으로 피킹중" : otherPicker ? "다른 계정 작업을 실시간 확인중" : "시작 대기"}</span></div><div class="pick-status ${type}">${message || (otherPicker ? `${esc(assignedName || "다른 관리자")} 계정이 피킹 중입니다. 이 화면은 실시간 확인 전용입니다.` : `바코드를 스캔하면 해당 품번의 피킹수량이 ${scanIncrement}개씩 올라갑니다.`)}</div>${renderSoldoutPastePanel()}${renderWarehousePickSections(active.items)}<div class="pick-controls"><button class="pick-action print-btn" id="printWork">출고지별 작업지시서 인쇄</button><button class="pick-action reset-btn" id="resetPick">피킹 초기화</button>${canDelete ? `<button class="pick-action delete-order-btn" id="deleteWholeOrder">피킹 전 주문 전체삭제</button>` : ""}<button class="pick-action verify-btn" id="verifyPick" ${verified || !allOk || !mine ? "disabled" : ""}>${verified ? "피킹 최종검증 완료됨" : "피킹 최종검증 완료"}</button></div>`;
     if (iPackPanel)
       $("workArea")
         .querySelector(".pick-status")
@@ -872,7 +883,7 @@
     ) {
       document
         .querySelectorAll(
-          "#workArea [data-minus],#workArea [data-plus],#workArea [data-soldout-toggle],#workArea [data-outbound-check],#workArea [data-picking-note],#workArea [data-bulk-pick],#workArea [data-scan-qty],#resetPick,#verifyPick",
+          "#workArea [data-minus],#workArea [data-plus],#workArea [data-soldout-toggle],#workArea [data-outbound-check],#workArea [data-picking-note],#workArea [data-bulk-pick],#workArea [data-scan-qty],#applySoldoutPaste,#soldoutPasteInput,#resetPick,#verifyPick",
         )
         .forEach((element) => (element.disabled = true));
       const status = $("workArea").querySelector(".pick-status");
@@ -1045,6 +1056,199 @@
       }
       await updateRow(r, picked, 0);
     }
+  }
+  function soldoutPasteKey(value) {
+    return String(value || "")
+      .normalize("NFKC")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "")
+      .replace(/[~～]/g, "-");
+  }
+  function parseSoldoutPaste(text, group) {
+    const rows = (group?.items || []).filter((row) =>
+      ["S", "B"].includes(warehouseCode(row)),
+    );
+    const tokens = [];
+    const pattern = /(?:^|[\s,，;:：/])((?:[SB]\s*[-_]\s*)?[A-Z0-9][A-Z0-9._~-]*)(?:\s*\(\s*(\d+)\s*\))?/gi;
+    let match;
+    while ((match = pattern.exec(String(text || "").normalize("NFKC")))) {
+      const raw = soldoutPasteKey(match[1]);
+      if (!raw || raw === "S" || raw === "B") continue;
+      const explicit = raw.match(/^([SB])[-_](.+)$/),
+        code = explicit?.[1] || "",
+        itemKey = soldoutPasteKey(explicit?.[2] || raw),
+        candidates = rows.filter(
+          (row) =>
+            (!code || warehouseCode(row) === code) &&
+            soldoutPasteKey(displayItemNumber(row).replace(/^[SBI][-_\s]+/i, "")) === itemKey,
+        );
+      if (!candidates.length) {
+        tokens.push({ raw: match[1], error: "주문에 없는 S·B 품번" });
+        continue;
+      }
+      if (candidates.length > 1) {
+        tokens.push({ raw: match[1], error: "S 또는 B 출고지를 붙여 품번을 구분해주세요" });
+        continue;
+      }
+      const row = candidates[0],
+        ordered = Math.max(0, Number(row.qty || 0)),
+        requested = match[2] === undefined ? ordered : Number(match[2]);
+      if (!Number.isInteger(requested) || requested < 1 || requested > ordered) {
+        tokens.push({
+          raw: match[1],
+          error: `품절수량은 1~${ordered}죽이어야 합니다`,
+        });
+        continue;
+      }
+      tokens.push({ row, soldout: requested, raw: match[1] });
+    }
+    const resolved = new Map();
+    tokens.forEach((token) => {
+      if (token.row) resolved.set(String(token.row.id), token);
+    });
+    return {
+      tokens,
+      resolved,
+      errors: tokens.filter((token) => token.error),
+    };
+  }
+  async function ensureQuickPickingOrder(orderNumber) {
+    let group = groups.find((item) => item.orderNumber === orderNumber);
+    if (!group) throw new Error("주문을 찾지 못했습니다. 새로고침 후 다시 시도해주세요.");
+    const live = group.items.some((row) => row.picking_session_active === true),
+      owner = String(group.assignedTo || group.items.find((row) => row.picking_assigned_to)?.picking_assigned_to || "");
+    if (live && owner !== String(currentPicker.id))
+      throw new Error(`${group.assignedName || "다른 관리자"} 계정이 피킹 중입니다.`);
+    if (!live) {
+      if (!(await releaseMyPreviousPicking(orderNumber)))
+        throw new Error("기존 피킹 작업을 종료하지 못했습니다.");
+      const { error } = await supabaseClient.rpc("claim_order_picking", {
+        p_order_number: orderNumber,
+        p_device_name: pickingDeviceLabel(),
+        p_force: false,
+      });
+      if (error) throw error;
+      await load(false);
+      group = groups.find((item) => item.orderNumber === orderNumber);
+    }
+    active = group;
+    syncActiveOrderUrl(orderNumber);
+    return group;
+  }
+  async function saveQuickWarehouseResult(group, soldoutText = "") {
+    const parsed = soldoutText ? parseSoldoutPaste(soldoutText, group) : { resolved: new Map(), errors: [] };
+    if (soldoutText && !parsed.resolved.size && !parsed.errors.length)
+      throw new Error("인식된 S·B 품번이 없습니다.");
+    if (parsed.errors.length)
+      throw new Error(parsed.errors.map((item) => `${item.raw}: ${item.error}`).join("\n"));
+    const rows = group.items.filter((row) => ["S", "B"].includes(warehouseCode(row)));
+    if (!rows.length) throw new Error("이 주문에는 S·B 출고 품번이 없습니다.");
+    const startedAt = new Date().toISOString(),
+      allocations = rows.map((row) => {
+        const soldout = parsed.resolved.get(String(row.id))?.soldout || 0,
+          ordered = Math.max(0, Number(row.qty || 0));
+        return { row, soldout, picked: Math.max(0, ordered - soldout) };
+      });
+    const results = await Promise.all(
+      allocations.map(({ row, soldout, picked }) =>
+        supabaseClient
+          .from("orders")
+          .update({
+            picked_qty: picked,
+            soldout_qty: soldout,
+            is_soldout: soldout >= Number(row.qty || 0),
+            picking_status: "피킹중",
+            picking_started_at: startedAt,
+          })
+          .eq("id", row.id)
+          .eq("picking_assigned_to", currentPicker.id),
+      ),
+    );
+    const failed = results.find((result) => result.error);
+    if (failed) throw failed.error;
+    allocations.forEach(({ row, soldout, picked }) => {
+      row.picked_qty = picked;
+      row.soldout_qty = soldout;
+      row.is_soldout = soldout >= Number(row.qty || 0);
+      row.picking_status = "피킹중";
+    });
+    const soldoutTotal = allocations.reduce((sum, item) => sum + item.soldout, 0);
+    buildGroups();
+    active = groups.find((item) => item.orderNumber === group.orderNumber) || group;
+    renderList();
+    renderWork(
+      `S·B 일괄피킹 완료${soldoutTotal ? ` · 품절 ${soldoutTotal}죽 자동 반영` : " · 품절 없음"}`,
+      "success",
+      false,
+    );
+    return soldoutTotal;
+  }
+  async function completeQuickPicking(group) {
+    active = groups.find((item) => item.orderNumber === group.orderNumber) || group;
+    const incomplete = active.items.filter(
+      (row) =>
+        Number(row.picked_qty || 0) + Number(row.soldout_qty || 0) !==
+        Number(row.qty || 0),
+    );
+    if (incomplete.length)
+      throw new Error(`최종검증할 수 없습니다. 미처리 품번 ${incomplete.length}개를 확인해주세요.`);
+    const { error } = await supabaseClient.rpc("complete_order_picking", {
+      p_order_number: active.orderNumber,
+      p_device_name: `접힌상태 일괄검증 · ${currentPicker.name}`,
+    });
+    if (error && !String(error.message || "").includes("이미 피킹 최종검증"))
+      throw error;
+    if (!(await confirmAllProcessedWarehouses(active)))
+      throw new Error("출고지 완료상태를 저장하지 못했습니다.");
+    await supabaseClient.rpc("release_order_picking", {
+      p_order_number: active.orderNumber,
+      p_force: false,
+    });
+    localStorage.setItem(
+      "designjam_picking_verified",
+      JSON.stringify({ orderNumber: active.orderNumber, at: Date.now() }),
+    );
+    const completedOrder = active.orderNumber;
+    await load(false);
+    alert(`피킹 최종검증까지 완료했습니다.\n주문번호: ${completedOrder}\n주문관리의 출고대기로 이동했습니다.`);
+  }
+  async function applyActiveSoldoutPaste() {
+    const input = $("soldoutPasteInput"), result = $("soldoutPasteResult");
+    if (!input || !active) return;
+    const text = input.value.trim();
+    if (!text) return alert("품절 내용을 붙여넣어 주세요.");
+    try {
+      const group = await ensureQuickPickingOrder(active.orderNumber);
+      const total = await saveQuickWarehouseResult(group, text);
+      if (result) result.textContent = `적용 완료 · 품절 ${total}죽`;
+    } catch (error) {
+      alert(error?.message || error);
+      if (result) result.textContent = "적용 실패";
+    }
+  }
+  async function quickWaitingBulk(orderNumber) {
+    if (!confirm("이 주문의 S·B 품번을 품절 없이 모두 피킹완료하고 최종검증까지 완료할까요?\n\n확인하면 실제 출고수량만 ERP 재고에서 차감되고 주문은 출고대기로 이동합니다.")) return;
+    try {
+      const group = await ensureQuickPickingOrder(orderNumber);
+      await saveQuickWarehouseResult(group);
+      await completeQuickPicking(group);
+    } catch (error) { alert(error?.message || error); }
+  }
+  async function quickWaitingSoldout(orderNumber) {
+    const text = prompt("S·B 품절 내용을 붙여넣으세요.\n전체품절: 3001, 16\n일부품절: 3002(2) = 2죽 품절");
+    if (text === null) return;
+    if (!text.trim()) return alert("품절 내용을 입력해주세요.");
+    try {
+      const group = await ensureQuickPickingOrder(orderNumber),
+        parsed = parseSoldoutPaste(text, group);
+      if (parsed.errors.length) throw new Error(parsed.errors.map((item) => `${item.raw}: ${item.error}`).join("\n"));
+      const summary = [...parsed.resolved.values()].map(({ row, soldout }) => `${warehouseCode(row)}-${displayItemNumber(row).replace(/^[SBI][-_\s]+/i, "")} ${soldout}/${Number(row.qty || 0)}죽 품절`).join("\n");
+      if (!summary) throw new Error("인식된 S·B 품번이 없습니다.");
+      if (!confirm(`아래 내용으로 S·B 피킹과 최종검증을 한 번에 완료할까요?\n\n${summary}\n\n입력하지 않은 품번은 정상출고 처리됩니다.\n실제 출고수량만 ERP 재고에서 차감되고 주문은 출고대기로 이동합니다.`)) return;
+      await saveQuickWarehouseResult(group, text);
+      await completeQuickPicking(group);
+    } catch (error) { alert(error?.message || error); }
   }
   async function bulkCompleteWarehouse(code) {
     if (!isMyActivePicking()) {
@@ -1610,6 +1814,7 @@
     $("deleteWholeOrder")?.addEventListener("click", deleteWholeOrder);
     $("togglePickingSession")?.addEventListener("click", toggleAssignedPicking);
     $("toggleIPackComplete")?.addEventListener("click", toggleIPackComplete);
+    $("applySoldoutPaste")?.addEventListener("click", applyActiveSoldoutPaste);
     $("forceReleasePicking")?.addEventListener(
       "click",
       forceReleaseAssignedPicking,
@@ -1792,11 +1997,22 @@
         pickingSort = e.target.value;
         renderWork();
       };
-    $("orderList").onclick = (e) => {
-      const b = e.target.closest("[data-order]");
-      if (!b) return;
-      selectPickingOrder(b.dataset.order);
+    const handleOrderListClick = (e) => {
+      const bulk = e.target.closest("[data-waiting-bulk]");
+      if (bulk) { e.stopPropagation(); quickWaitingBulk(bulk.dataset.waitingBulk); return; }
+      const soldout = e.target.closest("[data-waiting-soldout]");
+      if (soldout) { e.stopPropagation(); quickWaitingSoldout(soldout.dataset.waitingSoldout); return; }
+      const statement = e.target.closest("[data-waiting-statement]");
+      if (statement) {
+        e.stopPropagation();
+        window.open(`statement.html?order=${encodeURIComponent(statement.dataset.waitingStatement)}`, "_blank");
+        return;
+      }
+      const card = e.target.closest("[data-open-order]");
+      if (card) selectPickingOrder(card.dataset.openOrder);
     };
+    $("orderList").onclick = handleOrderListClick;
+    if ($("iPackedWaitingList")) $("iPackedWaitingList").onclick = handleOrderListClick;
     let buffer = "",
       last = 0,
       refreshTimer = null,

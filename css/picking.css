@@ -244,3 +244,16 @@ html[data-theme="dark"] .picking-product-photo-dialog{background:#172033}.pickin
 /* V6.7.12 모든 버튼 클릭 촉감 */
 button{transition:transform .08s ease,filter .08s ease,box-shadow .08s ease}
 button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filter:brightness(.92);box-shadow:inset 0 2px 5px rgba(0,0,0,.24)!important}
+
+/* V6.7.49 I 포장완료 대기 빠른처리·품절 붙여넣기 */
+.i-packed-waiting-card .pick-delivery-name{display:inline-flex!important;align-items:center;justify-self:start;width:max-content;max-width:100%;padding:4px 8px;border:1px solid #f9a8d4;border-radius:7px;background:#fce7f3;color:#9d174d!important;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.waiting-quick-actions{grid-column:1/-1!important;display:flex!important;gap:5px;margin-top:6px}
+.waiting-quick-actions button{flex:1;min-width:0;padding:7px 5px;border:0;border-radius:7px;background:#173a5e;color:#fff;font-size:11px;font-weight:900;cursor:pointer}
+.waiting-quick-actions button:nth-child(2){background:#b42318}.waiting-quick-actions button:nth-child(3){background:#166534}
+.soldout-paste-panel{margin:12px 0;padding:13px;border:2px solid #ef4444;border-radius:13px;background:#fff7f7}
+.soldout-paste-copy{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;color:#7f1d1d}.soldout-paste-copy strong{font-size:17px}.soldout-paste-copy small{padding:2px 5px;border-radius:999px;background:#7f1d1d;color:#fff;font-size:10px}.soldout-paste-copy span{font-size:12px;font-weight:750}
+.soldout-paste-panel textarea{display:block;width:100%;min-height:68px;padding:9px;border:1px solid #fca5a5;border-radius:9px;resize:vertical;font:inherit;background:#fff;color:#111}
+.soldout-paste-actions{display:flex;align-items:center;gap:10px;margin-top:8px}.soldout-paste-actions button{padding:9px 12px!important;background:#b42318!important}.soldout-paste-actions span{font-size:12px;font-weight:800;color:#166534}
+html[data-theme="dark"] .i-packed-waiting-card .pick-delivery-name{background:#5b1738!important;border-color:#db5893!important;color:#fbcfe8!important}
+html[data-theme="dark"] .soldout-paste-panel{background:#451a1a!important;border-color:#f87171!important}.soldout-paste-panel textarea{color:#111!important}
+@media(max-width:420px){.waiting-quick-actions{flex-wrap:wrap}.waiting-quick-actions button{flex:1 1 30%;font-size:10px}.soldout-paste-actions{align-items:stretch;flex-direction:column}}
