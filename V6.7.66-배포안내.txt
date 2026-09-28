@@ -1,0 +1,21 @@
+DESIGN SOCKS V6.7.66 배포 순서
+
+1. 아래 명령을 프로젝트 폴더에서 실행합니다.
+
+git add .
+git commit -m "release v6.7.66 settlement calculation editor"
+git push origin main
+
+2. Vercel 배포 완료 후 브라우저에서 Ctrl+F5로 새로고침합니다.
+
+3. 최초 정산 기능 설치 때 SQL을 아직 실행하지 않았다면 Supabase SQL Editor에서 다음 파일을 1회 실행합니다.
+SQL/V6.7.64-SBI-SETTLEMENT.sql
+
+확인 사항
+- 좌측 하단 V6.7.66
+- S는 이름 없이 수량 × 단가만 계속 붙여넣어 분석 가능
+- B는 하루 전체 수량 × 단가 분석
+- 고객 출고금액 - S/B 원가 = 정산금액 표시
+- 붙여넣기 계산 항목 수량·단가·이름 수정 및 삭제·추가 가능
+- ERP 실제 출고 죽수 표시
+- S/B/I 분석결과 저장 후 최근 저장 내역 표시

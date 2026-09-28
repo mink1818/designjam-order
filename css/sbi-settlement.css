@@ -1,2 +1,39 @@
-.settlement-shell{max-width:1500px;margin:auto;padding:16px}.settlement-toolbar,.settlement-paste,.settlement-results,.settlement-history{background:#fff;border:1px solid #d7e1ec;border-radius:15px;padding:16px;margin-bottom:14px}.settlement-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.settlement-toolbar label{display:grid;gap:5px;font-weight:900}.settlement-toolbar input,.settlement-paste textarea{box-sizing:border-box;border:1px solid #b9c8d8;border-radius:9px;padding:11px}.settlement-tabs{display:flex;gap:6px}.settlement-toolbar button,.settlement-actions button{border:0;border-radius:9px;padding:11px 15px;background:#24579c;color:#fff;font-weight:900}.settlement-tabs button.active{background:#112437}.settlement-paste textarea{width:100%;margin:8px 0;font:inherit;line-height:1.55}.settlement-actions{display:flex;gap:8px}.settlement-actions button:last-child{background:#08783e}.settlement-actions button:disabled{opacity:.45}.settlement-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.settlement-metric{background:#fff;border:1px solid #d7e1ec;border-radius:13px;padding:14px}.settlement-metric span{display:block;color:#64748b}.settlement-metric strong{font-size:24px;color:#173f70}.settlement-row{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(3,minmax(120px,1fr));gap:8px;align-items:center;padding:11px;border-bottom:1px solid #e3e9f0}.settlement-row.head{font-weight:900;background:#edf3f9;border-radius:8px}.settlement-row .minus{color:#c62828;font-weight:900}.settlement-row .plus{color:#08783e;font-weight:900}.settlement-warning{padding:10px;border:1px solid #ef9a9a;background:#fff2f2;color:#a61b1b;border-radius:9px}.settlement-ok{padding:10px;border:1px solid #8ad5a9;background:#effcf4;color:#086c38;border-radius:9px}.settlement-detail{font-size:12px;color:#64748b}.settlement-history article{padding:10px;border-bottom:1px solid #e3e9f0}.settlement-history button{float:right;border:0;border-radius:7px;padding:6px 9px;background:#b42318;color:#fff}.settlement-unknown{background:#fff8e1}.settlement-unknown input{width:100%;box-sizing:border-box;padding:7px;border:1px solid #d6a746;border-radius:7px}@media(max-width:720px){.settlement-shell{padding:8px}.settlement-summary{grid-template-columns:1fr}.settlement-row{grid-template-columns:1fr 1fr}.settlement-row.head{display:none}.settlement-row>span:first-child{grid-column:1/-1}.settlement-tabs{width:100%}.settlement-tabs button{flex:1;padding:9px 5px}.settlement-toolbar>#loadSettlement{width:100%}}
-
+.settlement-shell{max-width:1500px;margin:auto;padding:16px}
+.settlement-toolbar,.settlement-paste,.settlement-results,.settlement-history{background:#fff;border:1px solid #d7e1ec;border-radius:15px;padding:16px;margin-bottom:14px}
+.settlement-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.settlement-toolbar label{display:grid;gap:5px;font-weight:900}
+.settlement-toolbar input,.settlement-paste textarea{box-sizing:border-box;border:1px solid #b9c8d8;border-radius:9px;padding:11px}
+.settlement-tabs{display:flex;gap:6px}
+.settlement-toolbar button,.settlement-actions button,.settlement-result-heading button{border:0;border-radius:9px;padding:11px 15px;background:#24579c;color:#fff;font-weight:900}
+.settlement-tabs button.active{background:#112437}
+.settlement-paste textarea{width:100%;margin:8px 0;font:inherit;line-height:1.55}
+.settlement-actions{display:flex;gap:8px}
+.settlement-actions button:disabled,.settlement-result-heading button:disabled{opacity:.45}
+.settlement-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.settlement-metric{background:#fff;border:1px solid #d7e1ec;border-radius:13px;padding:14px}
+.settlement-metric span{display:block;color:#64748b}
+.settlement-metric strong{font-size:24px;color:#173f70}
+.settlement-row{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(3,minmax(120px,1fr));gap:8px;align-items:center;padding:11px;border-bottom:1px solid #e3e9f0}
+.settlement-row.head{font-weight:900;background:#edf3f9;border-radius:8px}
+.settlement-row .minus{color:#c62828;font-weight:900}
+.settlement-row .plus{color:#08783e;font-weight:900}
+.settlement-warning{padding:10px;border:1px solid #ef9a9a;background:#fff2f2;color:#a61b1b;border-radius:9px}
+.settlement-ok{padding:10px;border:1px solid #8ad5a9;background:#effcf4;color:#086c38;border-radius:9px}
+.settlement-detail{display:block;font-size:12px;color:#64748b}
+.settlement-history article{padding:10px;border-bottom:1px solid #e3e9f0}
+.settlement-history button{float:right;border:0;border-radius:7px;padding:6px 9px;background:#b42318;color:#fff}
+.settlement-history small{display:block;color:#64748b;margin-top:3px}
+.settlement-result-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.settlement-result-heading button{background:#08783e}
+.settlement-formula{display:flex;justify-content:center;align-items:center;gap:14px;margin:8px 0 14px;padding:13px;border:1px solid #9db7d3;border-radius:11px;background:#f2f7fc;color:#173f70;font-size:18px}
+.settlement-total{background:#f7fafc}
+.settlement-edit-list{margin:6px 0 14px;padding:10px;border:1px solid #d9e2ec;border-radius:10px;background:#fbfdff}
+.settlement-edit-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.settlement-edit-head button,.settlement-edit-row button{border:0;border-radius:7px;padding:7px 10px;background:#24579c;color:#fff;font-weight:800}
+.settlement-edit-row{display:grid;grid-template-columns:minmax(130px,1fr) 120px 20px 145px 110px 60px;gap:7px;align-items:center;padding:6px 0;border-top:1px solid #e8edf3}
+.settlement-edit-row input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #bdcad8;border-radius:7px}
+.settlement-edit-row label{display:flex;align-items:center;gap:5px;font-size:12px;color:#64748b}
+.settlement-edit-row .remove{background:#b42318}
+@media(max-width:720px){
+ .settlement-shell{padding:8px}.settlement-summary{grid-template-columns:1fr}.settlement-row{grid-template-columns:1fr 1fr}.settlement-row.head{display:none}.settlement-row>span:first-child{grid-column:1/-1}.settlement-tabs{width:100%}.settlement-tabs button{flex:1;padding:9px 5px}.settlement-toolbar>#loadSettlement{width:100%}.settlement-formula{gap:7px;font-size:14px}.settlement-edit-row{grid-template-columns:minmax(0,1fr) 95px 16px 110px}.settlement-edit-row>strong{grid-column:1/4;text-align:right}.settlement-edit-row>.remove{grid-column:4}.settlement-result-heading button{padding:9px 11px}
+}
