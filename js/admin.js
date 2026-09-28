@@ -941,7 +941,7 @@ summaryTotal += Number(group.shipping_fee || 0);
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
   ${customerNotes[group.orderNumber] ? `<span class="admin-note-badge">📝 ${escapeAdminHtml(customerNotes[group.orderNumber])}</span>` : ""}
 </div>
-${isAdminIPackedWaiting(group)?`<div class="admin-i-packed-quick-actions"><span>I 포장완료 빠른처리</span><button type="button" onclick="adminQuickIPackedBulk(event,'${escapeAdminAttr(group.orderNumber)}')">S·B 일괄피킹</button><button type="button" class="soldout" onclick="adminQuickIPackedSoldout(event,'${escapeAdminAttr(group.orderNumber)}')">품절 붙여넣기</button><button type="button" class="statement" onclick="event.stopPropagation();openStatement('${escapeAdminAttr(group.orderNumber)}')">거래명세서</button></div>`:''}
+${isAdminIPackedWaiting(group)?`<div class="admin-i-packed-quick-actions"><span>I 포장완료 빠른처리</span><button type="button" onclick="adminQuickIPackedBulk(event,'${escapeAdminAttr(group.orderNumber)}')">S·B 일괄피킹</button><button type="button" class="soldout" onclick="adminQuickIPackedSoldout(event,'${escapeAdminAttr(group.orderNumber)}')">품절 붙여넣기</button></div>`:''}
 
 <div
 id="detail-${index}"
