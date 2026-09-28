@@ -60,8 +60,7 @@ async function loadDashboard(){
   const start=todayStartIso();
   // 미입금 상세는 운영 숫자와 동시에 시작해 대시보드의 나머지 조회를 기다리지 않습니다.
   void loadUnpaidCustomers();
-  const [todayOrders,pending,doneToday,customers,waiting,products]=await Promise.all([
-    supabaseClient.from("orders").select("order_number,customer_id,customer_name").gte("created_at",start),
+  const [pending,doneToday,customers,waiting,products]=await Promise.all([
     // 주문관리의 `미출고` 화면과 똑같이 DB 상태가 주문접수인 주문만 집계합니다.
     // neq(출고완료)는 NULL/예외 상태를 다르게 처리해 메인 숫자와 클릭 후 목록이 어긋날 수 있습니다.
     supabaseClient.from("orders").select("order_number,customer_id,customer_name,created_at,status,picking_status,item_number,warehouse_code,qty,soldout_qty,is_soldout,s_outbound_confirmed,b_outbound_confirmed,i_outbound_confirmed").eq("status","주문접수"),
@@ -70,10 +69,11 @@ async function loadDashboard(){
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))
   ]);
-  setText("todayOrderCount",uniqueOrderGroups(todayOrders.data));
   const activeGroups=groupDashboardActiveOrders(pending.data);
+  const receivedTodayGroups=activeGroups.filter(group=>dashboardCreatedToday(group)&&!String(group.pickingStatus||'').includes('검증완료')&&!dashboardIPackedWaiting(group));
   const readyGroups=activeGroups.filter(group=>String(group.pickingStatus||'').includes('검증완료')&&!dashboardIPackedWaiting(group));
   const reviewGroups=activeGroups.filter(group=>!dashboardCreatedToday(group)&&!String(group.pickingStatus||'').includes('검증완료')&&!dashboardIPackedWaiting(group));
+  setText("todayOrderCount",receivedTodayGroups.length);
   setText("pendingOrderCount",readyGroups.length);
   setText("orderReviewCount",reviewGroups.length);
   setText("todayDoneCount",uniqueOrderGroups(doneToday.data));

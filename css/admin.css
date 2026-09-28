@@ -2681,18 +2681,18 @@ body.login-stable.auth-pending{visibility:hidden!important;opacity:0!important}b
 .mobile-payment-check{display:none!important}
 @media(max-width:760px){body[data-session-page="admin"] .mobile-order-summary{position:relative!important}.desktop-payment-check{display:none!important}.mobile-payment-check{display:flex!important;position:absolute!important;right:0!important;top:-23px!important;width:auto!important;min-width:64px!important;min-height:20px!important;max-height:22px!important;padding:2px 5px!important;gap:3px!important;border-radius:6px!important;box-sizing:border-box!important;font-size:9px!important;line-height:1!important;white-space:nowrap!important}.mobile-payment-check input{width:13px!important;height:13px!important;flex:0 0 13px!important}.mobile-payment-check>small{max-width:74px!important;font-size:7px!important;line-height:1!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}}
 
-/* V6.7.44 주문 접힘 요약: 대표자·S/B/I 주문수량 */
+/* V6.7.46 주문 접힘 요약: 대표자·S/B/I 주문수량 */
 body[data-session-page="admin"] .customer-owner-name{
  display:inline!important;margin-left:5px!important;color:#52677e!important;
  font-size:1em!important;font-weight:900!important;line-height:inherit!important;vertical-align:baseline!important;
 }
 body[data-session-page="admin"] .collapsed-warehouse-qty,
 body[data-session-page="admin"] .mobile-warehouse-qty{
- display:inline-flex!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;align-items:center;gap:2px!important;padding:3px 7px!important;border:1px solid #a9bfd8;border-radius:999px;background:#edf4fb;color:#173f70!important;font-weight:950!important;white-space:nowrap!important;
+ display:inline-flex!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;align-items:center;gap:2px!important;padding:3px 7px!important;border:1px solid #e0b84f;border-radius:999px;background:#fff3bf;color:#5f4500!important;font-weight:950!important;white-space:nowrap!important;
 }
-body[data-session-page="admin"] .collapsed-sbi-unit{display:inline!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;padding:0!important;border:0!important;background:transparent!important;color:#8795a6!important;font-size:12px!important;line-height:1!important}
-body[data-session-page="admin"] .collapsed-sbi-unit.has-qty{color:#173f70!important;font-weight:1000!important}
-body[data-session-page="admin"] .collapsed-sbi-unit b{min-width:0!important;margin:0!important;color:inherit!important;font-size:inherit!important}
+body[data-session-page="admin"] .collapsed-sbi-unit{display:inline!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;padding:0!important;border:0!important;background:transparent!important;color:#a18b54!important;font-size:12px!important;line-height:1!important}
+body[data-session-page="admin"] .collapsed-sbi-unit.has-qty{color:#5f4500!important;font-weight:1000!important}
+body[data-session-page="admin"] .collapsed-sbi-unit b{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:14px!important;margin:0 2px 0 0!important;padding:1px 3px!important;border-radius:4px!important;background:#d59a00!important;color:#fff!important;font-size:10px!important;font-weight:1000!important;line-height:1.15!important;box-sizing:border-box!important}
 body[data-session-page="admin"] .collapsed-warehouse-qty>i,body[data-session-page="admin"] .mobile-warehouse-qty>i{color:#9aa9b9;font-size:10px;font-style:normal}
 .order-status-tab.review{border-color:#8b5cf6!important;color:#6d28d9!important}.order-status-tab.review.active{background:#7c3aed!important;color:#fff!important}.order-review-metric{border-color:#c4b5fd!important;background:#faf7ff!important}
 .admin-order-scope-indicator{margin:-4px 0 10px;padding:9px 13px;border:1px solid #60a5fa;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-size:13px;font-weight:900}
