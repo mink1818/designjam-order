@@ -2687,7 +2687,7 @@ body.login-stable.auth-pending{visibility:hidden!important;opacity:0!important}b
 .mobile-payment-check{display:none!important}
 @media(max-width:760px){body[data-session-page="admin"] .mobile-order-summary{position:relative!important}.desktop-payment-check{display:none!important}.mobile-payment-check{display:flex!important;position:absolute!important;right:0!important;top:-23px!important;width:auto!important;min-width:64px!important;min-height:20px!important;max-height:22px!important;padding:2px 5px!important;gap:3px!important;border-radius:6px!important;box-sizing:border-box!important;font-size:9px!important;line-height:1!important;white-space:nowrap!important}.mobile-payment-check input{width:13px!important;height:13px!important;flex:0 0 13px!important}.mobile-payment-check>small{max-width:74px!important;font-size:7px!important;line-height:1!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}}
 
-/* V6.7.47 주문 접힘 요약: 대표자·S/B/I 주문수량 */
+/* V6.7.48 주문 접힘 요약: 대표자·S/B/I 주문수량 */
 body[data-session-page="admin"] .customer-owner-name{
  display:inline!important;margin-left:5px!important;color:#52677e!important;
  font-size:1em!important;font-weight:900!important;line-height:inherit!important;vertical-align:baseline!important;
