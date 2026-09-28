@@ -2689,7 +2689,7 @@ body.login-stable.auth-pending{visibility:hidden!important;opacity:0!important}b
 html[data-theme="dark"] .collapsed-shipping-complete{background:#22c55e;color:#052e16}
 @media(max-width:760px){body[data-session-page="admin"] .collapsed-shipping-complete{width:100%;min-width:0;min-height:30px;padding:5px 3px;font-size:11px}.order-status-stack:has(.collapsed-shipping-complete){grid-template-columns:1fr 1fr!important}}
 
-/* V6.7.56 주문관리 접힌 카드 빠른처리·납품처 재배치 */
+/* V6.7.57 주문관리 접힌 카드 빠른처리·납품처 재배치 */
 .admin-i-packed-quick-actions{display:flex!important;align-items:center;justify-content:flex-end;gap:5px;width:100%;padding:5px 14px 7px;border-top:1px dashed #e2e8f0;background:#f8fafc;box-sizing:border-box}
 .admin-i-packed-quick-actions>span{margin-right:auto;color:#92400e;font-size:11px;font-weight:900}
 .admin-i-packed-quick-actions button{flex:0 0 auto;min-width:82px;min-height:26px;padding:4px 8px;border:0;border-radius:6px;background:#1d4ed8;color:#fff;font-size:10px;font-weight:900;white-space:nowrap;cursor:pointer}
@@ -3086,7 +3086,7 @@ button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filt
 @media(max-width:1000px){.unpaid-order-row{grid-template-columns:24px minmax(0,1fr) auto}.unpaid-order-row .unpaid-partial-action{grid-column:2/-1;justify-content:flex-start}}
 @media(max-width:760px){.unpaid-customer-group>details>summary{grid-template-columns:auto minmax(0,1fr);gap:5px;padding-right:115px}.unpaid-customer-group>details>summary strong{grid-column:2}.unpaid-group-action{right:5px;top:8px;flex-direction:column;gap:2px;font-size:10px}.unpaid-order-row{column-gap:6px;row-gap:8px}.unpaid-order-row strong{justify-self:end}.unpaid-order-row .unpaid-partial-action{grid-column:1/-1;justify-content:flex-end}}
 
-/* V6.7.56 접힌 주문번호 전체표시·관리자 대신주문 표시 고정 */
+/* V6.7.57 접힌 주문번호 전체표시·관리자 대신주문 표시 고정 */
 .proxy-mobile-mark{display:none!important}
 body[data-session-page="admin"] .collapsed-proxy-badge{
  display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;
@@ -3127,3 +3127,16 @@ body[data-session-page="admin"] .order-summary-number-text{
 }
 html[data-theme="dark"] body[data-session-page="admin"] .collapsed-proxy-badge,
 html[data-theme="dark"] body[data-session-page="admin"] .proxy-mobile-mark{background:#14b8a6!important;color:#042f2e!important}
+
+/* V6.7.57 PC 접힌 카드 출고완료 버튼 소형화 */
+@media(min-width:761px){
+ body[data-session-page="admin"] .container{
+  width:calc(100% - 48px)!important;max-width:1900px!important;
+  margin-left:auto!important;margin-right:auto!important;
+ }
+ body[data-session-page="admin"] .order-status-stack .collapsed-shipping-complete{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:auto!important;min-width:82px!important;max-width:96px!important;min-height:31px!important;
+  flex:0 0 auto!important;padding:6px 10px!important;margin:0!important;border-radius:7px!important;
+ }
+}
