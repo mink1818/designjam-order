@@ -720,6 +720,15 @@ function getOrderWarehouseSections(items) {
   return order.map(code => ({ code, label: getOrderWarehouseLabel(code), items: map.get(code).sort((a,b)=>String(a.item_number||'').localeCompare(String(b.item_number||''),'ko',{numeric:true,sensitivity:'base'})) })).filter(section => section.items.length);
 }
 
+function getCollapsedWarehouseQuantitySummary(items) {
+  const quantities = { S: 0, B: 0, I: 0 };
+  (items || []).forEach(item => {
+    const code = getOrderWarehouseCode(item);
+    if (Object.prototype.hasOwnProperty.call(quantities, code)) quantities[code] += Math.max(0, Number(item.qty || 0));
+  });
+  return `S ${quantities.S} · B ${quantities.B} · I ${quantities.I}`;
+}
+
 function fallbackCopyWithoutJump(text) {
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
@@ -865,17 +874,18 @@ summaryTotal += Number(group.shipping_fee || 0);
       itemHtml += `</div>`;
     });
 
+    const warehouseQuantitySummary = getCollapsedWarehouseQuantitySummary(group.items);
     html += `
       <div id="order-${index}" class="product-card order-card ${group.status === "출고완료" ? "done" : ""}" data-order-number="${escapeAdminAttr(group.orderNumber)}" data-revision-status="${escapeAdminAttr(group.revisionStatus||'')}">
                 <div class="order-header compact-order-header" onclick="toggleDetail('detail-${index}')">
   <div class="order-primary">
-    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<small class="customer-owner-name">대표자 ${escapeAdminHtml(group.customerOwnerName)}</small>`:''} ${group.isProxy?`<small class="proxy-order-badge">관리자 대신주문${group.proxyCreatedByName?` · ${escapeAdminHtml(group.proxyCreatedByName)}(${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')}) · ${formatHourMinute(group.createdAt)}`:''}</small>`:''} ${group.memo?(group.isProxy?'<small class="customer-order-memo-badge">📝 관리자 메모</small>':group.customerMemoAcknowledgedAt?'<small class="customer-order-memo-badge memo-checked">✓ 고객메모 확인</small>':'<small class="customer-order-memo-badge memo-unchecked">🔴 고객메모 확인필요</small>'):''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''} ${editBadges}</h2>
+    <h2>${group.customerName || "거래처 미입력"} ${!group.isProxy&&group.customerOwnerName?`<span class="customer-owner-name">(${escapeAdminHtml(group.customerOwnerName)})</span>`:''} ${group.isProxy?`<small class="proxy-order-badge">관리자 대신주문${group.proxyCreatedByName?` · ${escapeAdminHtml(group.proxyCreatedByName)}(${escapeAdminHtml(group.proxyCreatedByRole==='manager'?'매니저':group.proxyCreatedByRole==='developer_admin'?'개발관리자':'관리자')}) · ${formatHourMinute(group.createdAt)}`:''}</small>`:''} ${group.memo?(group.isProxy?'<small class="customer-order-memo-badge">📝 관리자 메모</small>':group.customerMemoAcknowledgedAt?'<small class="customer-order-memo-badge memo-checked">✓ 고객메모 확인</small>':'<small class="customer-order-memo-badge memo-unchecked">🔴 고객메모 확인필요</small>'):''} ${soldoutQty>0?`<small class="soldout-order-badge">${soldoutQty}죽 품절</small>`:''} ${!isDone&&group.items.some(item=>getAdminStockStatus(item).warning)?`<small class="inventory-order-alert">⚠ 재고부족 ${group.items.filter(item=>getAdminStockStatus(item).warning).length}품번</small>`:''} ${editBadges}</h2>
     <p class="order-delivery-preview"><strong>납품처</strong> ${escapeAdminHtml(group.deliveryName||group.customerName||'-')}${group.showCustomerTag&&group.customerTag?` <small class="admin-customer-alias-inline">${escapeAdminHtml(group.customerTag)}</small>`:''}${group.showOrderAdminTag&&group.orderAdminTag?` <small class="admin-order-tag-inline">${escapeAdminHtml(group.orderAdminTag)}</small>`:''}</p>
     <p class="order-summary-number">${isDone ? `출고 ${formatCompletedDateTime(group.completedAt)}` : formatOrderDate(group.createdAt)} · ${group.orderNumber}</p>
   </div>
-  <div class="order-compact-stats"><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
+  <div class="order-compact-stats"><span class="collapsed-warehouse-qty">${warehouseQuantitySummary}</span><span>${group.items.length}품목</span><strong>${summaryQty}죽</strong><b>${summaryTotal.toLocaleString()}원</b></div>
   <div class="mobile-order-summary" aria-label="주문 요약">
-    <span class="mobile-order-date">${isDone ? `출고 ${formatMobileOrderDate(group.completedAt)}` : formatMobileOrderDate(group.createdAt)}</span>
+    <span class="mobile-order-time-group"><span class="mobile-order-date">${isDone ? `출고 ${formatMobileOrderDate(group.completedAt)}` : formatMobileOrderDate(group.createdAt)}</span><span class="mobile-warehouse-qty">${warehouseQuantitySummary}</span></span>
     <strong class="mobile-order-qty">${summaryQty}죽</strong>
     <b class="mobile-order-total">${summaryTotal.toLocaleString()}원</b>
     ${paymentTracked?`<label class="order-payment-check mobile-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}

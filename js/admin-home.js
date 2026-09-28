@@ -10,6 +10,8 @@ let currentAdmin = null;
 const isAdminEmail = email => DESIGNJAM_ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
 const todayStartIso = () => { const d=new Date(); d.setHours(0,0,0,0); return d.toISOString(); };
 const uniqueOrders = rows => new Set((rows||[]).map(r=>r.order_number).filter(Boolean)).size;
+const normalizedDashboardCustomer = value => String(value||'').trim().normalize('NFKC').replace(/[\s_.·ㆍ,()[\]{}\-/]+/g,'').toLowerCase();
+const uniqueOrderGroups = rows => new Set((rows||[]).map(r=>`${String(r.order_number||'')}::${normalizedDashboardCustomer(r.customer_name)||String(r.customer_id||'')}`).filter(key=>!key.startsWith('::'))).size;
 const setText = (id,value) => { const el=document.getElementById(id); if(el) el.textContent=value; };
 const esc = value => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 function parseSoldoutItems(value){if(Array.isArray(value))return value.map(String);const text=String(value||'').trim();if(!text)return[];try{const parsed=JSON.parse(text);if(Array.isArray(parsed))return parsed.map(String)}catch(_){}return text.replace(/^\{|\}$/g,'').split(',').map(v=>v.trim().replace(/^"|"$/g,'')).filter(Boolean)}
@@ -55,15 +57,17 @@ async function loadDashboard(){
   void loadUnpaidCustomers();
   const [todayOrders,pending,doneToday,customers,waiting,products]=await Promise.all([
     supabaseClient.from("orders").select("order_number").gte("created_at",start),
-    supabaseClient.from("orders").select("order_number,status").neq("status","출고완료"),
+    // 주문관리의 `미출고` 화면과 똑같이 DB 상태가 주문접수인 주문만 집계합니다.
+    // neq(출고완료)는 NULL/예외 상태를 다르게 처리해 메인 숫자와 클릭 후 목록이 어긋날 수 있습니다.
+    supabaseClient.from("orders").select("order_number,customer_id,customer_name").eq("status","주문접수"),
     supabaseClient.from("orders").select("order_number").eq("status","출고완료").gte("shipped_at",start),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))
   ]);
   setText("todayOrderCount",uniqueOrders(todayOrders.data));
-  // 출고 대기는 날짜와 피킹 단계에 관계없이 아직 출고완료되지 않은 누적 주문입니다.
-  setText("pendingOrderCount",uniqueOrders(pending.data));
+  // 주문관리 `status=미출고`와 동일한 주문 집합입니다.
+  setText("pendingOrderCount",uniqueOrderGroups(pending.data));
   setText("todayDoneCount",uniqueOrders(doneToday.data));
   setText("customerCount",customers.count ?? 0);
   setText("waitingCustomerCount",waiting.count ?? 0);
