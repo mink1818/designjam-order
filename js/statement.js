@@ -174,11 +174,11 @@ async function loadStatement() {
       customerOwnerName = profile.data?.owner_name || profile.data?.representative || "";
     } catch (_) {}
   }
-  currentStatementKakaoSearchName=data[0].customer_name||"";
+  currentStatementKakaoSearchName=customerOwnerName||data[0].customer_name||"";
   if(data[0].customer_id){
     try{
       const meta=await supabaseClient.from('customer_admin_metadata').select('kakao_search_name').eq('customer_id',data[0].customer_id).maybeSingle();
-      currentStatementKakaoSearchName=String(meta.data?.kakao_search_name||data[0].customer_name||'').trim();
+      currentStatementKakaoSearchName=String(meta.data?.kakao_search_name||customerOwnerName||data[0].customer_name||'').trim();
     }catch(_){}
   }
   // 거래명세서는 현재 단가표가 아니라 주문 접수 당시 orders.price를 그대로 사용합니다.

@@ -397,7 +397,7 @@ try {
         customerOwnerName: visibleOrderOwnerName(ownerCandidate, isProxyOrder),
         customerCode: customerMeta.customer_code||'',
         customerTag: customerMeta.customer_tag||'',
-        kakaoSearchName: customerMeta.kakao_search_name||order.customer_name||'',
+        kakaoSearchName: customerMeta.kakao_search_name||ownerCandidate||order.customer_name||'',
         showCustomerTag: !!customerMeta.customer_tag,
         orderAdminTag: orderMeta.admin_tag||'',
         showOrderAdminTag: orderMeta.show_tag===true,

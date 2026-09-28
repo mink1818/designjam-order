@@ -2,9 +2,17 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 
 try {
+  # 이전 카톡찾기 요청이 백그라운드에 남아 있으면 설치 전에 해당 보조 프로세스만 종료합니다.
+  Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*DESIGN_SOCKS_KAKAO_SEARCH.ps1*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
   $appDir = Join-Path $env:LOCALAPPDATA 'DesignSocksKakao'
   New-Item -ItemType Directory -Path $appDir -Force | Out-Null
-  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'DESIGN_SOCKS_KAKAO_SEARCH.ps1') -Destination (Join-Path $appDir 'DESIGN_SOCKS_KAKAO_SEARCH.ps1') -Force
+  $sourceHelper = Join-Path $PSScriptRoot 'DESIGN_SOCKS_KAKAO_SEARCH.ps1'
+  $installedHelper = Join-Path $appDir 'DESIGN_SOCKS_KAKAO_SEARCH.ps1'
+  $helperText = Get-Content -LiteralPath $sourceHelper -Raw -Encoding UTF8
+  Set-Content -LiteralPath $installedHelper -Value $helperText -Encoding UTF8 -Force
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'DESIGN_SOCKS_KAKAO_LAUNCHER.vbs') -Destination (Join-Path $appDir 'DESIGN_SOCKS_KAKAO_LAUNCHER.vbs') -Force
 
   $protocolRoot = 'HKCU:\Software\Classes\designsocks-kakao'
