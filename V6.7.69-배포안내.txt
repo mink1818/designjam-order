@@ -1,0 +1,16 @@
+DESIGN SOCKS V6.7.69 배포 순서
+
+git add .
+git commit -m "release v6.7.69 align SBI quantity and sales"
+git push origin main
+
+Vercel 배포 완료 후 Ctrl+F5로 새로고침합니다.
+
+확인 사항
+- 좌측 하단 V6.7.69
+- S·B·I 상세 칸마다 죽수는 위, 매출은 아래에 동일하게 정렬
+- 각 창고 칸 사이 세로 구분선 표시
+- 전체 죽수·매출 칸은 별도 배경으로 구분
+- 모바일에서도 S·B·I 이름, 죽수, 매출이 같은 위치에 표시
+
+이번 버전은 별도 SQL 실행이 필요하지 않습니다.
