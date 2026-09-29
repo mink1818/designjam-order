@@ -4,12 +4,14 @@
 .sbi-status-toolbar label{display:grid;gap:5px;font-weight:900}
 .sbi-status-toolbar input{box-sizing:border-box;min-height:44px;border:1px solid #b9c8d8;border-radius:9px;padding:10px 12px;font:inherit}
 .sbi-status-toolbar button{min-height:44px;border:0;border-radius:9px;padding:10px 16px;background:#24579c;color:#fff;font-weight:900}
-.sbi-status-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.sbi-status-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px}
 .sbi-summary-card{background:#fff;border:1px solid #d7e1ec;border-radius:14px;padding:14px}
 .sbi-summary-card[data-code=S]{border-top:5px solid #d99b00}
 .sbi-summary-card[data-code=B]{border-top:5px solid #3b82f6}
 .sbi-summary-card[data-code=I]{border-top:5px solid #16a36a}
+.sbi-summary-card[data-code=SHIP]{border-top:5px solid #8b5cf6}
 .sbi-summary-card[data-code=ALL]{border-top:5px solid #172b4d;background:#f7faff}
+.sbi-summary-card.warning{border-top:5px solid #dc2626;background:#fff7f7}
 .sbi-summary-card span,.sbi-summary-card small{display:block;color:#64748b}
 .sbi-summary-card strong{display:block;margin:5px 0;color:#173f70;font-size:24px}
 .sbi-status-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}

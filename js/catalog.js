@@ -2399,7 +2399,9 @@ async function hydrateDeliveryDestinations(){
   if(select){const syncButtons=()=>{const saved=/^\d+$/.test(select.value);const edit=document.getElementById('editSelectedDestinationBtn'),del=document.getElementById('deleteSelectedDestinationBtn');if(edit){edit.hidden=!advanced;edit.disabled=!saved}if(del){del.hidden=!advanced;del.disabled=!saved}};select.innerHTML='<option value="registered">가입 시 등록한 주소</option>'+destinations.map(row=>`<option value="${row.id}">${escapeHtml(row.delivery_name)}${row.is_default?' · 기본':''}</option>`).join('')+'<option value="new">+ 새 납품처 입력</option>';let draft={};try{draft=JSON.parse(localStorage.getItem(CUSTOMER_BULK_DELIVERY_DRAFT_KEY)||'{}')}catch(_){}const pasted=findMatchingDeliveryDestination(destinations,draft);if(pasted){select.value=String(pasted.id);apply(pasted)}else if(draft.deliveryName||draft.deliveryAddress){select.value='new';apply({delivery_name:draft.deliveryName||'',delivery_phone:draft.deliveryPhone||'',delivery_address:draft.deliveryAddress||''})}else{const preferred=destinations.find(x=>x.is_default);if(preferred){select.value=String(preferred.id);apply(preferred)}}select.onchange=()=>{if(select.value==='registered')apply(null);else if(select.value==='new')apply({delivery_name:'',delivery_phone:'',delivery_address:''});else apply(destinations.find(x=>String(x.id)===select.value));syncButtons();};syncButtons();
     const nameInput=document.getElementById('deliveryName'),list=document.getElementById('deliveryDestinationList');
     const refreshSuggestions=()=>{if(!list)return;const query=nameInput?.value||'';list.innerHTML=destinations.filter(row=>deliverySearchMatches(row.delivery_name,query)).sort((a,b)=>String(a.delivery_name).localeCompare(String(b.delivery_name),'ko')).map(row=>`<option value="${escapeHtml(row.delivery_name)}">${escapeHtml(row.delivery_address||row.delivery_phone||'')}</option>`).join('')};
-    nameInput?.addEventListener('input',()=>{refreshSuggestions();const match=findMatchingDeliveryDestination(destinations,{deliveryName:nameInput.value});if(match){select.value=String(match.id);apply(match)}else select.value='new';syncButtons()});refreshSuggestions();
+    // 같은 납품처명을 직접 입력해도 주소/연락처를 예전 저장값으로 덮어쓰지 않는다.
+    // 저장 납품처 전체 값을 불러오는 동작은 사용자가 선택창에서 명시적으로 선택했을 때만 수행한다.
+    nameInput?.addEventListener('input',()=>{refreshSuggestions();const match=findMatchingDeliveryDestination(destinations,{deliveryName:nameInput.value});select.value=match?String(match.id):'new';syncButtons()});refreshSuggestions();
   }
   if(manager)manager.innerHTML=!advanced?'':destinations.length?`<details><summary>저장된 거래처 정보 선택·수정 (${destinations.length})</summary>${destinations.map(row=>`<div class="delivery-destination-row"><button type="button" class="delivery-destination-select-button" onclick="selectSavedDestination('${row.id}')"><span><b>${escapeHtml(row.delivery_name)}</b><small>${escapeHtml(row.delivery_phone||'')} ${escapeHtml(row.delivery_address||'')}</small></span><em>선택</em></button><button type="button" onclick="editSavedDestination('${row.id}')">수정</button><button type="button" class="danger-btn" onclick="deleteSavedDestination('${row.id}')">삭제</button></div>`).join('')}</details>`:'';
 }
@@ -2433,16 +2435,8 @@ async function submitOrder() {
 
   const memo =
     document.getElementById("orderMemo")?.value.trim() || "";
-  // V6.6.57: 고객 주문도 접수 직전 선택된 저장 납품처를 input에 다시 동기화한다.
-  const destinationSelect=document.getElementById('deliveryDestinationSelect');
-  if(destinationSelect&&/^\d+$/.test(destinationSelect.value)){
-    const {data:selected}=await supabaseClient.from('customer_delivery_destinations').select('delivery_name,delivery_phone,delivery_address').eq('id',Number(destinationSelect.value)).eq('customer_id',currentUser.id).maybeSingle();
-    if(selected){
-      document.getElementById('deliveryName').value=selected.delivery_name||'';
-      document.getElementById('deliveryPhone').value=selected.delivery_phone||'';
-      document.getElementById('deliveryAddress').value=selected.delivery_address||'';
-    }
-  }
+  // 접수 버튼을 누른 시점에 화면에 보이는 최종 입력값을 그대로 저장한다.
+  // 저장 납품처를 다시 조회하면 같은 이름의 새 주소가 예전 주소로 되돌아가므로 재동기화하지 않는다.
   const deliveryName=document.getElementById('deliveryName')?.value.trim()||'';
   const deliveryPhone=document.getElementById('deliveryPhone')?.value.trim()||'';
   const deliveryAddress=document.getElementById('deliveryAddress')?.value.trim()||'';
