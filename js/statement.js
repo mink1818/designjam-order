@@ -317,7 +317,7 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
     <section class="statement-bottom-grid">
       <div class="statement-logistics-column">
         ${statementLogistics.bank?.account_number?`<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(statementLogistics.bank.bank_name||'')} ${escapeHtml(statementLogistics.bank.account_number)}</p><p>예금주: ${escapeHtml(statementLogistics.bank.account_holder||'')}</p></div>`:''}
-        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><small>4번은 택배사·죽수 수기입력</small></div><div class="statement-parcel-rows"></div></div>
+        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><small>4번은 수기입력</small></div><div class="statement-parcel-rows"></div></div>
       </div>
       <section class="statement-summary">
         <div>
@@ -381,7 +381,7 @@ function normalizedParcelCounts(){return fixedStatementParcelCounts()}
 function renderStatementParcelRows(){
  const box=statementArea.querySelector('.statement-parcel-rows');if(!box)return;
  const rows=fixedStatementParcelCounts();statementLogistics.parcelCounts=rows;
- box.innerHTML=rows.map((row,index)=>`<label class="statement-parcel-row ${index===3?'statement-parcel-manual':''}" data-parcel-index="${index}"><span>${index+1}.</span>${index===3?`<input class="statement-parcel-courier-input" data-parcel-courier type="text" maxlength="20" value="${escapeHtml(row.courier)}" placeholder="택배사 입력" aria-label="4번 택배사명">`:`<strong>${row.courier}</strong>`}<input data-parcel-qty type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${row.qty}" aria-label="${index+1}번 ${index===3?'수기 택배':row.courier} 택배수량"><b>죽</b></label>`).join('');
+ box.innerHTML=rows.map((row,index)=>`<label class="statement-parcel-row ${index===3?'statement-parcel-manual':''}" data-parcel-index="${index}"><span>${index+1}.</span>${index===3?`<input class="statement-parcel-courier-input" data-parcel-courier type="text" maxlength="20" value="${escapeHtml(row.courier)}" placeholder="" aria-label="4번 택배사명">`:`<strong>${row.courier}</strong>`}<input data-parcel-qty type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${row.qty}" aria-label="${index+1}번 ${index===3?'수기 택배':row.courier} 택배수량"><b>죽</b></label>`).join('');
  box.querySelectorAll('input').forEach(el=>el.addEventListener('input',collectStatementExtras));
 }
 function collectStatementExtras(){

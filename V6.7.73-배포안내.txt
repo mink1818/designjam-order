@@ -1,0 +1,17 @@
+DESIGN SOCKS V6.7.73 배포 안내
+
+변경 내용
+- S/B/I 건수를 창고 포함 주문으로 명확히 표기
+- 전체 건수를 중복 제거 주문으로 명확히 표기
+- SBI 요약 및 상세 금액 글자 확대
+- 상세표 최종금액 칸 확장 및 줄바꿈으로 잘림 방지
+- 거래명세서 택배수량 4번 입력칸의 기본 택배사 문구 제거
+
+DB/SQL 변경 없음
+
+배포 명령
+git add .
+git commit -m "release v6.7.73 sbi amount layout and blank parcel input"
+git push origin main
+
+배포 후 Ctrl+F5로 새로고침하고 화면 왼쪽 아래 V6.7.73을 확인하세요.

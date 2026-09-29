@@ -13,18 +13,27 @@
 .sbi-summary-card[data-code=ALL]{border-top:5px solid #172b4d;background:#f7faff}
 .sbi-summary-card.warning{border-top:5px solid #dc2626;background:#fff7f7}
 .sbi-summary-card span,.sbi-summary-card small{display:block;color:#64748b}
+.sbi-summary-card small{font-size:14px;line-height:1.45}
+.sbi-summary-card small b{color:#173f70;font-size:15px}
+.sbi-summary-card small em{color:#173f70;font-size:16px;font-style:normal;font-weight:900}
+.sbi-summary-card .summary-total-money{margin-top:4px;color:#334e70;font-size:15px;font-weight:800}
 .sbi-summary-card strong{display:block;margin:5px 0;color:#173f70;font-size:24px}
 .sbi-status-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.sbi-status-table{min-width:1180px}
+.sbi-status-table{min-width:1320px}
 .sbi-status-scroll{overflow:auto}
-.sbi-status-row{display:grid;grid-template-columns:minmax(150px,1.2fr) minmax(110px,.8fr) minmax(150px,1.2fr) repeat(4,minmax(155px,1fr));align-items:stretch;border-bottom:1px solid #e3e9f0}
+.sbi-status-row{display:grid;grid-template-columns:minmax(145px,1.05fr) minmax(105px,.72fr) minmax(145px,1.05fr) repeat(3,minmax(150px,.95fr)) minmax(275px,1.65fr);align-items:stretch;border-bottom:1px solid #e3e9f0}
 .sbi-status-row>span{padding:11px 9px;min-width:0;align-self:center}
 .sbi-status-row.head{position:sticky;top:0;background:#eaf1f8;font-weight:900;border-radius:8px;z-index:1}
 .sbi-status-row.head>span:nth-child(n+4){text-align:right;border-left:1px solid #d6e0ea}
 .sbi-status-row .warehouse-cell{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:3px;min-height:48px;padding-left:14px;border-left:1px solid #dfe7f0}
 .sbi-status-row .warehouse-cell b{display:block;width:100%;text-align:right;color:#173f70;font-size:16px;line-height:1.2}
-.sbi-status-row .warehouse-cell small{display:block;width:100%;text-align:right;color:#64748b;white-space:nowrap;line-height:1.2}
+.sbi-status-row .warehouse-cell small{display:block;width:100%;text-align:right;color:#64748b;white-space:nowrap;line-height:1.25}
+.sbi-status-row .warehouse-money{font-size:15px;font-weight:800;color:#385779}
 .sbi-status-row .total-cell{font-weight:900;background:#f7faff}
+.sbi-status-row .total-money-lines{display:grid;gap:3px;white-space:normal;font-size:14px;overflow-wrap:anywhere}
+.sbi-status-row .total-money-lines span{display:block;width:100%}
+.sbi-status-row .total-money-lines b{display:inline;color:#385779;font-size:15px}
+.sbi-status-row .total-money-lines strong{color:#0f3b72;font-size:16px}
 .sbi-status-row.grand-total{background:#eaf1f8;font-weight:900}
 .sbi-empty{padding:28px;text-align:center;color:#64748b}
 .sbi-mobile-label{display:none}
@@ -45,6 +54,7 @@
  .sbi-status-row .warehouse-cell .sbi-mobile-label{grid-column:1;grid-row:1/3;align-self:center}
  .sbi-status-row .warehouse-cell b{grid-column:2;grid-row:1}
  .sbi-status-row .warehouse-cell small{grid-column:2;grid-row:2}
+ .sbi-status-row .total-money-lines{display:grid;grid-column:2;grid-row:2;white-space:normal}
  .sbi-mobile-label{display:inline;font-size:12px;color:#64748b}
  .sbi-status-row.grand-total>span:nth-child(-n+3){display:none}
  .sbi-status-row.grand-total{background:#eaf1f8}
