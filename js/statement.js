@@ -317,7 +317,7 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
     <section class="statement-bottom-grid">
       <div class="statement-logistics-column">
         ${statementLogistics.bank?.account_number?`<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(statementLogistics.bank.bank_name||'')} ${escapeHtml(statementLogistics.bank.account_number)}</p><p>예금주: ${escapeHtml(statementLogistics.bank.account_holder||'')}</p></div>`:''}
-        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><small>숫자만 입력</small></div><div class="statement-parcel-rows"></div></div>
+        <div class="statement-parcel-box"><div class="statement-parcel-heading"><strong>택배 수량</strong><small>4번은 택배사·죽수 수기입력</small></div><div class="statement-parcel-rows"></div></div>
       </div>
       <section class="statement-summary">
         <div>
@@ -372,17 +372,20 @@ window.findStatementCustomerInKakao=findStatementCustomerInKakao;
 const STATEMENT_FIXED_PARCELS=['로젠','한진','로젠'];
 function fixedStatementParcelCounts(){
  const saved=Array.isArray(statementLogistics.parcelCounts)?statementLogistics.parcelCounts:[];
- return STATEMENT_FIXED_PARCELS.map((courier,index)=>({courier,qty:saved[index]?.qty === '' || saved[index]?.qty == null || Number(saved[index].qty) === 0 ? '' : Math.max(0,Math.floor(Number(saved[index].qty)))}));
+ const fixed=STATEMENT_FIXED_PARCELS.map((courier,index)=>({courier,qty:saved[index]?.qty === '' || saved[index]?.qty == null || Number(saved[index].qty) === 0 ? '' : Math.max(0,Math.floor(Number(saved[index].qty)))}));
+ const manual=saved[3]||{};
+ fixed.push({courier:String(manual.courier||'').trim(),qty:manual.qty === '' || manual.qty == null || Number(manual.qty) === 0 ? '' : Math.max(0,Math.floor(Number(manual.qty)))});
+ return fixed;
 }
 function normalizedParcelCounts(){return fixedStatementParcelCounts()}
 function renderStatementParcelRows(){
  const box=statementArea.querySelector('.statement-parcel-rows');if(!box)return;
  const rows=fixedStatementParcelCounts();statementLogistics.parcelCounts=rows;
- box.innerHTML=rows.map((row,index)=>`<label class="statement-parcel-row" data-parcel-index="${index}"><span>${index+1}.</span><strong>${row.courier}</strong><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${row.qty}" aria-label="${index+1}번 ${row.courier} 택배수량"><b>죽</b></label>`).join('');
+ box.innerHTML=rows.map((row,index)=>`<label class="statement-parcel-row ${index===3?'statement-parcel-manual':''}" data-parcel-index="${index}"><span>${index+1}.</span>${index===3?`<input class="statement-parcel-courier-input" data-parcel-courier type="text" maxlength="20" value="${escapeHtml(row.courier)}" placeholder="택배사 입력" aria-label="4번 택배사명">`:`<strong>${row.courier}</strong>`}<input data-parcel-qty type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${row.qty}" aria-label="${index+1}번 ${index===3?'수기 택배':row.courier} 택배수량"><b>죽</b></label>`).join('');
  box.querySelectorAll('input').forEach(el=>el.addEventListener('input',collectStatementExtras));
 }
 function collectStatementExtras(){
- statementLogistics.parcelCounts=[...statementArea.querySelectorAll('.statement-parcel-row')].map((row,index)=>({courier:STATEMENT_FIXED_PARCELS[index],qty:row.querySelector('input')?.value.trim()===''?'':Math.max(0,Math.floor(Number(row.querySelector('input')?.value||0)))}));
+ statementLogistics.parcelCounts=[...statementArea.querySelectorAll('.statement-parcel-row')].map((row,index)=>{const qtyInput=row.querySelector('[data-parcel-qty]'),courier=index<STATEMENT_FIXED_PARCELS.length?STATEMENT_FIXED_PARCELS[index]:String(row.querySelector('[data-parcel-courier]')?.value||'').trim();return{courier,qty:qtyInput?.value.trim()===''?'':Math.max(0,Math.floor(Number(qtyInput?.value||0)))}});
  statementLogistics.manualMemo=statementArea.querySelector('.statement-manual-memo [contenteditable]')?.innerText||'';
  statementLogistics.otherAmount=Math.max(0,Number(statementArea.querySelector('.statement-other-amount input')?.value||0));
  const total=statementArea.querySelector('[data-statement-final-total]');if(total)total.textContent=(Number(total.dataset.productTotal||0)+Number(total.dataset.shippingFee||0)+statementLogistics.otherAmount).toLocaleString()+'원';
