@@ -1,7 +1,7 @@
 (()=>{'use strict';
-const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67080';document.head.appendChild(extraStyle);
+const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67081';document.head.appendChild(extraStyle);
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let groups=[],activeTask=null,taskPhotoUrls=[];
+let groups=[],activeTask=null,taskPhotoUrls=[],directShipmentFile=null;
 $('handoffDate').value=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
 
 async function load(){
@@ -46,7 +46,8 @@ async function openWorkbench(orderNumber){
  const found=findOrder(orderNumber);if(!found)return;
  activeTask={groupKey:found.group.key,orderNumber:found.order.order_number};taskPhotoUrls=[];
  const {group,order}=found,delivery=order.delivery_name||group.name||'-',dialog=$('handoffWorkbench'),body=$('handoffWorkbenchBody');
- body.innerHTML=`<header class="workbench-head"><div><small>${esc(group.name)} ${group.owner?`(${esc(group.owner)})`:''}</small><h2>${esc(delivery)}</h2><p>${esc(order.order_number)}</p></div><span class="shipment-badge">${order.handoff?.completed_at?'전달완료':'미전달'}</span></header><section class="workbench-step"><div class="step-title"><b>1. 긴 거래명세서</b><span>복사 후 카카오톡에 Ctrl+V</span></div><button type="button" class="copy-statement" data-act="copy-statement" disabled>긴 명세서 이미지 복사</button><a target="_blank" href="statement.html?order=${encodeURIComponent(order.order_number)}">명세서 새 창으로 열기</a><iframe id="handoffStatementFrame" title="${esc(delivery)} 거래명세서" src="statement.html?order=${encodeURIComponent(order.order_number)}&handoff=1"></iframe></section><section class="workbench-step"><div class="step-title"><b>2. 송장사진</b><span>사진마다 복사 후 카카오톡에 Ctrl+V</span></div><div id="workbenchPhotos" class="workbench-photos"><p>송장사진을 불러오는 중…</p></div></section><section class="workbench-finish"><p>카카오톡 전송까지 확인한 다음 완료를 눌러주세요.</p><button type="button" class="done" data-act="complete-order">${order.handoff?.completed_at?'전달완료 취소':'이 주문 전달완료·다음으로'}</button></section>`;
+ directShipmentFile=null;
+ body.innerHTML=`<header class="workbench-head"><div><small>${esc(group.name)} ${group.owner?`(${esc(group.owner)})`:''}</small><h2>${esc(delivery)}</h2><p>${esc(order.order_number)}</p></div><span class="shipment-badge">${order.handoff?.completed_at?'전달완료':'미전달'}</span></header><section class="workbench-step"><div class="step-title"><b>1. 긴 거래명세서</b><span>복사 후 카카오톡에 Ctrl+V</span></div><button type="button" class="copy-statement" data-act="copy-statement" disabled>긴 명세서 이미지 복사</button><a target="_blank" href="statement.html?order=${encodeURIComponent(order.order_number)}">명세서 새 창으로 열기</a><iframe id="handoffStatementFrame" title="${esc(delivery)} 거래명세서" src="statement.html?order=${encodeURIComponent(order.order_number)}&handoff=1"></iframe></section><section class="workbench-step"><div class="step-title"><b>2. 송장사진</b><span>이 주문에 바로 등록하거나, 등록된 사진을 복사합니다.</span></div><button type="button" data-act="pick-direct-shipment">이 주문에 송장 1장 등록</button><input id="directShipmentFile" type="file" accept="image/*" hidden><div id="directShipmentEditor" class="direct-shipment-editor" hidden><img id="directShipmentPreview" alt="등록할 송장사진"><div><label>출고처<select id="directShipmentWarehouse"><option value="">미구분</option><option>S</option><option>B</option><option>I</option></select></label><label>택배사<input id="directShipmentCarrier" placeholder="예: 한진택배"></label><label>운송장번호<input id="directShipmentTracking" inputmode="numeric" placeholder="숫자 또는 하이픈"></label><button type="button" data-act="save-direct-shipment">사진 저장·현재 주문에 연결</button><small id="directShipmentStatus">택배사나 번호를 모르면 빈칸으로 저장 후 송장관리에서 수정할 수 있습니다.</small></div></div><div id="workbenchPhotos" class="workbench-photos"><p>송장사진을 불러오는 중…</p></div></section><section class="workbench-finish"><p>카카오톡 전송까지 확인한 다음 완료를 눌러주세요.</p><button type="button" class="done" data-act="complete-order">${order.handoff?.completed_at?'전달완료 취소':'이 주문 전달완료·다음으로'}</button></section>`;
  if(!dialog.open)dialog.showModal();
  const frame=$('handoffStatementFrame');frame.addEventListener('load',()=>{body.querySelector('[data-act="copy-statement"]').disabled=false},{once:true});
  await loadTaskPhotos(order);
@@ -74,6 +75,23 @@ async function copyPhoto(button,index){
  finally{button.disabled=false}
 }
 async function imageBlobToPng(blob){const bitmap=await createImageBitmap(blob),canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close?.();return await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(new Error('사진 변환 실패')),'image/png'))}
+async function fileHash(file){const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);return[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function chooseDirectShipment(){const input=$('directShipmentFile');if(input){input.value='';input.click()}}
+function previewDirectShipment(file){if(!file?.type?.startsWith('image/'))return alert('송장 이미지 파일을 선택해주세요.');directShipmentFile=file;const editor=$('directShipmentEditor'),preview=$('directShipmentPreview');preview.src=URL.createObjectURL(file);editor.hidden=false;$('directShipmentStatus').textContent='사진을 확인하고 현재 주문에 연결해 저장하세요.'}
+async function saveDirectShipment(button){
+ if(!activeTask||!directShipmentFile)return alert('먼저 송장사진 한 장을 선택해주세요.');
+ const status=$('directShipmentStatus'),orderNumber=activeTask.orderNumber,carrier=$('directShipmentCarrier').value.trim(),tracking=$('directShipmentTracking').value.trim(),normalized=tracking.replace(/\D/g,'');button.disabled=true;status.textContent='중복 확인 및 저장 중…';
+ try{
+  const hash=await fileHash(directShipmentFile),duplicate=await supabaseClient.from('shipment_documents').select('id,original_name').eq('image_sha256',hash).maybeSingle();
+  if(duplicate.error)throw duplicate.error;if(duplicate.data)throw new Error(`이미 등록된 송장사진입니다 (${duplicate.data.original_name||'기존 사진'}). 송장관리에서 기존 연결을 확인해주세요.`);
+  const user=(await supabaseClient.auth.getUser()).data.user,path=`${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}-${directShipmentFile.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+  const upload=await supabaseClient.storage.from('shipping-labels').upload(path,directShipmentFile,{contentType:directShipmentFile.type,upsert:false});if(upload.error)throw upload.error;
+  const documentResult=await supabaseClient.from('shipment_documents').insert({storage_path:path,original_name:directShipmentFile.name,mime_type:directShipmentFile.type,file_size:directShipmentFile.size,image_sha256:hash,ocr_text:null,ocr_engine:'manual-order-direct',uploaded_by:user?.id,delete_after:new Date(Date.now()+31*86400000).toISOString()}).select().single();if(documentResult.error)throw documentResult.error;
+  const labelResult=await supabaseClient.from('shipment_labels').insert({document_id:documentResult.data.id,warehouse_code:$('directShipmentWarehouse').value||null,carrier_name:carrier||null,tracking_number:tracking||null,tracking_normalized:normalized||null,match_status:'matched',match_score:100,match_reasons:['출고전달 주문 직접등록']}).select().single();if(labelResult.error)throw labelResult.error;
+  const linkResult=await supabaseClient.from('shipment_order_links').insert({label_id:labelResult.data.id,order_number:orderNumber,link_type:'manual',confidence:100,linked_by:user?.id});if(linkResult.error)throw linkResult.error;
+  status.textContent='저장 및 주문연결 완료';await load();await openWorkbench(orderNumber);
+ }catch(error){status.textContent='저장 실패: '+(error?.message||error);status.classList.add('error')}finally{button.disabled=false}
+}
 
 async function setOrderComplete(orderNumber,completed,{advance=false}={}){
  const found=findOrder(orderNumber);if(!found)return;
@@ -86,6 +104,7 @@ async function setOrderComplete(orderNumber,completed,{advance=false}={}){
 }
 
 $('handoffList').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;if(button.dataset.act==='work')openWorkbench(button.dataset.order);if(button.dataset.act==='undo')setOrderComplete(button.dataset.order,false)};
-$('handoffWorkbenchBody').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;if(button.dataset.act==='copy-statement')copyStatement(button);if(button.dataset.act==='copy-photo')copyPhoto(button,Number(button.dataset.photoIndex));if(button.dataset.act==='complete-order'&&activeTask){const found=findOrder(activeTask.orderNumber);setOrderComplete(activeTask.orderNumber,!found?.order.handoff?.completed_at,{advance:!found?.order.handoff?.completed_at})}};
+$('handoffWorkbenchBody').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;if(button.dataset.act==='copy-statement')copyStatement(button);if(button.dataset.act==='copy-photo')copyPhoto(button,Number(button.dataset.photoIndex));if(button.dataset.act==='pick-direct-shipment')chooseDirectShipment();if(button.dataset.act==='save-direct-shipment')saveDirectShipment(button);if(button.dataset.act==='complete-order'&&activeTask){const found=findOrder(activeTask.orderNumber);setOrderComplete(activeTask.orderNumber,!found?.order.handoff?.completed_at,{advance:!found?.order.handoff?.completed_at})}};
+$('handoffWorkbenchBody').onchange=e=>{if(e.target.id==='directShipmentFile')previewDirectShipment(e.target.files?.[0])};
 $('refreshHandoffs').onclick=load;$('handoffState').onchange=render;document.addEventListener('DOMContentLoaded',load);
 })();

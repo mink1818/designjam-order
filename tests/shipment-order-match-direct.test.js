@@ -1,0 +1,12 @@
+const fs=require('fs'),assert=require('assert');
+const manager=fs.readFileSync('js/shipment-manager.js','utf8');
+const handoff=fs.readFileSync('js/shipment-handoff.js','utf8');
+assert(manager.includes('rankCandidates'),'송장 주문 후보 계산 누락');
+assert(manager.includes("a.strong>=2"),'강한 복합일치 자동매칭 조건 누락');
+assert(manager.includes('연결 가능성이 높은 주문'),'주문 후보 UI 누락');
+assert(manager.includes('BarcodeDetector'),'무료 바코드 우선인식 누락');
+assert(handoff.includes('이 주문에 송장 1장 등록'),'주문별 직접등록 버튼 누락');
+assert(handoff.includes("ocr_engine:'manual-order-direct'"),'직접등록 구분 누락');
+assert(handoff.includes("order_number:orderNumber"),'현재 주문 직접연결 누락');
+assert(handoff.includes("image_sha256',hash"),'직접등록 중복사진 확인 누락');
+console.log('shipment order matching/direct upload tests passed');

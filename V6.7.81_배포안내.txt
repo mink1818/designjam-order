@@ -1,0 +1,22 @@
+DESIGN SOCKS V6.7.81 배포 안내
+
+1. SQL
+- V6.7.74-SHIPMENT-MANAGEMENT.sql과 V6.7.80-ORDER-SHIPMENT-HANDOFF.sql을 이미 실행했다면 추가 SQL은 없습니다.
+- 아직 실행하지 않았다면 위 두 SQL을 Supabase SQL Editor에서 번호 순서대로 실행하세요.
+
+2. 배포 명령
+git add .
+git commit -m "release v6.7.81 shipment order matching and direct upload"
+git push origin main
+
+3. 주문별 송장 1장 등록
+- 관리자 메인 > 출고전달
+- 거래처의 주문에서 명세서·송장 전달 클릭
+- 2. 송장사진 > 이 주문에 송장 1장 등록
+- 사진 선택, 출고처/택배사/운송장번호 확인
+- 사진 저장·현재 주문에 연결
+
+4. 일괄등록
+- 송장관리에서 여러 장 선택 후 전체 분석·저장
+- 확실한 복합일치만 자동연결됩니다.
+- 확인필요 송장은 수동확인·연결에서 원본사진과 주문 후보를 비교해 확정하세요.

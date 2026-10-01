@@ -1,1 +1,62 @@
-.handoff-order-bundles{display:grid;gap:10px;margin-top:12px}.handoff-order-bundle{padding:12px;border:1px solid #cfdae7;border-radius:12px;background:#f8fbff}.handoff-order-bundle.is-done{background:#f1fbf5;border-color:#b8dfc8}.handoff-delivery{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.handoff-delivery strong{padding:6px 10px;border-radius:8px;background:#ffdce9;color:#7d2548;font-size:18px}.handoff-delivery small{color:#65758b;overflow-wrap:anywhere}.handoff-tracking{margin:9px 0;color:#3b4d63}.handoff-order-actions{display:flex;gap:8px;flex-wrap:wrap}.handoff-order-actions button,.handoff-start{border:0;border-radius:8px;padding:9px 12px;background:#164a86;color:#fff;text-decoration:none;font-weight:800}.handoff-order-actions .undo{background:#67778a}.handoff-start{white-space:nowrap;background:#0f7a46}.handoff-sql-error{padding:18px;border-radius:12px;background:#fff0f0;color:#a51f1f;line-height:1.7}.handoff-workbench{box-sizing:border-box;width:min(1180px,calc(100% - 24px));max-width:none;height:min(94vh,1100px);padding:14px;border:0;border-radius:18px}.handoff-workbench::backdrop{background:rgba(12,25,43,.7)}.handoff-workbench>.dialog-close{position:sticky;top:0;float:right;z-index:10;border:0;border-radius:9px;background:#253c57;color:#fff;padding:9px 12px;font-weight:800}.workbench-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 90px 12px 4px;border-bottom:1px solid #d8e2ee}.workbench-head h2{margin:4px 0;color:#7d2548}.workbench-head p,.workbench-head small{margin:0;color:#65758b}.workbench-step{padding:14px 0;border-bottom:1px solid #d8e2ee}.step-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.step-title b{font-size:18px}.step-title span{color:#65758b;font-size:13px}.workbench-step>button,.workbench-step>a,.workbench-finish button,.workbench-photos button{display:inline-block;border:0;border-radius:9px;padding:10px 14px;background:#164a86;color:#fff;text-decoration:none;font-weight:900}.workbench-step>button:disabled{opacity:.55}.workbench-step>button.copied,.workbench-photos button.copied{background:#16834c}.workbench-step iframe{display:block;box-sizing:border-box;width:100%;height:430px;margin-top:12px;border:1px solid #c9d5e2;border-radius:12px;background:#fff}.workbench-photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.workbench-photos figure{margin:0;padding:10px;border:1px solid #d8e2ee;border-radius:12px}.workbench-photos img{width:100%;height:240px;object-fit:contain;background:#f3f5f7;border-radius:8px}.workbench-photos figcaption{display:grid;gap:3px;margin:8px 0;font-size:13px}.workbench-finish{position:sticky;bottom:-14px;margin:0 -14px -14px;padding:14px;background:#fff;border-top:2px solid #cbd8e6;text-align:right}.workbench-finish p{display:inline-block;margin:0 12px 0 0;color:#586b80}.workbench-finish .done{background:#16834c}.workbench-no-photo{grid-column:1/-1;padding:14px;border-radius:10px;background:#fff4cf}.shipment-gallery figure button{border:0;border-radius:8px;padding:9px 12px;background:#164a86;color:#fff;font-weight:800}@media(max-width:650px){.handoff-head{display:grid}.handoff-start{width:100%}.handoff-order-actions>*{flex:1 1 100%;text-align:center}.handoff-workbench{width:100%;height:100%;max-height:none;border-radius:0;padding:10px}.workbench-head{padding-right:82px}.step-title{display:grid}.workbench-step iframe{height:360px}.workbench-photos{grid-template-columns:1fr}.workbench-finish{bottom:-10px;margin:0 -10px -10px}.workbench-finish p{display:block;margin:0 0 8px}.workbench-finish button{width:100%}}
+.handoff-order-bundles{display:grid;gap:10px;margin-top:12px}
+.handoff-order-bundle{padding:12px;border:1px solid #cfdae7;border-radius:12px;background:#f8fbff}
+.handoff-order-bundle.is-done{background:#f1fbf5;border-color:#b8dfc8}
+.handoff-delivery{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.handoff-delivery strong{padding:6px 10px;border-radius:8px;background:#ffdce9;color:#7d2548;font-size:18px}
+.handoff-delivery small{color:#65758b;overflow-wrap:anywhere}
+.handoff-tracking{margin:9px 0;color:#3b4d63}
+.handoff-order-actions{display:flex;gap:8px;flex-wrap:wrap}
+.handoff-order-actions button,.handoff-start{border:0;border-radius:8px;padding:9px 12px;background:#164a86;color:#fff;text-decoration:none;font-weight:800}
+.handoff-order-actions .undo{background:#67778a}
+.handoff-start{white-space:nowrap;background:#0f7a46}
+.handoff-sql-error{padding:18px;border-radius:12px;background:#fff0f0;color:#a51f1f;line-height:1.7}
+.handoff-workbench{box-sizing:border-box;width:min(1180px,calc(100% - 24px));max-width:none;height:min(94vh,1100px);padding:14px;border:0;border-radius:18px}
+.handoff-workbench::backdrop{background:rgba(12,25,43,.7)}
+.handoff-workbench>.dialog-close{position:sticky;top:0;float:right;z-index:10;border:0;border-radius:9px;background:#253c57;color:#fff;padding:9px 12px;font-weight:800}
+.workbench-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 90px 12px 4px;border-bottom:1px solid #d8e2ee}
+.workbench-head h2{margin:4px 0;color:#7d2548}
+.workbench-head p,.workbench-head small{margin:0;color:#65758b}
+.workbench-step{padding:14px 0;border-bottom:1px solid #d8e2ee}
+.step-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.step-title b{font-size:18px}
+.step-title span{color:#65758b;font-size:13px}
+.workbench-step>button,.workbench-step>a,.workbench-finish button,.workbench-photos button{display:inline-block;border:0;border-radius:9px;padding:10px 14px;background:#164a86;color:#fff;text-decoration:none;font-weight:900}
+.workbench-step>button:disabled{opacity:.55}
+.workbench-step>button.copied,.workbench-photos button.copied{background:#16834c}
+.workbench-step iframe{display:block;box-sizing:border-box;width:100%;height:430px;margin-top:12px;border:1px solid #c9d5e2;border-radius:12px;background:#fff}
+.workbench-photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.workbench-photos figure{margin:0;padding:10px;border:1px solid #d8e2ee;border-radius:12px}
+.workbench-photos img{width:100%;height:240px;object-fit:contain;background:#f3f5f7;border-radius:8px}
+.workbench-photos figcaption{display:grid;gap:3px;margin:8px 0;font-size:13px}
+.workbench-finish{position:sticky;bottom:-14px;margin:0 -14px -14px;padding:14px;background:#fff;border-top:2px solid #cbd8e6;text-align:right}
+.workbench-finish p{display:inline-block;margin:0 12px 0 0;color:#586b80}
+.workbench-finish .done{background:#16834c}
+.workbench-no-photo{grid-column:1/-1;padding:14px;border-radius:10px;background:#fff4cf}
+.shipment-gallery figure button{border:0;border-radius:8px;padding:9px 12px;background:#164a86;color:#fff;font-weight:800}
+
+.direct-shipment-editor{display:grid;grid-template-columns:minmax(220px,360px) 1fr;gap:14px;margin:12px 0;padding:12px;border:2px solid #9bb9dc;border-radius:12px;background:#f6faff}
+.direct-shipment-editor[hidden]{display:none}
+.direct-shipment-editor>img{width:100%;height:270px;object-fit:contain;border-radius:9px;background:#e9eef4}
+.direct-shipment-editor>div{display:grid;grid-template-columns:110px 1fr;gap:9px;align-content:start}
+.direct-shipment-editor label{display:grid;gap:4px;font-weight:800}
+.direct-shipment-editor label:nth-child(3){grid-column:1/-1}
+.direct-shipment-editor input,.direct-shipment-editor select{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid #b8c7d8;border-radius:8px;background:#fff}
+.direct-shipment-editor button{grid-column:1/-1;border:0;border-radius:9px;padding:11px 14px;background:#16834c;color:#fff;font-weight:900}
+.direct-shipment-editor small{grid-column:1/-1;color:#65758b}
+.direct-shipment-editor small.error{color:#c62828;font-weight:800}
+@media(max-width:650px){.direct-shipment-editor{grid-template-columns:1fr}
+.direct-shipment-editor>img{height:220px}
+.direct-shipment-editor>div{grid-template-columns:1fr}
+.direct-shipment-editor label:nth-child(3),.direct-shipment-editor button,.direct-shipment-editor small{grid-column:auto}
+.handoff-head{display:grid}
+.handoff-start{width:100%}
+.handoff-order-actions>*{flex:1 1 100%;text-align:center}
+.handoff-workbench{width:100%;height:100%;max-height:none;border-radius:0;padding:10px}
+.workbench-head{padding-right:82px}
+.step-title{display:grid}
+.workbench-step iframe{height:360px}
+.workbench-photos{grid-template-columns:1fr}
+.workbench-finish{bottom:-10px;margin:0 -10px -10px}
+.workbench-finish p{display:block;margin:0 0 8px}
+.workbench-finish button{width:100%}
+}
