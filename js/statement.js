@@ -222,15 +222,16 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
     const shippedQty = Math.max(0, orderedQty - soldoutQty);
     const category = groupByItem.get(String(item.item_number).trim()) || "개별품번";
     const price = Number(item.price || 0);
-    const key = `${category}\u0000${price}`;
-    if (!compactRows.has(key)) compactRows.set(key, { category, price, shippedQty: 0, soldoutQty: 0, itemNumbers: [], rowTotal: 0 });
+    const packed=DesignSocksSalesUnit.isPackedOrder(item);
+    const key = `${category}\u0000${price}\u0000${packed?item.item_number:'normal'}`;
+    if (!compactRows.has(key)) compactRows.set(key, { category, price, packed, shippedQty: 0, soldoutQty: 0, itemNumbers: [], rowTotal: 0 });
     const row = compactRows.get(key);
     row.shippedQty += shippedQty;
     row.soldoutQty += soldoutQty;
     row.rowTotal += price * shippedQty;
     const cleanNumber = cleanStatementItemNumber(item.item_number);
     const displayNumber = /A$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 아동`:/M$/i.test(cleanNumber)?`${cleanNumber.slice(0,-1)} 무지`:cleanNumber;
-    row.itemNumbers.push(`${displayNumber}-(${orderedQty})${soldoutQty ? `[품절 ${soldoutQty}]` : ""}`);
+    row.itemNumbers.push(`${displayNumber}-(${orderedQty}${packed?'개':'죽'})${soldoutQty ? `[품절 ${soldoutQty}${packed?'개':'죽'}]` : ""}${packed?' [10개 묶음]':''}`);
   });
   const sortedCompactRows=[...compactRows.values()].map(row=>({...row,itemNumbers:row.itemNumbers.sort(compareStatementItemNumber)})).sort((a,b)=>compareStatementItemNumber(a.itemNumbers[0],b.itemNumbers[0]));
   const itemRows = sortedCompactRows.map((row, index) => {
@@ -239,8 +240,8 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
         <td>${index + 1}</td>
         <td class="statement-category"><strong>${escapeHtml(row.category)}</strong></td>
         <td class="statement-item-list">${escapeHtml(row.itemNumbers.join(", "))}</td>
-        <td class="statement-qty"><span>${row.shippedQty.toLocaleString()}죽</span>${row.soldoutQty ? `<small class="statement-soldout-alert">${row.shippedQty === 0 ? "전체품절" : "일부품절"} ${row.soldoutQty}죽</small>` : ""}</td>
-        <td class="statement-unit-price"><span>${row.price.toLocaleString()}원</span><small>/죽</small></td>
+        <td class="statement-qty"><span>${row.shippedQty.toLocaleString()}${row.packed?'개':'죽'}</span>${row.soldoutQty ? `<small class="statement-soldout-alert">${row.shippedQty === 0 ? "전체품절" : "일부품절"} ${row.soldoutQty}${row.packed?'개':'죽'}</small>` : ""}</td>
+        <td class="statement-unit-price"><span>${(row.packed?row.price*10:row.price).toLocaleString()}원</span><small>/${row.packed?'10개 묶음':'죽'}</small></td>
         <td class="statement-row-total">${row.shippedQty > 0 ? `<span>${row.rowTotal.toLocaleString()}</span><small>원</small>` : "-"}</td>
       </tr>
     `;

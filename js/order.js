@@ -180,10 +180,11 @@ function getOrderSummary(group) {
     const rowTotal = unitPrice * shippedQty;
     qtyTotal += shippedQty;
     productTotal += rowTotal;
-    const soldoutLabel = isFullySoldout ? "전체품절" : isPartiallySoldout ? `일부품절 ${soldoutQty}죽` : "";
+    const packed=DesignSocksSalesUnit.isPackedOrder(item),unit=packed?'개':'죽',displayPrice=packed?unitPrice*10:unitPrice;
+    const soldoutLabel = isFullySoldout ? "전체품절" : isPartiallySoldout ? `일부품절 ${soldoutQty}${unit}` : "";
     return `<div class="cart-item ${isFullySoldout ? "soldout-item" : isPartiallySoldout ? "partial-soldout-item" : ""}">
       <strong>${escapeHtml(String(item.item_number||'').replace(/^[SBI](?:[-_\s]+|(?=\d))/i,''))}${soldoutLabel ? ` <small class="customer-soldout-label">${soldoutLabel}</small>` : ""}</strong>
-      <span>${soldoutQty > 0 ? `주문 ${orderedQty}죽 · 출고 ${shippedQty}죽 · 품절 ${soldoutQty}죽` : `출고 ${shippedQty}죽`} · 단가 ${unitPrice.toLocaleString()}원 / 1죽</span>
+      <span>${soldoutQty > 0 ? `주문 ${orderedQty}${unit} · 출고 ${shippedQty}${unit} · 품절 ${soldoutQty}${unit}` : `출고 ${shippedQty}${unit}`} · 단가 ${displayPrice.toLocaleString()}원 / ${packed?'10개 묶음':'1죽'} ${packed?'· 주문 '+Number(item.sales_pack_qty||orderedQty/10)+'묶음':''}</span>
       <span>${isFullySoldout ? "-" : rowTotal.toLocaleString() + "원"}</span>
     </div>`;
   }).join("");
@@ -296,8 +297,8 @@ function openCustomerShareDocument(orderNumber){
 
 async function copyCustomerOrderDetails(orderNumber,mode='excel',button){
  const group=myOrderGroups.find(row=>row.orderNumber===orderNumber);if(!group)return;
- const rows=group.items.map(item=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0))),qty=Math.max(0,ordered-soldout),price=Number(item.price||0);return{item:String(item.item_number||'').replace(/^[SBI](?:[-_\s]+|(?=\d))/i,''),qty,price}}).filter(row=>row.qty>0);
- const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}죽      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량(죽)\t단가(1죽)\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.price}\t${row.qty*row.price}`)].join('\n');
+ const rows=group.items.map(item=>{const ordered=Number(item.qty||0),soldout=Math.min(ordered,Number(item.soldout_qty||(item.is_soldout?ordered:0))),actual=Math.max(0,ordered-soldout),packed=DesignSocksSalesUnit.isPackedOrder(item),qty=packed?actual/10:actual,price=packed?Number(item.price||0)*10:Number(item.price||0);return{item:String(item.item_number||'').replace(/^[SBI](?:[-_\s]+|(?=\d))/i,''),qty,price,unit:packed?'묶음(10개)':'죽'}}).filter(row=>row.qty>0);
+ const text=mode==='kakao'?rows.map(row=>`${row.item}      ${row.qty}${row.unit}      ${row.price.toLocaleString()}원      ${(row.qty*row.price).toLocaleString()}원`).join('\n'):['품번\t수량\t단위\t단가\t금액',...rows.map(row=>`${row.item}\t${row.qty}\t${row.unit}\t${row.price}\t${row.qty*row.price}`)].join('\n');
  try{await navigator.clipboard.writeText(text)}catch(_){const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove()}
  const original=button?.textContent;if(button){button.textContent='복사완료';setTimeout(()=>button.textContent=original,1400)}
 }
@@ -327,7 +328,7 @@ loadMyOrders();
 function renderOrderBankBox(group){const saved=group?.paymentAccount||{};const b=saved.accountNumber?saved:{bankName:defaultPaymentAccount?.bank_name||"",accountNumber:defaultPaymentAccount?.account_number||"",holder:defaultPaymentAccount?.account_holder||""};if(!b.accountNumber)return "";return `<div class="bank-transfer-box"><strong>입금 계좌</strong><p>${escapeHtml(b.bankName||"")} ${escapeHtml(b.accountNumber||"")}</p><p>예금주: ${escapeHtml(b.holder||"")}</p></div>`}
 function copyOrderToCart(orderNumber){
   const group=myOrderGroups.find(x=>x.orderNumber===orderNumber); if(!group||!currentOrderUser)return;
-  const cart=group.items.filter(x=>!x.is_soldout).map(x=>({groupId:null,categoryId:null,title:"최근 주문",number:String(x.item_number),qty:Number(x.qty)||1,price:Number(x.price)||0,imageUrl:""}));
+  const cart=group.items.filter(x=>!x.is_soldout).map(x=>{const sales=DesignSocksSalesUnit.fromStored(x);return{groupId:null,categoryId:null,title:"최근 주문",number:String(x.item_number),qty:sales.qty||1,price:sales.price||0,imageUrl:""}});
   if(!cart.length){alert("다시 담을 수 있는 상품이 없습니다.");return}
   localStorage.setItem(`designjam_cart_${currentOrderUser.id}`,JSON.stringify(cart));
   if(confirm(`${cart.length}개 품번을 장바구니에 담았습니다. 상품 주문 화면으로 이동할까요?`)) location.href="catalog.html";

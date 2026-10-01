@@ -346,17 +346,20 @@ const customerName = currentCustomer.business_name;
 
   const orderMemo = document.getElementById("orderMemo")?.value || "";
 
-  const orderRows = cart.map(item => ({
+  const orderRows = cart.map(item => { const stored=DesignSocksSalesUnit.toStored(item.number,item.qty,item.price); return ({
   order_number: orderNumber,
   customer_id: currentUser.id,
   customer_name: customerName,
   memo: orderMemo,
   item_number: item.number,
-  qty: item.qty,
-  price: item.price,
-  total: item.qty * item.price,
+  qty: stored.qty,
+  price: stored.price,
+  total: stored.total,
+  sales_pack_size: stored.packSize,
+  sales_pack_qty: stored.packQty,
+  sales_pack_price: stored.packPrice,
   status: "주문접수"
-}));
+}); });
 
   const { error } = await supabaseClient
     .from("orders")

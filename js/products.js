@@ -2761,7 +2761,7 @@ function renderExcelPreview(rows, matchResult) {
             <th>카테고리</th>
             <th>묶음명</th>
             <th>품번</th>
-            <th>단가(1죽)</th>
+            <th>단가(죽/묶음)</th>
             <th>매칭</th>
           </tr>
         </thead>
@@ -2774,6 +2774,7 @@ function renderExcelPreview(rows, matchResult) {
               : status === "direct"
                 ? "URL 사용"
                 : "사진 없음";
+            const isSalesPack=(row.__expandedItemNumbers||[]).some(number=>['8881','8882'].includes(String(number).replace(/^[SBI](?:[-_\s]+|(?=\d))/i,'')));
             return `
               <tr>
                 <td>${index + 1}</td>
@@ -2786,7 +2787,7 @@ function renderExcelPreview(rows, matchResult) {
                 <td>${escapeHtml(row["카테고리"])}</td>
                 <td>${escapeHtml(row["묶음명"])}</td>
                 <td>${escapeHtml(row["품번"])}<small class="excel-expanded-count">→ ${row.__expandedItemCount || 0}개 품번</small></td>
-                <td>${Number(String(row["단가"]).replace(/[^0-9.-]/g, "") || 0).toLocaleString()}원</td>
+                <td>${Number(String(row["단가"]).replace(/[^0-9.-]/g, "") || 0).toLocaleString()}원${isSalesPack?'<small class="sales-pack-badge">10개 묶음 가격</small>':''}</td>
                 <td><span class="image-match-badge ${status}">${statusText}</span></td>
               </tr>
             `;
@@ -2859,6 +2860,14 @@ async function uploadExcelProducts() {
     }
 
     const itemValidation = validateExcelItemPatterns(rows);
+    rows.forEach(row=>{
+      const items=row.__expandedItemNumbers||[];
+      const special=items.filter(number=>['8881','8882'].includes(String(number).replace(/^[SBI](?:[-_\s]+|(?=\d))/i,'')));
+      if(!special.length)return;
+      if(special.length!==items.length)throw new Error(`${row.__sourceRowNumber||'?'}행: 8881·8882는 일반 품번과 같은 상품묶음에 섞을 수 없습니다.`);
+      const price=Number(String(row['단가']||'').replace(/[^0-9.-]/g,''));
+      if(price!==10000)throw new Error(`${row.__sourceRowNumber||'?'}행: 8881·8882 단가는 10개 묶음 가격 10,000원으로 입력해주세요.`);
+    });
     window.pendingExcelRows = rows;
     const matchResult = applyImageLibraryMatches(rows);
     Object.assign(matchResult, itemValidation);

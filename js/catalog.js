@@ -1305,13 +1305,14 @@ function openGroup(groupId, requestedItem = "") {
     .map(number => {
       const numberText = String(number);
       const isSoldout = soldoutItems.includes(numberText);
+      const isSalesPack = DesignSocksSalesUnit.isPackItem(numberText);
 
       return `
         <div class="order-row qty-control-row ${
           isSoldout ? "soldout-order-row" : ""
         }" data-qty-row="${escapeAttribute(numberText)}">
-          <strong class="compact-item-number">${escapeHtml(displayWarehouseItem(group,numberText))}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}</strong>
-          <span class="compact-item-price"><span>${formatWon(effectiveItemPrice(group,numberText))}</span><small>/1죽</small></span>
+          <strong class="compact-item-number">${escapeHtml(displayWarehouseItem(group,numberText))}${isSoldout ? '<span class="soldout-label">품절</span>' : ""}${DesignSocksSalesUnit.badge(numberText)}</strong>
+          <span class="compact-item-price"><span>${formatWon(effectiveItemPrice(group,numberText))}</span><small>/${isSalesPack?'10개 묶음':'1죽'}</small></span>
 
           <div class="qty-control">
             <button
@@ -1330,6 +1331,7 @@ function openGroup(groupId, requestedItem = "") {
               min="0"
               value="0"
               data-number="${escapeAttribute(numberText)}"
+              aria-label="${isSalesPack?'10개 묶음 수량':'죽 수량'}"
               oninput="recalculateGroupTotal(${group.id})"
               ${isSoldout ? "disabled" : ""}
             >
@@ -2186,7 +2188,8 @@ function renderCart() {
             <div>
               <strong>${escapeHtml(customerDisplayItemNumber(item.number))} ${addedAt === newestAddedAt ? '<em class="cart-latest-badge">최신 담음</em>' : ''}</strong>
               <small>${escapeHtml(item.title)}</small>
-              <small class="cart-unit-price">단가 ${Number(item.price).toLocaleString()}원 / 1죽</small>
+              <small class="cart-unit-price">단가 ${Number(item.price).toLocaleString()}원 / ${DesignSocksSalesUnit.isPackItem(item.number)?'10개 묶음':'1죽'}</small>
+              ${DesignSocksSalesUnit.badge(item.number)}
             </div>
           </div>
 
@@ -2449,7 +2452,7 @@ async function submitOrder() {
   const orderNumber = revisionContext?.orderNumber || makeOrderNumber();
 
   const orderItemsSorted = [...cart].sort(cartItemNumberCompare);
-  const orderRows = orderItemsSorted.map(item => ({
+  const orderRows = orderItemsSorted.map(item => { const stored=DesignSocksSalesUnit.toStored(item.number,item.qty,item.price); return ({
     order_number: orderNumber,
     customer_id: currentUser.id,
     customer_name: currentCustomer.business_name,
@@ -2460,20 +2463,23 @@ async function submitOrder() {
     memo,
     item_number: item.number,
     warehouse_code: item.warehouseCode || null,
-    qty: Number(item.qty),
-    price: Number(item.price),
-    total: Number(item.qty) * Number(item.price),
+    qty: stored.qty,
+    price: stored.price,
+    total: stored.total,
     status: "주문접수",
     shipping_fee: 0,
-    is_soldout: false
-  }));
+    is_soldout: false,
+    sales_pack_size: stored.packSize,
+    sales_pack_qty: stored.packQty,
+    sales_pack_price: stored.packPrice
+  }); });
 
   if (submitButton) {
     submitButton.disabled = true;
     submitButton.textContent = "주문 저장 중...";
   }
 
-  const revisionItems=orderItemsSorted.map(item=>({item_number:String(item.number),warehouse_code:item.warehouseCode||null,qty:Number(item.qty),price:Number(item.price)}));
+  const revisionItems=orderItemsSorted.map(item=>{const stored=DesignSocksSalesUnit.toStored(item.number,item.qty,item.price);return{item_number:String(item.number),warehouse_code:item.warehouseCode||null,qty:stored.qty,price:stored.price,sales_pack_size:stored.packSize,sales_pack_qty:stored.packQty,sales_pack_price:stored.packPrice}});
   const { error } = revisionContext
     ? await supabaseClient.rpc('customer_complete_order_revision',{
         p_order_number:orderNumber,p_items:revisionItems,p_memo:memo,p_delivery_name:deliveryName,
@@ -2536,7 +2542,7 @@ async function submitOrder() {
       return `
         <div class="cart-item">
           <strong>${escapeHtml(customerDisplayItemNumber(item.number))}</strong>
-          <span>${Number(item.qty).toLocaleString()}죽 · 단가 ${Number(item.price).toLocaleString()}원 / 1죽</span>
+          <span>${Number(item.qty).toLocaleString()}${DesignSocksSalesUnit.isPackItem(item.number)?'묶음 (실제 '+(Number(item.qty)*10).toLocaleString()+'개)':'죽'} · 단가 ${Number(item.price).toLocaleString()}원 / ${DesignSocksSalesUnit.isPackItem(item.number)?'10개 묶음':'1죽'}</span>
           <span>${itemTotal.toLocaleString()}원</span>
         </div>
       `;

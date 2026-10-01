@@ -690,7 +690,8 @@
               cls = complete ? "complete" : "incomplete",
               checkField = `${section.code.toLowerCase()}_outbound_confirmed`,
               checked = Boolean(x[checkField]);
-            return `<div class="pick-item-row ${cls}" data-item-id="${x.id}"><strong class="pick-item-number-cell"><span>${esc(displayItemNumber(x))}</span><button type="button" class="pick-photo-button" data-product-photo="${x.id}" aria-label="${esc(displayItemNumber(x))} 상품사진 보기" title="상품사진 보기">📷</button></strong><b>${need}</b><b>${got}</b><span class="pick-row-actions"><em class="picking-state ${unpicked > 0 ? "soldout" : complete ? "done" : "not-done"}">${unpicked > 0 ? (unpicked < need ? "일부품절 " + unpicked : "전체품절") : complete ? "피킹완료" : "피킹미완료"}</em><button data-minus="${x.id}">-1</button><button data-plus="${x.id}" ${got + unpicked >= need ? "disabled" : ""}>+1</button><label class="soldout-check"><input type="checkbox" data-soldout-toggle="${x.id}" ${unpicked > 0 ? "checked" : ""}>품절</label>${["S", "B", "I"].includes(section.code) ? `<label class="warehouse-outbound-check warehouse-check-${section.code.toLowerCase()}"><input type="checkbox" data-outbound-check="${x.id}" data-outbound-code="${section.code}" ${checked ? "checked" : ""}>${section.code === "I" ? "I포장" : `${section.code}출고`}</label><input class="picking-item-note" type="text" maxlength="100" value="${esc(x.picking_note || "")}" placeholder="메모" data-picking-note="${x.id}" aria-label="${esc(displayItemNumber(x))} 피킹 메모">` : ""}</span></div>`;
+            const unit=DesignSocksSalesUnit.isPackedOrder(x)?'개':'죽';
+            return `<div class="pick-item-row ${cls}" data-item-id="${x.id}"><strong class="pick-item-number-cell"><span>${esc(displayItemNumber(x))}</span>${DesignSocksSalesUnit.badge(x.item_number)}<button type="button" class="pick-photo-button" data-product-photo="${x.id}" aria-label="${esc(displayItemNumber(x))} 상품사진 보기" title="상품사진 보기">📷</button></strong><b>${need}${unit}</b><b>${got}${unit}</b><span class="pick-row-actions"><em class="picking-state ${unpicked > 0 ? "soldout" : complete ? "done" : "not-done"}">${unpicked > 0 ? (unpicked < need ? "일부품절 " + unpicked+unit : "전체품절") : complete ? "피킹완료" : "피킹미완료"}</em><button data-minus="${x.id}">-1</button><button data-plus="${x.id}" ${got + unpicked >= need ? "disabled" : ""}>+1</button><label class="soldout-check"><input type="checkbox" data-soldout-toggle="${x.id}" ${unpicked > 0 ? "checked" : ""}>품절</label>${["S", "B", "I"].includes(section.code) ? `<label class="warehouse-outbound-check warehouse-check-${section.code.toLowerCase()}"><input type="checkbox" data-outbound-check="${x.id}" data-outbound-code="${section.code}" ${checked ? "checked" : ""}>${section.code === "I" ? "I포장" : `${section.code}출고`}</label><input class="picking-item-note" type="text" maxlength="100" value="${esc(x.picking_note || "")}" placeholder="메모" data-picking-note="${x.id}" aria-label="${esc(displayItemNumber(x))} 피킹 메모">` : ""}</span></div>`;
           })
           .join("")}</div></div></section>`;
       })
@@ -765,7 +766,7 @@
       if (strong && !strong.querySelector(".pick-stock-warning"))
         strong.insertAdjacentHTML(
           "beforeend",
-          ` <small class="pick-stock-warning ${status.kind}">⚠ ${esc(status.text)} / 주문 ${Number(item.qty || 0)}죽</small>`,
+          ` <small class="pick-stock-warning ${status.kind}">⚠ ${esc(status.text)} / 주문 ${DesignSocksSalesUnit.isPackedOrder(item)?Number(item.qty||0).toLocaleString()+'개':Number(item.qty||0).toLocaleString()+'죽'}</small>`,
         );
     });
     const existing = document.querySelector("#workArea .pick-stock-alert");

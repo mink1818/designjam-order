@@ -684,11 +684,13 @@ function renderOrderItemEditor(group, index) {
   if (!canEditOrderItems(group)) return `<p class="order-edit-locked">피킹을 시작하거나 검증한 주문은 피킹 초기화 후 품목을 수정할 수 있습니다.</p>`;
   const rows = group.items.map(item => {
     const displayNumber = item.warehouse_code ? `${String(item.warehouse_code).toUpperCase()}-${item.item_number}` : item.item_number;
+    const sales=DesignSocksSalesUnit.fromStored(item);
     return `<div class="order-edit-item-row" data-order-edit-row data-id="${Number(item.id)}">
       <input class="order-edit-number" type="text" value="${escapeAdminAttr(displayNumber)}" placeholder="품번(예: S-1001)">
-      <input class="order-edit-qty" type="number" min="1" step="1" value="${Number(item.qty || 1)}" aria-label="수량(죽)">
-      <input class="order-edit-price" type="number" min="0" step="50" value="${Number(item.price || 0)}" aria-label="1죽 단가">
+      <input class="order-edit-qty" type="number" min="1" step="1" value="${sales.qty}" aria-label="${sales.packSize===10?'묶음수량':'수량(죽)'}">
+      <input class="order-edit-price" type="number" min="0" step="50" value="${sales.price}" aria-label="${sales.packSize===10?'10개 묶음 단가':'1죽 단가'}">
       <input class="order-edit-row-total" type="number" min="0" step="1" value="${Number(item.qty || 0) * Number(item.price || 0)}" aria-label="금액">
+      ${DesignSocksSalesUnit.badge(item.item_number)}
       <button class="order-edit-remove-new" type="button" onclick="this.closest('[data-order-edit-row]').remove()">삭제</button>
     </div>`;
   }).join("");
@@ -897,6 +899,7 @@ summaryTotal += Number(group.shipping_fee || 0);
         <div class="admin-warehouse-heading"><strong>${section.label}</strong><span class="admin-warehouse-heading-actions"><small>${section.items.length}품번 · 출고 ${sectionQty}죽${sectionSoldoutQty?` · 품절 ${sectionSoldoutQty}죽`:''} · 합계 ${sectionTotal.toLocaleString()}원</small><span class="copy-button-pair"><button type="button" class="warehouse-copy-button" onclick="copyWarehouseOrder(this,event,'kakao')">카톡용 복사</button><button type="button" class="warehouse-copy-button excel-copy-button" onclick="copyWarehouseOrder(this,event,'excel')">엑셀용 복사</button></span></span></div>`;
       section.items.forEach(item => {
         const oneJukPrice = Number(item.price || 0);
+        const packed=DesignSocksSalesUnit.isPackedOrder(item),unit=packed?'개':'죽',displayPrice=packed?oneJukPrice*10:oneJukPrice;
         const orderedQty = Number(item.qty || 0);
         const itemSoldoutQty = Math.min(orderedQty, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0)));
         const shippedQty = Math.max(0, orderedQty - itemSoldoutQty);
@@ -904,9 +907,9 @@ summaryTotal += Number(group.shipping_fee || 0);
         const stockStatus = getAdminStockStatus(item);
 
         itemHtml += `
-        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${orderedQty}" data-soldout-qty="${itemSoldoutQty}" data-unit-price="${oneJukPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.warehouse_code?`${String(item.warehouse_code).toUpperCase()}-${item.item_number}`:item.item_number)}" data-copy-qty="${shippedQty}">
-          <strong class="order-item-number-highlight${itemEditHistoryClass(group,item)}">${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${itemEditHistoryBadges(group,item)}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+'죽':'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
-          <span class="admin-item-pricing"><b>출고 ${shippedQty}죽</b>${itemSoldoutQty?`<small>주문 ${orderedQty}죽 · 품절 ${itemSoldoutQty}죽</small>`:''}<small>단가 ${oneJukPrice.toLocaleString()}원 / 1죽</small></span>
+        <label class="pick-row stock-row ${!isDone && stockStatus.warning ? `inventory-warning ${stockStatus.kind}` : ""}" data-qty="${orderedQty}" data-soldout-qty="${itemSoldoutQty}" data-unit-price="${displayPrice}" data-row-total="${rowTotal}" data-copy-item="${escapeAdminAttr(item.warehouse_code?`${String(item.warehouse_code).toUpperCase()}-${item.item_number}`:item.item_number)}" data-copy-qty="${packed?shippedQty/10:shippedQty}">
+          <strong class="order-item-number-highlight${itemEditHistoryClass(group,item)}">${item.warehouse_code?`${escapeAdminHtml(String(item.warehouse_code).toUpperCase())}-`:''}${item.item_number}${packed?DesignSocksSalesUnit.badge(item.item_number):''}${itemEditHistoryBadges(group,item)}${(Number(item.soldout_qty||0)>0||item.is_soldout)?` <small class="soldout-order-badge">${Number(item.soldout_qty||0)>0&&Number(item.soldout_qty||0)<Number(item.qty||0)?'일부품절 '+Number(item.soldout_qty||0)+unit:'전체품절'}</small>`:''}${!isDone && stockStatus.warning?` <small class="inventory-warning-badge ${stockStatus.kind}">⚠ ${stockStatus.text}</small>`:''}</strong>
+          <span class="admin-item-pricing"><b>출고 ${shippedQty}${unit}</b>${packed?`<small>${(shippedQty/10).toLocaleString()}묶음 · 주문 1 = 실제 10개</small>`:''}${itemSoldoutQty?`<small>주문 ${orderedQty}${unit} · 품절 ${itemSoldoutQty}${unit}</small>`:''}<small>단가 ${displayPrice.toLocaleString()}원 / ${packed?'10개 묶음':'1죽'}</small></span>
           <em>출고금액 ${rowTotal.toLocaleString()}원</em>
         </label>
       `;
@@ -1521,12 +1524,17 @@ async function saveOrderItems(orderNumber, index) {
   const items = [...editor.querySelectorAll("[data-order-edit-row]")].map(row => {
     const parsed = splitWarehouseItemNumber(row.querySelector(".order-edit-number")?.value);
     const oneJukPrice = Math.max(0, Number(row.querySelector(".order-edit-price")?.value || 0));
+    const inputQty=Math.max(1,Math.floor(Number(row.querySelector(".order-edit-qty")?.value||1)));
+    const stored=DesignSocksSalesUnit.toStored(parsed.itemNumber,inputQty,oneJukPrice);
     return {
       id: row.dataset.id ? Number(row.dataset.id) : null,
       item_number: parsed.itemNumber,
       warehouse_code: parsed.warehouseCode,
-      qty: Math.max(1, Math.floor(Number(row.querySelector(".order-edit-qty")?.value || 1))),
-      price: oneJukPrice
+      qty: stored.qty,
+      price: stored.price,
+      sales_pack_size: stored.packSize,
+      sales_pack_qty: stored.packQty,
+      sales_pack_price: stored.packPrice
     };
   });
   const fail=message=>{alert(message);if(button){button.disabled=false;button.textContent='주문 품목 저장'}};

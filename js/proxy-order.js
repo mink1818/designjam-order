@@ -311,7 +311,7 @@ function safeDirectOwnerName(){
 function addLine(value={}){
  const row=document.createElement('div');row.className='proxy-line';
  if(value.price_manual===true)row.dataset.priceManual='1';
- row.innerHTML=`<input class="proxy-item" list="proxyItemList" autocomplete="off" placeholder="품번" value="${esc(value.item_number||'')}"><input class="proxy-qty" type="number" min="1" step="1" value="${Number(value.qty||1)}" placeholder="수량(죽)"><input class="proxy-price" type="number" min="0" step="1" value="${Number(value.price||0)}" placeholder="단가(1죽)"><strong class="proxy-line-total">0원</strong><button class="remove-line" type="button">삭제</button>`;
+ row.innerHTML=`<input class="proxy-item" list="proxyItemList" autocomplete="off" placeholder="품번" value="${esc(value.item_number||'')}"><input class="proxy-qty" type="number" min="1" step="1" value="${Number(value.qty||1)}" placeholder="수량"><input class="proxy-price" type="number" min="0" step="1" value="${Number(value.price||0)}" placeholder="묶음/죽 단가"><strong class="proxy-line-total">0원</strong><button class="remove-line" type="button">삭제</button>`;
  const syncPrice=()=>{const input=row.querySelector('.proxy-item');const found=findItem(input.value);if(found){input.value=found.item_number;if(row.dataset.priceManual!=='1')row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)}calc()};
  row.querySelector('.remove-line').onclick=()=>{row.remove();if(!document.querySelector('.proxy-line'))addLine();calc();scheduleProxyDraftSave()};
  row.querySelector('.proxy-item').addEventListener('input',()=>{delete row.dataset.priceManual;const found=findItem(row.querySelector('.proxy-item').value);if(found){row.querySelector('.proxy-price').value=effectiveProxyPrice(found.item_number,found.price)}calc()});
@@ -327,9 +327,9 @@ async function reloadLatestProductCatalog(){
  items.sort((a,b)=>String(a.item_number).localeCompare(String(b.item_number),'ko',{numeric:true}));
 }
 function calc(){
- let qty=0,total=0,count=0;document.querySelectorAll('.proxy-line').forEach(r=>{const q=Math.max(0,Math.floor(Number(r.querySelector('.proxy-qty').value||0))),p=Math.max(0,Number(r.querySelector('.proxy-price').value||0)),amount=q*p;qty+=q;total+=amount;if(r.querySelector('.proxy-item').value.trim())count++;r.querySelector('.proxy-line-total').textContent=amount.toLocaleString()+'원'});
- $('proxyTotal').textContent=`총 ${count.toLocaleString()}품번 · ${qty.toLocaleString()}죽 · ${total.toLocaleString()}원`;
- $('proxySummaryCustomer').textContent=currentCustomerName()||'미선택';$('proxySummarySku').textContent=count.toLocaleString()+'종';$('proxySummaryQty').textContent=qty.toLocaleString()+'죽';$('proxySummaryTotal').textContent=total.toLocaleString()+'원';
+ let qty=0,total=0,count=0;document.querySelectorAll('.proxy-line').forEach(r=>{const item=normalizeItem(r.querySelector('.proxy-item').value),q=Math.max(0,Math.floor(Number(r.querySelector('.proxy-qty').value||0))),p=Math.max(0,Number(r.querySelector('.proxy-price').value||0)),stored=DesignSocksSalesUnit.toStored(item,q,p),amount=stored.total;qty+=stored.qty;total+=amount;if(item)count++;r.classList.toggle('sales-pack-row',stored.packSize===10);r.querySelector('.proxy-line-total').textContent=amount.toLocaleString()+'원'+(stored.packSize===10?` · 실제 ${stored.qty}개`:'')});
+ $('proxyTotal').textContent=`총 ${count.toLocaleString()}품번 · 실제처리수량 ${qty.toLocaleString()} · ${total.toLocaleString()}원`;
+ $('proxySummaryCustomer').textContent=currentCustomerName()||'미선택';$('proxySummarySku').textContent=count.toLocaleString()+'종';$('proxySummaryQty').textContent=qty.toLocaleString()+' 실제처리수량';$('proxySummaryTotal').textContent=total.toLocaleString()+'원';
 }
 function makeOrderNumber(){const d=new Date(),pad=n=>String(n).padStart(2,'0');return `ADMIN-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${Math.random().toString(36).slice(2,6).toUpperCase()}`}
 async function submit(){
@@ -369,7 +369,7 @@ async function submit(){
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
   // V6.6.80: 대신주문은 관리자가 직접 입력한 메모만 주문 메모로 저장한다.
   const finalMemo=memo;
-  const rows=lines.map(x=>{const found=findItem(x.item_number);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:x.qty,price:x.price,total:x.qty*x.price}});
+  const rows=lines.map(x=>{const found=findItem(x.item_number),stored=DesignSocksSalesUnit.toStored(x.item_number,x.qty,x.price);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:stored.qty,price:stored.price,total:stored.total,sales_pack_size:stored.packSize,sales_pack_qty:stored.packQty,sales_pack_price:stored.packPrice}});
   const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{
     p_order_number:order,
     p_customer_id:mode==='direct'?(directCustomer?.id||null):customer.id,
