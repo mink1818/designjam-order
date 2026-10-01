@@ -417,6 +417,37 @@ function printStatement() {
   setTimeout(restore, 1500);
 }
 
+async function createStatementImageBlob(onProgress=()=>{}) {
+  if (!window.html2canvas) throw new Error("이미지 변환 기능을 불러오지 못했습니다.");
+  const clone=statementArea.cloneNode(true);
+  // 카카오톡 전달용 이미지에는 관리자 입력도구와 송장 원본사진을 넣지 않는다.
+  // 운송장번호 목록은 거래명세서에 그대로 남고 원본사진은 출고전달 화면에서 별도로 복사한다.
+  clone.querySelectorAll('[data-statement-shipment-manager],.statement-shipment-photos').forEach(node=>node.remove());
+  clone.querySelectorAll('[contenteditable]').forEach(node=>node.removeAttribute('contenteditable'));
+  clone.classList.add('statement-image-export');
+  clone.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;max-width:none;background:#fff;color:#111;z-index:-1';
+  document.body.appendChild(clone);
+  try {
+    await document.fonts?.ready;
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const width=Math.max(1000,clone.scrollWidth),height=Math.max(1,clone.scrollHeight);
+    const scale=Math.max(.1,Math.min(3,30000/height,12000/width));
+    onProgress(scale);
+    const canvas=await window.html2canvas(clone,{backgroundColor:'#ffffff',scale,useCORS:true,logging:false,windowWidth:width,windowHeight:height,scrollX:0,scrollY:0});
+    return await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('이미지 변환 실패')),'image/png'));
+  } finally {
+    clone.remove();
+  }
+}
+
+async function copyStatementImageToClipboard() {
+  const blob=await createStatementImageBlob();
+  if (!navigator.clipboard?.write || typeof ClipboardItem==='undefined') throw new Error('이 브라우저는 이미지 직접 복사를 지원하지 않습니다.');
+  await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+  return {ok:true,orderNumber:currentStatementOrderNumber,customerName:currentStatementCustomerName};
+}
+window.copyStatementImageToClipboard=copyStatementImageToClipboard;
+
 async function saveStatementImage(button) {
   if (!window.html2canvas) return alert("이미지 저장 기능을 불러오지 못했습니다. 인터넷 연결 후 새로고침해주세요.");
   const original = button.textContent;
@@ -425,18 +456,7 @@ async function saveStatementImage(button) {
   try {
     const now=new Date(),date=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
     const baseName=`${String(currentStatementCustomerName).replace(/[^0-9A-Za-z가-힣_-]/g, "_")}_${date}_거래명세서`;
-    const clone=statementArea.cloneNode(true);
-    clone.classList.add('statement-image-export');
-    clone.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;max-width:none;background:#fff;color:#111;z-index:-1';
-    document.body.appendChild(clone);
-    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    const width=Math.max(1000,clone.scrollWidth),height=Math.max(1,clone.scrollHeight);
-    // Chrome/Edge 캔버스 한 변 한계보다 여유 있게 30,000px 안에서 최대 3배 고해상도를 적용합니다.
-    const scale=Math.max(.1,Math.min(3,30000/height,12000/width));
-    button.textContent=`한 장 고해상도 저장 중 (${scale.toFixed(1)}배)`;
-    const canvas=await window.html2canvas(clone,{backgroundColor:'#ffffff',scale,useCORS:true,logging:false,windowWidth:width,windowHeight:height,scrollX:0,scrollY:0});
-    clone.remove();
-    const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('이미지 변환 실패')),'image/png'));
+    const blob=await createStatementImageBlob(scale=>{button.textContent=`한 장 고해상도 저장 중 (${scale.toFixed(1)}배)`});
     const link=document.createElement('a');
     link.download=`${baseName}.png`;link.href=URL.createObjectURL(blob);link.click();setTimeout(()=>URL.revokeObjectURL(link.href),5000);
     button.textContent = "이미지 저장 완료";
@@ -462,6 +482,7 @@ function closeStatement() {
 
 async function startStatementPage() {
   document.title = "관리자 거래명세서";
+  if(statementParams.get('handoff')==='1')document.body.classList.add('statement-handoff-preview');
   const allowed = await checkStatementAccess();
 
   if (!allowed) return;

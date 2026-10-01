@@ -778,3 +778,4 @@ body {
 .partial-soldout-row .statement-soldout-alert{background:#e11d48!important}
 @media(max-width:700px){.statement-soldout-alert{padding:2px 5px;font-size:9.5px!important}}
 @media print{.soldout-row{background:#ffe4e6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.partial-soldout-row{background:#fff1f2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.statement-soldout-alert{background:#dc2626!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.statement-handoff-preview .screen-menu{display:none!important}.statement-handoff-preview{padding-top:0!important}.statement-handoff-preview .statement-shipment-admin-button{display:none!important}

@@ -1,0 +1,30 @@
+DESIGN SOCKS V6.7.80 배포 순서
+
+1. Supabase SQL Editor에서 아래 SQL을 순서대로 전체 실행합니다.
+
+   SQL/V6.7.79-CUSTOMER-PRICE-SAVE-GUARD.sql
+   SQL/V6.7.80-ORDER-SHIPMENT-HANDOFF.sql
+
+   이미 V6.7.79 SQL을 실행했다면 V6.7.80 SQL만 실행하면 됩니다.
+   Success. No rows returned가 나오면 정상입니다.
+
+2. 프로젝트 폴더에서 기존 Git 배포 명령을 실행합니다.
+
+   git add .
+   git commit -m "release v6.7.80 order shipment handoff workflow"
+   git push origin main
+
+   Vercel 연결 저장소이므로 npx vercel --prod는 실행하지 않습니다.
+
+3. 배포 후 Ctrl+F5로 새로고침하고 왼쪽 아래 V6.7.80을 확인합니다.
+
+사용 순서
+1) 송장관리에서 송장사진을 등록하고 주문에 연결합니다.
+2) 출고전달에서 거래처의 전달작업 시작을 누릅니다.
+3) 긴 명세서 이미지 복사 → 카카오톡 Ctrl+V
+4) 각 송장사진 복사 → 카카오톡 Ctrl+V
+5) 전송을 확인하고 이 주문 전달완료·다음으로를 누릅니다.
+
+주의
+- 복사만으로 전달완료 처리되지 않습니다. 카카오톡 전송 후 완료 버튼을 눌러야 합니다.
+- 기존 거래처별 전달기록 테이블과 기존 주문 데이터는 변경하지 않습니다.

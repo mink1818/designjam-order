@@ -1,0 +1,12 @@
+const fs=require('fs');const path=require('path');const assert=require('assert');const root=path.resolve(__dirname,'..');const read=f=>fs.readFileSync(path.join(root,f),'utf8');
+const handoff=read('js/shipment-handoff.js'),statement=read('js/statement.js'),shipment=read('js/shipment-display.js'),sql=read('SQL/V6.7.80-ORDER-SHIPMENT-HANDOFF.sql');
+assert(handoff.includes("from('shipment_order_handoffs')"),'주문별 전달이력 조회 누락');
+assert(handoff.includes("rpc('set_shipment_order_handoff'"),'주문별 전달완료 저장 누락');
+assert(handoff.includes('copyStatementImageToClipboard'),'명세서 이미지 복사 연결 누락');
+assert(handoff.includes('이 주문 전달완료·다음으로'),'다음 주문 연속처리 누락');
+assert(statement.includes('createStatementImageBlob'),'거래명세서 이미지 생성 함수 누락');
+assert(statement.includes("querySelectorAll('[data-statement-shipment-manager],.statement-shipment-photos')"),'관리자 도구 이미지 제외 누락');
+assert(shipment.includes('data-open-shipment-manager'),'송장 수정 팝업 버튼 누락');
+assert(shipment.includes("querySelector('.statement-logistics-column')"),'송장정보 택배영역 배치 누락');
+assert(sql.includes('unique(business_date,order_number)'),'주문별 중복 방지 누락');
+console.log('order-shipment-handoff tests passed');
