@@ -935,7 +935,6 @@ summaryTotal += Number(group.shipping_fee || 0);
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':isAdminOrderReview(group)?'주문확인':group.status}</span>
     ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
     ${!isDone&&isVerified?`<button class="collapsed-shipping-complete" type="button" onclick="quickCompleteCollapsedOrder(this,event,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'')}','${escapeAdminAttr(group.deliveryName||group.customerName||'')}',${summaryQty},${summaryTotal})">출고완료</button>`:''}
-    <button class="collapsed-kakao-search" type="button" title="PC 카카오톡에서 검색 결과만 표시" data-kakao-name="${escapeAdminAttr(group.kakaoSearchName||group.customerName||'')}" onclick="findOrderCustomerInKakao(event,this.dataset.kakaoName)">카톡 찾기</button>
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
@@ -1710,14 +1709,6 @@ function openStatement(orderNumber) {
 
   window.open(url, "_blank");
 }
-
-function findOrderCustomerInKakao(event,name){
-  event?.stopPropagation();
-  const searchName=String(name||'').trim();
-  if(!searchName)return alert('카카오톡에서 검색할 거래처명이 없습니다.');
-  location.href=`designsocks-kakao://search?name=${encodeURIComponent(searchName)}`;
-}
-window.findOrderCustomerInKakao=findOrderCustomerInKakao;
 
 function loadAuthenticatedAdminChrome(){
   if(document.getElementById('authenticatedAdminChrome'))return;

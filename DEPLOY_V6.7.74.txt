@@ -1,0 +1,46 @@
+DESIGN SOCKS V6.7.74 배포 안내
+
+중요
+- 웹 배포 명령은 기존 버전과 동일합니다.
+- git push 후 연결된 Vercel에서 자동 배포되므로 vercel --prod는 실행하지 않습니다.
+- 이번 버전은 송장 전용 DB와 비공개 저장소가 추가되어 Supabase 설정을 최초 1회 먼저 해야 합니다.
+
+1. Supabase 최초 1회 설정
+
+Supabase Dashboard의 SQL Editor에서 아래 파일 전체를 실행합니다.
+
+SQL/V6.7.74-SHIPMENT-MANAGEMENT.sql
+
+기존 orders 테이블과 기존 주문 데이터는 변경하지 않습니다.
+
+2. 웹 배포 명령
+
+git add .
+git commit -m "release v6.7.74 shipment management and handoff"
+git push origin main
+
+3. 배포 확인
+
+- Vercel 자동 배포가 완료될 때까지 기다립니다.
+- 관리자 화면을 Ctrl+F5로 새로고침합니다.
+- 화면 왼쪽 아래 V6.7.74가 표시되는지 확인합니다.
+- 메인화면에 송장관리와 출고전달 메뉴가 나오는지 확인합니다.
+
+4. 31일 사진 자동삭제 설정
+
+이 단계는 웹 배포와 별도로 최초 1회만 설정합니다.
+
+supabase functions deploy cleanup-shipment-images --no-verify-jwt
+supabase secrets set SHIPMENT_CLEANUP_SECRET=충분히_긴_임의문자열
+
+그 다음 SQL/V6.7.74-CLEANUP-CRON-EXAMPLE.sql 안의
+YOUR_PROJECT_REF와 YOUR_CLEANUP_SECRET을 실제 값으로 바꾸고
+Supabase SQL Editor에서 실행합니다.
+
+자동삭제 설정 전에도 송장 등록 기능은 사용할 수 있지만,
+설정하지 않으면 31일이 지나도 원본사진이 자동으로 삭제되지 않습니다.
+
+주의
+- 유료 OCR API는 사용하지 않습니다. OCR은 관리자 브라우저에서 실행됩니다.
+- 카톡 찾기 버튼과 보조프로그램 배포 폴더는 제거되었습니다.
+- PC에 이미 설치된 카톡 보조프로그램은 ERP에서 더 이상 호출하지 않습니다.

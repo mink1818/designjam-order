@@ -1971,3 +1971,4 @@ html[data-theme="dark"] body[data-session-page="customer"] img{filter:none!impor
 /* V6.7.12 모든 버튼 클릭 촉감 */
 button{transition:transform .08s ease,filter .08s ease,box-shadow .08s ease}
 button:not(:disabled):active{transform:translateY(2px) scale(.98)!important;filter:brightness(.92);box-shadow:inset 0 2px 5px rgba(0,0,0,.24)!important}
+.linked-shipment-box{margin:12px auto;max-width:1200px;padding:14px;border:1px solid #9db1c8;border-radius:12px;background:#fff}.linked-shipment-box h2{margin:0 0 8px}.linked-shipment-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #dce3eb}.linked-shipment-row:last-child{border-bottom:0}.linked-shipment-row a{font-weight:800;color:#1557a0}@media(max-width:650px){.linked-shipment-row{display:block}.linked-shipment-row a{display:block;margin-top:5px}}

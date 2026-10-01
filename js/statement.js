@@ -362,13 +362,6 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
   bindStatementExtras();
 }
 
-function findStatementCustomerInKakao(){
-  const searchName=String(currentStatementKakaoSearchName||currentStatementCustomerName||'').trim();
-  if(!searchName)return alert('카카오톡에서 검색할 거래처명이 없습니다.');
-  location.href=`designsocks-kakao://search?name=${encodeURIComponent(searchName)}`;
-}
-window.findStatementCustomerInKakao=findStatementCustomerInKakao;
-
 const STATEMENT_FIXED_PARCELS=['로젠','한진','로젠'];
 function fixedStatementParcelCounts(){
  const saved=Array.isArray(statementLogistics.parcelCounts)?statementLogistics.parcelCounts:[];
