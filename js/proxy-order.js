@@ -339,7 +339,7 @@ async function submit(){
  try{await reloadLatestProductCatalog()}catch(error){showError('최신 상품단가 확인에 실패했습니다. 새로고침 후 다시 접수해주세요: '+(error?.message||error));return}
  const priceReady=await reloadSelectedCustomerPrices();
  if(!priceReady){showError('거래처별 단가 확인에 실패했습니다. 단가 조회 상태를 확인한 뒤 다시 접수하세요.');return}
- const lines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0))})).filter(x=>x.item_number);
+ const lines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0)),price_manual:r.dataset.priceManual==='1'})).filter(x=>x.item_number);
  // V6.6.57: 접수 직전에 현재 선택된 실제 납품처를 다시 확정한다.
  // select의 화면 선택값과 input 값이 비동기 로딩/빠른 클릭 때문에 어긋나는 경우를 차단한다.
  const deliverySelect=$('proxyDeliverySelect');
@@ -369,7 +369,7 @@ async function submit(){
   const order=makeOrderNumber(),memo=($('proxyMemo').value||'').trim();const customerName=mode==='direct'?directName:(customer.business_name||customer.owner_name||customer.email);
   // V6.6.80: 대신주문은 관리자가 직접 입력한 메모만 주문 메모로 저장한다.
   const finalMemo=memo;
-  const rows=lines.map(x=>{const found=findItem(x.item_number),stored=DesignSocksSalesUnit.toStored(x.item_number,x.qty,x.price);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:stored.qty,price:stored.price,total:stored.total,sales_pack_size:stored.packSize,sales_pack_qty:stored.packQty,sales_pack_price:stored.packPrice}});
+  const rows=lines.map(x=>{const found=findItem(x.item_number),stored=DesignSocksSalesUnit.toStored(x.item_number,x.qty,x.price);return{item_number:x.item_number,warehouse_code:found?.warehouse_code||null,qty:stored.qty,price:stored.price,total:stored.total,price_manual:x.price_manual===true,sales_pack_size:stored.packSize,sales_pack_qty:stored.packQty,sales_pack_price:stored.packPrice}});
   const {data,error}=await supabaseClient.rpc('create_admin_proxy_order',{
     p_order_number:order,
     p_customer_id:mode==='direct'?(directCustomer?.id||null):customer.id,

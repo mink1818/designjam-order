@@ -1532,6 +1532,7 @@ async function saveOrderItems(orderNumber, index) {
       warehouse_code: parsed.warehouseCode,
       qty: stored.qty,
       price: stored.price,
+      price_manual: row.dataset.priceManual === '1' || row.dataset.manualOverride === '1',
       sales_pack_size: stored.packSize,
       sales_pack_qty: stored.packQty,
       sales_pack_price: stored.packPrice

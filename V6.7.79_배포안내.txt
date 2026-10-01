@@ -1,0 +1,29 @@
+DESIGN SOCKS V6.7.79 배포 순서
+
+1. Supabase SQL Editor에서 아래 파일을 열고 전체 실행합니다.
+   SQL/V6.7.79-CUSTOMER-PRICE-SAVE-GUARD.sql
+
+   실행 결과가 Success. No rows returned로 나오면 정상입니다.
+   이 SQL은 기존 주문을 수정하지 않습니다.
+
+2. 프로젝트 폴더에서 기존 Git 배포 명령을 실행합니다.
+
+   git add .
+   git commit -m "release v6.7.79 customer price save guard"
+   git push origin main
+
+   Vercel 연결 저장소이므로 npx vercel --prod는 실행하지 않습니다.
+
+3. 배포가 끝나면 브라우저에서 Ctrl+F5로 새로고침합니다.
+   왼쪽 아래 버전이 V6.7.79인지 확인합니다.
+
+4. 권장 확인
+   - 전용단가 거래처의 일반주문 1건
+   - 관리자 대신주문 자동단가 1건
+   - 관리자 대신주문에서 단가를 직접 수정한 수기단가 1건
+   - 기존 주문수정에서 새 품번 추가 1건
+
+중요
+- 화면이 전용단가를 불러오지 못하면 주문 저장이 중단되는 것이 정상입니다.
+- 관리자가 단가 입력칸을 직접 바꾼 경우는 수기단가로 보존됩니다.
+- 과거 주문을 현재 단가로 일괄 변경하지 않습니다.

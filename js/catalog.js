@@ -56,6 +56,7 @@ let currentUser = null;
 let currentCustomer = null;
 let favoriteMainCategoryIds = new Set();
 let customerItemPriceMap = new Map();
+let customerPriceLoadState = "idle";
 function customerPriceKey(value) { return String(value ?? "").trim().normalize("NFKC").toUpperCase().replace(/^([SBI])[-_\s]+(?=[A-Z0-9])/, ""); }
 async function fetchMyCustomerPricesPaged(userId) {
   const rows=[];let rpcError=null;
@@ -418,8 +419,11 @@ async function loadCatalog() {
 
   customerItemPriceMap = new Map();
   if (currentUser && !ADMIN_PREVIEW_MODE) {
-    try { (await fetchMyCustomerPricesPaged(currentUser.id)).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price))); }
-    catch (error) { console.error("거래처별 전용단가 조회 실패:",error.message); }
+    customerPriceLoadState = "loading";
+    try { (await fetchMyCustomerPricesPaged(currentUser.id)).forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price))); customerPriceLoadState = "ready"; }
+    catch (error) { customerPriceLoadState = "error"; console.error("거래처별 전용단가 조회 실패:",error.message); }
+  } else {
+    customerPriceLoadState = "ready";
   }
   refreshSavedCartPrices();
 
@@ -2439,6 +2443,24 @@ async function submitOrder() {
     alert("로그인이 필요합니다.");
     location.href = "login.html";
     return;
+  }
+
+  // 전용단가 조회가 실패한 상태에서 일반단가로 주문되는 사고를 막는다.
+  // 저장 직전에 한 번 재시도하고, 실패하면 주문을 만들지 않는다.
+  if (customerPriceLoadState !== "ready") {
+    customerPriceLoadState = "loading";
+    try {
+      const latestPrices = await fetchMyCustomerPricesPaged(currentUser.id);
+      customerItemPriceMap = new Map();
+      latestPrices.forEach(row => customerItemPriceMap.set(customerPriceKey(row.item_number), Number(row.price)));
+      customerPriceLoadState = "ready";
+      refreshSavedCartPrices();
+      renderCart();
+    } catch (error) {
+      customerPriceLoadState = "error";
+      alert("거래처별 전용단가를 확인하지 못해 주문 저장을 중단했습니다.\n인터넷 연결을 확인하고 새로고침한 뒤 다시 시도해주세요.\n\n" + (error?.message || error));
+      return;
+    }
   }
 
   const submitButton = document.getElementById(
