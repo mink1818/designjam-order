@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67081';document.head.appendChild(extraStyle);
+const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67082';document.head.appendChild(extraStyle);
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let groups=[],activeTask=null,taskPhotoUrls=[],directShipmentFile=null;
 $('handoffDate').value=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
