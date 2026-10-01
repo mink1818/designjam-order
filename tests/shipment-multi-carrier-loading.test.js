@@ -13,6 +13,12 @@ assert(manager.includes("tracks:tracks.length?tracks:['']"),'한 사진의 복�
 assert(manager.includes('plausibleTrack'),'택배사별 송장번호 유효성 검사가 필요합니다.');
 assert(manager.includes('@zxing/library'),'기본 판독 실패 시 무료 ZXing 보조 판독이 필요합니다.');
 assert(manager.includes('이미 등록된 송장입니다'),'중복 송장을 이해하기 쉬운 문구로 안내해야 합니다.');
+assert(manager.includes('numericOcr'),'송장번호 숫자 전용 OCR이 필요합니다.');
+assert(manager.includes("/^452\\d{8}$/"),'로젠 452 운송장번호 복원 규칙이 필요합니다.');
+assert(manager.includes('inferCarrier'),'운송장번호에서 확실한 택배사를 보조 판정해야 합니다.');
+assert(manager.includes('addressTokens'),'주문 주소의 핵심 조각 비교가 필요합니다.');
+assert(manager.includes('주소 조각'),'부분 OCR 주소 일치 사유가 필요합니다.');
+assert(manager.includes('수취인 원문일치'),'OCR 원문에서 수취인명을 보조 비교해야 합니다.');
 
 for(const [name,source] of [['송장관리',manager],['출고전달',handoff]]){
   assert(source.includes("document.body.classList.add('auth-ready')"),`${name} 화면의 로딩 해제가 필요합니다.`);
