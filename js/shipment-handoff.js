@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67089';document.head.appendChild(extraStyle);
+const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67090';document.head.appendChild(extraStyle);
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let groups=[],activeTask=null,taskPhotoUrls=[],directShipmentFile=null,pasteOrderNumber=null;
 const inlineShipmentFiles=new Map();
@@ -47,7 +47,7 @@ function render(){
 
 function orderRow(o){
  const delivery=o.delivery_name||o.customer_name||'-',labels=o.labels||[],done=!!o.handoff?.completed_at;
- const photoButtons=labels.filter(x=>x.photoUrl).map((x,i)=>`<button class="photo-copy" data-act="copy-row-photo" data-url="${esc(x.photoUrl)}">송장사진 ${i+1} 복사</button>`).join('');
+ const photoButtons=labels.filter(x=>x.photoUrl).map((x,i)=>`<span class="row-photo-actions"><button class="photo-copy" data-act="copy-row-photo" data-url="${esc(x.photoUrl)}">송장 ${i+1} 복사</button><a class="photo-open" href="${esc(x.photoUrl)}" target="_blank" rel="noopener">크게보기</a><button class="photo-delete" data-act="delete-row-photo" data-order="${esc(o.order_number)}" data-label="${esc(x.id)}" data-document="${esc(x.document_id||'')}" data-path="${esc(x.shipment_documents?.storage_path||'')}">삭제</button></span>`).join('');
  return`<section class="handoff-order-bundle ${done?'is-done':''}" data-order-row="${esc(o.order_number)}"><div class="handoff-delivery"><strong>${esc(delivery)}</strong><small>${esc(o.order_number)}</small><span class="shipment-badge">${done?'전달완료':'미전달'}</span></div><p class="handoff-tracking">${labels.length?`등록 송장 ${labels.length}장`:'등록된 송장 없음'}</p><div class="handoff-order-actions"><button data-act="copy-row-statement" data-order="${esc(o.order_number)}">긴 거래명세서 복사</button>${photoButtons}<button class="paste-photo" data-act="prepare-row-paste" data-order="${esc(o.order_number)}">송장사진 붙여넣기</button><label class="row-file-button">사진선택<input type="file" accept="image/*" data-row-file="${esc(o.order_number)}"></label><button class="done" data-act="row-complete" data-order="${esc(o.order_number)}">${done?'전달완료 취소':'전달완료'}</button><button class="detail" data-act="work" data-order="${esc(o.order_number)}">상세보기</button></div><div class="row-shipment-editor" hidden><img alt="등록할 송장사진"><div><label>출고처<select data-inline="warehouse"><option value="">미구분</option><option>S</option><option>B</option><option>I</option></select></label><label>택배사<input data-inline="carrier" placeholder="직접 입력 (선택)"></label><label>운송장번호<input data-inline="tracking" inputmode="numeric" placeholder="직접 입력 (선택)"></label><button data-act="save-row-shipment" data-order="${esc(o.order_number)}">현재 주문에 등록</button><small data-inline-status>사진을 확인하고 등록하세요.</small></div></div></section>`;
 }
 
@@ -123,6 +123,13 @@ async function copyRowStatement(button,orderNumber){
  catch(error){alert('긴 거래명세서를 복사하지 못했습니다.\n'+(error?.message||error));button.textContent=original}finally{frame.remove();button.disabled=false}
 }
 async function copyRowPhoto(button,url){const original=button.textContent;button.disabled=true;button.textContent='사진 복사 중…';try{const blob=await fetch(url).then(r=>{if(!r.ok)throw new Error('사진 불러오기 실패');return r.blob()}),png=blob.type==='image/png'?blob:await imageBlobToPng(blob);await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);button.textContent='사진 복사완료';button.classList.add('copied')}catch(error){window.open(url,'_blank');button.textContent=original;alert('원본사진을 열었습니다. 열린 사진을 복사해주세요.')}finally{button.disabled=false}}
+async function deleteRowPhoto(button){
+ const orderNumber=button.dataset.order,labelId=button.dataset.label,documentId=button.dataset.document,path=button.dataset.path,found=findOrder(orderNumber),name=found?.order?.delivery_name||found?.group?.name||orderNumber;
+ if(!confirm(`${name} 주문의 이 송장사진을 삭제할까요?\n\n잘못 첨부된 사진이 맞는지 크게보기로 먼저 확인해주세요.`))return;
+ button.disabled=true;const original=button.textContent;button.textContent='삭제 중…';
+ try{const links=await supabaseClient.from('shipment_order_links').select('id,order_number').eq('label_id',labelId);if(links.error)throw links.error;const others=(links.data||[]).filter(x=>String(x.order_number)!==String(orderNumber));if(!others.length&&path){const removed=await supabaseClient.storage.from('shipping-labels').remove([path]);if(removed.error)throw removed.error}const unlink=await supabaseClient.from('shipment_order_links').delete().eq('label_id',labelId).eq('order_number',orderNumber);if(unlink.error)throw unlink.error;if(!others.length){const labelDelete=await supabaseClient.from('shipment_labels').delete().eq('id',labelId);if(labelDelete.error)throw labelDelete.error;if(documentId){const documentDelete=await supabaseClient.from('shipment_documents').delete().eq('id',documentId);if(documentDelete.error)throw documentDelete.error}}await load()}
+ catch(error){button.disabled=false;button.textContent=original;alert('송장사진 삭제 실패: '+(error?.message||error))}
+}
 
 async function setOrderComplete(orderNumber,completed,{advance=false}={}){
  const found=findOrder(orderNumber);if(!found)return;
@@ -134,7 +141,7 @@ async function setOrderComplete(orderNumber,completed,{advance=false}={}){
  if(next){await openWorkbench(next)}else if(advance&&completed){$('handoffWorkbench').close();alert('이 거래처의 미전달 주문을 모두 처리했습니다.')}else if($('handoffWorkbench').open){await openWorkbench(orderNumber)}
 }
 
-$('handoffList').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;const act=button.dataset.act,order=button.dataset.order;if(act==='work')openWorkbench(order);if(act==='undo')setOrderComplete(order,false);if(act==='copy-row-statement')copyRowStatement(button,order);if(act==='copy-row-photo')copyRowPhoto(button,button.dataset.url);if(act==='prepare-row-paste')prepareRowPaste(order);if(act==='save-row-shipment')saveRowShipment(button,order);if(act==='row-complete'){const found=findOrder(order);setOrderComplete(order,!found?.order.handoff?.completed_at)}};
+$('handoffList').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;const act=button.dataset.act,order=button.dataset.order;if(act==='work')openWorkbench(order);if(act==='undo')setOrderComplete(order,false);if(act==='copy-row-statement')copyRowStatement(button,order);if(act==='copy-row-photo')copyRowPhoto(button,button.dataset.url);if(act==='delete-row-photo')deleteRowPhoto(button);if(act==='prepare-row-paste')prepareRowPaste(order);if(act==='save-row-shipment')saveRowShipment(button,order);if(act==='row-complete'){const found=findOrder(order);setOrderComplete(order,!found?.order.handoff?.completed_at)}};
 $('handoffList').onchange=e=>{const input=e.target.closest('[data-row-file]');if(input?.files?.[0])showInlinePhoto(input.dataset.rowFile,input.files[0])};
 $('handoffWorkbenchBody').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;if(button.dataset.act==='copy-statement')copyStatement(button);if(button.dataset.act==='copy-photo')copyPhoto(button,Number(button.dataset.photoIndex));if(button.dataset.act==='pick-direct-shipment')chooseDirectShipment();if(button.dataset.act==='save-direct-shipment')saveDirectShipment(button);if(button.dataset.act==='complete-order'&&activeTask){const found=findOrder(activeTask.orderNumber);setOrderComplete(activeTask.orderNumber,!found?.order.handoff?.completed_at,{advance:!found?.order.handoff?.completed_at})}};
 $('handoffWorkbenchBody').onchange=e=>{if(e.target.id==='directShipmentFile')previewDirectShipment(e.target.files?.[0])};

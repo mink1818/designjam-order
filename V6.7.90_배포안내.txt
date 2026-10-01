@@ -1,0 +1,17 @@
+DESIGN SOCKS V6.7.90 배포 안내
+
+추가 SQL은 없습니다.
+
+변경사항
+- 출고전달 주문 목록의 각 송장에 크게보기 추가
+- 잘못 첨부한 송장 삭제 추가
+- 삭제 전 확인창 표시
+- 삭제 후 같은 사진을 올바른 주문에 다시 등록 가능
+- 여러 송장은 송장 1, 송장 2처럼 각각 복사·크게보기·삭제 가능
+
+배포 명령
+git add .
+git commit -m "release v6.7.90 shipment preview and delete"
+git push origin main
+
+배포 후 Ctrl+F5를 누르고 좌측 하단 V6.7.90을 확인합니다.

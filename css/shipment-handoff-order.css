@@ -9,6 +9,11 @@
 .handoff-order-actions button,.handoff-start{border:0;border-radius:8px;padding:9px 12px;background:#164a86;color:#fff;text-decoration:none;font-weight:800}
 .handoff-order-actions .undo{background:#67778a}
 .handoff-order-actions .photo-copy{background:#7b4fa3}
+.row-photo-actions{display:inline-flex;align-items:stretch;gap:4px;padding:3px;border:1px solid #d8c8e8;border-radius:10px;background:#f7f0fc}
+.row-photo-actions button,.row-photo-actions a{display:inline-flex;align-items:center;border:0;border-radius:7px;padding:7px 9px;color:#fff;text-decoration:none;font-size:12px;font-weight:900;cursor:pointer}
+.row-photo-actions .photo-copy{background:#7b4fa3}
+.row-photo-actions .photo-open{background:#496986}
+.row-photo-actions .photo-delete{background:#c43737}
 .handoff-order-actions .paste-photo{background:#b36b16}
 .handoff-order-actions .done{background:#16834c}
 .handoff-order-actions .detail{background:#66788d}
@@ -71,6 +76,7 @@
 .handoff-head{display:grid}
 .handoff-start{width:100%}
 .handoff-order-actions>*{flex:1 1 100%;text-align:center}
+.row-photo-actions{display:grid;grid-template-columns:1fr auto auto}
 .handoff-workbench{width:100%;height:100%;max-height:none;border-radius:0;padding:10px}
 .workbench-head{padding-right:82px}
 .step-title{display:grid}
