@@ -9,7 +9,9 @@ assert(manager.includes('수취인 일부일치'),'가려진 수취인명 비교
 assert(manager.includes("score+=70"),'정확한 주소 우선매칭 누락');
 assert(manager.includes('addressAndName'),'주소+수취인 복합 자동연결 누락');
 assert(handoff.includes('이 주문에 송장 1장 등록'),'주문별 직접등록 버튼 누락');
-assert(handoff.includes("ocr_engine:'manual-order-direct'"),'직접등록 구분 누락');
+assert(handoff.includes("'tesseract-local-direct':'manual-order-direct'"),'직접등록/OCR 구분 누락');
 assert(handoff.includes("order_number:orderNumber"),'현재 주문 직접연결 누락');
 assert(handoff.includes("image_sha256',hash"),'직접등록 중복사진 확인 누락');
+assert(manager.includes('reanalyzeSavedLabel'),'기존 저장 송장 재분석 누락');
+assert(manager.includes('원본 다시 자동분석'),'기존 송장 재분석 버튼 누락');
 console.log('shipment order matching/direct upload tests passed');

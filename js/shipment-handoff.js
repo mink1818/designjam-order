@@ -1,8 +1,18 @@
 (()=>{'use strict';
-const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67082';document.head.appendChild(extraStyle);
+const extraStyle=document.createElement('link');extraStyle.rel='stylesheet';extraStyle.href='css/shipment-handoff-order.css?v=67084';document.head.appendChild(extraStyle);
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let groups=[],activeTask=null,taskPhotoUrls=[],directShipmentFile=null;
+let groups=[],activeTask=null,taskPhotoUrls=[],directShipmentFile=null,directShipmentOcrText='';
+const directCarriers=[['CJ대한통운',/(CJ\s*대한통운|대한통운|CJ\s*LOGISTICS)/i],['한진택배',/(한진택배|한진|HANJIN)/i],['롯데택배',/(롯데택배|롯데글로벌로지스|LOTTE|현대택배)/i],['로젠택배',/(로젠택배|로젠|LOGEN)/i],['경동택배',/(경동택배|경동정기화물|경동화물|KYUNGDONG)/i],['우리택배',/(우리택배|우리로지스|우리택배주식회사|WOORI)/i]];
 $('handoffDate').value=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
+
+async function guard(){
+ const {data:{user}}=await supabaseClient.auth.getUser();
+ if(!user){location.replace('admin.html');return false}
+ const {data:p,error}=await supabaseClient.from('customers').select('is_admin,blocked,admin_role').eq('id',user.id).maybeSingle();
+ if(error)throw error;
+ if(!p?.is_admin||p.blocked||p.admin_role==='employee'){location.replace('admin-home.html');return false}
+ document.body.classList.add('auth-ready');document.body.classList.remove('auth-pending');return true
+}
 
 async function load(){
  const date=$('handoffDate').value,start=new Date(date+'T00:00:00+09:00').toISOString(),end=new Date(date+'T23:59:59.999+09:00').toISOString();
@@ -77,7 +87,11 @@ async function copyPhoto(button,index){
 async function imageBlobToPng(blob){const bitmap=await createImageBitmap(blob),canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close?.();return await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(new Error('사진 변환 실패')),'image/png'))}
 async function fileHash(file){const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);return[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function chooseDirectShipment(){const input=$('directShipmentFile');if(input){input.value='';input.click()}}
-function previewDirectShipment(file){if(!file?.type?.startsWith('image/'))return alert('송장 이미지 파일을 선택해주세요.');directShipmentFile=file;const editor=$('directShipmentEditor'),preview=$('directShipmentPreview');preview.src=URL.createObjectURL(file);editor.hidden=false;$('directShipmentStatus').textContent='사진을 확인하고 현재 주문에 연결해 저장하세요.'}
+async function ensureDirectOcr(){if(window.Tesseract)return true;return await new Promise(resolve=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';script.onload=()=>resolve(true);script.onerror=()=>resolve(false);document.head.appendChild(script)})}
+async function directBarcodes(file){if(typeof BarcodeDetector==='undefined')return[];try{const supported=await BarcodeDetector.getSupportedFormats(),formats=['code_128','code_39','codabar','itf','ean_13'].filter(x=>supported.includes(x));if(!formats.length)return[];const bitmap=await createImageBitmap(file),found=await new BarcodeDetector({formats}).detect(bitmap);bitmap.close?.();return[...new Set(found.map(x=>String(x.rawValue||'').replace(/\D/g,'')).filter(x=>x.length>=9&&x.length<=16))]}catch(error){console.warn('주문별 송장 바코드 판독 실패',error);return[]}}
+function directParse(text){const carrier=directCarriers.find(x=>x[1].test(text))?.[0]||'',phones=new Set((text.match(/(?:01[016789]|0\d{1,2})[\s.-]?\d{3,4}[\s.-]?\d{4}/g)||[]).map(x=>x.replace(/\D/g,''))),tracks=[...new Set([...(text.match(/\b\d{3,5}[\s-]\d{3,5}[\s-]\d{3,5}\b/g)||[]),...(text.match(/\b\d{9,14}\b/g)||[])].map(x=>x.replace(/\D/g,'')).filter(x=>x.length>=9&&x.length<=14&&!phones.has(x)&&!/^20\d{6}$/.test(x)))];return{carrier,tracks}}
+async function analyzeDirectShipment(file){const status=$('directShipmentStatus');status.classList.remove('error');status.textContent='바코드와 송장 글자를 자동분석 중…';try{const barcodes=await directBarcodes(file);let text='';if(await ensureDirectOcr()){const bitmap=await createImageBitmap(file),scale=Math.min(2,2400/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.45)';ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();const result=await Tesseract.recognize(canvas,'kor+eng',{logger:m=>{if(m.status==='recognizing text')status.textContent=`송장 자동분석 ${Math.round((m.progress||0)*100)}%`}});text=result.data.text||''}directShipmentOcrText=text;const parsed=directParse(text),tracks=[...new Set([...barcodes,...parsed.tracks])];if(parsed.carrier)$('directShipmentCarrier').value=parsed.carrier;if(tracks[0])$('directShipmentTracking').value=tracks[0];status.textContent=(parsed.carrier||tracks.length)?`자동분석 완료${tracks.length>1?` · 운송장번호 ${tracks.length}개 중 첫 번호 표시`:''} · 사진과 비교 후 저장하세요.`:'자동판독 결과가 없습니다. 택배사·번호를 직접 입력하거나 빈칸으로 저장할 수 있습니다.'}catch(error){console.warn(error);status.textContent='자동분석 실패 · 택배사·번호를 직접 입력하거나 빈칸으로 저장할 수 있습니다.'}}
+function previewDirectShipment(file){if(!file?.type?.startsWith('image/'))return alert('송장 이미지 파일을 선택해주세요.');directShipmentFile=file;directShipmentOcrText='';const editor=$('directShipmentEditor'),preview=$('directShipmentPreview');preview.src=URL.createObjectURL(file);editor.hidden=false;analyzeDirectShipment(file)}
 async function saveDirectShipment(button){
  if(!activeTask||!directShipmentFile)return alert('먼저 송장사진 한 장을 선택해주세요.');
  const status=$('directShipmentStatus'),orderNumber=activeTask.orderNumber,carrier=$('directShipmentCarrier').value.trim(),tracking=$('directShipmentTracking').value.trim(),normalized=tracking.replace(/\D/g,'');button.disabled=true;status.textContent='중복 확인 및 저장 중…';
@@ -86,7 +100,7 @@ async function saveDirectShipment(button){
   if(duplicate.error)throw duplicate.error;if(duplicate.data)throw new Error(`이미 등록된 송장사진입니다 (${duplicate.data.original_name||'기존 사진'}). 송장관리에서 기존 연결을 확인해주세요.`);
   const user=(await supabaseClient.auth.getUser()).data.user,path=`${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}-${directShipmentFile.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
   const upload=await supabaseClient.storage.from('shipping-labels').upload(path,directShipmentFile,{contentType:directShipmentFile.type,upsert:false});if(upload.error)throw upload.error;
-  const documentResult=await supabaseClient.from('shipment_documents').insert({storage_path:path,original_name:directShipmentFile.name,mime_type:directShipmentFile.type,file_size:directShipmentFile.size,image_sha256:hash,ocr_text:null,ocr_engine:'manual-order-direct',uploaded_by:user?.id,delete_after:new Date(Date.now()+31*86400000).toISOString()}).select().single();if(documentResult.error)throw documentResult.error;
+  const documentResult=await supabaseClient.from('shipment_documents').insert({storage_path:path,original_name:directShipmentFile.name,mime_type:directShipmentFile.type,file_size:directShipmentFile.size,image_sha256:hash,ocr_text:directShipmentOcrText||null,ocr_engine:directShipmentOcrText?'tesseract-local-direct':'manual-order-direct',uploaded_by:user?.id,delete_after:new Date(Date.now()+31*86400000).toISOString()}).select().single();if(documentResult.error)throw documentResult.error;
   const labelResult=await supabaseClient.from('shipment_labels').insert({document_id:documentResult.data.id,warehouse_code:$('directShipmentWarehouse').value||null,carrier_name:carrier||null,tracking_number:tracking||null,tracking_normalized:normalized||null,match_status:'matched',match_score:100,match_reasons:['출고전달 주문 직접등록']}).select().single();if(labelResult.error)throw labelResult.error;
   const linkResult=await supabaseClient.from('shipment_order_links').insert({label_id:labelResult.data.id,order_number:orderNumber,link_type:'manual',confidence:100,linked_by:user?.id});if(linkResult.error)throw linkResult.error;
   status.textContent='저장 및 주문연결 완료';await load();await openWorkbench(orderNumber);
@@ -106,5 +120,7 @@ async function setOrderComplete(orderNumber,completed,{advance=false}={}){
 $('handoffList').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;if(button.dataset.act==='work')openWorkbench(button.dataset.order);if(button.dataset.act==='undo')setOrderComplete(button.dataset.order,false)};
 $('handoffWorkbenchBody').onclick=e=>{const button=e.target.closest('[data-act]');if(!button)return;if(button.dataset.act==='copy-statement')copyStatement(button);if(button.dataset.act==='copy-photo')copyPhoto(button,Number(button.dataset.photoIndex));if(button.dataset.act==='pick-direct-shipment')chooseDirectShipment();if(button.dataset.act==='save-direct-shipment')saveDirectShipment(button);if(button.dataset.act==='complete-order'&&activeTask){const found=findOrder(activeTask.orderNumber);setOrderComplete(activeTask.orderNumber,!found?.order.handoff?.completed_at,{advance:!found?.order.handoff?.completed_at})}};
 $('handoffWorkbenchBody').onchange=e=>{if(e.target.id==='directShipmentFile')previewDirectShipment(e.target.files?.[0])};
-$('refreshHandoffs').onclick=load;$('handoffState').onchange=render;document.addEventListener('DOMContentLoaded',load);
+$('refreshHandoffs').onclick=load;$('handoffState').onchange=render;
+async function init(){try{if(!await guard())return;await load()}catch(error){console.error(error);document.body.classList.add('auth-ready');document.body.classList.remove('auth-pending');$('handoffList').innerHTML=`<p class="empty">출고전달 화면을 불러오지 못했습니다: ${esc(error?.message||error)}</p>`}}
+document.addEventListener('DOMContentLoaded',init);
 })();
