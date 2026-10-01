@@ -1,6 +1,8 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let queue=[],orders=[];
 const carriers=[['CJ대한통운',/(CJ\s*대한통운|대한통운|CJ\s*LOGISTICS)/i],['한진택배',/(한진택배|한진|HANJIN)/i],['롯데택배',/(롯데택배|롯데글로벌로지스|LOTTE|현대택배)/i],['로젠택배',/(로젠택배|로젠|LOGEN)/i],['경동택배',/(경동택배|경동정기화물|경동화물|KYUNGDONG)/i],['우리택배',/(우리택배|우리로지스|우리택배주식회사|WOORI)/i]];
 const normPhone=s=>String(s||'').replace(/\D/g,'').replace(/^82/,'0'),normAddr=s=>String(s||'').replace(/[\s,().-]/g,'').replace(/(특별시|광역시|특별자치도|특별자치시)/g,'').replace(/대한민국/g,''),normName=s=>String(s||'').replace(/[^0-9a-zA-Z가-힣]/g,'').toLowerCase(),normTrack=s=>String(s||'').replace(/\D/g,'');
+const carrierTrackLengths={'CJ대한통운':[10,12],'한진택배':[10,12],'롯데택배':[12],'로젠택배':[11],'경동택배':[9,10,11,12,13],'우리택배':[12]};
+function plausibleTrack(value,carrier,strong=false){const track=normTrack(value);if(track.length<9||track.length>14||/^20\d{6}$/.test(track)||/^0?10\d{7,8}$/.test(track))return false;const lengths=carrierTrackLengths[carrier];return lengths?lengths.includes(track.length):strong}
 const parseOrderSelection=value=>String(value||'').split('|')[0].trim();
 const statusLabel=value=>({review:'확인필요',matched:'연결완료',duplicate:'중복',ignored:'사용안함'}[value]||value||'확인필요');
 async function guard(){
@@ -15,8 +17,8 @@ function parseText(text=''){
  const lines=text.split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean),carrier=carriers.find(x=>x[1].test(text))?.[0]||'';
  const phoneMatches=text.match(/(?:01[016789]|0\d{1,2})[\s.-]?\d{3,4}[\s.-]?\d{4}/g)||[],phone=phoneMatches.find(x=>/^01/.test(normPhone(x)))||'',phones=new Set(phoneMatches.map(normPhone));
  const explicit=[];lines.forEach((line,index)=>{if(/운송장번호|송장번호|등기번호|배송번호/.test(line)){[line,...lines.slice(index+1,index+5)].forEach(value=>(value.match(/\d[\d\s-]{8,18}\d/g)||[]).forEach(x=>explicit.push(normTrack(x))))}});
- const bracketed=(text.match(/[[(]\s*\d{9,14}\s*[\])]/g)||[]).map(normTrack),topStyle=(text.match(/\b\d{3,5}[\s-]\d{3,5}[\s-]\d{3,5}\b/g)||[]).map(normTrack);
- let tracks=[...new Set([...explicit,...bracketed,...topStyle,...(text.match(/\b\d{9,14}\b/g)||[]).map(normTrack)].filter(x=>x.length>=9&&x.length<=14&&!phones.has(x)&&!/^20\d{6}$/.test(x)&&!/^0?10\d{7,8}$/.test(x)))];
+ const bracketed=(text.match(/[[(]\s*\d{9,14}\s*[\])]/g)||[]).map(normTrack),topStyle=(text.match(/\b\d{3,5}[\s-]\d{3,5}[\s-]\d{3,5}\b/g)||[]).map(normTrack),raw=(text.match(/\b\d{9,14}\b/g)||[]).map(normTrack);
+ let tracks=[...new Set([...explicit.filter(x=>plausibleTrack(x,carrier,true)),...bracketed.filter(x=>plausibleTrack(x,carrier,true)),...topStyle.filter(x=>plausibleTrack(x,carrier,true)),...raw.filter(x=>plausibleTrack(x,carrier,false))].filter(x=>!phones.has(x)))];
  let recipient=lines.find(x=>/수하인|받는분|수취인/.test(x))?.replace(/^.*?(수하인|받는분|수취인)\s*[:：]?/,'').trim()||'';
  if(!recipient){const masked=lines.find(x=>/[가-힣]{2,}[＊*]?\s*(?:\/|,)?\s*01[016789][-\s]?\d{2,4}[-\s]?[＊*xX]{2,}/);if(masked)recipient=masked.split(/\/|,|01[016789]/)[0].replace(/^(수하인|받는분|수취인)\s*[:：]?/,'').trim()}
  let address='',addressIndex=lines.findIndex(x=>/(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주).*(시|구|군|읍|면|동|로|길)/.test(x));
@@ -24,12 +26,12 @@ function parseText(text=''){
  return{carrier,phone,tracks:tracks.length?tracks:[''],recipient,address,raw:text}
 }
 async function trackingBarcodes(file){
- if(typeof BarcodeDetector==='undefined')return[];
+ const results=[];
  try{
-  const supported=await BarcodeDetector.getSupportedFormats(),wanted=['code_128','code_39','codabar','itf','ean_13'].filter(x=>supported.includes(x));if(!wanted.length)return[];
-  const detector=new BarcodeDetector({formats:wanted}),bitmap=await createImageBitmap(file),found=await detector.detect(bitmap);bitmap.close?.();
-  return[...new Set(found.map(x=>normTrack(x.rawValue)).filter(x=>x.length>=9&&x.length<=16))];
- }catch(error){console.warn('바코드 인식 실패',error);return[]}
+  if(typeof BarcodeDetector!=='undefined'){const supported=await BarcodeDetector.getSupportedFormats(),wanted=['code_128','code_39','codabar','itf','ean_13'].filter(x=>supported.includes(x));if(wanted.length){const detector=new BarcodeDetector({formats:wanted}),bitmap=await createImageBitmap(file),found=await detector.detect(bitmap);bitmap.close?.();results.push(...found.map(x=>normTrack(x.rawValue)))}}
+ }catch(error){console.warn('기본 바코드 인식 실패',error)}
+ if(!results.length){try{if(!window.ZXing)await new Promise((resolve,reject)=>{const old=document.querySelector('script[data-zxing]');if(old){old.addEventListener('load',resolve,{once:true});old.addEventListener('error',reject,{once:true});return}const script=document.createElement('script');script.dataset.zxing='1';script.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script)});const url=URL.createObjectURL(file),img=new Image;await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url});const reader=new ZXing.BrowserMultiFormatReader(),found=await reader.decodeFromImageElement(img);results.push(normTrack(found?.getText?.()||found?.text||''));reader.reset?.();URL.revokeObjectURL(url)}catch(error){console.warn('ZXing 보조 바코드 인식 실패',error)}}
+ return[...new Set(results.filter(x=>x.length>=9&&x.length<=16))]
 }
 async function enhancedOcrImage(file){
  const bitmap=await createImageBitmap(file),max=2400,scale=Math.min(2,max/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.45)';ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();return canvas;
@@ -58,7 +60,7 @@ async function saveManualReview(row){
  if(!order){status.textContent='주문 검색목록에서 연결할 주문을 선택해주세요.';status.classList.add('error');return}
  const carrier=get('carrier'),tracking=get('tracking'),normalized=normTrack(tracking);status.textContent='저장 중…';status.classList.remove('error');
  const update=await supabaseClient.from('shipment_labels').update({warehouse_code:get('warehouse')||null,carrier_name:carrier||null,tracking_number:tracking||null,tracking_normalized:normalized||null,match_status:'matched',match_score:100,match_reasons:['수동확인'],updated_at:new Date().toISOString()}).eq('id',labelId);
- if(update.error){status.textContent='정보 저장 실패: '+update.error.message;status.classList.add('error');return}
+ if(update.error){status.textContent=/duplicate|unique/i.test(update.error.message)?'이미 등록된 송장번호입니다. 기존 송장 연결을 확인해주세요.':'정보 저장 실패: '+update.error.message;status.classList.add('error');return}
  const remove=await supabaseClient.from('shipment_order_links').delete().eq('label_id',labelId);if(remove.error){status.textContent='기존 연결 정리 실패: '+remove.error.message;status.classList.add('error');return}
  const uid=(await supabaseClient.auth.getUser()).data.user?.id,link=await supabaseClient.from('shipment_order_links').insert({label_id:labelId,order_number:orderNumber,link_type:'manual',confidence:100,linked_by:uid});
  if(link.error){status.textContent='주문 연결 실패: '+link.error.message;status.classList.add('error');return}
@@ -71,7 +73,8 @@ async function reanalyzeSavedLabel(row,button){
   const response=await fetch(url);if(!response.ok)throw new Error('원본사진을 불러오지 못했습니다.');const blob=await response.blob(),file=new File([blob],'saved-shipment.'+(blob.type.split('/')[1]||'jpg'),{type:blob.type});
   status.textContent='바코드 확인 중…';const barcodeTracks=await trackingBarcodes(file);let text='';
   if(window.Tesseract){const source=await enhancedOcrImage(file),out=await Tesseract.recognize(source,'kor+eng',{logger:m=>{if(m.status==='recognizing text')status.textContent=`OCR 다시 분석 ${Math.round((m.progress||0)*100)}%`}});text=out.data.text||''}
-  const parsed=parseText(text);parsed.tracks=[...new Set([...barcodeTracks,...parsed.tracks.filter(Boolean)])];const warehouse=row.querySelector('[data-review="warehouse"]')?.value||'',q={parsed,warehouse},matched=candidate(q),tracking=parsed.tracks[0]||'';
+  const parsed=parseText(text);parsed.tracks=[...new Set([...barcodeTracks,...parsed.tracks.filter(Boolean)])];const warehouse=row.querySelector('[data-review="warehouse"]')?.value||'',q={parsed,warehouse},matched=candidate(q),tracking=parsed.tracks[0]||'',normalized=normTrack(tracking);
+  if(normalized){const duplicate=await supabaseClient.from('shipment_labels').select('id,carrier_name,tracking_number').eq('tracking_normalized',normalized).neq('id',labelId).limit(1).maybeSingle();if(duplicate.data){status.textContent=`이미 등록된 송장입니다: ${duplicate.data.carrier_name||'택배사 미확인'} ${duplicate.data.tracking_number||normalized}`;status.classList.add('error');return}}
   const update=await supabaseClient.from('shipment_labels').update({carrier_name:parsed.carrier||null,tracking_number:tracking||null,tracking_normalized:normTrack(tracking)||null,recipient_name:parsed.recipient||null,recipient_phone:parsed.phone||null,recipient_address:parsed.address||null,match_status:matched?'matched':'review',match_score:matched?.score||0,match_reasons:matched?.reasons||[],updated_at:new Date().toISOString()}).eq('id',labelId);if(update.error)throw update.error;
   const clear=await supabaseClient.from('shipment_order_links').delete().eq('label_id',labelId);if(clear.error)throw clear.error;
   if(matched){const uid=(await supabaseClient.auth.getUser()).data.user?.id,link=await supabaseClient.from('shipment_order_links').insert({label_id:labelId,order_number:matched.order_number,link_type:'auto',confidence:matched.score,linked_by:uid});if(link.error)throw link.error}
