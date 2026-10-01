@@ -420,8 +420,7 @@ function printStatement() {
 async function createStatementImageBlob(onProgress=()=>{}) {
   if (!window.html2canvas) throw new Error("이미지 변환 기능을 불러오지 못했습니다.");
   const clone=statementArea.cloneNode(true);
-  // 카카오톡 전달용 이미지에는 관리자 입력도구와 송장 원본사진을 넣지 않는다.
-  // 운송장번호 목록은 거래명세서에 그대로 남고 원본사진은 출고전달 화면에서 별도로 복사한다.
+  // 카카오톡 전달용 이미지에는 관리자 입력도구를 넣지 않는다.
   clone.querySelectorAll('[data-statement-shipment-manager],.statement-shipment-photos').forEach(node=>node.remove());
   clone.querySelectorAll('[contenteditable]').forEach(node=>node.removeAttribute('contenteditable'));
   clone.classList.add('statement-image-export');
