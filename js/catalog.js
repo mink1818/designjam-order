@@ -63,7 +63,12 @@ async function fetchMyCustomerPricesPaged(userId) {
   rows.length=0;
   for(let from=0;;from+=1000){const result=await supabaseClient.from("customer_item_prices").select("item_number,price").eq("customer_id",userId).order("item_number",{ascending:true}).range(from,from+999);if(result.error)throw new Error(result.error.message||rpcError?.message||"거래처별 전용단가 조회 실패");rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)return rows;}
 }
-function effectiveItemPrice(group, itemNumber) { return Number(customerItemPriceMap.get(customerPriceKey(itemNumber)) ?? group?.price ?? 0); }
+function effectiveItemPrice(group, itemNumber) {
+  // 8881·8882는 화면 입력 1이 실제 10개인 고정 묶음상품이다.
+  // 엑셀/기존 상품행에 예전 1,000원이 남아 있어도 고객 화면에는 확정 묶음가격을 사용한다.
+  if (window.DesignSocksSalesUnit?.isPackItem(itemNumber)) return 10000;
+  return Number(customerItemPriceMap.get(customerPriceKey(itemNumber)) ?? group?.price ?? 0);
+}
 function refreshSavedCartPrices() {
   let changed = false;
   cart.forEach(item => {
@@ -80,6 +85,10 @@ function validateCartWarehouseCodes(){const missing=[];cart.forEach(item=>{const
 function customerDisplayItemNumber(value){return String(value??'').trim().replace(/^[SBI](?:[-_\s]+|(?=\d))/i,'');}
 function displayWarehouseItem(group, itemNumber) { return customerDisplayItemNumber(itemNumber); }
 function formatGroupUnitPrice(group) {
+  const itemNumbers = Array.isArray(group?.item_numbers) ? group.item_numbers : [];
+  if (itemNumbers.length && itemNumbers.every(number => window.DesignSocksSalesUnit?.isPackItem(number))) {
+    return `${formatWon(10000)} / 10개 묶음`;
+  }
   const prices = [...new Set((group?.item_numbers || []).map(number => effectiveItemPrice(group, number)).filter(Number.isFinite))].sort((a,b)=>a-b);
   if (!prices.length) return `${formatWon(group?.price || 0)} / 1죽`;
   if (prices.length === 1) return `${formatWon(prices[0])} / 1죽`;

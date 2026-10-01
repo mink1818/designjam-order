@@ -212,6 +212,12 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
     const soldoutQty = Math.min(orderedQty, Math.max(0, Number(item.soldout_qty || (item.is_soldout ? orderedQty : 0))));
     return sum + Math.max(0, orderedQty - soldoutQty);
   }, 0);
+  const packedActualQty = items.filter(item=>DesignSocksSalesUnit.isPackedOrder(item)).reduce((sum,item)=>{
+    const orderedQty=Number(item.qty||0),soldoutQty=Math.min(orderedQty,Math.max(0,Number(item.soldout_qty||(item.is_soldout?orderedQty:0))));
+    return sum+Math.max(0,orderedQty-soldoutQty);
+  },0);
+  const normalQty = Math.max(0,totalQty-packedActualQty);
+  const totalQtyLabel = [normalQty?`${normalQty.toLocaleString()}죽`:'',packedActualQty?`${packedActualQty.toLocaleString()}개 (10개 묶음 ${(packedActualQty/10).toLocaleString()}개)`:'' ].filter(Boolean).join(' · ')||'0죽';
 
   const groupByItem = new Map();
   productGroups.forEach(group => (group.item_numbers || []).forEach(number => groupByItem.set(String(number).trim(), resolveStatementCategoryLine(group.title || "개별품번", number))));
@@ -298,14 +304,14 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
     </section>
 
     <table class="statement-table">
-      <caption>모든 단가와 금액은 1죽 단가를 기준으로 계산됩니다.</caption>
+      <caption>일반 품번은 죽 단위, 8881·8882는 10개 묶음 단위로 계산됩니다.</caption>
       <thead>
         <tr>
           <th>번호</th>
           <th>카테고리</th>
           <th>해당 품번</th>
-          <th>수량(죽)</th>
-          <th>단가/죽</th>
+          <th>수량</th>
+          <th>단가</th>
           <th>금액</th>
         </tr>
       </thead>
@@ -323,7 +329,7 @@ function renderStatement(items, productGroups = [], customerOwnerName = "") {
       <section class="statement-summary">
         <div>
           <span>출고수량</span>
-          <strong>${totalQty.toLocaleString()}죽</strong>
+          <strong>${totalQtyLabel}</strong>
         </div>
 
         <div>
