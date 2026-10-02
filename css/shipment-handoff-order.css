@@ -4,6 +4,9 @@
 .handoff-delivery{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .handoff-delivery strong{padding:6px 10px;border-radius:8px;background:#ffdce9;color:#7d2548;font-size:18px}
 .handoff-delivery small{color:#65758b;overflow-wrap:anywhere}
+.order-progress-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:#fff0b8;color:#765300;font-size:12px;font-weight:900;white-space:nowrap}
+.order-progress-badge.is-shipped{background:#d8f3e3;color:#12663b}
+.workbench-badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .handoff-tracking{margin:9px 0;color:#3b4d63}
 .handoff-order-actions{display:flex;gap:8px;flex-wrap:wrap}
 .handoff-order-actions button,.handoff-start{border:0;border-radius:8px;padding:9px 12px;background:#164a86;color:#fff;text-decoration:none;font-weight:800}
@@ -16,6 +19,7 @@
 .row-photo-actions .photo-delete{background:#c43737}
 .handoff-order-actions .paste-photo{background:#b36b16}
 .handoff-order-actions .done{background:#16834c}
+.handoff-order-actions .done:disabled,.workbench-finish .done:disabled{background:#9aa8b5;color:#eef2f5;cursor:not-allowed;opacity:.78}
 .handoff-order-actions .detail{background:#66788d}
 .row-file-button{display:inline-flex;align-items:center;border-radius:8px;padding:9px 12px;background:#b36b16;color:#fff;font-weight:800;cursor:pointer}
 .row-file-button input{display:none}
