@@ -164,7 +164,7 @@ async function fetchAdminProductCatalog(){const rows=[];for(let from=0;;from+=10
 function catalogNumbers(value){if(Array.isArray(value))return value.map(String);if(typeof value==='string'){try{const p=JSON.parse(value);if(Array.isArray(p))return p.map(String)}catch{}return value.split(/[\s,\/]+/).filter(Boolean)}return[]}
 function setAdminProductCatalog(rows){adminProductCatalogMap=new Map();adminProductCatalogRows=[];(rows||[]).forEach(g=>catalogNumbers(g.item_numbers).forEach(n=>{const item={item_number:String(n),price:Number(g.price||0),warehouse_code:String(g.warehouse_code||'').toUpperCase()},key=inventoryKey(n);adminProductCatalogRows.push(item);adminProductCatalogMap.set(`${item.warehouse_code}:${key}`,item);if(!adminProductCatalogMap.has(key))adminProductCatalogMap.set(key,item);else if(adminProductCatalogMap.get(key)?.warehouse_code!==item.warehouse_code)adminProductCatalogMap.set(key,null)}));adminProductCatalogLoadedAt=Date.now()}
 function inventoryKey(value) {
-  return String(value ?? "").trim().toUpperCase();
+  return String(value ?? "").normalize("NFKC").trim().toUpperCase().replace(/^[SBI][-_\s]+/, "").replace(/\s+/g, "");
 }
 const ADMIN_KOREAN_INITIALS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
 function adminInitialText(value){return[...String(value||'').normalize('NFKC')].map(char=>{const code=char.charCodeAt(0)-0xAC00;return code>=0&&code<=11171?ADMIN_KOREAN_INITIALS[Math.floor(code/588)]:char}).join('')}
@@ -178,16 +178,21 @@ function setAdminInventorySnapshot(rows) {
     const stock = Number(row.quantity || 0);
     const itemKey = inventoryKey(row.item_number);
     const barcodeKey = inventoryKey(row.barcode);
+    const warehouse = String(row.warehouse_code || "").trim().toUpperCase();
     if (itemKey) adminInventoryMap.set(itemKey, stock);
     if (barcodeKey) adminInventoryMap.set(barcodeKey, stock);
+    if (warehouse && itemKey) adminInventoryMap.set(`${warehouse}:${itemKey}`, stock);
+    if (warehouse && barcodeKey) adminInventoryMap.set(`${warehouse}:${barcodeKey}`, stock);
   });
 }
 
 function getAdminStockStatus(item) {
   if (!adminInventoryAvailable) return { warning: false, kind: "unknown", stock: null, text: "재고조회 불가" };
   const key = inventoryKey(item?.item_number);
-  const registered = adminInventoryMap.has(key);
-  const stock = registered ? Number(adminInventoryMap.get(key) || 0) : null;
+  const warehouse = String(item?.warehouse_code || "").trim().toUpperCase();
+  const warehouseKey = warehouse ? `${warehouse}:${key}` : "";
+  const registered = Boolean(warehouseKey && adminInventoryMap.has(warehouseKey)) || adminInventoryMap.has(key);
+  const stock = registered ? Number((warehouseKey && adminInventoryMap.has(warehouseKey) ? adminInventoryMap.get(warehouseKey) : adminInventoryMap.get(key)) || 0) : null;
   const ordered = Number(item?.qty || 0);
   if (!registered) return { warning: true, kind: "unregistered", stock: null, text: "ERP 재고 미등록" };
   if (stock <= 0) return { warning: true, kind: "empty", stock, text: "재고 없음" };
@@ -1543,12 +1548,21 @@ async function saveOrderItems(orderNumber, index) {
   if(items.some(item=>!['S','B','I'].includes(String(item.warehouse_code||'').toUpperCase())))return fail('출고지가 확인되지 않은 품번이 있습니다. 각 품번 앞에 S-, B-, I- 출고지를 입력하거나 등록 품번을 선택해주세요.');
   if (items.some(item => !Number.isFinite(item.price) || item.price < 0)) return fail('단가를 확인해주세요.');
   const seen=new Set();for(const item of items){const key=`${item.warehouse_code}:${inventoryKey(item.item_number)}`;if(seen.has(key))return fail(`중복 품번 ${item.warehouse_code}-${item.item_number}이 있습니다. 한 행으로 수량을 합쳐주세요.`);seen.add(key)}
+  const inventoryRows=await fetchInventorySnapshot();
+  if(!inventoryRows)return fail('ERP 재고목록을 확인하지 못했습니다. 잠시 후 다시 저장해주세요.');
+  const missingInventory=items.filter(item=>!inventoryRows.some(row=>{
+    const same=inventoryKey(row.item_number)===inventoryKey(item.item_number)||inventoryKey(row.barcode)===inventoryKey(item.item_number);
+    const rowWarehouse=String(row.warehouse_code||'').trim().toUpperCase();
+    return same&&(!rowWarehouse||rowWarehouse===String(item.warehouse_code||'').toUpperCase());
+  }));
+  if(missingInventory.length)return fail(`ERP 재고에 등록되지 않은 품번은 저장할 수 없습니다: ${missingInventory.map(item=>`${item.warehouse_code}-${item.item_number}`).join(', ')}\n\nERP 재고센터에서 “상품 품번 동기화”를 먼저 실행하거나 품번을 다시 선택해주세요. 기존 주문은 변경되지 않았습니다.`);
   if (!confirm("주문 품목을 저장하면 작업지시서·피킹검증·거래명세서에 반영됩니다.\n계속할까요?")){if(button){button.disabled=false;button.textContent='주문 품목 저장'}return}
   if (button) button.textContent = "저장 중...";
   try {
     const { data, error } = await supabaseClient.rpc("admin_save_order_items", { p_order_number: orderNumber, p_items: items });
     if (error) throw error;
     if (data?.ok === false) throw new Error(data.error || "주문 품목을 저장하지 못했습니다.");
+    adminAuxCache.at=0;adminAuxCache.inventory=null;
     alert("주문 품목을 저장했습니다.");
     await loadOrders();
   } catch (error) {

@@ -242,7 +242,7 @@
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabaseClient
         .from("inventory_items")
-        .select("item_number,barcode,quantity")
+        .select("item_number,barcode,quantity,warehouse_code")
         .range(from, from + 999);
       if (error) {
         console.warn("ERP 재고 조회 실패:", error.message);
@@ -255,8 +255,11 @@
   }
   function stockKey(v) {
     return String(v ?? "")
+      .normalize("NFKC")
       .trim()
-      .toUpperCase();
+      .toUpperCase()
+      .replace(/^[SBI][-_\s]+/, "")
+      .replace(/\s+/g, "");
   }
   function setInventory(rows) {
     inventoryMap = new Map();
@@ -265,9 +268,12 @@
     (rows || []).forEach((r) => {
       const qty = Number(r.quantity || 0),
         item = stockKey(r.item_number),
-        barcode = stockKey(r.barcode);
+        barcode = stockKey(r.barcode),
+        warehouse = String(r.warehouse_code || "").trim().toUpperCase();
       if (item) inventoryMap.set(item, qty);
       if (barcode) inventoryMap.set(barcode, qty);
+      if (warehouse && item) inventoryMap.set(`${warehouse}:${item}`, qty);
+      if (warehouse && barcode) inventoryMap.set(`${warehouse}:${barcode}`, qty);
     });
   }
   function stockStatus(item) {
@@ -279,8 +285,10 @@
         text: "재고조회 불가",
       };
     const key = stockKey(item?.item_number),
-      registered = inventoryMap.has(key),
-      stock = registered ? Number(inventoryMap.get(key) || 0) : null,
+      warehouse = String(item?.warehouse_code || "").trim().toUpperCase(),
+      warehouseKey = warehouse ? `${warehouse}:${key}` : "",
+      registered = Boolean(warehouseKey && inventoryMap.has(warehouseKey)) || inventoryMap.has(key),
+      stock = registered ? Number((warehouseKey && inventoryMap.has(warehouseKey) ? inventoryMap.get(warehouseKey) : inventoryMap.get(key)) || 0) : null,
       ordered = Number(item?.qty || 0);
     if (!registered)
       return {
@@ -303,8 +311,11 @@
   function availableStock(item) {
     if (!inventoryAvailable) return null;
     const key = stockKey(item?.item_number);
-    return inventoryMap.has(key)
-      ? Math.max(0, Number(inventoryMap.get(key) || 0))
+    const warehouse = String(item?.warehouse_code || "").trim().toUpperCase();
+    const warehouseKey = warehouse ? `${warehouse}:${key}` : "";
+    const lookupKey = warehouseKey && inventoryMap.has(warehouseKey) ? warehouseKey : key;
+    return inventoryMap.has(lookupKey)
+      ? Math.max(0, Number(inventoryMap.get(lookupKey) || 0))
       : 0;
   }
   function buildGroups() {

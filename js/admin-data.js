@@ -102,7 +102,7 @@ async function fetchInventorySnapshot() {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabaseClient
       .from("inventory_items")
-      .select("item_number,barcode,quantity")
+      .select("item_number,barcode,quantity,warehouse_code")
       .range(from, from + 999);
     if (error) {
       console.warn("ERP 재고 조회 실패:", error.message);
