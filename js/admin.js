@@ -1379,7 +1379,19 @@ function mergeOrderEditPriceRows(target,rows,{overwrite=false}={}){
 }
 async function fetchOrderEditCustomerPrices(editor){
   const id=editor?.dataset.customerId||'',name=editor?.dataset.customerName||'',prices=new Map();
-  if(id){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:id});if(error)console.warn('주문수정 ID 전용단가 조회:',error.message);else mergeOrderEditPriceRows(prices,data)}
+  let identityMatches=true;
+  if(id&&name){
+    const {data:linked,error:identityError}=await supabaseClient.from('customers').select('business_name').eq('id',id).maybeSingle();
+    if(identityError)console.warn('주문수정 거래처 연결 확인:',identityError.message);
+    else if(linked?.business_name&&normalizeAdminCustomerName(linked.business_name)!==normalizeAdminCustomerName(name)){
+      identityMatches=false;
+      console.error(`주문 거래처 연결 불일치: 화면=${name}, 고객ID=${linked.business_name}`);
+      const warning=editor.querySelector('.order-edit-price-warning')||document.createElement('div');
+      warning.className='order-edit-price-warning';warning.textContent=`⚠ 거래처 연결 불일치: 주문은 “${name}”, 고객 ID는 “${linked.business_name}”입니다. 다른 거래처의 전용단가는 적용하지 않습니다. 추가 품번 단가를 직접 확인해주세요.`;
+      if(!warning.parentNode)editor.prepend(warning);
+    }
+  }
+  if(id&&identityMatches){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:id});if(error)console.warn('주문수정 ID 전용단가 조회:',error.message);else mergeOrderEditPriceRows(prices,data)}
   // 관리자 대신주문과 동일하게 거래처명 전용단가가 ID 단가보다 우선합니다.
   if(name){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:name});if(error)console.warn('주문수정 거래처명 전용단가 조회:',error.message);else mergeOrderEditPriceRows(prices,data,{overwrite:true})}
   return prices;

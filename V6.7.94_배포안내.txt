@@ -1,0 +1,18 @@
+DESIGN SOCKS V6.7.94 배포 안내
+
+[수정 내용]
+- 관리자 주문수정에서 주문 거래처명과 customer_id의 실제 거래처가 다르면 ID 전용단가를 사용하지 않습니다.
+- 불일치 주문에는 빨간 경고를 표시하고 추가 품번 단가를 직접 확인하도록 안내합니다.
+- 서버 단가 확정 함수도 거래처명이 일치할 때만 customer_id 전용단가를 사용합니다.
+- 기존 주문, 기존 주문금액, 기존 거래처 단가표는 변경하지 않습니다.
+
+[Supabase SQL Editor에서 먼저 실행]
+SQL/V6.7.94-CUSTOMER-IDENTITY-PRICE-GUARD.sql
+
+[배포 명령]
+git add .
+git commit -m "release v6.7.94 guard mismatched customer price identity"
+git push origin main
+
+[확인]
+배포 후 좌측 아래 버전이 V6.7.94인지 확인하고 Ctrl+F5로 새로고침하세요.
