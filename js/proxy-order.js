@@ -164,6 +164,11 @@ function renderSelectedProxyPhotos(){const list=$('proxySelectedPhotoList'),clea
 function resetProxyPasteWorkspace(){pendingProxyPasteAnalysis=null;if($('proxyPasteInput'))$('proxyPasteInput').value='';if($('proxyPasteAnalysis')){$('proxyPasteAnalysis').hidden=true;$('proxyPasteAnalysis').innerHTML=''}if($('confirmProxyPaste'))$('confirmProxyPaste').hidden=true;if($('proxyPasteResult'))$('proxyPasteResult').textContent='';const photo=$('proxyOrderPhoto'),status=$('proxyPhotoStatus');if(photo)photo.value='';selectedProxyPhotoFiles=[];renderSelectedProxyPhotos();if(status)status.classList.remove('error')}
 function restoreProxyDraft(){const key=proxyDraftKey();if(!key)return false;let draft=null;try{draft=JSON.parse(localStorage.getItem(key)||'null')}catch{}if(!draft)return false;resetProxyParties();resetProxyPasteWorkspace();$('proxyMemo').value=draft.memo||'';if($('proxyAdminTag'))$('proxyAdminTag').value=draft.admin_tag||'';$('proxyLines').innerHTML='';(Array.isArray(draft.rows)?draft.rows:[]).forEach(addLine);if(!document.querySelector('.proxy-line'))addLine();updateCustomerMode();calc();return true}
 function effectiveProxyPrice(itemNumber,basePrice=0){return Number(activeCustomerPrices.get(priceKey(itemNumber))??basePrice??0)}
+function mergeProxyPriceRows(target,rows,{overwrite=false}={}){
+ const best=new Map();
+ (rows||[]).forEach(row=>{const key=priceKey(row.item_number);if(!key)return;const raw=normalizeItem(row.item_number).replace(/\s+/g,''),priority=raw===key?0:1,previous=best.get(key);if(!previous||priority<previous.priority)best.set(key,{row,priority})});
+ best.forEach(({row},key)=>{if(overwrite||!target.has(key))target.set(key,row)});
+}
 function updateRegisteredPriceStatus(message='',isError=false){const box=$('proxyRegisteredPriceStatus');if(!box)return;box.hidden=!message;box.textContent=message;box.classList.toggle('auth-error',Boolean(isError));}
 async function reloadSelectedCustomerPrices(){
  const mode=document.querySelector('input[name="proxyCustomerMode"]:checked')?.value||'select',customerId=selectedCustomerId(),customerName=($('proxyDirectName')?.value||'').trim(),token=++selectedPriceLoadToken;
@@ -178,8 +183,8 @@ async function reloadSelectedCustomerPrices(){
   const nameRows=lookupName?await fetchCustomerPricesByName(lookupName).catch(()=>[]):[];
   const mergedRows=new Map();
   // 거래처명 단가가 운영 기준입니다. 중복 가입계정의 오래된 ID 단가가 이를 덮지 않게 순서를 바꾸지 마세요.
-  idRows.forEach(row=>mergedRows.set(priceKey(row.item_number),row));
-  nameRows.forEach(row=>mergedRows.set(priceKey(row.item_number),row));
+  mergeProxyPriceRows(mergedRows,idRows);
+  mergeProxyPriceRows(mergedRows,nameRows,{overwrite:true});
   const rows=[...mergedRows.values()];
   if(token!==selectedPriceLoadToken)return;
   rows.forEach(row=>activeCustomerPrices.set(priceKey(row.item_number),Number(row.price)));

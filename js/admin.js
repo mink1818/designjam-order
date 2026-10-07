@@ -1367,11 +1367,21 @@ function analyzeOrderEditPaste(index){
 }
 function orderEditRowKey(value){const parsed=splitWarehouseItemNumber(value);return`${String(parsed.warehouseCode||'').toUpperCase()}:${inventoryKey(parsed.itemNumber)}`}
 function orderEditPriceKey(value){return inventoryKey(splitWarehouseItemNumber(value).itemNumber)}
+function mergeOrderEditPriceRows(target,rows,{overwrite=false}={}){
+  const best=new Map();
+  (rows||[]).forEach(row=>{
+    const key=orderEditPriceKey(row.item_number);if(!key)return;
+    const raw=String(row.item_number||'').normalize('NFKC').trim().toUpperCase().replace(/\s+/g,'');
+    const priority=raw===key?0:1,previous=best.get(key);
+    if(!previous||priority<previous.priority)best.set(key,{row,priority});
+  });
+  best.forEach(({row},key)=>{if(overwrite||!target.has(key))target.set(key,Number(row.price))});
+}
 async function fetchOrderEditCustomerPrices(editor){
   const id=editor?.dataset.customerId||'',name=editor?.dataset.customerName||'',prices=new Map();
-  if(id){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:id});if(error)console.warn('주문수정 ID 전용단가 조회:',error.message);else(data||[]).forEach(row=>prices.set(orderEditPriceKey(row.item_number),Number(row.price)))}
+  if(id){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_for_admin',{p_customer_id:id});if(error)console.warn('주문수정 ID 전용단가 조회:',error.message);else mergeOrderEditPriceRows(prices,data)}
   // 관리자 대신주문과 동일하게 거래처명 전용단가가 ID 단가보다 우선합니다.
-  if(name){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:name});if(error)console.warn('주문수정 거래처명 전용단가 조회:',error.message);else(data||[]).forEach(row=>prices.set(orderEditPriceKey(row.item_number),Number(row.price)))}
+  if(name){const {data,error}=await supabaseClient.rpc('get_customer_item_prices_by_name_for_admin',{p_customer_name:name});if(error)console.warn('주문수정 거래처명 전용단가 조회:',error.message);else mergeOrderEditPriceRows(prices,data,{overwrite:true})}
   return prices;
 }
 function orderEditItemKind(itemNumber){const key=inventoryKey(itemNumber);if(/A$/.test(key))return'아동양말';if(/M$/.test(key))return'무지양말';return'라코스테양말'}
