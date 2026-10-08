@@ -185,6 +185,55 @@ function getCartStorageKey() {
     : null;
 }
 
+function getBulkApplyHistoryKey() {
+  return currentUser?.id
+    ? `designjam_cart_bulk_apply_history_${currentUser.id}`
+    : null;
+}
+
+function getBulkDuplicateReviewKey() {
+  return currentUser?.id
+    ? `designjam_cart_bulk_duplicate_review_${currentUser.id}`
+    : null;
+}
+
+function loadBulkApplyHistory() {
+  const key = getBulkApplyHistoryKey();
+  if (!key) return [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(saved) ? saved.filter(Boolean).slice(-30) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function rememberBulkApplySignature(signature) {
+  const key = getBulkApplyHistoryKey();
+  if (!key || !signature) return;
+  const history = loadBulkApplyHistory().filter(value => value !== signature);
+  history.push(signature);
+  localStorage.setItem(key, JSON.stringify(history.slice(-30)));
+}
+
+function clearBulkApplyHistory() {
+  const key = getBulkApplyHistoryKey();
+  if (key) localStorage.removeItem(key);
+  const reviewKey = getBulkDuplicateReviewKey();
+  if (reviewKey) localStorage.removeItem(reviewKey);
+  lastCustomerBulkApplySignature = "";
+}
+
+function markBulkDuplicateReplaced() {
+  const key = getBulkDuplicateReviewKey();
+  if (key) localStorage.setItem(key, "1");
+}
+
+function needsBulkDuplicateFinalReview() {
+  const key = getBulkDuplicateReviewKey();
+  return Boolean(key && localStorage.getItem(key) === "1");
+}
+
 function getOrderRevisionStorageKey(){return currentUser?.id?`designjam_order_revision_${currentUser.id}`:null}
 function getOrderRevisionContext(){const key=getOrderRevisionStorageKey();if(!key)return null;try{const value=JSON.parse(localStorage.getItem(key)||'null');return value?.orderNumber?value:null}catch(_){return null}}
 function clearOrderRevisionContext(){const key=getOrderRevisionStorageKey();if(key)localStorage.removeItem(key)}
@@ -214,6 +263,7 @@ function saveCart() {
 function clearSavedCart() {
   const key = getCartStorageKey();
   if (key) localStorage.removeItem(key);
+  clearBulkApplyHistory();
 }
 
 function getCartItemImage(item) {
@@ -2015,13 +2065,26 @@ async function applyCustomerBulkOrder() {
   const input = document.getElementById("customerBulkOrderInput");
   const resultBox = document.getElementById("customerBulkOrderResult");
   const pastedText = input?.value || "";
-  if (!pendingCustomerBulkAnalysis) { renderCustomerBulkAnalysis(); return; }
+  if (!pendingCustomerBulkAnalysis) {
+    renderCustomerBulkAnalysis();
+    customerBulkApplyInProgress = false;
+    if (applyButton) applyButton.disabled = false;
+    return;
+  }
   const checked = key => Boolean(document.querySelector(`[data-customer-smart-field="${key}"]:checked`));
   const rows = checked("items") ? pendingCustomerBulkAnalysis.rows : [];
   const deliveryFields = hasVipPasteAccess()?Object.fromEntries(Object.entries(pendingCustomerBulkAnalysis.delivery).filter(([key, value]) => checked(key) && value)):{};
   if (!rows.length && !Object.keys(deliveryFields).length) { if (resultBox) resultBox.textContent = "적용할 항목을 하나 이상 선택해 주세요."; customerBulkApplyInProgress=false; if(applyButton)applyButton.disabled=false; return; }
-  const signature = JSON.stringify({rows:rows.map(r=>[String(r.number),Number(r.qty)]).sort(),delivery:deliveryFields});
-  if (signature === lastCustomerBulkApplySignature && !confirm("방금 적용한 주문과 동일합니다.\n다시 적용하면 같은 품번의 수량이 추가되어 2배가 될 수 있습니다.\n\n정말 한 번 더 추가할까요?")) { customerBulkApplyInProgress=false; if(applyButton)applyButton.disabled=false; return; }
+  const signatureTotals = new Map();
+  rows.forEach(row => {
+    const key = normalizeBulkItemNumber(row.number);
+    signatureTotals.set(key, (signatureTotals.get(key) || 0) + Number(row.qty || 0));
+  });
+  const signature = JSON.stringify({
+    rows:[...signatureTotals.entries()].sort((a,b)=>a[0].localeCompare(b[0],"ko",{numeric:true})),
+    delivery:Object.fromEntries(Object.entries(deliveryFields).sort(([a],[b])=>a.localeCompare(b)))
+  });
+  const appliedBefore = signature === lastCustomerBulkApplySignature || loadBulkApplyHistory().includes(signature);
 
   const index = getBulkOrderItemIndex();
   const totals = new Map();
@@ -2033,16 +2096,41 @@ async function applyCustomerBulkOrder() {
   const confirmedTraining = [];
   const addedBatchAt = ++cartAddedSequence;
 
+  const resolvedRows = [];
   for (const [requestedNumber, qty] of totals.entries()) {
     const resolution = resolveBulkOrderItem(requestedNumber, index);
     let found = resolution.matched;
     if (!found && resolution.candidates.length > 1) found = await chooseBulkOrderCandidate(requestedNumber, resolution.candidates, resolution.remembered);
     if (!found) { missing.push(requestedNumber); continue; }
     const { group, number } = found;
+    resolvedRows.push({ requestedNumber, qty, group, number });
+  }
+
+  const overlappingRows = resolvedRows.filter(({group,number}) => cart.some(item => Number(item.groupId) === Number(group.id) && item.number === String(number)));
+  const shouldReplace = appliedBefore || overlappingRows.length > 0;
+  if (shouldReplace) {
+    const overlapLabel = overlappingRows.length
+      ? overlappingRows.map(row => customerDisplayItemNumber(row.number)).join(", ")
+      : "같은 붙여넣기 주문";
+    const accepted = confirm(
+      `장바구니에 이미 적용된 품번이 있습니다: ${overlapLabel}\n\n` +
+      `수량을 더하면 2배 주문이 될 수 있어 합산하지 않습니다.\n` +
+      `확인을 누르면 이번 붙여넣기 수량으로 교체하고, 취소를 누르면 장바구니를 변경하지 않습니다.`
+    );
+    if (!accepted) {
+      customerBulkApplyInProgress = false;
+      if (applyButton) applyButton.disabled = false;
+      if (resultBox) resultBox.textContent = "중복 적용을 취소했습니다. 기존 장바구니 수량은 변경되지 않았습니다.";
+      return;
+    }
+    markBulkDuplicateReplaced();
+  }
+
+  for (const { qty, group, number } of resolvedRows) {
     confirmedTraining.push({item_number:String(number),qty:Number(qty)});
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
     const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
-    if (existing) { existing.qty = Number(existing.qty || 0) + qty; existing.addedAt = addedBatchAt; }
+    if (existing) { existing.qty = qty; existing.addedAt = addedBatchAt; }
     else cart.push({
       groupId: group.id,
       categoryId: group.category_id,
@@ -2070,7 +2158,10 @@ async function applyCustomerBulkOrder() {
     resultBox.innerHTML = messages.map((message, index) => `<p class="${index ? "warning" : "success"}">${escapeHtml(message)}</p>`).join("");
   }
   if(customerOrderPhotoFiles.length&&confirmedTraining.length&&window.FreeHandwritingOCR?.saveTrainingData){await window.FreeHandwritingOCR.saveTrainingData(supabaseClient,[...customerOrderPhotoFiles],confirmedTraining,'customer-vip')}
-  if (addedQty) lastCustomerBulkApplySignature = signature;
+  if (addedQty) {
+    lastCustomerBulkApplySignature = signature;
+    rememberBulkApplySignature(signature);
+  }
   pendingCustomerBulkAnalysis = null;
   customerBulkApplyInProgress = false;
   if (applyButton) applyButton.disabled = false;
@@ -2300,6 +2391,7 @@ window.handleCustomerCartNav = function () {
 
 function removeCartItem(index) {
   cart.splice(index, 1);
+  if (!cart.length) clearBulkApplyHistory();
   saveCart();
   renderCart();
 }
@@ -2476,6 +2568,11 @@ async function submitOrder() {
   const deliveryAddress=document.getElementById('deliveryAddress')?.value.trim()||'';
   if(!deliveryName)return alert('납품처명을 입력해주세요.');
   if(!deliveryAddress)return alert('납품처 주소를 입력해주세요.');
+  if(needsBulkDuplicateFinalReview()){
+    const reviewQty=cart.reduce((sum,item)=>sum+Math.max(0,Number(item.qty||0)),0);
+    const reviewAmount=cart.reduce((sum,item)=>sum+Math.max(0,Number(item.qty||0))*Math.max(0,Number(item.price||0)),0);
+    if(!confirm(`중복 적용이 감지되어 합산 대신 교체한 주문입니다.\n\n최종 ${cart.length.toLocaleString()}품번 · ${reviewQty.toLocaleString()}죽 · ${reviewAmount.toLocaleString()}원\n\n수량을 확인했고 이대로 주문하시겠습니까?`))return;
+  }
   if(orderSubmissionInProgress)return alert('주문을 저장하고 있습니다. 잠시만 기다려주세요.');
   orderSubmissionInProgress=true;
 
