@@ -1225,9 +1225,12 @@ function recalcOrderCard(cardId) {
     // 주문관리 품번 체크박스는 V6.6.96에서 제거했으므로 DOM 체크박스를 참조하면 안 됩니다.
     const soldoutQty = Math.min(qty, recordedSoldout);
     const shippedQty = Math.max(0, qty - soldoutQty);
-    const unitPrice = Number(row.dataset.unitPrice || 0);
+    // 일반상품은 수량×1죽 단가, 8881·8882는 실제 개수와 10개 묶음단가를
+    // 함께 사용하므로 화면 표시단가를 실제 개수에 다시 곱하면 10배가 됩니다.
+    // 행을 만들 때 판매단위까지 반영해 계산한 출고금액을 합산합니다.
+    const rowTotal = Math.max(0, Number(row.dataset.rowTotal || 0));
     qtyTotal += shippedQty;
-    productTotal += shippedQty * unitPrice;
+    productTotal += rowTotal;
   });
 
   const shipping = Number(card.querySelector(".shipping-input").value) || 0;
