@@ -5,11 +5,10 @@ const source=fs.readFileSync(require('path').join(__dirname,'../js/scanner.js'),
 assert(source.includes("function summarizeMovements(rows)"),'일자별 합계 계산 함수가 필요합니다.');
 assert(source.includes("sum.inQty+=rawQty"),'일반 품번 입고수량을 죽으로 합산해야 합니다.');
 assert(source.includes("sum.outQty+=rawQty"),'일반 품번 출고수량을 죽으로 합산해야 합니다.');
-assert(source.includes("sum.packInPieces+=rawQty"),'8881·8882 입고수량을 실제 개수로 분리해야 합니다.');
-assert(source.includes("sum.packOutPieces+=rawQty"),'8881·8882 출고수량을 실제 개수로 분리해야 합니다.');
-assert(source.includes("quantityText(pieces/10)}묶음"),'8881·8882 실제 10개를 1묶음으로 표시해야 합니다.');
-assert(source.includes("8881·8882 +${packText(total.packInPieces)}"),'합계 카드에 묶음 합계를 별도 표시해야 합니다.');
-assert(source.includes("unit=pieceItem?'개':'죽'"),'건별 이력은 일반 품번 죽, 8881·8882 개로 구분해야 합니다.');
+assert(source.includes("if(isPiecePackItem(row.item_number)){sum.count++;return sum;}"),'8881·8882는 죽 합계에서 제외해야 합니다.');
+assert(!source.includes("8881·8882 +${packText(total.packInPieces)}"),'합계 카드에 8881·8882를 별도 줄로 반복 표시하지 않아야 합니다.');
+assert(source.includes("unit=pieceItem?'묶음':'죽'"),'건별 이력은 일반 품번 죽, 8881·8882 묶음으로 구분해야 합니다.');
+assert(source.includes("factor=pieceItem?10:1"),'8881·8882 실제 10개를 조회 결과에서 1묶음으로 표시해야 합니다.');
 assert(source.includes(".range(from,from+pageSize-1)"),'2,000건 제한 없이 기간 데이터를 페이지 조회해야 합니다.');
 assert(source.includes("new Date(`${start}T00:00:00`).toISOString()"),'선택 시작일을 조회 조건에 사용해야 합니다.');
 assert(source.includes("next.setDate(next.getDate()+1)"),'선택 종료일 전체를 포함해야 합니다.');
