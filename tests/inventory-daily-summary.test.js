@@ -7,6 +7,9 @@ assert(source.includes("sum.inQty+=qty"),'입고수량을 합산해야 합니다
 assert(source.includes("sum.outQty+=qty"),'출고수량을 합산해야 합니다.');
 assert(source.includes("sum.adjustQty+=movementDelta(row)"),'직접수정 증감을 합산해야 합니다.');
 assert(source.includes("sum.netQty+=movementDelta(row)"),'순증감을 계산해야 합니다.');
+assert(source.includes("isPiecePackItem(row?.item_number)?quantity/10:quantity"),'8881·8882 실제 10개를 1죽으로 환산해야 합니다.');
+assert(source.includes("입고 총수량</span><strong>+${quantityText(total.inQty)}단위"),'혼합 합계는 주문단위로 표시해야 합니다.');
+assert(source.includes("unit=pieceItem?'개':'죽'"),'건별 이력은 일반 품번 죽, 8881·8882 개로 구분해야 합니다.');
 assert(source.includes(".range(from,from+pageSize-1)"),'2,000건 제한 없이 기간 데이터를 페이지 조회해야 합니다.');
 assert(source.includes("new Date(`${start}T00:00:00`).toISOString()"),'선택 시작일을 조회 조건에 사용해야 합니다.');
 assert(source.includes("next.setDate(next.getDate()+1)"),'선택 종료일 전체를 포함해야 합니다.');
