@@ -72,6 +72,7 @@ function effectiveItemPrice(group, itemNumber) {
 }
 function refreshSavedCartPrices() {
   let changed = false;
+  if (consolidateCartDuplicates()) changed = true;
   cart.forEach(item => {
     const warehouseCode=inferCartWarehouseCode(item);if(warehouseCode&&item.warehouseCode!==warehouseCode){item.warehouseCode=warehouseCode;changed=true}
     const group = groups.find(groupItem => Number(groupItem.id) === Number(item.groupId));
@@ -82,6 +83,17 @@ function refreshSavedCartPrices() {
   if (changed) saveCart();
 }
 function inferCartWarehouseCode(item){const saved=String(item?.warehouseCode||item?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(saved))return saved;const prefix=String(item?.number||'').trim().toUpperCase().match(/^([SBI])(?:[-_\s]|(?=\d))/)?.[1];if(prefix)return prefix;const group=groups.find(row=>Number(row.id)===Number(item?.groupId)),groupCode=String(group?.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(groupCode))return groupCode;const key=customerPriceKey(item?.number),codes=new Set();groups.forEach(row=>{const numbers=Array.isArray(row.item_numbers)?row.item_numbers:String(row.item_numbers||'').split(/[,\s/]+/);if(numbers.some(number=>customerPriceKey(number)===key)){const code=String(row.warehouse_code||'').trim().toUpperCase();if(['S','B','I'].includes(code))codes.add(code)}});return codes.size===1?[...codes][0]:''}
+function consolidateCartDuplicates(){
+  const merged=new Map();let changed=false;
+  cart.forEach(item=>{
+    const key=`${inferCartWarehouseCode(item)}:${customerPriceKey(item.number)}`;
+    const existing=merged.get(key);
+    if(existing){existing.qty=Number(existing.qty||0)+Number(item.qty||0);existing.addedAt=Math.max(Number(existing.addedAt||0),Number(item.addedAt||0));changed=true}
+    else merged.set(key,{...item});
+  });
+  if(changed)cart=[...merged.values()];
+  return changed;
+}
 function validateCartWarehouseCodes(){const missing=[];cart.forEach(item=>{const code=inferCartWarehouseCode(item);if(code)item.warehouseCode=code;else missing.push(String(item.number||''))});if(missing.length){alert(`출고지가 연결되지 않은 품번은 주문할 수 없습니다: ${[...new Set(missing)].join(', ')}\n\n상품관리에서 해당 품번의 출고지를 S·B·I 중 하나로 지정해주세요.`);return false}saveCart();return true}
 function customerDisplayItemNumber(value){return String(value??'').trim().replace(/^[SBI](?:[-_\s]+|(?=\d))/i,'');}
 function displayWarehouseItem(group, itemNumber) { return customerDisplayItemNumber(itemNumber); }
@@ -465,7 +477,7 @@ async function loadCatalog() {
 
   mainCategories = mainCategoryResponse.data || [];
   categories = categoryResponse.data || [];
-  groups = groupResponse.data || [];
+  groups = dedupeCatalogGroups(groupResponse.data || []);
 
   customerItemPriceMap = new Map();
   if (currentUser && !ADMIN_PREVIEW_MODE) {
@@ -1676,11 +1688,40 @@ function normalizeBulkItemNumber(value) {
   return String(value ?? "").trim().normalize("NFKC").toUpperCase();
 }
 
+function catalogItemIdentity(number, warehouseCode = "") {
+  const normalized = normalizeBulkItemNumber(number);
+  const warehouse = String(warehouseCode || "").trim().toUpperCase();
+  return `${warehouse}:${normalized}`;
+}
+
+// 같은 출고지의 동일 품번이 여러 상품 묶음에 들어 있어도 한 번만 노출합니다.
+function dedupeCatalogGroups(sourceGroups) {
+  const seen = new Set();
+  return (sourceGroups || []).map(group => {
+    const warehouse = String(group?.warehouse_code || "").trim().toUpperCase();
+    const localSeen = new Set();
+    const itemNumbers = (Array.isArray(group?.item_numbers) ? group.item_numbers : []).filter(number => {
+      const normalized = normalizeBulkItemNumber(number);
+      if (!normalized || localSeen.has(normalized)) return false;
+      localSeen.add(normalized);
+      const identity = catalogItemIdentity(normalized, warehouse);
+      if (seen.has(identity)) return false;
+      seen.add(identity);
+      return true;
+    });
+    return { ...group, item_numbers: itemNumbers };
+  }).filter(group => group.item_numbers.length > 0);
+}
+
 function getBulkOrderItemIndex() {
   const rows = [];
+  const seen = new Set();
   groups.forEach(group => (group.item_numbers || []).forEach(number => {
     // DB에 범위 문자열이 남아 있어도 1A~16A, 1M~2M을 개별 품번으로 펼칩니다.
     expandBulkOrderRange(number).forEach(expanded => {
+      const identity = catalogItemIdentity(expanded, group.warehouse_code);
+      if (seen.has(identity)) return;
+      seen.add(identity);
       rows.push({ group, number: String(expanded), normalized: normalizeBulkItemNumber(expanded) });
     });
   }));
@@ -2106,7 +2147,9 @@ async function applyCustomerBulkOrder() {
     resolvedRows.push({ requestedNumber, qty, group, number });
   }
 
-  const overlappingRows = resolvedRows.filter(({group,number}) => cart.some(item => Number(item.groupId) === Number(group.id) && item.number === String(number)));
+  const overlappingRows = resolvedRows.filter(({group,number}) => cart.some(item =>
+    catalogItemIdentity(item.number, inferCartWarehouseCode(item)) === catalogItemIdentity(number, group.warehouse_code)
+  ));
   const shouldReplace = appliedBefore || overlappingRows.length > 0;
   if (shouldReplace) {
     const overlapLabel = overlappingRows.length
@@ -2129,7 +2172,9 @@ async function applyCustomerBulkOrder() {
   for (const { qty, group, number } of resolvedRows) {
     confirmedTraining.push({item_number:String(number),qty:Number(qty)});
     if (getSoldoutItems(group).includes(String(number))) soldout.push(displayWarehouseItem(group, number));
-    const existing = cart.find(item => Number(item.groupId) === Number(group.id) && item.number === String(number));
+    const existing = cart.find(item =>
+      catalogItemIdentity(item.number, inferCartWarehouseCode(item)) === catalogItemIdentity(number, group.warehouse_code)
+    );
     if (existing) { existing.qty = qty; existing.addedAt = addedBatchAt; }
     else cart.push({
       groupId: group.id,
@@ -2196,8 +2241,7 @@ function addGroupToCart(groupId, nextAction = "cart") {
       if (qty <= 0 || !number) return;
 
       const existingItem = cart.find(item =>
-        Number(item.groupId) === Number(group.id) &&
-        item.number === number
+        catalogItemIdentity(item.number, inferCartWarehouseCode(item)) === catalogItemIdentity(number, group.warehouse_code)
       );
 
       if (existingItem) {

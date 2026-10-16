@@ -344,7 +344,20 @@ async function submit(){
  try{await reloadLatestProductCatalog()}catch(error){showError('최신 상품단가 확인에 실패했습니다. 새로고침 후 다시 접수해주세요: '+(error?.message||error));return}
  const priceReady=await reloadSelectedCustomerPrices();
  if(!priceReady){showError('거래처별 단가 확인에 실패했습니다. 단가 조회 상태를 확인한 뒤 다시 접수하세요.');return}
- const lines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0)),price_manual:r.dataset.priceManual==='1'})).filter(x=>x.item_number);
+ const rawLines=[...document.querySelectorAll('.proxy-line')].map(r=>({item_number:normalizeItem(r.querySelector('.proxy-item').value),qty:Math.max(1,Math.floor(Number(r.querySelector('.proxy-qty').value||1))),price:Math.max(0,Number(r.querySelector('.proxy-price').value||0)),price_manual:r.dataset.priceManual==='1'})).filter(x=>x.item_number);
+ // 같은 출고지·품번이 붙여넣기와 수기입력에 함께 들어와도 주문행은 한 번만 만듭니다.
+ // 단가가 서로 다르면 금액 사고를 막기 위해 자동 합치지 않고 관리자 확인을 요구합니다.
+ const lineMap=new Map();
+ for(const line of rawLines){
+  const warehouse=String(findItem(line.item_number)?.warehouse_code||'').trim().toUpperCase();
+  const key=`${warehouse}:${normalizeItem(line.item_number)}`;
+  const existing=lineMap.get(key);
+  if(existing){
+   if(Number(existing.price)!==Number(line.price)){showError(`중복 품번 ${line.item_number}의 단가가 서로 다릅니다. 한 줄로 정리한 뒤 다시 접수해주세요.`);return}
+   existing.qty+=line.qty;existing.price_manual=existing.price_manual||line.price_manual;
+  }else lineMap.set(key,{...line});
+ }
+ const lines=[...lineMap.values()];
  // V6.6.57: 접수 직전에 현재 선택된 실제 납품처를 다시 확정한다.
  // select의 화면 선택값과 input 값이 비동기 로딩/빠른 클릭 때문에 어긋나는 경우를 차단한다.
  const deliverySelect=$('proxyDeliverySelect');

@@ -451,6 +451,11 @@
         (item) => warehouseCode(item) === code,
       ),
       field = `${code.toLowerCase()}_outbound_confirmed`;
+    // I 품목이 없는 주문은 전체 주문 행에 저장된 I 단계 완료 표시를 사용합니다.
+    if (code === "I" && rows.length === 0) {
+      const allRows = group?.items || [];
+      return allRows.length > 0 && allRows.every((item) => item.i_outbound_confirmed === true);
+    }
     return rows.length > 0 && rows.every((item) => {
       const ordered=Math.max(0,Number(item.qty||0));
       const soldout=Math.max(0,Number(item.soldout_qty||(item.is_soldout?ordered:0)));
@@ -464,7 +469,7 @@
     const codes = ["S", "B", "I"].filter((code) =>
       (group?.items || []).some((item) => warehouseCode(item) === code),
     );
-    return codes.length > 0 && codes.every((code) => warehouseOutboundComplete(group, code));
+    return codes.every((code) => warehouseOutboundComplete(group, code));
   }
   function mixedIPackedOrder(group) {
     const items = group?.items || [];
@@ -487,7 +492,7 @@
     );
   }
   async function moveFullyPackedOrderToReady(group) {
-    if (!group || !mixedIPackedOrder(group) || !allPackedWarehousesComplete(group)) return false;
+    if (!group || !warehouseOutboundComplete(group, "I") || !allPackedWarehousesComplete(group)) return false;
     if (pickingVerified(group)) return true;
     const quantitiesComplete = group.items.every(
       (item) => Number(item.picked_qty || 0) + Number(item.soldout_qty || 0) === Number(item.qty || 0),
@@ -538,7 +543,7 @@
       renderWork("출고지 완료상태 재확인 실패: " + error.message, "error", false);
       return false;
     }
-    if (!current || !mixedIPackedOrder(current) || !allPackedWarehousesComplete(current)) return false;
+    if (!current || !warehouseOutboundComplete(current, "I") || !allPackedWarehousesComplete(current)) return false;
     const moved = await moveFullyPackedOrderToReady(current);
     if (!moved) return false;
     location.replace(`admin.html?view=orders&status=${encodeURIComponent("출고대기")}&order=${encodeURIComponent(orderNumber)}&refresh=${Date.now()}`);
@@ -843,18 +848,18 @@
         )
         .join(""),
       iRows = active.items.filter((item) => warehouseCode(item) === "I"),
+      iStageRows = iRows.length ? iRows : active.items,
       iPickReady =
-        iRows.length > 0 &&
-        iRows.every(
+        iStageRows.length > 0 &&
+        iStageRows.every(
           (item) =>
             Number(item.picked_qty || 0) + Number(item.soldout_qty || 0) >=
             Number(item.qty || 0),
         ),
-      iPacked = iRows.length > 0 && warehouseOutboundComplete(active, "I"),
+      iPacked = warehouseOutboundComplete(active, "I"),
       waitingFor = iWaitingFor(active),
-      iPackPanel = iRows.length
-        ? `<section class="i-pack-control ${iPacked ? "complete" : ""}"><div><strong>${iPacked ? "✓ I 포장완료" : "I 포장완료 처리"}</strong><span>${iPacked ? (waitingFor.length ? `${esc(waitingFor.join("·"))} 포장 완료까지 전용 대기목록에 보관됩니다.` : "B·S 포장까지 모두 완료되었습니다.") : iPickReady ? "I 상품 포장을 마쳤다면 완료 버튼을 누르세요." : "I 품번 피킹을 먼저 완료하세요."}</span></div><button type="button" id="toggleIPackComplete" class="pick-action ${iPacked ? "reset-btn" : "i-pack-complete-btn"}" ${!iPickReady || !mine ? "disabled" : ""}>${iPacked ? "I 포장완료 취소" : "I 포장완료"}</button></section>`
-        : "";
+      hasIItems = iRows.length > 0,
+      iPackPanel = `<section class="i-pack-control ${iPacked ? "complete" : ""}"><div><strong>${iPacked ? `✓ ${hasIItems ? "I 포장완료" : "I 피킹완료"}` : `${hasIItems ? "I 포장완료" : "I 피킹완료"} 처리`}</strong><span>${iPacked ? (waitingFor.length ? `${esc(waitingFor.join("·"))} 포장 완료까지 전용 대기목록에 보관됩니다.` : "출고지 완료 조건을 확인했습니다.") : iPickReady ? (hasIItems ? "I 상품 포장을 마쳤다면 완료 버튼을 누르세요." : "I 출고가 없는 주문입니다. 전체 피킹을 확인한 뒤 완료하세요.") : (hasIItems ? "I 품번 피킹을 먼저 완료하세요." : "주문 전체 품번 피킹을 먼저 완료하세요.")}</span></div><button type="button" id="toggleIPackComplete" class="pick-action ${iPacked ? "reset-btn" : "i-pack-complete-btn"}" ${!iPickReady || !mine ? "disabled" : ""}>${iPacked ? `${hasIItems ? "I 포장완료" : "I 피킹완료"} 취소` : (hasIItems ? "I 포장완료" : "I 피킹완료")}</button></section>`;
     $("workArea").innerHTML =
       `<div class="work-header"><div><h2>${esc(active.customerName)} ${active.isProxy ? '<small class="proxy-order-badge">관리자 대신주문</small>' : ""}</h2><p>납품처 ${esc(active.deliveryName || "-")}</p><p>주문번호 ${esc(active.orderNumber)} · ${new Date(active.createdAt).toLocaleString("ko-KR")}</p>${pickingActive ? `<p class="active-picker-banner"><b>피킹 담당자</b> ${esc(assignedName || "관리자")} ${mine ? "· 현재 내 작업" : ""}</p>` : ""}<div class="pick-order-summary"><span>품번 ${active.items.length}종</span><span>수량 ${t.ordered}죽</span></div><div class="warehouse-summary-list">${warehouseSummary}</div></div><div class="pick-progress"><b>총 ${t.ordered}죽</b><span class="picking-complete-text">피킹완료 ${completedCount}품번</span><span class="picking-incomplete-text">피킹미완료 ${incompleteCount}품번</span></div></div><div class="scan-quantity-control"><strong>바코드 1회 스캔수량</strong><button type="button" data-scan-qty="1" class="${scanIncrement === 1 ? "active" : ""}">1개</button><button type="button" data-scan-qty="10" class="${scanIncrement === 10 ? "active" : ""}">10개</button><button type="button" id="togglePickingSession" class="picking-session-button ${mine ? "active" : ""}" ${otherPicker ? "disabled" : ""}>${mine ? "내 피킹중·종료" : otherPicker ? `${esc(assignedName || "다른 관리자")} 피킹중` : "피킹시작"}</button>${otherPicker && canForce ? '<button type="button" id="forceReleasePicking" class="picking-force-release">관리자 담당해제</button>' : ""}<span>현재 ${scanIncrement}개씩 반영 · ${mine ? "내 계정으로 피킹중" : otherPicker ? "다른 계정 작업을 실시간 확인중" : "시작 대기"}</span></div><div class="pick-status ${type}">${message || (otherPicker ? `${esc(assignedName || "다른 관리자")} 계정이 피킹 중입니다. 이 화면은 실시간 확인 전용입니다.` : `바코드를 스캔하면 해당 품번의 피킹수량이 ${scanIncrement}개씩 올라갑니다.`)}</div>${renderSoldoutPastePanel()}${renderWarehousePickSections(active.items)}<div class="pick-controls"><button class="pick-action print-btn" id="printWork">출고지별 작업지시서 인쇄</button><button class="pick-action reset-btn" id="resetPick">피킹 초기화</button>${canDelete ? `<button class="pick-action delete-order-btn" id="deleteWholeOrder">피킹 전 주문 전체삭제</button>` : ""}<button class="pick-action verify-btn" id="verifyPick" ${verified || !allOk || !mine ? "disabled" : ""}>${verified ? "피킹 최종검증 완료됨" : "피킹 최종검증 완료"}</button></div>`;
     if (iPackPanel)
@@ -1423,14 +1428,16 @@
   async function toggleIPackComplete() {
     if (!active || !isMyActivePicking())
       return renderWork("현재 피킹 담당자만 I 포장완료를 처리할 수 있습니다.", "error");
-    const rows = active.items.filter((item) => warehouseCode(item) === "I");
-    if (!rows.length) return;
+    const iRows = active.items.filter((item) => warehouseCode(item) === "I");
+    const rows = iRows.length ? iRows : active.items;
+    const hasIItems = iRows.length > 0;
     const ready = rows.every(
       (item) => Number(item.picked_qty || 0) + Number(item.soldout_qty || 0) >= Number(item.qty || 0),
     );
-    if (!ready) return renderWork("I 품번 피킹을 모두 완료한 뒤 처리하세요.", "error");
+    if (!ready) return renderWork(hasIItems ? "I 품번 피킹을 모두 완료한 뒤 처리하세요." : "주문 전체 품번 피킹을 완료한 뒤 처리하세요.", "error");
     const next = !warehouseOutboundComplete(active, "I");
-    if (!confirm(next ? "I 상품 포장을 완료했습니까?\n이 주문을 I 포장완료 대기로 이동합니다." : "I 포장완료를 취소하고 피킹 대기 목록으로 되돌릴까요?")) return;
+    const stageLabel = hasIItems ? "I 포장완료" : "I 피킹완료";
+    if (!confirm(next ? (hasIItems ? "I 상품 포장을 완료했습니까?\n이 주문을 I 포장완료 대기로 이동합니다." : "I 출고가 없는 주문입니다.\n주문 전체를 I 피킹완료로 처리할까요?") : `${stageLabel}를 취소하고 피킹 대기 목록으로 되돌릴까요?`)) return;
     const ids = rows.map((row) => row.id);
     const { error } = await supabaseClient
       .from("orders")
@@ -1444,7 +1451,7 @@
     renderList();
     if (next && await maybeMoveActiveIPackedOrderToReady()) return;
     const allWarehousePacked = allPackedWarehousesComplete(active);
-    renderWork(next ? (allWarehousePacked ? "모든 출고지 포장이 완료되어 주문관리의 출고대기로 이동했습니다." : "I 포장완료 대기로 이동했습니다.") : "I 포장완료를 취소했습니다.", "success", false);
+    renderWork(next ? (allWarehousePacked ? "모든 출고지 포장이 완료되어 주문관리의 출고대기로 이동했습니다." : `${stageLabel} 처리했습니다.`) : `${stageLabel}를 취소했습니다.`, "success", false);
   }
   async function setPickingSetting(field, value, message) {
     if (!active) return;
