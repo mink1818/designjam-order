@@ -872,7 +872,11 @@ function renderOrderCards(groups) {
     const adminChanged=Boolean(group.adminChangeRecord);
     const editBadges=`${customerChanged?`<small class="order-edit-origin-badge customer" title="고객 주문 수정 이력${group.revisionRecord?.completed_at?` · ${formatOrderDateTime(group.revisionRecord.completed_at)}`:''}">고객 수정</small>`:''}${adminChanged?`<small class="order-edit-origin-badge admin" title="${escapeAdminAttr(group.adminChangeRecord?.change_reason||'관리자 주문 수정')}${group.adminChangeRecord?.changed_at?` · ${formatOrderDateTime(group.adminChangeRecord.changed_at)}`:''}">관리자 수정</small>`:''}`;
     const isDone = group.status === "출고완료";
+    const quantitiesAccounted = group.items.length > 0 && group.items.every(item =>
+      Number(item.picked_qty || 0) + Number(item.soldout_qty || (item.is_soldout ? item.qty : 0)) === Number(item.qty || 0)
+    );
     const isVerified = String(group.pickingStatus || "").includes("검증완료");
+    const isShippingReady = isVerified || quantitiesAccounted;
     let itemHtml = "";
     let summaryQty = 0;
 let summaryTotal = 0;
@@ -941,8 +945,8 @@ summaryTotal += Number(group.shipping_fee || 0);
   <div class="order-status-stack">
     ${paymentTracked?`<label class="order-payment-check desktop-payment-check ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}" onclick="event.stopPropagation()"><input type="checkbox" ${paymentStatus==='입금완료'?'checked':''} onchange="toggleOrderPaid(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}',${index})"><span>${paymentStatus==='입금완료'?'입금':paymentStatus==='일부입금'?`일부 ${paidAmount.toLocaleString()}원`:'미입금'}</span>${paymentRecord.updated_at?`<small>${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatHourMinute(paymentRecord.updated_at)}</small>`:''}</label>`:''}
     <span class="order-status-pill order-main-status ${isDone ? "done" : "pending"}">${group.revisionStatus==='수정중'?'고객 수정중':group.revisionStatus==='수정완료'?'고객 수정완료':isAdminOrderReview(group)?'주문확인':group.status}</span>
-    ${!isDone?`<span class="order-status-pill picking order-picking-status ${String(group.pickingStatus).includes("검증완료")?"done":"pending"}">${String(group.pickingStatus).includes("검증완료")?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
-    ${!isDone&&isVerified?`<button class="collapsed-shipping-complete" type="button" onclick="quickCompleteCollapsedOrder(this,event,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'')}','${escapeAdminAttr(group.deliveryName||group.customerName||'')}',${summaryQty},${summaryTotal})">출고완료</button>`:''}
+    ${!isDone?`<span class="order-status-pill picking order-picking-status ${isShippingReady?"done":"pending"}">${isShippingReady?"출고대기":group.pickingStatus==="피킹중"?"피킹중":"피킹대기"}</span>`:""}
+    ${!isDone&&isShippingReady?`<button class="collapsed-shipping-complete" type="button" onclick="quickCompleteCollapsedOrder(this,event,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerName||'')}','${escapeAdminAttr(group.deliveryName||group.customerName||'')}',${summaryQty},${summaryTotal})">출고완료</button>`:''}
     ${isDone?`<button class="order-card-edit-button locked" type="button" disabled title="상세화면에서 출고취소·재고복원 후 수정할 수 있습니다">주문수정 불가</button>`:`<button class="order-card-edit-button ${canEditOrderItems(group) ? "" : "locked"}" type="button" onclick="event.stopPropagation();prepareOrderItemEditor('${escapeAdminAttr(group.orderNumber)}',${index},${canEditOrderItems(group)},false)">주문수정</button>`}
   </div>
   <span class="order-expand-icon" aria-hidden="true">⌄</span>
@@ -1057,8 +1061,9 @@ class="order-detail">
 
 
 async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대기') {
-  if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료')) { alert('피킹 최종검증을 먼저 완료해주세요.'); return; }
   const targetGroup=(window.__adminRenderedGroups||[]).find(group=>group.orderNumber===orderNumber);
+  const quantitiesAccounted=Boolean(targetGroup?.items?.length)&&targetGroup.items.every(item=>Number(item.picked_qty||0)+Number(item.soldout_qty||(item.is_soldout?item.qty:0))===Number(item.qty||0));
+  if (currentStatus !== '출고완료' && !String(pickingStatus).includes('검증완료') && !quantitiesAccounted) { alert('피킹수량과 품절수량의 합이 주문수량과 일치해야 출고완료할 수 있습니다.'); return; }
   // I 포장완료 대기는 S·B 포장이 모두 끝나면 출고대기로 자동 분류됩니다.
 
   if (currentStatus === "출고완료") {
