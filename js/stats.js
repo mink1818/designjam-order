@@ -250,6 +250,12 @@ function aggregateOrderSet(orders){
   return {amount,qty:qtyTotal,orders:orders.length,shippingFee,shippingOrderCount,products:[...products.values()].sort((a,b)=>b.qty-a.qty||b.amount-a.amount),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount||b.qty-a.qty)};
 }
 
+function aggregateWarehouseRankings(orders){
+  const maps=new Map(['S','B','I'].map(code=>[code,new Map()]));
+  orders.forEach(order=>order.items.forEach(item=>{const q=effectiveItemQty(item);if(q<=0)return;const code=statsWarehouseCode(item);if(!maps.has(code))return;const name=String(item.item_number||'품번 미입력'),amount=q*Number(item.price||0),map=maps.get(code),row=map.get(name)||{name,qty:0,amount:0};row.qty+=q;row.amount+=amount;map.set(name,row);}));
+  return [...maps].map(([code,map])=>({code,products:[...map.values()].sort((a,b)=>b.qty-a.qty||b.amount-a.amount||String(a.name).localeCompare(String(b.name),'ko',{numeric:true}))}));
+}
+
 function buildPeriodAnalytics(){
   let allOrders=groupOrders(rawOrders).filter(o=>statsOrderDate(o));
   const selectedYear=Number($('statsAnalysisYear').value)||new Date().getFullYear();const selectedMonth=$('statsAnalysisMonth').value||`${selectedYear}-01`;const [monthYear,monthNumber]=selectedMonth.split('-').map(Number);
@@ -257,7 +263,7 @@ function buildPeriodAnalytics(){
   const monthly=Array.from({length:12},(_,i)=>({label:`${i+1}월`,amount:0,qty:0,orders:0,shippingFee:0,shippingOrders:0}));allOrders.forEach(o=>{const d=statsOrderDate(o);if(d.getFullYear()!==selectedYear)return;const t=orderTotals(o),row=monthly[d.getMonth()],fee=Math.max(0,Number(o.shippingFee||0));row.amount+=t.amount;row.qty+=t.qty;row.orders++;row.shippingFee+=fee;if(fee>0)row.shippingOrders++;});
   const daysInMonth=new Date(monthYear,monthNumber,0).getDate();const daily=Array.from({length:daysInMonth},(_,i)=>({label:`${i+1}일`,amount:0,qty:0,orders:0}));const monthOrders=allOrders.filter(o=>{const d=statsOrderDate(o);return d.getFullYear()===monthYear&&d.getMonth()+1===monthNumber;});monthOrders.forEach(o=>{const d=statsOrderDate(o),t=orderTotals(o),row=daily[d.getDate()-1];row.amount+=t.amount;row.qty+=t.qty;row.orders++;});
   const previousDate=new Date(monthYear,monthNumber-2,1);const previousOrders=allOrders.filter(o=>{const d=statsOrderDate(o);return d.getFullYear()===previousDate.getFullYear()&&d.getMonth()===previousDate.getMonth();});
-  return {selectedYear,selectedMonth,yearly:[...yearlyMap.values()].sort((a,b)=>Number(a.label)-Number(b.label)),monthly,daily,current:aggregateOrderSet(monthOrders),previous:aggregateOrderSet(previousOrders)};
+  return {selectedYear,selectedMonth,yearly:[...yearlyMap.values()].sort((a,b)=>Number(a.label)-Number(b.label)),monthly,daily,current:aggregateOrderSet(monthOrders),previous:aggregateOrderSet(previousOrders),monthOrders};
 }
 
 function compareText(current,previous,unit){
@@ -266,8 +272,8 @@ function compareText(current,previous,unit){
 
 function getRankingAnalytics(a){
   const mode=$('rankingPeriodMode')?.value||'month';
-  if(mode==='total'){let orders=groupOrders(rawOrders).filter(o=>statsOrderDate(o));return {mode,label:'전체 기간',data:aggregateOrderSet(orders)};}
-  return {mode,label:`${a.selectedMonth.replace('-','년 ')}월`,data:a.current};
+  if(mode==='total'){let orders=groupOrders(rawOrders).filter(o=>statsOrderDate(o));return {mode,label:'전체 기간',data:aggregateOrderSet(orders),orders};}
+  return {mode,label:`${a.selectedMonth.replace('-','년 ')}월`,data:a.current,orders:a.monthOrders||[]};
 }
 
 function renderRankings(a){
@@ -279,6 +285,7 @@ function renderRankings(a){
   renderRanking('topProductsList',r.data.products,'product',limitProduct);renderRanking('topCustomersList',r.data.customers,'customer',limitCustomer);
   const pBtn=$('toggleTopProducts'),cBtn=$('toggleTopCustomers');if(pBtn){pBtn.hidden=r.data.products.length<=10;pBtn.textContent=rankingExpanded.product?'TOP 10만 보기':`TOP ${Math.min(100,r.data.products.length)} 펼쳐보기`;}if(cBtn){cBtn.hidden=r.data.customers.length<=10;cBtn.textContent=rankingExpanded.customer?'TOP 10만 보기':`TOP ${Math.min(100,r.data.customers.length)} 펼쳐보기`;}
   const caption=$('topCustomersCaption');if(caption)caption.textContent=`${r.label} 전체 ${money(r.data.customers.length)}곳 중 상위 ${rankingExpanded.customer?Math.min(100,r.data.customers.length):Math.min(10,r.data.customers.length)}곳 · 배송비 포함`;
+  renderWarehouseRankings(aggregateWarehouseRankings(r.orders),r.label);
 }
 
 function renderPeriodAnalytics(){
@@ -450,15 +457,15 @@ function renderCategoryShare(rows){
   const total=rows.reduce((s,x)=>s+x.qty,0)||1;box.innerHTML=rows.slice(0,12).map(x=>{const percent=Math.round(x.qty/total*100);return `<div class="stats-share-row"><span>${esc(x.name)}</span><div><i style="width:${percent}%"></i></div><strong>${qty(x.qty)}죽 · ${percent}%</strong></div>`;}).join('')+(unclassified?`<p class="stats-unclassified-note">대분류 연결이 필요한 판매수량: ${qty(unclassified.qty)}죽</p>`:'');
 }
 
-function renderWarehouseRankings(rows){
+function renderWarehouseRankings(rows,periodLabel=''){ 
   const box=$('warehouseRankingGrid');if(!box)return;
-  box.innerHTML=(rows||[]).map(group=>{const expanded=warehouseRankingExpanded[group.code],count=expanded?100:10,totalQty=group.products.reduce((sum,x)=>sum+Number(x.qty||0),0);return `<article class="product-card stats-panel stats-warehouse-ranking-card warehouse-${group.code.toLowerCase()}"><div class="v3-section-heading"><h2>${group.code} 출고 품번 TOP ${count}</h2><span>총 ${qty(totalQty)}죽</span></div><div id="warehouseRanking${group.code}" class="stats-ranking-list"></div><button type="button" class="stats-ranking-more" data-warehouse-ranking-toggle="${group.code}" ${group.products.length<=10?'hidden':''}>${expanded?'TOP 10만 보기':`TOP ${Math.min(100,group.products.length)} 펼쳐보기`}</button></article>`;}).join('');
+  box.innerHTML=(rows||[]).map(group=>{const expanded=warehouseRankingExpanded[group.code],count=expanded?100:10,totalQty=group.products.reduce((sum,x)=>sum+Number(x.qty||0),0);return `<article class="product-card stats-panel stats-warehouse-ranking-card warehouse-${group.code.toLowerCase()}"><div class="v3-section-heading"><h2>${group.code} 출고 품번 TOP ${count}</h2><span>${esc(periodLabel)} · 총 ${qty(totalQty)}죽</span></div><div id="warehouseRanking${group.code}" class="stats-ranking-list"></div><button type="button" class="stats-ranking-more" data-warehouse-ranking-toggle="${group.code}" ${group.products.length<=10?'hidden':''}>${expanded?'TOP 10만 보기':`TOP ${Math.min(100,group.products.length)} 펼쳐보기`}</button></article>`;}).join('');
   (rows||[]).forEach(group=>renderRanking(`warehouseRanking${group.code}`,group.products,'product',warehouseRankingExpanded[group.code]?100:10));
-  box.querySelectorAll('[data-warehouse-ranking-toggle]').forEach(button=>button.addEventListener('click',()=>{const code=button.dataset.warehouseRankingToggle;warehouseRankingExpanded[code]=!warehouseRankingExpanded[code];renderWarehouseRankings(rows);}));
+  box.querySelectorAll('[data-warehouse-ranking-toggle]').forEach(button=>button.addEventListener('click',()=>{const code=button.dataset.warehouseRankingToggle;warehouseRankingExpanded[code]=!warehouseRankingExpanded[code];renderWarehouseRankings(rows,periodLabel);}));
 }
 
 function renderAll(){
-  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');currentStats.periodAnalytics=renderPeriodAnalytics();renderCategoryShare(currentStats.categories);renderWarehouseRankings(currentStats.warehouseRankings);
+  currentStats=calculateStats();renderMetrics(currentStats);renderAuditSummary(currentStats);$('warehouseSalesCards').innerHTML=currentStats.warehouseSales.map(w=>`<article class="product-card warehouse-sales-card warehouse-${w.code.toLowerCase()}"><span>${w.code} 출고지 매출</span><strong>${money(w.amount)}원</strong><small>${qty(w.qty)}죽</small></article>`).join('');currentStats.periodAnalytics=renderPeriodAnalytics();renderCategoryShare(currentStats.categories);
 }
 
 function exportExcel(){
@@ -474,7 +481,7 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb,make([['순위','품번','판매수량(죽)','주문금액'],...a.current.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,20,16,18]),'월간품번랭킹');
   XLSX.utils.book_append_sheet(wb,make([['순위','거래처','주문금액','주문건수','수량(죽)'],...a.current.customers.map((x,i)=>[i+1,x.name,x.amount,x.orders,x.qty])],[8,28,18,12,14]),'월간거래처랭킹');
   XLSX.utils.book_append_sheet(wb,make([['순위','대분류','수량(죽)','주문금액'],...currentStats.categories.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,26,14,18]),'카테고리별');
-  (currentStats.warehouseRankings||[]).forEach(group=>{XLSX.utils.book_append_sheet(wb,make([['순위','품번','출고수량(죽)','출고금액'],...group.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,22,16,18]),`${group.code}출고_품번순위`);XLSX.utils.book_append_sheet(wb,make([['순위','거래처','출고수량(죽)','출고금액','주문건수'],...group.customers.map((x,i)=>[i+1,x.name,x.qty,x.amount,x.orders])],[8,28,16,18,12]),`${group.code}출고_거래처순위`);});
+  aggregateWarehouseRankings(getRankingAnalytics(a).orders).forEach(group=>{XLSX.utils.book_append_sheet(wb,make([['순위','품번','출고수량(죽)','출고금액'],...group.products.map((x,i)=>[i+1,x.name,x.qty,x.amount])],[8,22,16,18]),`${group.code}출고_품번순위`);});
   XLSX.utils.book_append_sheet(wb,make([['구분','거래처','주문번호','일시','사유'],...currentStats.changes.map(x=>['변경',x.customer_name||'',x.order_number,x.changed_at,x.change_reason||'주문 품목 수정']),...currentStats.deleted.map(x=>['삭제',x.customer_name||'',x.order_number,x.deleted_at,x.delete_reason||'주문 삭제'])],[10,28,30,22,30]),'변경삭제이력');
   XLSX.writeFile(wb,`DESIGN_SOCKS_운영통계_${localDateKey(new Date())}.xlsx`);
 }

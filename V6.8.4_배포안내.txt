@@ -1,0 +1,15 @@
+DESIGN SOCKS V6.8.4 배포 안내
+
+[수정 내용]
+1. S·B·I 품번별 출고 순위를 별도 7번에서 기존 ⑤ 판매·거래처 랭킹 안으로 이동했습니다.
+2. 기존 월별/토탈 선택 및 조회 월과 S·B·I 순위가 함께 변경됩니다.
+3. 기존 월간 품번 판매량과 동일한 막대형 TOP 10 형식이며 각각 TOP 100까지 펼칠 수 있습니다.
+4. 출고완료 주문만 집계하고 전체품절·일부품절 수량은 제외합니다.
+5. 별도 Supabase SQL 실행은 필요 없습니다.
+
+[배포 명령]
+git add .
+git commit -m "release v6.8.4 link SBI rankings to existing ranking period"
+git push origin main
+
+배포 후 Ctrl+F5를 누르고 좌측 아래 V6.8.4 표시를 확인하세요.

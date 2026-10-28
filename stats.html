@@ -10,7 +10,7 @@
   <meta property="og:url" content="https://designjam-order.vercel.app/stats.html">
   <meta property="og:image" content="https://designjam-order.vercel.app/icons/admin-512.png?v=66040">
   <title>디자인 삭스 주문관리 (관리자)</title>
-  <link rel="stylesheet" href="css/admin.css?v=68030">
+  <link rel="stylesheet" href="css/admin.css?v=68040">
   <meta name="theme-color" content="#112437">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -86,6 +86,9 @@
     </article>
   </section>
 
+  <div class="v3-section-heading stats-ranking-subheading"><h2>S·B·I 품번별 출고량 순위</h2><span>위 랭킹 기간·조회 월과 함께 변경 · 출고완료·품절수량 제외</span></div>
+  <section id="warehouseRankingGrid" class="stats-warehouse-ranking-grid"></section>
+
   <section id="warehouseCategoryPrintArea" class="warehouse-category-print-area">
   <div class="v3-section-heading stats-group-title stats-print-heading"><div><h2>⑥ 출고지·카테고리 분석</h2><span>S·B·I 매출과 대분류 비중</span><small id="warehouseCategoryPrintPeriod"></small></div><button id="printWarehouseCategory" class="stats-section-print" type="button">🖨 분석항목 인쇄</button></div><section id="warehouseSalesCards" class="stats-status-grid"></section><section class="product-card stats-panel">
     <div class="v3-section-heading"><h2>대분류별 판매 비중</h2><span>상품 데이터에 대분류 정보가 있을 때 표시</span></div>
@@ -93,17 +96,14 @@
   </section>
   </section>
 
-  <div class="v3-section-heading stats-group-title"><div><h2>⑦ S·B·I 품번 출고 순위</h2><span>상단 선택 기간 · 출고완료 · 품절수량 제외 · 기존 판매량 순위와 동일 형식</span></div></div>
-  <section id="warehouseRankingGrid" class="stats-warehouse-ranking-grid"></section>
-
   <p id="statsMessage" class="stats-message" role="status"></p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/admin-security.js?v=66040"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/stats.js?v=68030"></script>
-<script src="js/session-status.js?v=68030"></script>
+<script src="js/stats.js?v=68040"></script>
+<script src="js/session-status.js?v=68040"></script>
 <script src="js/pwa.js?v=66180"></script>
-<script src="js/admin-page-transition.js?v=68030"></script>
-<script src="js/version-badge.js?v=68030"></script>
+<script src="js/admin-page-transition.js?v=68040"></script>
+<script src="js/version-badge.js?v=68040"></script>
 <script src="js/back-navigation.js?v=66040"></script>
 <script src="js/ui-preferences.js?v=66040"></script>
 <script src="js/admin-mobile-nav.js?v=66040"></script>
