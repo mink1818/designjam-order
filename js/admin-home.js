@@ -8,7 +8,7 @@ const DESIGNJAM_ADMIN_EMAILS = new Set(["900smk@naver.com","sm0727sm@hanmail.net
 let currentAdmin = null;
 
 const isAdminEmail = email => DESIGNJAM_ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
-const todayStartIso = () => { const d=new Date(); d.setHours(0,0,0,0); return d.toISOString(); };
+const todayRangeIso = () => { const start=new Date(); start.setHours(0,0,0,0); const end=new Date(start); end.setDate(end.getDate()+1); return {start:start.toISOString(),end:end.toISOString()}; };
 const uniqueOrders = rows => new Set((rows||[]).map(r=>r.order_number).filter(Boolean)).size;
 const normalizedDashboardCustomer = value => String(value||'').trim().normalize('NFKC').replace(/[\s_.·ㆍ,()[\]{}\-/]+/g,'').toLowerCase();
 const uniqueOrderGroups = rows => new Set((rows||[]).map(r=>`${String(r.order_number||'')}::${normalizedDashboardCustomer(r.customer_name)||String(r.customer_id||'')}`).filter(key=>!key.startsWith('::'))).size;
@@ -21,6 +21,24 @@ function dashboardIPackedWaiting(group){const items=group.items||[],waiting=['S'
 const dashboardCreatedToday=group=>{const d=new Date(group.createdAt),start=new Date();start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+1);return !Number.isNaN(d.getTime())&&d>=start&&d<end};
 function parseSoldoutItems(value){if(Array.isArray(value))return value.map(String);const text=String(value||'').trim();if(!text)return[];try{const parsed=JSON.parse(text);if(Array.isArray(parsed))return parsed.map(String)}catch(_){}return text.replace(/^\{|\}$/g,'').split(',').map(v=>v.trim().replace(/^"|"$/g,'')).filter(Boolean)}
 async function fetchAllProductSoldouts(){const rows=[];for(let from=0;;from+=1000){const {data,error}=await supabaseClient.from('inventory_items').select('item_number,quantity,warehouse_code,category_name').lte('quantity',0).range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}return rows}
+
+async function fetchAllDashboardOrders({status,columns,shippedStart,shippedEnd}){
+  const page=(from,withCount=false)=>{
+    let query=supabaseClient.from('orders').select(columns,withCount?{count:'exact'}:{}).eq('status',status);
+    if(shippedStart)query=query.gte('shipped_at',shippedStart);
+    if(shippedEnd)query=query.lt('shipped_at',shippedEnd);
+    return query.order('id',{ascending:true}).range(from,from+999);
+  };
+  const first=await page(0,true);
+  if(first.error)throw first.error;
+  const rows=[...(first.data||[])],count=first.count??rows.length;
+  for(let from=1000;from<count;from+=4000){
+    const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,index)=>from+index*1000);
+    const pages=await Promise.all(offsets.map(offset=>page(offset)));
+    for(const result of pages){if(result.error)throw result.error;rows.push(...(result.data||[]));}
+  }
+  return rows;
+}
 
 async function guardAdminHome(){
   const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
@@ -57,14 +75,14 @@ async function guardAdminHome(){
 }
 
 async function loadDashboard(){
-  const start=todayStartIso();
+  const {start,end}=todayRangeIso();
   // 미입금 상세는 운영 숫자와 동시에 시작해 대시보드의 나머지 조회를 기다리지 않습니다.
   void loadUnpaidCustomers();
   const [pending,doneToday,customers,waiting,products]=await Promise.all([
     // 주문관리의 `미출고` 화면과 똑같이 DB 상태가 주문접수인 주문만 집계합니다.
     // neq(출고완료)는 NULL/예외 상태를 다르게 처리해 메인 숫자와 클릭 후 목록이 어긋날 수 있습니다.
-    supabaseClient.from("orders").select("order_number,customer_id,customer_name,created_at,status,picking_status,item_number,warehouse_code,qty,soldout_qty,is_soldout,s_outbound_confirmed,b_outbound_confirmed,i_outbound_confirmed").eq("status","주문접수"),
-    supabaseClient.from("orders").select("order_number,customer_id,customer_name").eq("status","출고완료").gte("shipped_at",start),
+    fetchAllDashboardOrders({status:'주문접수',columns:'id,order_number,customer_id,customer_name,created_at,status,picking_status,item_number,warehouse_code,qty,soldout_qty,is_soldout,s_outbound_confirmed,b_outbound_confirmed,i_outbound_confirmed'}).then(data=>({data,error:null})).catch(error=>({data:[],error})),
+    fetchAllDashboardOrders({status:'출고완료',columns:'id,order_number,customer_id,customer_name',shippedStart:start,shippedEnd:end}).then(data=>({data,error:null})).catch(error=>({data:[],error})),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("is_admin",false),
     supabaseClient.from("customers").select("id",{count:"exact",head:true}).eq("approved",false).eq("blocked",false),
     fetchAllProductSoldouts().then(data=>({data,error:null})).catch(error=>({data:[],error}))

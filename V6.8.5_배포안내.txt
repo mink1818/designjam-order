@@ -1,0 +1,15 @@
+DESIGN SOCKS V6.8.5 배포 안내
+
+수정사항
+1. 메인화면 당일 출고완료 42건 / 통계 55건 불일치 수정
+2. 1,000개가 넘는 주문 품목 행도 전체 페이지 조회
+3. 오늘 주문·주문확인·출고대기 숫자도 같은 방식으로 보완
+
+배포 명령
+git add .
+git commit -m "release v6.8.5 fix dashboard completed count pagination"
+git push origin main
+
+DB SQL 실행은 필요 없습니다.
+배포 후 Ctrl+F5를 누르고 좌측 아래 V6.8.5 표시를 확인하세요.
+메인화면 당일 출고완료와 통계 오늘 출고완료가 같은 건수인지 확인하세요.
