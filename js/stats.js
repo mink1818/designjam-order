@@ -18,6 +18,9 @@ let currentStats=null;
 let rankingExpanded={product:false,customer:false};
 let warehouseRankingExpanded={S:false,B:false,I:false};
 let statsAuxLoadPromise=null;
+const STATS_CACHE_DB='design-socks-stats-cache';
+const STATS_CACHE_STORE='snapshots';
+const STATS_CACHE_KEY='full-v1';
 
 const $=id=>document.getElementById(id);
 const money=v=>Number(v||0).toLocaleString('ko-KR');
@@ -27,6 +30,11 @@ const localDateKey=value=>{const d=new Date(value);if(Number.isNaN(d.getTime()))
 const parseDateInput=value=>{if(!value)return null;const [y,m,d]=value.split('-').map(Number);return new Date(y,m-1,d,0,0,0,0);};
 const endOfDay=d=>{const x=new Date(d);x.setHours(23,59,59,999);return x;};
 const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
+
+function openStatsCache(){return new Promise((resolve,reject)=>{if(!window.indexedDB)return reject(new Error('IndexedDB unavailable'));const request=indexedDB.open(STATS_CACHE_DB,1);request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STATS_CACHE_STORE))request.result.createObjectStore(STATS_CACHE_STORE)};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+async function readStatsCache(){try{const db=await openStatsCache();return await new Promise((resolve,reject)=>{const tx=db.transaction(STATS_CACHE_STORE,'readonly'),request=tx.objectStore(STATS_CACHE_STORE).get(STATS_CACHE_KEY);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error)})}catch(error){console.warn('통계 캐시 읽기 생략:',error.message);return null}}
+async function writeStatsCache(){try{const snapshot={savedAt:Date.now(),rawOrders,deletedOrders,orderChangeHistory,paymentRecords,productGroups:[...productGroupMap],categories:[...categoryNameMap],mains:[...mainCategoryNameMap],customerMeta:[...customerStatsMeta]};const db=await openStatsCache();await new Promise((resolve,reject)=>{const tx=db.transaction(STATS_CACHE_STORE,'readwrite');tx.objectStore(STATS_CACHE_STORE).put(snapshot,STATS_CACHE_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}catch(error){console.warn('통계 캐시 저장 생략:',error.message)}}
+function applyStatsCache(snapshot){if(!snapshot||!Array.isArray(snapshot.rawOrders)||!snapshot.rawOrders.length)return false;rawOrders=snapshot.rawOrders;deletedOrders=Array.isArray(snapshot.deletedOrders)?snapshot.deletedOrders:[];orderChangeHistory=Array.isArray(snapshot.orderChangeHistory)?snapshot.orderChangeHistory:[];paymentRecords=Array.isArray(snapshot.paymentRecords)?snapshot.paymentRecords:[];productGroupMap=new Map(snapshot.productGroups||[]);categoryNameMap=new Map(snapshot.categories||[]);mainCategoryNameMap=new Map(snapshot.mains||[]);customerStatsMeta=new Map(snapshot.customerMeta||[]);groupedOrdersCache=null;groupedOrdersSource=null;return true}
 
 function printWarehouseCategoryAnalysis(){
   const period=$('statsPeriodLabel')?.textContent?.trim()||'';
@@ -135,6 +143,7 @@ async function loadSourceData(){
     orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
     paymentRecords=paymentsResult.error?[]:(paymentsResult.data||[]);
     customerStatsMeta=new Map((customersResult.data||[]).map(c=>[String(c.id),c]));
+    void writeStatsCache();
     $('statsMessage').textContent='';
   }).catch(error=>{
     console.warn('통계 부가정보 조회 생략:',error);
@@ -496,4 +505,4 @@ function bindEvents(){
   document.querySelectorAll('[data-order-filter]').forEach(btn=>btn.addEventListener('click',()=>{const f=btn.dataset.orderFilter;location.href=`admin.html?status=${encodeURIComponent(f)}`;}));
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();initReceivableLookup();renderAll();statsAuxLoadPromise?.then(()=>{renderAll();renderReceivableCustomerList();renderReceivableLookup();});}catch(e){$('statsMessage').textContent='통계 불러오기 실패: '+e.message;}});
+document.addEventListener('DOMContentLoaded',async()=>{if(!(await guardAdmin()))return;setDefaultDates();setDefaultStatusPeriod();bindEvents();let cacheShown=false;const cached=await readStatsCache();if(applyStatsCache(cached)){cacheShown=true;fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();initReceivableLookup();renderAll();const age=Math.max(0,Math.round((Date.now()-Number(cached.savedAt||0))/60000));$('statsMessage').textContent=`저장된 통계를 먼저 표시했습니다${age?` (${age}분 전)`:''}. 최신 데이터를 확인하고 있습니다.`;}try{await loadSourceData();fillAnalysisYears();fillStatusPeriodYears();updateStatusPeriodControls();if(!cacheShown)initReceivableLookup();else{initReceivableLookup();}renderAll();statsAuxLoadPromise?.then(()=>{renderAll();renderReceivableCustomerList();renderReceivableLookup();});}catch(e){$('statsMessage').textContent=(cacheShown?'저장된 통계는 표시했지만 최신화 실패: ':'통계 불러오기 실패: ')+e.message;}});

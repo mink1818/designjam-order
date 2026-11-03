@@ -10,10 +10,13 @@ function hideEmployeeDashboardMetrics(){if((location.pathname.split('/').pop()||
 function applyManagerBarcodeOnly(page){
   if(page==='admin-home.html'){
     const productButton=[...document.querySelectorAll('.v3-menu-card')].find(el=>managerTarget(el)==='products.html');
-    if(productButton){const b=productButton.querySelector('b'),span=productButton.querySelector('span');if(b)b.textContent='🖨 바코드관리';if(span)span.textContent='상품 품번 바코드 조회·라벨 출력';}
+    if(productButton){const b=productButton.querySelector('b'),span=productButton.querySelector('span');if(b)b.textContent='🖨 바코드관리';if(span)span.textContent='상품 품번 바코드 조회·라벨 출력';productButton.setAttribute('onclick',"location.href='products.html#barcodeManagement'");}
   }
   if(page==='products.html'){
     document.documentElement.classList.add('manager-barcode-only');
+    const title=document.querySelector('header h1'),caption=document.querySelector('header p');
+    if(title)title.textContent='🖨 바코드관리';
+    if(caption)caption.textContent='품번 조회·바코드 라벨 출력';
     const keep=document.getElementById('barcodeManagement');
     document.querySelectorAll('main.products-admin-page > *').forEach(el=>{if(el!==keep){el.hidden=true;el.style.setProperty('display','none','important')}});
     if(keep){keep.hidden=false;keep.style.removeProperty('display');setTimeout(()=>keep.scrollIntoView({block:'start'}),0);}

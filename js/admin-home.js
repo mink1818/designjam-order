@@ -128,15 +128,22 @@ async function fetchDashboardRows(table,columns,orderColumn){
   return rows;
 }
 // 수년간 쌓인 주문접수 행은 미입금 집계에 필요하지 않습니다.
-async function fetchCompletedUnpaidRows(){
-  const columns='order_number,customer_id,customer_name,delivery_name,qty,price,soldout_qty,is_soldout,shipping_fee,status';
-  const query=(from,to,withCount=false)=>supabaseClient.from('orders').select(columns,withCount?{count:'exact'}:{}).eq('status','출고완료').order('id',{ascending:false}).range(from,to);
-  const first=await query(0,999,true);if(first.error)throw first.error;
+async function fetchUnpaidPaymentRows(){
+  const columns='id,order_number,customer_key,customer_name,order_amount,paid_amount,payment_status,confirmed_by,updated_at,payment_account,depositor_name,paid_at,memo';
+  const page=(from,withCount=false)=>supabaseClient.from('order_payment_records').select(columns,withCount?{count:'exact'}:{}).in('payment_status',['미입금','일부입금']).order('updated_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+  const first=await page(0,true);if(first.error)throw first.error;
   const rows=[...(first.data||[])],count=first.count??rows.length;
-  for(let from=1000;from<count;from+=4000){
-    const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,i)=>from+i*1000);
-    const pages=await Promise.all(offsets.map(offset=>query(offset,offset+999)));
-    for(const page of pages){if(page.error)throw page.error;rows.push(...(page.data||[]))}
+  for(let from=1000;from<count;from+=4000){const offsets=Array.from({length:Math.min(4,Math.ceil((count-from)/1000))},(_,i)=>from+i*1000),pages=await Promise.all(offsets.map(offset=>page(offset)));for(const result of pages){if(result.error)throw result.error;rows.push(...(result.data||[]))}}
+  return rows;
+}
+async function fetchCompletedUnpaidRows(orderNumbers){
+  const unique=[...new Set((orderNumbers||[]).filter(Boolean).map(String))];if(!unique.length)return[];
+  const columns='order_number,customer_id,customer_name,delivery_name,qty,price,soldout_qty,is_soldout,shipping_fee,status';
+  const rows=[];
+  for(let i=0;i<unique.length;i+=100){
+    const numbers=unique.slice(i,i+100),page=(from,withCount=false)=>supabaseClient.from('orders').select(columns,withCount?{count:'exact'}:{}).eq('status','출고완료').in('order_number',numbers).order('id',{ascending:false}).range(from,from+999),first=await page(0,true);
+    if(first.error)throw first.error;rows.push(...(first.data||[]));const count=first.count??(first.data||[]).length;
+    for(let from=1000;from<count;from+=1000){const result=await page(from);if(result.error)throw result.error;rows.push(...(result.data||[]))}
   }
   return rows;
 }
@@ -188,8 +195,10 @@ async function completeUnpaidGroup(input,group){
 async function loadUnpaidCustomers(){
   const panel=document.getElementById('unpaidCustomerPanel'),box=document.getElementById('unpaidCustomerList');if(!panel||!box)return;
   try{
-    const [orders,payments]=await Promise.all([fetchCompletedUnpaidRows(),fetchDashboardRows('order_payment_records','order_number,customer_key,paid_amount,confirmed_by,updated_at,payment_account,depositor_name,paid_at,memo','updated_at')]);
-    const paymentMap=new Map();payments.forEach(x=>{const k=`order::${x.order_number}`;const old=paymentMap.get(k);if(!old||(!old.confirmed_by&&x.confirmed_by)||new Date(x.updated_at||0)>new Date(old.updated_at||0))paymentMap.set(k,x)});const orderMap=new Map();
+    const payments=await fetchUnpaidPaymentRows();
+    const paymentMap=new Map();payments.forEach(x=>{const k=`order::${x.order_number}`;const old=paymentMap.get(k);if(!old||(!old.confirmed_by&&x.confirmed_by)||new Date(x.updated_at||0)>new Date(old.updated_at||0))paymentMap.set(k,x)});
+    const orders=await fetchCompletedUnpaidRows([...paymentMap.values()].map(x=>x.order_number));
+    const orderMap=new Map();
     orders.forEach(row=>{if(row.status!=='출고완료')return;const name=row.customer_name||'거래처 미입력',key=`order::${row.order_number}`;if(!orderMap.has(key))orderMap.set(key,{orderNumber:row.order_number,customerId:String(row.customer_id||''),name,deliveryName:row.delivery_name||'',orderedQty:0,total:0,shipping:0});const g=orderMap.get(key),ordered=Number(row.qty||0),soldout=Math.min(ordered,Number(row.soldout_qty||(row.is_soldout?ordered:0)));g.orderedQty+=ordered;if(row.delivery_name)g.deliveryName=row.delivery_name;g.total+=Math.max(0,ordered-soldout)*Number(row.price||0);g.shipping=Math.max(g.shipping,Number(row.shipping_fee||0))});
     const customerMap=new Map();let unpaidOrders=0,unpaidTotal=0;
     orderMap.forEach((g,key)=>{const record=paymentMap.get(`order::${g.orderNumber}`);if(!record)return;const total=g.total+g.shipping,paid=Math.max(0,Number(record.paid_amount||0)),balance=Math.max(0,total-paid);if(balance<=0)return;unpaidOrders++;unpaidTotal+=balance;const ck=String(g.name||'거래처 미입력').normalize('NFKC').replace(/\s+/g,'').toLowerCase();if(!customerMap.has(ck))customerMap.set(ck,{...g,count:0,balance:0,orders:[]});const c=customerMap.get(ck);c.count++;c.balance+=balance;c.orders.push({...g,total,paid,balance,record})});
