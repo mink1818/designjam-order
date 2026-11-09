@@ -7,6 +7,7 @@ const sql=fs.readFileSync(path.join(root,'SQL','V6.8.8-RECEIVABLE-STATS-I-WAITIN
 const stats=fs.readFileSync(path.join(root,'js','stats.js'),'utf8');
 const home=fs.readFileSync(path.join(root,'js','admin-home.js'),'utf8');
 const picking=fs.readFileSync(path.join(root,'js','picking.js'),'utf8');
+const admin=fs.readFileSync(path.join(root,'js','admin.js'),'utf8');
 
 assert.match(sql,/admin_receivable_snapshot\(\)/,'미수금 단일 서버 집계 함수가 필요합니다.');
 assert.match(sql,/distinct on \(p\.order_number\)/,'주문번호별 최신 입금기록 하나만 사용해야 합니다.');
@@ -23,6 +24,9 @@ assert.match(picking,/id="forceIPackedWaiting"/,'피킹시작 전 강제 이동 
 assert.match(picking,/rpc\("admin_set_i_packed_waiting"/,'강제 이동은 권한 검증 RPC를 사용해야 합니다.');
 assert.match(picking,/주문수량·피킹수량·재고는 변경되지 않습니다/,'관리자 확인창에 영향 범위를 명확히 표시해야 합니다.');
 assert.match(home,/i_packed_waiting_forced/,'메인 화면도 강제 I 대기를 동일하게 분류해야 합니다.');
+assert.match(admin,/I 대기 강제이동/,'주문관리 펼친 화면에 강제 이동 버튼이 있어야 합니다.');
+assert.match(admin,/adminToggleForcedIPackedWaiting/,'주문관리에서 피킹시작 없이 강제 이동을 실행할 수 있어야 합니다.');
+assert.match(admin,/group\?\.forcedIPackedWaiting===true/,'주문관리의 I 포장완료 대기 분류에도 강제 상태가 반영되어야 합니다.');
 
 console.log('V6.8.8 receivable and forced I waiting: ok');
 

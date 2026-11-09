@@ -431,11 +431,13 @@ try {
         proxyCreatedByRole: order.proxy_created_by_role || "",
         isProxy: isProxyOrder,
         pickingStatus: order.picking_status || '대기',
+        forcedIPackedWaiting: order.i_packed_waiting_forced === true,
         items: []
       };
     }
 
     const currentGroup=grouped[groupedKey];
+    if(order.i_packed_waiting_forced===true)currentGroup.forcedIPackedWaiting=true;
     if(order.shipping_fee_manual===true){
       currentGroup.shippingFeeManual=true;
       currentGroup.shipping_fee=Math.max(0,Number(order.shipping_fee||0));
@@ -739,6 +741,7 @@ function adminWarehouseOutboundComplete(group, code) {
 }
 
 function isAdminIPackedWaiting(group) {
+  if(group?.status !== "출고완료" && group?.forcedIPackedWaiting===true)return true;
   const items = group?.items || [];
   const waitingForSB = ["S", "B"].some(code => items.some(item => getOrderWarehouseCode(item) === code) && !adminWarehouseOutboundComplete(group, code));
   const verified = String(group?.pickingStatus || "").includes("검증완료");
@@ -962,6 +965,8 @@ class="order-detail">
 
         ${paymentTracked?`<section class="order-payment-detail ${paymentStatus==='입금완료'?'paid':paymentStatus==='일부입금'?'partial':''}"><div><strong>입금상태</strong><span>${paymentStatus}</span><small>주문금액 ${summaryTotal.toLocaleString()}원 · 입금 ${paidAmount.toLocaleString()}원 · 미수 ${Math.max(0,summaryTotal-paidAmount).toLocaleString()}원${paymentRecord.updated_at?`<br>최근 확인: ${escapeAdminHtml(paymentRecord.confirmed_by_name||'관리자')} · ${formatOrderDateTime(paymentRecord.updated_at)}`:''}</small></div><span class="payment-detail-actions"><button type="button" onclick="togglePartialPaymentEditor(${index})">일부입금 입력</button><button type="button" class="gray-btn" onclick="showPaymentHistory(${index},'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}')">변경기록</button></span></section><div id="partial-payment-${index}" class="partial-payment-editor" hidden><label>현재까지 받은 금액<input type="number" min="0" step="100" value="${paidAmount}"></label><button type="button" onclick="savePartialPayment(this,'${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.customerId||'')}',${summaryTotal},'${escapeAdminAttr(group.customerName||'')}')">저장</button></div><div id="payment-history-${index}" class="payment-history-list" hidden></div>`:''}
 
+        ${!isDone?`<div class="admin-force-i-waiting-row ${group.forcedIPackedWaiting?'active':''}"><div><strong>${group.forcedIPackedWaiting?'I 포장완료 대기 · 강제이동 중':'피킹 시작 전 I 포장완료 대기 이동'}</strong><small>${group.forcedIPackedWaiting?'피킹수량과 재고는 변경되지 않은 상태입니다.':'피킹시작을 누르지 않고 I 포장완료 대기목록으로 바로 이동합니다.'}</small></div><button type="button" onclick="adminToggleForcedIPackedWaiting(event,'${escapeAdminAttr(group.orderNumber)}',${group.forcedIPackedWaiting?'false':'true'})">${group.forcedIPackedWaiting?'강제대기 취소':'I 대기 강제이동'}</button></div>`:''}
+
         ${renderOrderItemEditor(group, index)}
         <div class="pending-order-delete-row"><button type="button" class="cart-btn admin-delete-order-btn" onclick="deleteAdminOrderAnyStatus('${escapeAdminAttr(group.orderNumber)}','${escapeAdminAttr(group.status)}','${escapeAdminAttr(group.pickingStatus||'대기')}')">주문 전체삭제</button><small>피킹중·출고대기·출고완료 주문도 삭제 가능하며, 차감된 재고는 자동 복원하고 삭제이력에 보관됩니다.</small></div>
 
@@ -1115,6 +1120,21 @@ async function toggleOrderStatus(orderNumber, currentStatus, pickingStatus='대�
   } catch (error) {
     alert("상태 변경 실패: " + error.message);
   }
+}
+
+async function adminToggleForcedIPackedWaiting(event,orderNumber,enabled){
+  event?.preventDefault();event?.stopPropagation();
+  const next=enabled===true;
+  const message=next
+    ? `피킹시작을 누르지 않고 이 주문을 I 포장완료 대기로 이동할까요?\n\n주문수량·피킹수량·품절수량·재고는 변경되지 않습니다.\n출고완료 전 실제 피킹수량을 반드시 확인해야 합니다.`
+    : `이 주문의 강제 I 포장완료 대기 표시를 취소할까요?\n피킹수량과 재고에는 영향이 없습니다.`;
+  if(!confirm(message))return;
+  const button=event?.currentTarget||event?.target;if(button)button.disabled=true;
+  const {error}=await supabaseClient.rpc('admin_set_i_packed_waiting',{p_order_number:orderNumber,p_enabled:next});
+  if(error){if(button)button.disabled=false;return alert(`I 포장완료 대기 이동 실패: ${error.message}\n\nSQL/V6.8.8-RECEIVABLE-STATS-I-WAITING.sql 적용 여부를 확인해주세요.`)}
+  invalidateAdminOrderCache();
+  await loadOrders();
+  alert(next?'I 포장완료 대기로 이동했습니다.\n피킹수량과 재고는 변경되지 않았습니다.':'강제 I 포장완료 대기 표시를 취소했습니다.');
 }
 
 async function quickCompleteCollapsedOrder(button,event,orderNumber,customerName,deliveryName,summaryQty,summaryTotal){

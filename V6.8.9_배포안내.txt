@@ -1,0 +1,15 @@
+DESIGN SOCKS V6.8.9 배포 안내
+
+V6.8.8 SQL을 이미 적용했다면 추가 SQL은 없습니다.
+아직 적용하지 않았다면 먼저 아래 SQL을 실행하세요.
+SQL/V6.8.8-RECEIVABLE-STATS-I-WAITING.sql
+
+배포 명령
+git add .
+git commit -m "release v6.8.9 admin forced i waiting button"
+git push origin main
+
+배포 완료 후 Ctrl+F5를 누르고 좌측 하단 V6.8.9를 확인합니다.
+
+사용 위치
+주문관리 > 주문 펼치기 > 입금상태 아래 `I 대기 강제이동`
