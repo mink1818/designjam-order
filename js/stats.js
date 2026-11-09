@@ -10,6 +10,8 @@ let groupedOrdersSource=null;
 let deletedOrders=[];
 let orderChangeHistory=[];
 let paymentRecords=[];
+let receivableRows=[];
+let receivableReady=false;
 let productGroupMap=new Map();
 let categoryNameMap=new Map();
 let mainCategoryNameMap=new Map();
@@ -33,8 +35,8 @@ const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
 
 function openStatsCache(){return new Promise((resolve,reject)=>{if(!window.indexedDB)return reject(new Error('IndexedDB unavailable'));const request=indexedDB.open(STATS_CACHE_DB,1);request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STATS_CACHE_STORE))request.result.createObjectStore(STATS_CACHE_STORE)};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
 async function readStatsCache(){try{const db=await openStatsCache();return await new Promise((resolve,reject)=>{const tx=db.transaction(STATS_CACHE_STORE,'readonly'),request=tx.objectStore(STATS_CACHE_STORE).get(STATS_CACHE_KEY);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error)})}catch(error){console.warn('통계 캐시 읽기 생략:',error.message);return null}}
-async function writeStatsCache(){try{const snapshot={savedAt:Date.now(),rawOrders,deletedOrders,orderChangeHistory,paymentRecords,productGroups:[...productGroupMap],categories:[...categoryNameMap],mains:[...mainCategoryNameMap],customerMeta:[...customerStatsMeta]};const db=await openStatsCache();await new Promise((resolve,reject)=>{const tx=db.transaction(STATS_CACHE_STORE,'readwrite');tx.objectStore(STATS_CACHE_STORE).put(snapshot,STATS_CACHE_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}catch(error){console.warn('통계 캐시 저장 생략:',error.message)}}
-function applyStatsCache(snapshot){if(!snapshot||!Array.isArray(snapshot.rawOrders)||!snapshot.rawOrders.length)return false;rawOrders=snapshot.rawOrders;deletedOrders=Array.isArray(snapshot.deletedOrders)?snapshot.deletedOrders:[];orderChangeHistory=Array.isArray(snapshot.orderChangeHistory)?snapshot.orderChangeHistory:[];paymentRecords=Array.isArray(snapshot.paymentRecords)?snapshot.paymentRecords:[];productGroupMap=new Map(snapshot.productGroups||[]);categoryNameMap=new Map(snapshot.categories||[]);mainCategoryNameMap=new Map(snapshot.mains||[]);customerStatsMeta=new Map(snapshot.customerMeta||[]);groupedOrdersCache=null;groupedOrdersSource=null;return true}
+async function writeStatsCache(){try{const snapshot={savedAt:Date.now(),rawOrders,deletedOrders,orderChangeHistory,productGroups:[...productGroupMap],categories:[...categoryNameMap],mains:[...mainCategoryNameMap],customerMeta:[...customerStatsMeta]};const db=await openStatsCache();await new Promise((resolve,reject)=>{const tx=db.transaction(STATS_CACHE_STORE,'readwrite');tx.objectStore(STATS_CACHE_STORE).put(snapshot,STATS_CACHE_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}catch(error){console.warn('통계 캐시 저장 생략:',error.message)}}
+function applyStatsCache(snapshot){if(!snapshot||!Array.isArray(snapshot.rawOrders)||!snapshot.rawOrders.length)return false;rawOrders=snapshot.rawOrders;deletedOrders=Array.isArray(snapshot.deletedOrders)?snapshot.deletedOrders:[];orderChangeHistory=Array.isArray(snapshot.orderChangeHistory)?snapshot.orderChangeHistory:[];receivableRows=[];receivableReady=false;productGroupMap=new Map(snapshot.productGroups||[]);categoryNameMap=new Map(snapshot.categories||[]);mainCategoryNameMap=new Map(snapshot.mains||[]);customerStatsMeta=new Map(snapshot.customerMeta||[]);groupedOrdersCache=null;groupedOrdersSource=null;return true}
 
 function printWarehouseCategoryAnalysis(){
   const period=$('statsPeriodLabel')?.textContent?.trim()||'';
@@ -116,6 +118,9 @@ function statsGroupItemNumbers(value){
 
 async function loadSourceData(){
   $('statsMessage').textContent='통계 데이터를 불러오는 중입니다.';
+  // 미수금은 전체 주문 다운로드와 분리된 서버 집계를 즉시 시작합니다.
+  // 화면 전체 통계가 늦어도 누적 미수금은 작은 결과 한 번으로 확정됩니다.
+  const receivablePromise=supabaseClient.rpc('admin_receivable_snapshot');
   const [ordersResult,groupsResult,categoriesResult,mainsResult]=await Promise.all([
     fetchAllStatsRows('orders','created_at',true,'id,order_number,customer_id,customer_name,created_at,shipped_at,picking_verified_at,status,shipping_fee,item_number,qty,price,is_soldout,soldout_qty,warehouse_code,memo'),
     supabaseClient.from('product_groups').select('item_numbers,category_id,warehouse_code'),
@@ -136,12 +141,14 @@ async function loadSourceData(){
   statsAuxLoadPromise=Promise.all([
     fetchAllStatsRows('deleted_order_history','deleted_at',true),
     fetchAllStatsRows('order_change_history','changed_at',true),
-    fetchAllStatsRows('order_payment_records','updated_at',false,'order_number,customer_key,customer_name,paid_amount,confirmed_by,updated_at'),
+    receivablePromise,
     supabaseClient.from('customers').select('id,business_name,customer_tag')
   ]).then(([deletedResult,changesResult,paymentsResult,customersResult])=>{
     deletedOrders=deletedResult.error?[]:(deletedResult.data||[]);
     orderChangeHistory=changesResult.error?[]:(changesResult.data||[]);
-    paymentRecords=paymentsResult.error?[]:(paymentsResult.data||[]);
+    if(paymentsResult.error)throw paymentsResult.error;
+    receivableRows=Array.isArray(paymentsResult.data)?paymentsResult.data:[];
+    receivableReady=true;
     customerStatsMeta=new Map((customersResult.data||[]).map(c=>[String(c.id),c]));
     void writeStatsCache();
     $('statsMessage').textContent='';
@@ -225,16 +232,8 @@ function calculateStats(){
   const nowMonth=new Date(),monthStart=new Date(nowMonth.getFullYear(),nowMonth.getMonth(),1);
   const monthOrders=groupOrders(rawOrders).filter(order=>{const d=statsOrderDate(order);return d&&d>=monthStart;});
   const monthAmount=monthOrders.reduce((sum,order)=>sum+orderTotals(order).amount,0);
-  const paymentMap=new Map();paymentRecords.forEach(row=>{const k=`order::${row.order_number}`,old=paymentMap.get(k);if(!old||(!old.confirmed_by&&row.confirmed_by)||((!!old.confirmed_by)===(!!row.confirmed_by)&&new Date(row.updated_at||0)>new Date(old.updated_at||0)))paymentMap.set(k,row)});
   let receivableAmount=0,receivableOrderCount=0,partialPaymentCount=0,unpaidOrderCount=0;
-  groupOrders(rawOrders).filter(order=>order.status==='출고완료').forEach(order=>{
-    const key=`${order.orderNumber}::${String(order.customerId||'')}`;
-    const record=paymentMap.get(`order::${order.orderNumber}`);if(!record)return;
-    const total=orderTotals(order).amount,paid=Math.max(0,Number(record.paid_amount||0)),balance=Math.max(0,total-paid);
-    if(balance<=0)return;
-    receivableAmount+=balance;receivableOrderCount++;
-    if(paid>0)partialPaymentCount++;else unpaidOrderCount++;
-  });
+  receivableRows.forEach(row=>{const balance=Math.max(0,Number(row.balance||0)),paid=Math.max(0,Number(row.paid_amount||0));if(balance<=0)return;receivableAmount+=balance;receivableOrderCount++;if(paid>0)partialPaymentCount++;else unpaidOrderCount++});
   const customerCount=customers.size,orderCount=orders.length,average=orderCount?Math.round(totalAmount/orderCount):0,completionRate=orderCount?Math.round(doneCount/orderCount*100):0;
   const warehouseRankings=[...warehouseRankMaps].map(([code,data])=>({code,products:[...data.products.values()].sort((a,b)=>b.qty-a.qty||b.amount-a.amount||String(a.name).localeCompare(String(b.name),'ko',{numeric:true})),customers:[...data.customers.values()].map(x=>({name:x.name,qty:x.qty,amount:x.amount,orders:x.orderNumbers.size})).sort((a,b)=>b.qty-a.qty||b.amount-a.amount||String(a.name).localeCompare(String(b.name),'ko',{numeric:true}))}));
   return {start,end,completedOnly,orders,totalAmount,totalQty,orderCount,todayAmount,todayOrderCount,monthAmount,receivableAmount,receivableOrderCount,partialPaymentCount,unpaidOrderCount,customerCount,average,completionRate,doneCount,pendingCount,proxyOrderCount,deletedCount:deleted.length,deletedAmount,changeCount:changes.length,changedOrderCount,deleted,changes,warehouseSales:[...warehouseSales.values()],warehouseRankings,daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),products:[...products.values()].sort((a,b)=>b.qty-a.qty),customers:[...customers.values()].sort((a,b)=>b.amount-a.amount),categories:[...categories.values()].sort((a,b)=>b.qty-a.qty)};
@@ -349,8 +348,8 @@ function renderMetrics(s){
   const cards=[
     [`${period} 매출`,money(s.totalAmount),'원','sales'],
     [`${period} 주문건수`,money(s.orderCount),'건','orders'],
-    ['누적 미수금',money(s.receivableAmount),'원','receivable'],
-    ['미입금·일부입금',money(s.receivableOrderCount),`건 · 미입금 ${money(s.unpaidOrderCount)} / 일부 ${money(s.partialPaymentCount)}`,'payment'],
+    ['누적 미수금',receivableReady?money(s.receivableAmount):'확인 중',receivableReady?'원':'서버 기준금액 조회 중','receivable'],
+    ['미입금·일부입금',receivableReady?money(s.receivableOrderCount):'확인 중',receivableReady?`건 · 미입금 ${money(s.unpaidOrderCount)} / 일부 ${money(s.partialPaymentCount)}`:'서버 기준금액 조회 중','payment'],
     [`${period} 판매수량`,money(s.totalQty),'죽','qty'],
     [`${period} 출고완료`,money(s.doneCount),'건','done'],
     ['관리자 대신주문',money(s.proxyOrderCount),'건','proxy'],
@@ -402,24 +401,18 @@ function receivableCustomerIdentity(order){
   return direct?`id:${direct}`:'';
 }
 function receivablePaymentFor(order){
-  const normalized=normalizeStatsCustomerName(order?.customerName||'');
-  const candidates=paymentRecords.filter(r=>String(r.order_number||'')===String(order?.orderNumber||''));
-  candidates.sort((a,b)=>Number(!!b.confirmed_by)-Number(!!a.confirmed_by)||new Date(b.updated_at||0)-new Date(a.updated_at||0));
-  const exact=candidates.find(r=>normalizeStatsCustomerName(r.customer_name||'')===normalized);
-  return exact||candidates[0]||null;
+  return receivableRows.find(r=>String(r.order_number||'')===String(order?.orderNumber||''))||null;
 }
 function receivableSnapshot(){
   const map=new Map();
-  groupOrders(rawOrders).filter(o=>o.status==='출고완료').forEach(o=>{
-    const payment=receivablePaymentFor(o);
-    if(!payment)return; // 기존 누적 미수금과 동일: 입금관리 대상 주문만 집계
-    const key=receivableCustomerIdentity(o);if(!key)return;
-    const t=orderTotals(o),paid=Math.min(t.amount,Math.max(0,Number(payment.paid_amount||0))),balance=Math.max(0,t.amount-paid);
-    const normalized=normalizeStatsCustomerName(o.customerName);const meta=[...customerStatsMeta.values()].find(row=>normalizeStatsCustomerName(row?.business_name||'')===normalized)||{};
+  receivableRows.forEach(payment=>{
+    const customerName=payment.customer_name||'거래처명 미입력',normalized=normalizeStatsCustomerName(customerName),key=normalized?`name:${normalized}`:(payment.customer_id?`id:${payment.customer_id}`:'');if(!key)return;
+    const balance=Math.max(0,Number(payment.balance||0));
+    const meta=[...customerStatsMeta.values()].find(row=>normalizeStatsCustomerName(row?.business_name||'')===normalized)||{};
     let x=map.get(key);
-    if(!x)x={key,name:meta.business_name||o.customerName||'거래처명 미입력',alias:meta.customer_tag||'',balance:0,lastTrade:''};
+    if(!x)x={key,name:meta.business_name||customerName,alias:meta.customer_tag||'',balance:0,lastTrade:''};
     x.balance+=balance;
-    const day=localDateKey(o.completedAt||o.createdAt);if(day>x.lastTrade)x.lastTrade=day;
+    const day=localDateKey(payment.completed_at);if(day>x.lastTrade)x.lastTrade=day;
     map.set(key,x);
   });
   return [...map.values()];
@@ -435,10 +428,9 @@ function renderReceivableCustomerList(){
 function renderReceivableLookup(){
   const out=$('receivableDailyResult'),sel=$('receivableCustomer');if(!out||!sel||!sel.value){if(out)out.innerHTML='<p class="empty-copy">거래처를 선택하면 최근 1개월 일별 미수금 합계를 표시합니다.</p>';return}
   const start=$('receivableStart')?.value,end=$('receivableEnd')?.value,key=sel.value;const rows=new Map();
-  groupOrders(rawOrders).filter(o=>o.status==='출고완료'&&receivableCustomerIdentity(o)===key&&(!start||localDateKey(o.completedAt||o.createdAt)>=start)&&(!end||localDateKey(o.completedAt||o.createdAt)<=end)).forEach(o=>{
-    const payment=receivablePaymentFor(o);if(!payment)return;
-    const d=localDateKey(o.completedAt||o.createdAt),t=orderTotals(o),paid=Math.min(t.amount,Math.max(0,Number(payment.paid_amount||0))),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
-    x.total+=t.amount;x.shipping+=o.shippingFee;x.balance+=Math.max(0,t.amount-paid);x.count++;rows.set(d,x)
+  receivableRows.filter(payment=>{const normalized=normalizeStatsCustomerName(payment.customer_name||''),identity=normalized?`name:${normalized}`:(payment.customer_id?`id:${payment.customer_id}`:'');const day=localDateKey(payment.completed_at);return identity===key&&(!start||day>=start)&&(!end||day<=end)}).forEach(payment=>{
+    const d=localDateKey(payment.completed_at),x=rows.get(d)||{day:d,total:0,shipping:0,balance:0,count:0};
+    x.total+=Number(payment.order_total||0);x.shipping+=Number(payment.shipping_fee||0);x.balance+=Math.max(0,Number(payment.balance||0));x.count++;rows.set(d,x)
   });
   const list=[...rows.values()].sort((a,b)=>a.day.localeCompare(b.day));out.innerHTML=list.length?`<div class="stats-receivable-table-wrap"><table class="stats-receivable-table"><thead><tr><th>출고완료일</th><th>주문금액</th><th>배송비</th><th>미수금</th></tr></thead><tbody>${list.map(x=>`<tr><td>${x.day}</td><td>${money(x.total)}원</td><td>${money(x.shipping)}원</td><td><strong>${money(x.balance)}원</strong></td></tr>`).join('')}</tbody></table></div>`:'<p class="empty-copy">선택 기간의 미수금 내역이 없습니다.</p>';
 }

@@ -1,0 +1,23 @@
+DESIGN SOCKS V6.8.8 배포 안내
+
+1. Supabase > SQL Editor > New query
+2. SQL/V6.8.8-RECEIVABLE-STATS-I-WAITING.sql 전체 내용을 붙여넣고 Run
+3. Success 확인
+4. 프로젝트 배포
+
+git add .
+git commit -m "release v6.8.8 receivable stats and forced i waiting"
+git push origin main
+
+5. Vercel 배포 완료 후 Ctrl+F5
+6. 좌측 아래 V6.8.8 확인
+
+확인 항목
+- 메인 누적 미수금과 통계 누적 미수금이 동일한지 확인
+- 피킹 화면에서 주문 선택 > 피킹시작 전 'I 대기 강제이동' 버튼 확인
+- 버튼 클릭 > 확인창 > I 포장완료 대기 목록 이동 확인
+- 해당 주문의 피킹수량과 재고가 바뀌지 않았는지 확인
+
+주의
+- 이번 버전은 SQL 실행이 필수입니다.
+- 기존 주문·입금·재고 데이터를 삭제하거나 일괄 변경하지 않습니다.
