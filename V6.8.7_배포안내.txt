@@ -1,0 +1,21 @@
+DESIGN SOCKS V6.8.7 배포 안내
+
+1) Supabase 적용(필수)
+- Supabase > SQL Editor > New query를 엽니다.
+- SQL/V6.8.7-CUSTOMER-IDENTITY-SAME-NAME-FIX.sql 내용을 전부 붙여넣고 Run을 누릅니다.
+- Success가 표시되는지 확인합니다.
+
+2) Vercel 배포
+git add .
+git commit -m "release v6.8.7 fix customer profile update"
+git push origin main
+
+3) 적용 확인
+- Vercel 배포 완료 후 ERP에서 Ctrl+F5를 누릅니다.
+- 화면 버전이 V6.8.7인지 확인합니다.
+- 기존 거래처의 거래처명은 그대로 두고 주소 또는 대표자명을 수정해 저장합니다.
+
+주의
+- SQL을 실행하지 않고 화면 파일만 배포하면 동일 오류가 계속 발생할 수 있습니다.
+- 이 SQL은 거래처나 주문 데이터를 삭제하지 않습니다.
+- 거래처명을 실제로 중복된 다른 이름으로 변경하는 것은 계속 차단됩니다.

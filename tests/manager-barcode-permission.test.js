@@ -10,7 +10,7 @@ assert.match(security,/MANAGER_ALLOWED=new Set\(\[[^\]]*'products\.html'/,'매�
 assert.match(security,/products\.html#barcodeManagement/,'매니저 메뉴는 바코드 영역으로 바로 이동해야 합니다.');
 assert.match(security,/manager-barcode-only/,'매니저에게 상품수정 영역을 숨겨야 합니다.');
 assert.match(security,/const keep=document\.getElementById\('barcodeManagement'\)/,'바코드관리 영역만 유지해야 합니다.');
-assert.match(home,/admin-security\.js\?v=68060/,'관리자 홈 권한 스크립트 캐시를 갱신해야 합니다.');
-assert.match(products,/admin-security\.js\?v=68060/,'상품관리 권한 스크립트 캐시를 갱신해야 합니다.');
+assert.match(home,/admin-security\.js\?v=68070/,'관리자 홈 권한 스크립트 캐시를 갱신해야 합니다.');
+assert.match(products,/admin-security\.js\?v=68070/,'상품관리 권한 스크립트 캐시를 갱신해야 합니다.');
 
 console.log('manager barcode permission: ok');

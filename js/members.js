@@ -137,7 +137,12 @@ async function saveCustomer(id){
  const businessName=payload.business_name,ownerName=payload.owner_name;delete payload.business_name;delete payload.owner_name;
  if(!businessName)return alert('거래처명을 입력하세요.');
  const identity=await supabaseClient.rpc('admin_update_customer_identity',{p_customer_id:id,p_business_name:businessName,p_owner_name:ownerName});
- if(identity.error)return alert('거래처명·대표자명 저장 실패: '+identity.error.message+'\n\nSQL/V6.5.28-CUSTOMER-DELIVERY-AUDIT.sql을 먼저 실행하세요.');
+ if(identity.error){
+  const message=String(identity.error.message||'');
+  if(message.includes('이미 등록된 거래처명'))return alert('거래처명 저장 실패: 같은 거래처명이 다른 계정에 이미 등록되어 있습니다.\n\n거래처명을 실제로 변경하려는 경우 기존 중복 계정을 먼저 확인해주세요.');
+  if(/admin_update_customer_identity|function.*does not exist|schema cache|PGRST202/i.test(message))return alert('거래처 정보 수정 기능이 DB에 아직 적용되지 않았습니다.\n\nSQL/V6.8.7-CUSTOMER-IDENTITY-SAME-NAME-FIX.sql을 실행해주세요.');
+  return alert('거래처명·대표자명 저장 실패: '+message);
+ }
  const {error}=await supabaseClient.from('customers').update(payload).eq('id',id);if(error)return alert('저장 실패: '+error.message);
  const metaPayload={customer_id:id,customer_code:(card.querySelector('[data-admin-meta="customer_code"]')?.value||'').trim(),customer_tag:(card.querySelector('[data-admin-meta="customer_tag"]')?.value||'').trim(),kakao_search_name:(card.querySelector('[data-admin-meta="kakao_search_name"]')?.value||'').trim()||null,show_order_tag:true,updated_at:new Date().toISOString()};
  const metaSave=await supabaseClient.from('customer_admin_metadata').upsert(metaPayload,{onConflict:'customer_id'});if(metaSave.error)return alert('관리자용 거래처 정보 저장 실패: '+metaSave.error.message+'\n\nSQL/V6.7.61-KAKAO-SEARCH-NAME.sql을 먼저 실행하세요.');
